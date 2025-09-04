@@ -1,0 +1,2 @@
+web: gunicorn carpi_news.wsgi:application
+release: python manage.py migrate && python manage.py collectstatic --noinput

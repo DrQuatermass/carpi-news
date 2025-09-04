@@ -1,0 +1,337 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Ombra del Portico - Le notizie della tua città{% endblock %}
+
+{% block content %}
+    <div class="container">
+            <!-- Hero Section -->
+            <section class="hero">
+                <div class="hero-content">
+                    <div class="hero-logo">
+                        <img src="{% static 'home/images/portico_logo.svg' %}" alt="Ombra del Portico" class="hero-logo-img">
+                    </div>
+                    
+                </div>
+            </section>
+
+            <!-- Main News Grid -->
+            <section class="news-section">
+                <div class="news-nav">
+                    <div class="news-grid" id="news-grid">
+                        <div class="loading-spinner" id="loading-spinner">
+                            <div class="spinner"></div>
+                        </div>
+                        {% for articolo in articoli %}
+                        <article class="news-card loading">
+                            {% if articolo.foto %}
+                            <div class="news-image">
+                                <img src="{{ articolo.foto }}" alt="{{ articolo.titolo }}" class="card-img">
+                            </div>
+                            {% endif %}
+                            <div class="news-content">
+                                <div class="news-meta">
+                                    <span class="category-tag">{{ articolo.categoria }}</span>
+                                    <time datetime="{{ articolo.data_pubblicazione|date:'Y-m-d' }}">
+                                        {{ articolo.data_pubblicazione|date:'d M Y' }}
+                                    </time>
+                                </div>
+                                <h2 class="news-title">{{ articolo.titolo }}</h2>
+                                <p class="news-excerpt">{{ articolo.sommario|truncatewords:25 }}</p>
+                                <a href="{% url 'dettaglio-articolo' articolo.slug %}" class="read-more">Leggi tutto →</a>
+                            </div>
+                        </article>
+                        {% endfor %}
+                    </div>
+
+                    <div class="nav-controls-bottom">
+                        <button id="prev-btn" class="nav-arrow nav-arrow-centered" {% if not has_prev %}disabled{% endif %}>
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                        <button id="next-btn" class="nav-arrow nav-arrow-centered" {% if not has_next %}disabled{% endif %}>
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M9 18L15 12L9 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                
+                
+            </section>
+
+            <!-- Local News Section -->
+            <section class="local-section">
+                <h2 class="section-title">🏛️ Notizie dal Comune di Carpi</h2>
+                <div class="local-news-grid">
+                    {% for notizia in notizie_comunali %}
+                    <div class="local-news-item loading">
+                        <h3>{{ notizia.titolo }}</h3>
+                        <p>{{ notizia.descrizione|truncatewords:20 }}</p>
+                        <small>{{ notizia.data|date:'d/m/Y' }}</small>
+                    </div>
+                    {% empty %}
+                    <!-- Contenuto di esempio -->
+                    <div class="local-news-item loading">
+                        <h3>Nuovo orario della biblioteca comunale</h3>
+                        <p>Da lunedì 2 settembre la biblioteca comunale adotta il nuovo orario invernale con apertura anche il sabato mattina...</p>
+                        <small>30/08/2025</small>
+                    </div>
+
+                    <div class="local-news-item loading">
+                        <h3>Raccolta differenziata: nuove modalità</h3>
+                        <p>Entrano in vigore le nuove modalità per la raccolta differenziata nei quartieri del centro storico...</p>
+                        <small>29/08/2025</small>
+                    </div>
+
+                    <div class="local-news-item loading">
+                        <h3>Lavori di asfaltatura in Via Garibaldi</h3>
+                        <p>Previsti lavori di rifacimento del manto stradale che comporteranno modifiche alla viabilità...</p>
+                        <small>28/08/2025</small>
+                    </div>
+
+                    <div class="local-news-item loading">
+                        <h3>Iscrizioni ai servizi scolastici</h3>
+                        <p>Aperte le iscrizioni online per mensa, trasporto e pre-post scuola per l'anno scolastico 2025/2026...</p>
+                        <small>27/08/2025</small>
+                    </div>
+                    {% endfor %}
+                </div>
+            </section>
+        </div>
+{% endblock %}
+
+{% block javascript %}
+{{ block.super }}
+<script>
+        let currentPage = parseInt('{{ current_page|default:1 }}');
+        let totalPages = parseInt('{{ total_pages|default:1 }}');
+        let isTransitioning = false;
+
+        // Inizializzazione specifica della homepage
+        function initPageSpecific() {
+            console.log('initPageSpecific called');
+            console.log('currentPage:', currentPage, 'totalPages:', totalPages);
+            
+            // Animazione al caricamento
+            const loadingElements = document.querySelectorAll('.loading');
+            loadingElements.forEach((element, index) => {
+                setTimeout(() => {
+                    element.style.animationDelay = (index * 0.1) + 's';
+                }, index * 100);
+            });
+
+            // Animazione parallasse per hero
+            window.addEventListener('scroll', function() {
+                const hero = document.querySelector('.hero');
+                if (hero) {
+                    const scrolled = window.pageYOffset;
+                    const rate = scrolled * -0.5;
+                    hero.style.transform = 'translateY(' + rate + 'px)';
+                }
+            });
+
+            // Event listeners per i pulsanti di navigazione
+            const prevBtn = document.getElementById('prev-btn');
+            const nextBtn = document.getElementById('next-btn');
+            
+            console.log('prevBtn:', prevBtn, 'nextBtn:', nextBtn);
+            
+            if (prevBtn) {
+                console.log('Adding event listener to prevBtn');
+                prevBtn.addEventListener('click', function() {
+                    console.log('prevBtn clicked, disabled:', this.disabled);
+                    if (!this.disabled) {
+                        changePage(-1);
+                    }
+                });
+            }
+            
+            if (nextBtn) {
+                console.log('Adding event listener to nextBtn');
+                nextBtn.addEventListener('click', function() {
+                    console.log('nextBtn clicked, disabled:', this.disabled);
+                    if (!this.disabled) {
+                        changePage(1);
+                    }
+                });
+            }
+
+            // Keyboard navigation
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'ArrowLeft' && prevBtn && !prevBtn.disabled) {
+                    changePage(-1);
+                } else if (e.key === 'ArrowRight' && nextBtn && !nextBtn.disabled) {
+                    changePage(1);
+                }
+            });
+        }
+        
+        // Funzione per cambiare pagina con transizioni
+        function changePage(direction) {
+            console.log('changePage called with direction:', direction);
+            console.log('currentPage:', currentPage, 'totalPages:', totalPages);
+            
+            if (isTransitioning) {
+                console.log('Already transitioning, returning');
+                return;
+            }
+            
+            const newPage = currentPage + direction;
+            console.log('newPage:', newPage);
+            
+            if (newPage >= 1 && newPage <= totalPages) {
+                console.log('Valid page, starting transition');
+                isTransitioning = true;
+                
+                // Determina la direzione dell'animazione
+                const slideOutClass = direction > 0 ? 'slide-out-left' : 'slide-out-right';
+                const slideInClass = direction > 0 ? 'slide-in-right' : 'slide-in-left';
+                
+                // Aggiungi classe di transizione al grid
+                const newsGrid = document.getElementById('news-grid');
+                newsGrid.classList.add('transitioning');
+                
+                // Mostra loading spinner
+                const loadingSpinner = document.getElementById('loading-spinner');
+                loadingSpinner.classList.add('active');
+                
+                // Prima carica i nuovi dati, poi anima
+                loadPageContent(newPage, slideInClass, slideOutClass);
+            }
+        }
+        
+        // Funzione per caricare il contenuto della pagina via AJAX
+        function loadPageContent(pageNumber, slideInClass, slideOutClass) {
+            const xhr = new XMLHttpRequest();
+            xhr.open('GET', `?page=${pageNumber}`, true);
+            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+            
+            xhr.onreadystatechange = function() {
+                if (xhr.readyState === 4 && xhr.status === 200) {
+                    const data = JSON.parse(xhr.responseText);
+                    updatePageContent(data, slideInClass, slideOutClass);
+                } else if (xhr.readyState === 4 && xhr.status !== 200) {
+                    // In caso di errore, ricarica la pagina normalmente
+                    window.location.href = `?page=${pageNumber}`;
+                }
+            };
+            
+            xhr.send();
+        }
+        
+        // Funzione per aggiornare il contenuto della pagina
+        function updatePageContent(data, slideInClass, slideOutClass) {
+            const newsGrid = document.getElementById('news-grid');
+            
+            // Ottieni le card esistenti
+            const existingCards = newsGrid.querySelectorAll('.news-card');
+            
+            // Nascondi loading spinner
+            const loadingSpinner = document.getElementById('loading-spinner');
+            loadingSpinner.classList.remove('active');
+            
+            // Anima le card esistenti in uscita
+            existingCards.forEach((card, index) => {
+                setTimeout(() => {
+                    card.classList.add(slideOutClass);
+                }, index * 50);
+            });
+            
+            // Dopo l'animazione di uscita, sostituisci con le nuove card
+            setTimeout(() => {
+                // Rimuovi tutte le card esistenti
+                existingCards.forEach(card => card.remove());
+                
+                // Crea le nuove card ma non le mostrare ancora
+                const newCards = [];
+                data.articoli.forEach((articolo, index) => {
+                    const card = createNewsCard(articolo);
+                    card.style.opacity = '0';
+                    card.style.transform = slideInClass.includes('left') ? 'translateX(-100%)' : 'translateX(100%)';
+                    newsGrid.appendChild(card);
+                    newCards.push(card);
+                });
+                
+                // Aggiorna i dati di paginazione
+                currentPage = data.current_page;
+                totalPages = data.total_pages;
+                
+                // Aggiorna i pulsanti di navigazione
+                updateNavigationButtons(data.has_prev, data.has_next);
+                
+                // Aggiorna l'URL senza ricaricare la pagina
+                const url = new URL(window.location);
+                url.searchParams.set('page', currentPage);
+                window.history.pushState({}, '', url);
+                
+                // Ora anima le nuove card in entrata
+                setTimeout(() => {
+                    newCards.forEach((card, index) => {
+                        setTimeout(() => {
+                            card.classList.add(slideInClass);
+                        }, index * 50);
+                    });
+                    
+                    // Rimuovi classe di transizione
+                    newsGrid.classList.remove('transitioning');
+                    
+                    // Riabilita le transizioni
+                    setTimeout(() => {
+                        isTransitioning = false;
+                    }, 500);
+                }, 50);
+            }, 400);
+        }
+        
+        // Funzione per creare una card di notizia
+        function createNewsCard(articolo) {
+            const card = document.createElement('article');
+            card.className = 'news-card';
+            
+            let imageHtml = '';
+            if (articolo.foto) {
+                imageHtml = `
+                    <div class="news-image">
+                        <img src="${articolo.foto}" alt="${articolo.titolo}" class="card-img">
+                    </div>
+                `;
+            }
+            
+            card.innerHTML = `
+                ${imageHtml}
+                <div class="news-content">
+                    <div class="news-meta">
+                        <span class="category-tag">${articolo.categoria}</span>
+                        <time datetime="${articolo.data_pubblicazione}">${articolo.data_pubblicazione}</time>
+                    </div>
+                    <h2 class="news-title">${articolo.titolo}</h2>
+                    <p class="news-excerpt">${articolo.sommario}</p>
+                    <a href="/articolo/${articolo.slug}/" class="read-more">Leggi tutto →</a>
+                </div>
+            `;
+            
+            return card;
+        }
+        
+        // Funzione per aggiornare i pulsanti di navigazione
+        function updateNavigationButtons(hasPrev, hasNext) {
+            const prevBtn = document.getElementById('prev-btn');
+            const nextBtn = document.getElementById('next-btn');
+            
+            prevBtn.disabled = !hasPrev;
+            nextBtn.disabled = !hasNext;
+        }
+
+        // Stile per animazioni di paginazione
+        const paginationStyle = document.createElement('style');
+        paginationStyle.textContent = `
+            @keyframes slideDown {
+                from { transform: translateY(0); }
+                to { transform: translateY(100%); }
+            }
+        `;
+        document.head.appendChild(paginationStyle);
+</script>
+{% endblock %}

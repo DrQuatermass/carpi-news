@@ -1,0 +1,24 @@
+# Django and core dependencies
+Django==5.2.5
+python-dotenv==1.0.0
+
+# Database adapters
+dj-database-url==2.1.0
+psycopg2-binary==2.9.9  # For PostgreSQL (optional)
+
+# Web scraping
+requests==2.31.0
+beautifulsoup4==4.12.2
+
+# AI Integration
+anthropic==0.64.0
+
+# YouTube integration
+youtube-transcript-api==0.6.1
+
+# Web server (for production)
+gunicorn==21.2.0
+whitenoise==6.6.0
+
+# Environment and utilities
+python-decouple==3.8  # Alternative to python-dotenv

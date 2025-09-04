@@ -1,0 +1,280 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ articolo.titolo }} - Ombra del Portico{% endblock %}
+
+{% block content %}
+    <div class="container">
+        <article class="article-detail">
+            <div class="article-meta">
+                <a href="{% url 'home' %}" class="back-link">← Home</a>
+                <span class="category-tag">{{ articolo.categoria }}</span>
+                <time datetime="{{ articolo.data_pubblicazione|date:'Y-m-d' }}">
+                       {{ articolo.data_pubblicazione|date:'d M Y' }}
+                </time>
+            </div>
+            <br>
+            <h1 class="article-title">{{ articolo.titolo }}</h1>
+            <br>
+            {% if articolo.foto %}
+            <div class="article-image">
+                <img src="{{ articolo.foto }}" alt="{{ articolo.titolo }}" class="img-responsive">
+            </div>
+            {% endif %}
+            
+            <div class="article-content">
+                {{ articolo.contenuto|safe }}
+            </div>
+<br><br>
+            <!-- Social Share Section 
+            <div class="social-share-section">
+                <h4 class="share-title">Condividi questo articolo</h4>-->
+                <div class="social-share-buttons">
+                    <a href="https://www.facebook.com/sharer/sharer.php?u={{ request.build_absolute_uri }}&quote={{ articolo.titolo|urlencode }}" 
+                       target="_blank" rel="noopener" class="social-btn facebook" title="Condividi su Facebook">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                        </svg>
+                        
+                    </a>
+
+                    <a href="https://x.com/intent/tweet?text={{ articolo.titolo|urlencode }}&url={{ request.build_absolute_uri }}&hashtags=CarpiNews,Carpi" 
+                       target="_blank" rel="noopener" class="social-btn x-twitter" title="Condividi su X">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                        </svg>
+                        
+                    </a>
+
+                    <a href="https://www.linkedin.com/sharing/share-offsite/?url={{ request.build_absolute_uri }}" 
+                       target="_blank" rel="noopener" class="social-btn linkedin" title="Condividi su LinkedIn">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                        </svg>
+                        
+                    </a>
+
+                    <a href="https://wa.me/?text={{ articolo.titolo|urlencode }}%20{{ request.build_absolute_uri }}" 
+                       target="_blank" rel="noopener" class="social-btn whatsapp" title="Condividi su WhatsApp">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893A11.821 11.821 0 0020.885 3.488"/>
+                        </svg>
+                        
+                    </a>
+
+                    <a href="mailto:?subject={{ articolo.titolo|urlencode }}&body=Ho trovato questo interessante articolo su Ombra del Portico:%0A%0A{{ articolo.titolo|urlencode }}%0A{{ request.build_absolute_uri }}" 
+                       class="social-btn email" title="Condividi via Email">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-.904.732-1.636 1.636-1.636h.887l9.477 7.103 9.477-7.103h.887c.904 0 1.636.732 1.636 1.636z"/>
+                        </svg>
+                        
+                    </a>
+
+                    <button class="social-btn copy-link" onclick="copyToClipboard()" title="Copia link">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+                        </svg>
+                        
+                    </button>
+                </div>
+           <!-- </div>-->
+        </article>
+    </div>
+{% endblock %}
+
+{% block javascript %}
+{{ block.super }}
+<script>
+    function copyToClipboard() {
+        const url = window.location.href;
+        
+        if (navigator.clipboard && window.isSecureContext) {
+            // Metodo moderno per browser che supportano Clipboard API
+            navigator.clipboard.writeText(url).then(() => {
+                showCopyFeedback('✅ Link copiato negli appunti!');
+            }).catch(() => {
+                fallbackCopyTextToClipboard(url);
+            });
+        } else {
+            // Fallback per browser più vecchi
+            fallbackCopyTextToClipboard(url);
+        }
+    }
+
+    function fallbackCopyTextToClipboard(text) {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.top = "0";
+        textArea.style.left = "0";
+        textArea.style.position = "fixed";
+
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+
+        try {
+            const successful = document.execCommand('copy');
+            if (successful) {
+                showCopyFeedback('✅ Link copiato negli appunti!');
+            } else {
+                showCopyFeedback('❌ Impossibile copiare il link');
+            }
+        } catch (err) {
+            showCopyFeedback('❌ Errore durante la copia');
+        }
+
+        document.body.removeChild(textArea);
+    }
+
+    function showCopyFeedback(message) {
+        // Crea un toast di feedback
+        const toast = document.createElement('div');
+        toast.textContent = message;
+        toast.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #5A5A5A;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-weight: 500;
+            z-index: 10000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            animation: slideInRight 0.3s ease-out;
+        `;
+
+        document.body.appendChild(toast);
+
+        // Rimuovi il toast dopo 3 secondi
+        setTimeout(() => {
+            toast.style.animation = 'slideOutRight 0.3s ease-in';
+            setTimeout(() => {
+                document.body.removeChild(toast);
+            }, 300);
+        }, 3000);
+    }
+
+    // CSS per le animazioni del toast e pulsanti tondi
+    const style = document.createElement('style');
+    style.textContent = `
+        @keyframes slideInRight {
+            from { 
+                transform: translateX(100%); 
+                opacity: 0; 
+            }
+            to { 
+                transform: translateX(0); 
+                opacity: 1; 
+            }
+        }
+        
+        @keyframes slideOutRight {
+            from { 
+                transform: translateX(0); 
+                opacity: 1; 
+            }
+            to { 
+                transform: translateX(100%); 
+                opacity: 0; 
+            }
+        }
+
+        /* Stili per pulsanti social tondi */
+        .social-share-buttons .social-btn {
+            width: 50px !important;
+            height: 50px !important;
+            border-radius: 50% !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            margin: 0 8px 8px 0 !important;
+            transition: all 0.3s ease !important;
+            text-decoration: none !important;
+            border: none !important;
+            cursor: pointer !important;
+            position: relative !important;
+            overflow: hidden !important;
+        }
+
+        .social-share-buttons .social-btn span {
+            display: none !important;
+        }
+
+        .social-share-buttons .social-btn svg {
+            width: 24px !important;
+            height: 24px !important;
+            transition: transform 0.3s ease !important;
+        }
+
+        .social-share-buttons .social-btn:hover svg {
+            transform: scale(1.1) !important;
+        }
+
+        .social-share-buttons .social-btn:active {
+            transform: scale(0.95) !important;
+        }
+
+        /* Colori specifici per ogni social */
+        .social-share-buttons .social-btn.facebook {
+            background: #1877f2 !important;
+            color: white !important;
+        }
+
+        .social-share-buttons .social-btn.facebook:hover {
+            background: #166fe5 !important;
+            box-shadow: 0 4px 12px rgba(24, 119, 242, 0.3) !important;
+        }
+
+        .social-share-buttons .social-btn.x-twitter {
+            background: #000000 !important;
+            color: white !important;
+        }
+
+        .social-share-buttons .social-btn.x-twitter:hover {
+            background: #333333 !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+        }
+
+        .social-share-buttons .social-btn.linkedin {
+            background: #0a66c2 !important;
+            color: white !important;
+        }
+
+        .social-share-buttons .social-btn.linkedin:hover {
+            background: #0958a5 !important;
+            box-shadow: 0 4px 12px rgba(10, 102, 194, 0.3) !important;
+        }
+
+        .social-share-buttons .social-btn.whatsapp {
+            background: #25d366 !important;
+            color: white !important;
+        }
+
+        .social-share-buttons .social-btn.whatsapp:hover {
+            background: #22c55e !important;
+            box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3) !important;
+        }
+
+        .social-share-buttons .social-btn.email {
+            background: #ea4335 !important;
+            color: white !important;
+        }
+
+        .social-share-buttons .social-btn.email:hover {
+            background: #d73527 !important;
+            box-shadow: 0 4px 12px rgba(234, 67, 53, 0.3) !important;
+        }
+
+        .social-share-buttons .social-btn.copy-link {
+            background: #6b7280 !important;
+            color: white !important;
+        }
+
+        .social-share-buttons .social-btn.copy-link:hover {
+            background: #4b5563 !important;
+            box-shadow: 0 4px 12px rgba(107, 114, 128, 0.3) !important;
+        }
+    `;
+    document.head.appendChild(style);
+</script>
+{% endblock %}

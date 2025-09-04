@@ -1,0 +1,6 @@
+# Lock files - generati dinamicamente dai monitor
+*.lock
+
+# Mantieni la directory ma ignora tutti i file lock
+*
+!.gitignore

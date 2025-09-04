@@ -1,0 +1,584 @@
+[
+  {
+    "selector_used": ".card",
+    "title": "Comunicati Stampa",
+    "text_preview": "Comunicati Stampa",
+    "link": "https://www.comune.carpi.mo.it/novita/comunicati-stampa/",
+    "page_url": "https://www.comune.carpi.mo.it/novita/",
+    "element_tag": "div",
+    "element_classes": [
+      "card",
+      "shadow-sm",
+      "rounded"
+    ]
+  },
+  {
+    "selector_used": ".card",
+    "title": "Comunicati",
+    "text_preview": "Comunicati",
+    "link": "https://www.comune.carpi.mo.it/novita/notizie/#comunicato-stampa",
+    "page_url": "https://www.comune.carpi.mo.it/novita/",
+    "element_tag": "div",
+    "element_classes": [
+      "card",
+      "shadow-sm",
+      "rounded"
+    ]
+  },
+  {
+    "selector_used": ".card-body",
+    "title": "Comunicati Stampa",
+    "text_preview": "Comunicati Stampa",
+    "link": "https://www.comune.carpi.mo.it/novita/comunicati-stampa/",
+    "page_url": "https://www.comune.carpi.mo.it/novita/",
+    "element_tag": "div",
+    "element_classes": [
+      "card-body"
+    ]
+  },
+  {
+    "selector_used": ".card-body",
+    "title": "Comunicati",
+    "text_preview": "Comunicati",
+    "link": "https://www.comune.carpi.mo.it/novita/notizie/#comunicato-stampa",
+    "page_url": "https://www.comune.carpi.mo.it/novita/",
+    "element_tag": "div",
+    "element_classes": [
+      "card-body"
+    ]
+  },
+  {
+    "selector_used": ".card-title",
+    "title": "No title",
+    "text_preview": "Comunicati Stampa",
+    "link": null,
+    "page_url": "https://www.comune.carpi.mo.it/novita/",
+    "element_tag": "h3",
+    "element_classes": [
+      "card-title",
+      "t-primary",
+      "title-xlarge"
+    ]
+  },
+  {
+    "selector_used": ".card-title",
+    "title": "No title",
+    "text_preview": "Comunicati",
+    "link": null,
+    "page_url": "https://www.comune.carpi.mo.it/novita/",
+    "element_tag": "h3",
+    "element_classes": [
+      "card-title",
+      "t-primary",
+      "title-xlarge"
+    ]
+  },
+  {
+    "selector_used": "div[class*=\"card\"]",
+    "title": "Comunicati Stampa",
+    "text_preview": "Comunicati Stampa",
+    "link": "https://www.comune.carpi.mo.it/novita/comunicati-stampa/",
+    "page_url": "https://www.comune.carpi.mo.it/novita/",
+    "element_tag": "div",
+    "element_classes": [
+      "cmp-card-simple",
+      "card-wrapper",
+      "pb-0",
+      "rounded",
+      "border",
+      "border-light"
+    ]
+  },
+  {
+    "selector_used": "div[class*=\"card\"]",
+    "title": "Comunicati Stampa",
+    "text_preview": "Comunicati Stampa",
+    "link": "https://www.comune.carpi.mo.it/novita/comunicati-stampa/",
+    "page_url": "https://www.comune.carpi.mo.it/novita/",
+    "element_tag": "div",
+    "element_classes": [
+      "card",
+      "shadow-sm",
+      "rounded"
+    ]
+  },
+  {
+    "selector_used": "div[class*=\"card\"]",
+    "title": "Comunicati Stampa",
+    "text_preview": "Comunicati Stampa",
+    "link": "https://www.comune.carpi.mo.it/novita/comunicati-stampa/",
+    "page_url": "https://www.comune.carpi.mo.it/novita/",
+    "element_tag": "div",
+    "element_classes": [
+      "card-body"
+    ]
+  },
+  {
+    "selector_used": "div[class*=\"notizi\"]",
+    "title": "Comunicati",
+    "text_preview": "Comunicati",
+    "link": "https://www.comune.carpi.mo.it/novita/notizie/#comunicato-stampa",
+    "page_url": "https://www.comune.carpi.mo.it/novita/",
+    "element_tag": "div",
+    "element_classes": [
+      "col-12",
+      "col-md-6",
+      "col-lg-4",
+      "notizie-categorie-default",
+      "cat-Comunicati"
+    ]
+  },
+  {
+    "selector_used": "div[class*=\"comunicat\"]",
+    "title": "Comunicati Stampa",
+    "text_preview": "Comunicati Stampa",
+    "link": "https://www.comune.carpi.mo.it/novita/comunicati-stampa/",
+    "page_url": "https://www.comune.carpi.mo.it/novita/",
+    "element_tag": "div",
+    "element_classes": [
+      "col-12",
+      "col-md-6",
+      "col-lg-4",
+      "comunicati-stampa"
+    ]
+  },
+  {
+    "selector_used": "a[href*=\"comunicat\"]",
+    "title": "Comunicati Stampa",
+    "text_preview": "Comunicati Stampa",
+    "link": "https://www.comune.carpi.mo.it/novita/comunicati-stampa/",
+    "page_url": "https://www.comune.carpi.mo.it/novita/",
+    "element_tag": "a",
+    "element_classes": [
+      "text-decoration-none"
+    ]
+  },
+  {
+    "selector_used": "a[href*=\"comunicat\"]",
+    "title": "Comunicati",
+    "text_preview": "Comunicati",
+    "link": "https://www.comune.carpi.mo.it/novita/notizie/#comunicato-stampa",
+    "page_url": "https://www.comune.carpi.mo.it/novita/",
+    "element_tag": "a",
+    "element_classes": [
+      "text-decoration-none"
+    ]
+  },
+  {
+    "selector_used": "a[href*=\"comunicat\"]",
+    "title": "No title",
+    "text_preview": "Comunicati Stampa",
+    "link": "https://www.comune.carpi.mo.it/novita/notizie/#comunicato-stampa",
+    "page_url": "https://www.comune.carpi.mo.it/novita/",
+    "element_tag": "a",
+    "element_classes": []
+  },
+  {
+    "selector_used": "a[href*=\"notizi\"]",
+    "title": "No title",
+    "text_preview": "Città di Carpi",
+    "link": "https://www.comune.carpi.mo.it/novita/notizie/canali-whatsapp-del-comune-di-carpi/",
+    "page_url": "https://www.comune.carpi.mo.it/novita/",
+    "element_tag": "a",
+    "element_classes": []
+  },
+  {
+    "selector_used": "a[href*=\"notizi\"]",
+    "title": "Comunicati",
+    "text_preview": "Comunicati",
+    "link": "https://www.comune.carpi.mo.it/novita/notizie/#comunicato-stampa",
+    "page_url": "https://www.comune.carpi.mo.it/novita/",
+    "element_tag": "a",
+    "element_classes": [
+      "text-decoration-none"
+    ]
+  },
+  {
+    "selector_used": ".card",
+    "title": "Contatta il comune",
+    "text_preview": "Contatta il comuneLeggi le domande frequentiRichiedi assistenzaPrenota appuntamentoProblemi in cittàSegnala disservizio",
+    "link": "https://www.comune.carpi.mo.it/domande-frequenti/",
+    "page_url": "https://www.comune.carpi.mo.it/novita/notizie/",
+    "element_tag": "div",
+    "element_classes": [
+      "card",
+      "w-100"
+    ]
+  },
+  {
+    "selector_used": ".card-body",
+    "title": "Contatta il comune",
+    "text_preview": "Contatta il comuneLeggi le domande frequentiRichiedi assistenzaPrenota appuntamentoProblemi in cittàSegnala disservizio",
+    "link": "https://www.comune.carpi.mo.it/domande-frequenti/",
+    "page_url": "https://www.comune.carpi.mo.it/novita/notizie/",
+    "element_tag": "div",
+    "element_classes": [
+      "card-body"
+    ]
+  },
+  {
+    "selector_used": "div[class*=\"card\"]",
+    "title": "Contatta il comune",
+    "text_preview": "Contatta il comuneLeggi le domande frequentiRichiedi assistenzaPrenota appuntamentoProblemi in cittàSegnala disservizio",
+    "link": "https://www.comune.carpi.mo.it/domande-frequenti/",
+    "page_url": "https://www.comune.carpi.mo.it/novita/notizie/",
+    "element_tag": "div",
+    "element_classes": [
+      "bg-grey-card",
+      "shadow-contacts"
+    ]
+  },
+  {
+    "selector_used": "div[class*=\"card\"]",
+    "title": "Contatta il comune",
+    "text_preview": "Contatta il comuneLeggi le domande frequentiRichiedi assistenzaPrenota appuntamentoProblemi in cittàSegnala disservizio",
+    "link": "https://www.comune.carpi.mo.it/domande-frequenti/",
+    "page_url": "https://www.comune.carpi.mo.it/novita/notizie/",
+    "element_tag": "div",
+    "element_classes": [
+      "card",
+      "w-100"
+    ]
+  },
+  {
+    "selector_used": "div[class*=\"card\"]",
+    "title": "Contatta il comune",
+    "text_preview": "Contatta il comuneLeggi le domande frequentiRichiedi assistenzaPrenota appuntamentoProblemi in cittàSegnala disservizio",
+    "link": "https://www.comune.carpi.mo.it/domande-frequenti/",
+    "page_url": "https://www.comune.carpi.mo.it/novita/notizie/",
+    "element_tag": "div",
+    "element_classes": [
+      "card-body"
+    ]
+  },
+  {
+    "selector_used": "a[href*=\"comunicat\"]",
+    "title": "No title",
+    "text_preview": "Comunicati Stampa",
+    "link": "https://www.comune.carpi.mo.it/novita/notizie/#comunicato-stampa",
+    "page_url": "https://www.comune.carpi.mo.it/novita/notizie/",
+    "element_tag": "a",
+    "element_classes": []
+  },
+  {
+    "selector_used": "a[href*=\"notizi\"]",
+    "title": "No title",
+    "text_preview": "Città di Carpi",
+    "link": "https://www.comune.carpi.mo.it/novita/notizie/canali-whatsapp-del-comune-di-carpi/",
+    "page_url": "https://www.comune.carpi.mo.it/novita/notizie/",
+    "element_tag": "a",
+    "element_classes": []
+  },
+  {
+    "selector_used": "a[href*=\"notizi\"]",
+    "title": "No title",
+    "text_preview": "Comunicati Stampa",
+    "link": "https://www.comune.carpi.mo.it/novita/notizie/#comunicato-stampa",
+    "page_url": "https://www.comune.carpi.mo.it/novita/notizie/",
+    "element_tag": "a",
+    "element_classes": []
+  },
+  {
+    "selector_used": "a[href*=\"notizi\"]",
+    "title": "No title",
+    "text_preview": "Città di Carpi",
+    "link": "https://www.comune.carpi.mo.it/novita/notizie/canali-whatsapp-del-comune-di-carpi/",
+    "page_url": "https://www.comune.carpi.mo.it/novita/notizie/",
+    "element_tag": "a",
+    "element_classes": [
+      "p-2",
+      "text-white"
+    ]
+  },
+  {
+    "selector_used": ".card",
+    "title": "Contatta il comune",
+    "text_preview": "Contatta il comuneLeggi le domande frequentiRichiedi assistenzaPrenota appuntamentoProblemi in cittàSegnala disservizio",
+    "link": "https://www.comune.carpi.mo.it/domande-frequenti/",
+    "page_url": "https://www.comune.carpi.mo.it/novita/comunicati-stampa/",
+    "element_tag": "div",
+    "element_classes": [
+      "card",
+      "w-100"
+    ]
+  },
+  {
+    "selector_used": ".card-body",
+    "title": "Contatta il comune",
+    "text_preview": "Contatta il comuneLeggi le domande frequentiRichiedi assistenzaPrenota appuntamentoProblemi in cittàSegnala disservizio",
+    "link": "https://www.comune.carpi.mo.it/domande-frequenti/",
+    "page_url": "https://www.comune.carpi.mo.it/novita/comunicati-stampa/",
+    "element_tag": "div",
+    "element_classes": [
+      "card-body"
+    ]
+  },
+  {
+    "selector_used": "div[class*=\"card\"]",
+    "title": "Contatta il comune",
+    "text_preview": "Contatta il comuneLeggi le domande frequentiRichiedi assistenzaPrenota appuntamentoProblemi in cittàSegnala disservizio",
+    "link": "https://www.comune.carpi.mo.it/domande-frequenti/",
+    "page_url": "https://www.comune.carpi.mo.it/novita/comunicati-stampa/",
+    "element_tag": "div",
+    "element_classes": [
+      "bg-grey-card",
+      "shadow-contacts"
+    ]
+  },
+  {
+    "selector_used": "div[class*=\"card\"]",
+    "title": "Contatta il comune",
+    "text_preview": "Contatta il comuneLeggi le domande frequentiRichiedi assistenzaPrenota appuntamentoProblemi in cittàSegnala disservizio",
+    "link": "https://www.comune.carpi.mo.it/domande-frequenti/",
+    "page_url": "https://www.comune.carpi.mo.it/novita/comunicati-stampa/",
+    "element_tag": "div",
+    "element_classes": [
+      "card",
+      "w-100"
+    ]
+  },
+  {
+    "selector_used": "div[class*=\"card\"]",
+    "title": "Contatta il comune",
+    "text_preview": "Contatta il comuneLeggi le domande frequentiRichiedi assistenzaPrenota appuntamentoProblemi in cittàSegnala disservizio",
+    "link": "https://www.comune.carpi.mo.it/domande-frequenti/",
+    "page_url": "https://www.comune.carpi.mo.it/novita/comunicati-stampa/",
+    "element_tag": "div",
+    "element_classes": [
+      "card-body"
+    ]
+  },
+  {
+    "selector_used": "a[href*=\"comunicat\"]",
+    "title": "No title",
+    "text_preview": "Comunicati Stampa",
+    "link": "https://www.comune.carpi.mo.it/novita/notizie/#comunicato-stampa",
+    "page_url": "https://www.comune.carpi.mo.it/novita/comunicati-stampa/",
+    "element_tag": "a",
+    "element_classes": []
+  },
+  {
+    "selector_used": "a[href*=\"notizi\"]",
+    "title": "No title",
+    "text_preview": "Città di Carpi",
+    "link": "https://www.comune.carpi.mo.it/novita/notizie/canali-whatsapp-del-comune-di-carpi/",
+    "page_url": "https://www.comune.carpi.mo.it/novita/comunicati-stampa/",
+    "element_tag": "a",
+    "element_classes": []
+  },
+  {
+    "selector_used": "a[href*=\"notizi\"]",
+    "title": "No title",
+    "text_preview": "Comunicati Stampa",
+    "link": "https://www.comune.carpi.mo.it/novita/notizie/#comunicato-stampa",
+    "page_url": "https://www.comune.carpi.mo.it/novita/comunicati-stampa/",
+    "element_tag": "a",
+    "element_classes": []
+  },
+  {
+    "selector_used": "a[href*=\"notizi\"]",
+    "title": "No title",
+    "text_preview": "Città di Carpi",
+    "link": "https://www.comune.carpi.mo.it/novita/notizie/canali-whatsapp-del-comune-di-carpi/",
+    "page_url": "https://www.comune.carpi.mo.it/novita/comunicati-stampa/",
+    "element_tag": "a",
+    "element_classes": [
+      "p-2",
+      "text-white"
+    ]
+  },
+  {
+    "selector_used": ".card",
+    "title": "Contatta il comune",
+    "text_preview": "Contatta il comuneLeggi le domande frequentiRichiedi assistenzaPrenota appuntamentoProblemi in cittàSegnala disservizio",
+    "link": "https://www.comune.carpi.mo.it/domande-frequenti/",
+    "page_url": "https://www.comune.carpi.mo.it/categoria/notizie/",
+    "element_tag": "div",
+    "element_classes": [
+      "card",
+      "w-100"
+    ]
+  },
+  {
+    "selector_used": ".card-body",
+    "title": "Contatta il comune",
+    "text_preview": "Contatta il comuneLeggi le domande frequentiRichiedi assistenzaPrenota appuntamentoProblemi in cittàSegnala disservizio",
+    "link": "https://www.comune.carpi.mo.it/domande-frequenti/",
+    "page_url": "https://www.comune.carpi.mo.it/categoria/notizie/",
+    "element_tag": "div",
+    "element_classes": [
+      "card-body"
+    ]
+  },
+  {
+    "selector_used": "div[class*=\"card\"]",
+    "title": "Contatta il comune",
+    "text_preview": "Contatta il comuneLeggi le domande frequentiRichiedi assistenzaPrenota appuntamentoProblemi in cittàSegnala disservizio",
+    "link": "https://www.comune.carpi.mo.it/domande-frequenti/",
+    "page_url": "https://www.comune.carpi.mo.it/categoria/notizie/",
+    "element_tag": "div",
+    "element_classes": [
+      "bg-grey-card",
+      "shadow-contacts"
+    ]
+  },
+  {
+    "selector_used": "div[class*=\"card\"]",
+    "title": "Contatta il comune",
+    "text_preview": "Contatta il comuneLeggi le domande frequentiRichiedi assistenzaPrenota appuntamentoProblemi in cittàSegnala disservizio",
+    "link": "https://www.comune.carpi.mo.it/domande-frequenti/",
+    "page_url": "https://www.comune.carpi.mo.it/categoria/notizie/",
+    "element_tag": "div",
+    "element_classes": [
+      "card",
+      "w-100"
+    ]
+  },
+  {
+    "selector_used": "div[class*=\"card\"]",
+    "title": "Contatta il comune",
+    "text_preview": "Contatta il comuneLeggi le domande frequentiRichiedi assistenzaPrenota appuntamentoProblemi in cittàSegnala disservizio",
+    "link": "https://www.comune.carpi.mo.it/domande-frequenti/",
+    "page_url": "https://www.comune.carpi.mo.it/categoria/notizie/",
+    "element_tag": "div",
+    "element_classes": [
+      "card-body"
+    ]
+  },
+  {
+    "selector_used": "a[href*=\"comunicat\"]",
+    "title": "No title",
+    "text_preview": "Comunicati Stampa",
+    "link": "https://www.comune.carpi.mo.it/novita/notizie/#comunicato-stampa",
+    "page_url": "https://www.comune.carpi.mo.it/categoria/notizie/",
+    "element_tag": "a",
+    "element_classes": []
+  },
+  {
+    "selector_used": "a[href*=\"notizi\"]",
+    "title": "No title",
+    "text_preview": "Città di Carpi",
+    "link": "https://www.comune.carpi.mo.it/novita/notizie/canali-whatsapp-del-comune-di-carpi/",
+    "page_url": "https://www.comune.carpi.mo.it/categoria/notizie/",
+    "element_tag": "a",
+    "element_classes": []
+  },
+  {
+    "selector_used": "a[href*=\"notizi\"]",
+    "title": "No title",
+    "text_preview": "Comunicati Stampa",
+    "link": "https://www.comune.carpi.mo.it/novita/notizie/#comunicato-stampa",
+    "page_url": "https://www.comune.carpi.mo.it/categoria/notizie/",
+    "element_tag": "a",
+    "element_classes": []
+  },
+  {
+    "selector_used": "a[href*=\"notizi\"]",
+    "title": "No title",
+    "text_preview": "Città di Carpi",
+    "link": "https://www.comune.carpi.mo.it/novita/notizie/canali-whatsapp-del-comune-di-carpi/",
+    "page_url": "https://www.comune.carpi.mo.it/categoria/notizie/",
+    "element_tag": "a",
+    "element_classes": [
+      "p-2",
+      "text-white"
+    ]
+  },
+  {
+    "selector_used": ".card",
+    "title": "Contatta il comune",
+    "text_preview": "Contatta il comuneLeggi le domande frequentiRichiedi assistenzaPrenota appuntamentoProblemi in cittàSegnala disservizio",
+    "link": "https://www.comune.carpi.mo.it/domande-frequenti/",
+    "page_url": "https://www.comune.carpi.mo.it/categoria/comunicati-stampa/",
+    "element_tag": "div",
+    "element_classes": [
+      "card",
+      "w-100"
+    ]
+  },
+  {
+    "selector_used": ".card-body",
+    "title": "Contatta il comune",
+    "text_preview": "Contatta il comuneLeggi le domande frequentiRichiedi assistenzaPrenota appuntamentoProblemi in cittàSegnala disservizio",
+    "link": "https://www.comune.carpi.mo.it/domande-frequenti/",
+    "page_url": "https://www.comune.carpi.mo.it/categoria/comunicati-stampa/",
+    "element_tag": "div",
+    "element_classes": [
+      "card-body"
+    ]
+  },
+  {
+    "selector_used": "div[class*=\"card\"]",
+    "title": "Contatta il comune",
+    "text_preview": "Contatta il comuneLeggi le domande frequentiRichiedi assistenzaPrenota appuntamentoProblemi in cittàSegnala disservizio",
+    "link": "https://www.comune.carpi.mo.it/domande-frequenti/",
+    "page_url": "https://www.comune.carpi.mo.it/categoria/comunicati-stampa/",
+    "element_tag": "div",
+    "element_classes": [
+      "bg-grey-card",
+      "shadow-contacts"
+    ]
+  },
+  {
+    "selector_used": "div[class*=\"card\"]",
+    "title": "Contatta il comune",
+    "text_preview": "Contatta il comuneLeggi le domande frequentiRichiedi assistenzaPrenota appuntamentoProblemi in cittàSegnala disservizio",
+    "link": "https://www.comune.carpi.mo.it/domande-frequenti/",
+    "page_url": "https://www.comune.carpi.mo.it/categoria/comunicati-stampa/",
+    "element_tag": "div",
+    "element_classes": [
+      "card",
+      "w-100"
+    ]
+  },
+  {
+    "selector_used": "div[class*=\"card\"]",
+    "title": "Contatta il comune",
+    "text_preview": "Contatta il comuneLeggi le domande frequentiRichiedi assistenzaPrenota appuntamentoProblemi in cittàSegnala disservizio",
+    "link": "https://www.comune.carpi.mo.it/domande-frequenti/",
+    "page_url": "https://www.comune.carpi.mo.it/categoria/comunicati-stampa/",
+    "element_tag": "div",
+    "element_classes": [
+      "card-body"
+    ]
+  },
+  {
+    "selector_used": "a[href*=\"comunicat\"]",
+    "title": "No title",
+    "text_preview": "Comunicati Stampa",
+    "link": "https://www.comune.carpi.mo.it/novita/notizie/#comunicato-stampa",
+    "page_url": "https://www.comune.carpi.mo.it/categoria/comunicati-stampa/",
+    "element_tag": "a",
+    "element_classes": []
+  },
+  {
+    "selector_used": "a[href*=\"notizi\"]",
+    "title": "No title",
+    "text_preview": "Città di Carpi",
+    "link": "https://www.comune.carpi.mo.it/novita/notizie/canali-whatsapp-del-comune-di-carpi/",
+    "page_url": "https://www.comune.carpi.mo.it/categoria/comunicati-stampa/",
+    "element_tag": "a",
+    "element_classes": []
+  },
+  {
+    "selector_used": "a[href*=\"notizi\"]",
+    "title": "No title",
+    "text_preview": "Comunicati Stampa",
+    "link": "https://www.comune.carpi.mo.it/novita/notizie/#comunicato-stampa",
+    "page_url": "https://www.comune.carpi.mo.it/categoria/comunicati-stampa/",
+    "element_tag": "a",
+    "element_classes": []
+  },
+  {
+    "selector_used": "a[href*=\"notizi\"]",
+    "title": "No title",
+    "text_preview": "Città di Carpi",
+    "link": "https://www.comune.carpi.mo.it/novita/notizie/canali-whatsapp-del-comune-di-carpi/",
+    "page_url": "https://www.comune.carpi.mo.it/categoria/comunicati-stampa/",
+    "element_tag": "a",
+    "element_classes": [
+      "p-2",
+      "text-white"
+    ]
+  }
+]

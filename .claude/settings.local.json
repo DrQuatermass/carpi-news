@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python manage.py runserver:*)",
+      "WebFetch(domain:www.comune.carpi.mo.it)",
+      "Bash(python:*)",
+      "Bash(dir logs)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

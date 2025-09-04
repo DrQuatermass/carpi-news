@@ -1,0 +1,309 @@
+import logging
+import threading
+import os
+import signal
+import atexit
+if os.name != "nt":  # Non Windows
+    import fcntl
+else:
+    import msvcrt
+from django.apps import AppConfig
+from django.conf import settings
+
+logger = logging.getLogger(__name__)
+
+
+class HomeConfig(AppConfig):
+    default_auto_field = 'django.db.models.BigAutoField'
+    name = 'home'
+    
+    # Variabili di classe per prevenire avvii multipli
+    _playlist_monitor_started = False
+    _universal_monitors_started = False
+    _editorial_scheduler_started = False
+    
+    def ready(self):
+        """Chiamato quando l'app è pronta - avvia il monitor playlist e registra segnali"""
+        # Registra i segnali
+        import home.signals
+        
+        # Evita di avviare durante le migrazioni o in altri contesti non appropriati
+        import sys
+        if 'runserver' in sys.argv and not any('migrate' in arg for arg in sys.argv):
+            # Avvia i monitor automaticamente con un piccolo ritardo per evitare conflitti
+            import threading
+            import time
+            
+            def delayed_start():
+                time.sleep(5)  # Aspetta 5 secondi per evitare conflitti
+                try:
+                    self.start_universal_monitors_improved()
+                    self.start_editorial_scheduler()
+                except Exception as e:
+                    logger.error(f"Errore nell'avvio ritardato dei monitor: {e}")
+            
+            # Solo se non sono già stati programmati
+            if not hasattr(HomeConfig, '_delayed_start_scheduled'):
+                thread = threading.Thread(target=delayed_start, daemon=True)
+                thread.start()
+                HomeConfig._delayed_start_scheduled = True
+                logger.info("Monitor automatici programmati per l'avvio con ritardo di 5 secondi")
+            else:
+                logger.info("Monitor automatici già programmati, skip")
+    
+    def start_playlist_monitor(self):
+        """Avvia il monitor playlist in background"""
+        try:
+            # Previeni avvii multipli
+            if HomeConfig._playlist_monitor_started:
+                logger.info("Monitor playlist YouTube già avviato, skip")
+                return
+            
+            # Controlla se il monitor è abilitato
+            monitor_config = getattr(settings, 'YOUTUBE_PLAYLIST_MONITOR', {})
+            if not monitor_config.get('ENABLED', False):
+                logger.info("Monitor playlist YouTube disabilitato nelle impostazioni")
+                return
+            
+            from home.playlist_monitor import YouTubePlaylistMonitor
+            
+            # Configurazione da settings
+            playlist_id = monitor_config.get('PLAYLIST_ID')
+            api_key = monitor_config.get('API_KEY')
+            check_interval = monitor_config.get('CHECK_INTERVAL', 300)
+            
+            if not playlist_id or not api_key:
+                logger.error("PLAYLIST_ID o API_KEY non configurati in settings.YOUTUBE_PLAYLIST_MONITOR")
+                return
+            
+            # Crea e avvia il monitor
+            monitor = YouTubePlaylistMonitor(playlist_id, api_key, check_interval)
+            
+            # Avvia in un thread separato per non bloccare Django
+            def start_monitor():
+                monitor.start_monitoring()
+            
+            thread = threading.Thread(target=start_monitor, daemon=True)
+            thread.start()
+            
+            # Marca come avviato
+            HomeConfig._playlist_monitor_started = True
+            logger.info("Monitor playlist YouTube avviato automaticamente")
+            
+        except Exception as e:
+            logger.error(f"Errore nell'avvio automatico del monitor playlist: {e}")
+    
+    def start_universal_monitors(self):
+        """Avvia i monitor universali in background"""
+        try:
+            # Previeni avvii multipli
+            if HomeConfig._universal_monitors_started:
+                logger.info("Monitor universali già avviati, skip")
+                return
+            
+            # Controlla se i monitor universali sono abilitati
+            universal_config = getattr(settings, 'UNIVERSAL_MONITORS', {})
+            if not universal_config.get('ENABLED', True):  # Default abilitato
+                logger.info("Monitor universali disabilitati nelle impostazioni")
+                return
+            
+            from home.monitor_manager import MonitorManager
+            
+            # Crea manager
+            manager = MonitorManager()
+            
+            # Configurazioni dei monitor da avviare
+            monitor_configs = universal_config.get('MONITORS', [
+                ('carpi_calcio', 900),    # 15 minuti
+                ('comune_carpi', 1200),   # 20 minuti
+            ])
+            
+            # Avvia i monitor in un thread separato
+            def start_monitors():
+                try:
+                    for config_name, interval in monitor_configs:
+                        success = manager.add_monitor(config_name, interval)
+                        if success:
+                            logger.info(f"Monitor universale {config_name} configurato (intervallo: {interval}s)")
+                        else:
+                            logger.error(f"Errore nella configurazione monitor {config_name}")
+                    
+                    # Avvia tutti i monitor
+                    results = manager.start_all_monitors()
+                    success_count = sum(1 for success in results.values() if success)
+                    logger.info(f"Monitor universali avviati: {success_count}/{len(results)}")
+                    
+                except Exception as e:
+                    logger.error(f"Errore nell'avvio dei monitor universali: {e}")
+            
+            thread = threading.Thread(target=start_monitors, daemon=True)
+            thread.start()
+            
+            # Marca come avviato
+            HomeConfig._universal_monitors_started = True
+            logger.info("Sistema monitor universali avviato automaticamente")
+            
+        except Exception as e:
+            logger.error(f"Errore nell'avvio automatico dei monitor universali: {e}")
+    
+    def start_universal_monitors_improved(self):
+        """Versione migliorata per avviare i monitor universali con gestione errori avanzata"""
+        try:
+            # Previeni avvii multipli
+            if HomeConfig._universal_monitors_started:
+                logger.info("Monitor universali già avviati, skip")
+                return
+            
+            logger.info("Avvio monitor universali migliorato...")
+            
+            # Import dinamico per evitare problemi di inizializzazione
+            from home.monitor_manager import MonitorManager
+            from home.monitor_configs import get_config
+            
+            # Configurazioni dei monitor da avviare
+            monitor_configs = [
+                ('carpi_calcio', 300),           # 5 minuti - Carpi Calcio
+                ('comune_carpi_graphql', 600),   # 10 minuti - Comune Carpi (GraphQL + fallback)
+                ('eventi_carpi_graphql', 1800),  # 30 minuti - Eventi con descrizione_estesa
+                ('ansa_carpi', 300),             # 5 minuti - ANSA Emilia-Romagna (filtro Carpi)
+                ('youtube_playlist', 1800),      # 30 minuti - YouTube Playlist
+                ('temponews', 600),
+                ('voce_carpi', 600),             # 10 minuti - La Voce di Carpi
+            ]
+            
+            # Verifica che le configurazioni esistano
+            valid_configs = []
+            for config_name, interval in monitor_configs:
+                try:
+                    config = get_config(config_name)
+                    valid_configs.append((config_name, interval))
+                    logger.info(f"Configurazione {config_name} validata")
+                except Exception as e:
+                    logger.warning(f"Configurazione {config_name} non valida: {e}")
+            
+            if not valid_configs:
+                logger.error("Nessuna configurazione monitor valida trovata")
+                return
+            
+            # Crea manager e avvia monitor
+            manager = MonitorManager()
+            
+            started_monitors = []
+            for config_name, interval in valid_configs:
+                try:
+                    success = manager.add_monitor(config_name, interval)
+                    if success:
+                        logger.info(f"Monitor {config_name} aggiunto con successo")
+                    else:
+                        logger.error(f"Impossibile aggiungere monitor {config_name}")
+                        continue
+                except Exception as e:
+                    logger.error(f"Errore nell'aggiungere monitor {config_name}: {e}")
+                    continue
+            
+            # Avvia tutti i monitor
+            try:
+                results = manager.start_all_monitors()
+                success_count = sum(1 for success in results.values() if success)
+                total_count = len(results)
+                
+                if success_count > 0:
+                    logger.info(f"Monitor universali avviati con successo: {success_count}/{total_count}")
+                    for monitor_name, started in results.items():
+                        status = "✓ Avviato" if started else "✗ Fallito"
+                        logger.info(f"  {monitor_name}: {status}")
+                    
+                    # Marca come avviato solo se almeno un monitor è partito
+                    HomeConfig._universal_monitors_started = True
+                    
+                else:
+                    logger.error("Nessun monitor universale avviato con successo")
+                    
+            except Exception as e:
+                logger.error(f"Errore nell'avvio dei monitor: {e}")
+                
+        except Exception as e:
+            logger.error(f"Errore critico nell'avvio monitor universali: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+    
+    def start_editorial_scheduler(self):
+        """Avvia lo scheduler per l'editoriale quotidiano"""
+        try:
+            # Previeni avvii multipli
+            if HomeConfig._editorial_scheduler_started:
+                logger.info("Scheduler editoriale già avviato, skip")
+                return
+            
+            logger.info("Avvio scheduler editoriale...")
+            
+            # Import dinamico per evitare problemi di inizializzazione
+            import schedule
+            import threading
+            import time
+            from datetime import datetime
+            from django.utils import timezone
+            
+            def run_editoriale():
+                """Esegue l'editoriale quotidiano"""
+                try:
+                    logger.info("Avvio editoriale quotidiano schedulato")
+                    
+                    # Import dinamico per evitare problemi di inizializzazione
+                    import subprocess
+                    import sys
+                    import os
+                    
+                    # Esegui editoriale.py
+                    script_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'editoriale.py')
+                    result = subprocess.run([sys.executable, script_path], 
+                                          capture_output=True, text=True, 
+                                          cwd=os.path.dirname(os.path.dirname(__file__)))
+                    
+                    if result.returncode == 0:
+                        logger.info("Editoriale quotidiano completato con successo")
+                    else:
+                        logger.error(f"Errore nell'editoriale: {result.stderr}")
+                        
+                except Exception as e:
+                    logger.error(f"Errore nell'esecuzione schedulata dell'editoriale: {e}")
+            
+            def scheduler_loop():
+                """Loop principale dello scheduler"""
+                try:
+                    # Programma l'editoriale alle 8:00 ogni giorno
+                    schedule.every().day.at("08:00").do(run_editoriale)
+                    logger.info("Scheduler editoriale configurato - esecuzione alle 8:00 ogni giorno")
+                    
+                    # Esegui un test immediato se è dopo le 8:00 e non c'è già l'editoriale di oggi
+                    now = datetime.now()
+                    if now.hour >= 8:
+                        from home.models import Articolo
+                        today = timezone.now().date()
+                        today_editorial = Articolo.objects.filter(
+                            categoria='Editoriale',
+                            data_pubblicazione__date=today
+                        ).exists()
+                        
+                        if not today_editorial:
+                            logger.info("Esecuzione immediata dell'editoriale (non presente per oggi)")
+                            run_editoriale()
+                    
+                    # Loop principale dello scheduler
+                    while True:
+                        schedule.run_pending()
+                        time.sleep(60)  # Controlla ogni minuto
+                        
+                except Exception as e:
+                    logger.error(f"Errore nel loop dello scheduler editoriale: {e}")
+            
+            # Avvia lo scheduler in un thread separato
+            thread = threading.Thread(target=scheduler_loop, daemon=True)
+            thread.start()
+            
+            # Marca come avviato
+            HomeConfig._editorial_scheduler_started = True
+            logger.info("Scheduler editoriale avviato automaticamente")
+            
+        except Exception as e:
+            logger.error(f"Errore nell'avvio automatico dello scheduler editoriale: {e}")

@@ -1,0 +1,161 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Ombra del Portico - Notizie di Carpi{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{% static 'home/css/style.css' %}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <header>
+        <nav class="container">
+            <div class="logo">
+                <img src="{% static 'home/images/portico_logo_nopayoff.svg' %}" alt="Ombra del Portico" class="logo-img">
+                <span class="logo-text">Ombra del Portico</span>
+            </div>
+            <ul class="nav-links">
+                <li><a href="{% url 'home' %}?categoria=tutti" {% if not categoria_attiva or categoria_attiva == 'Home' %}class="active"{% endif %}>Home</a></li>
+                {% for categoria in categorie_disponibili %}
+                <li><a href="{% url 'home' %}?categoria={{ categoria|urlencode }}" {% if categoria_attiva == categoria %}class="active"{% endif %}>{{ categoria }}</a></li>
+                {% endfor %}
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        {% block content %}
+        {% endblock %}
+    </main>
+
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>Ombra del Portico</h3>
+                    <p>Il portale di informazione locale più seguito della città di Carpi</p>
+                </div>
+                <div class="footer-section">
+                    <h3>Sezioni</h3>
+                
+                    {% for categoria in categorie_disponibili %}
+                    <a href="{% url 'home' %}?categoria={{ categoria|urlencode }}">{{ categoria }}</a>
+                    {% endfor %}
+                </div>
+                <div class="footer-section">
+                    <h3>Contatti</h3>
+                    <p>✉️ redazione@ombradelportico.it</p>
+                    <p>📞 0522 123 456</p>
+                    <p>🏛️ Piazza dei Martiri, Carpi (MO)</p>
+                </div>
+            </div>
+            <hr style="margin: 2rem 0; border: none; height: 1px; background: rgba(255,255,255,0.2);">
+            <p>&copy; {{ current_year }} Ombra del Portico. Tutti i diritti riservati.</p>
+        </div>
+    </footer>
+
+    {% block cookie_banner %}
+    <!-- Cookie Banner -->
+    <div id="cookie-banner" class="cookie-banner" style="display: none;">
+        <div class="cookie-content">
+            <div class="cookie-text">
+                <p><strong>🍪 Utilizzo dei Cookie</strong></p>
+                <p>Questo sito utilizza cookie tecnici necessari per il funzionamento e cookie analytics per migliorare l'esperienza utente. Continuando la navigazione accetti l'uso dei cookie.</p>
+            </div>
+            <div class="cookie-actions">
+                <button id="cookie-accept" class="cookie-btn cookie-accept">Accetta tutti</button>
+                <button id="cookie-essential" class="cookie-btn cookie-essential">Solo essenziali</button>
+                <a href="#" class="cookie-link">Privacy Policy</a>
+            </div>
+        </div>
+    </div>
+    {% endblock %}
+
+    {% block javascript %}
+    <script>
+        // Cookie Banner Management
+        function checkCookieConsent() {
+            const consent = localStorage.getItem('cookie-consent');
+            if (!consent) {
+                setTimeout(() => {
+                    document.getElementById('cookie-banner').style.display = 'block';
+                }, 1000); // Mostra dopo 1 secondo
+            }
+        }
+
+        function setCookieConsent(type) {
+            localStorage.setItem('cookie-consent', type);
+            localStorage.setItem('cookie-date', new Date().toISOString());
+            
+            // Nascondi banner con animazione
+            const banner = document.getElementById('cookie-banner');
+            banner.style.animation = 'slideDown 0.5s ease-in';
+            setTimeout(() => {
+                banner.style.display = 'none';
+            }, 500);
+        }
+
+        // Event listeners per cookie banner
+        document.addEventListener('DOMContentLoaded', function() {
+            // Cookie banner listeners
+            document.getElementById('cookie-accept')?.addEventListener('click', () => {
+                setCookieConsent('all');
+                console.log('Cookie analytics abilitati');
+            });
+
+            document.getElementById('cookie-essential')?.addEventListener('click', () => {
+                setCookieConsent('essential');
+                console.log('Solo cookie essenziali');
+            });
+
+            // Controlla consenso cookie
+            checkCookieConsent();
+
+            // Scroll effect per header
+            window.addEventListener('scroll', function() {
+                const header = document.querySelector('header');
+                if (window.scrollY > 100) {
+                    header.style.background = 'rgba(255, 255, 255, 0.98)';
+                    header.style.boxShadow = '0 2px 20px rgba(0,0,0,0.1)';
+                } else {
+                    header.style.background = 'rgba(255, 255, 255, 0.95)';
+                    header.style.boxShadow = 'none';
+                }
+            });
+
+            // Smooth scroll per i link
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const target = document.querySelector(this.getAttribute('href'));
+                    if (target) {
+                        target.scrollIntoView({
+                            behavior: 'smooth'
+                        });
+                    }
+                });
+            });
+
+            // Inizializzazione specifica per pagina
+            if (typeof initPageSpecific === 'function') {
+                initPageSpecific();
+            }
+        });
+
+        // Stile per animazione slideDown
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideDown {
+                from { transform: translateY(0); }
+                to { transform: translateY(100%); }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+    {% endblock %}
+</body>
+</html>

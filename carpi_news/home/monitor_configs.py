@@ -1,0 +1,425 @@
+from home.universal_news_monitor import SiteConfig
+from django.conf import settings
+
+# Configurazioni per i diversi siti monitorati
+
+# Configurazione per Carpi Calcio (HTML scraping)
+CARPI_CALCIO_CONFIG = SiteConfig(
+    name="Carpi Calcio",
+    base_url="https://www.carpicalcio.it/",
+    scraper_type="html",
+    category="Sport",
+    
+    # Configurazioni specifiche per HTML scraping
+    news_url="https://www.carpicalcio.it/news/",
+    selectors=[
+        '.news-item',
+        '.article-preview', 
+        '.post',
+        'article',
+        '.news-card',
+        '.content-item',
+        'div[class*="news"]',
+        'div[class*="article"]'
+    ],
+    content_selectors=[
+        '.article-content',
+        '.post-content', 
+        '.content',
+        '.entry-content',
+        'main',
+        'article',
+        '.news-body'
+    ],
+    
+    # Generazione AI
+    use_ai_generation=True,
+    ai_api_key=settings.ANTHROPIC_API_KEY,
+    ai_system_prompt="""Sei Gianni Brera. 
+    Il tuo compito è rielaborare notizie del Carpi Calcio per il giornale locale "Ombra del Portico".
+    
+    Stile richiesto:
+    - Tono professionale ma appassionato e con tanta ironia
+    - Linguaggio accessibile ai tifosi locali
+    - Evidenzia aspetti tattici e tecnici quando rilevanti
+    - Mantieni focus sulla città di Carpi
+    - Crea un titolo accattivante
+    - Struttura: introduzione, sviluppo, conclusione
+    
+    Formattazione richiesta:
+    - TITOLO: sempre plain text, senza markup
+    - CONTENUTO: usa **grassetto** per nomi di giocatori importanti e risultati
+    - CONTENUTO: separa i paragrafi con doppia riga vuota
+    - Crea una struttura chiara e coinvolgente"""
+)
+
+# Configurazione per Comune di Carpi (WordPress API)
+COMUNE_CARPI_CONFIG = SiteConfig(
+    name="Comune Carpi",
+    base_url="https://www.comune.carpi.mo.it/",
+    scraper_type="wordpress_api",
+    category="Comunicazioni",
+    
+    # Configurazioni specifiche per WordPress API
+    api_url="https://www.comune.carpi.mo.it/wp-json/wp/v2/posts",
+    per_page=10,
+    
+    # Non servono selettori per WordPress API
+    selectors=None,
+    content_selectors=None,
+    # Generazione AI
+    use_ai_generation=True,
+    ai_api_key=settings.ANTHROPIC_API_KEY,
+    ai_system_prompt="""Sei Indro Montanelli
+    Il tuo compito è rielaborare notizie del Comune di Carpi per il giornale locale "Ombra del Portico".
+    
+    Stile richiesto:
+    - Tono professionale ma accessibile ai cittadini. Entusiasta in caso di vittoria.
+    - Linguaggio chiaro e diretto
+    - Evidenzia l'impatto sulla comunità locale
+    - Mantieni focus sulla città di Carpi
+    - Crea un titolo informativo
+    
+    Formattazione richiesta:
+    - Il titolo  è sempre plain text, senza markup
+    - Nel contenuto usa **grassetto** per nomi di persone e punti chiave
+    - Separa i paragrafi con doppia riga vuota
+    
+    - Crea una struttura istituzionale ma leggibile""")
+
+# Configurazione per YouTube Playlist
+YOUTUBE_PLAYLIST_CONFIG = SiteConfig(
+    name="YouTube Carpi",
+    base_url="https://www.youtube.com/",
+    scraper_type="youtube_api",
+    category="L'Eco del Consiglio",
+    
+    # Configurazioni specifiche per YouTube API
+    api_key="AIzaSyCbZnwmOERY27gUwWqaGnRShZgk48TOdZo",
+    playlist_id="PL5TawrOOM_zJ6lusXYHofuLpQnFRQ8_qA",
+    max_results=5,
+    
+    # Rate limiting per evitare il ban di YouTube
+    transcript_delay=60,  # secondi di pausa tra le richieste di trascrizione
+    
+    # Generazione AI per articoli da video
+    use_ai_generation=True,
+    ai_api_key=settings.ANTHROPIC_API_KEY,
+    ai_system_prompt="""Sei  Umberto Eco che assiste al consiglio comunale di Carpi. 
+    Il tuo compito è trasformare trascrizioni di video YouTube in articoli per il giornale locale "Ombra del Portico".
+    
+    Stile richiesto:
+    - Tono professionale, ma con tanta ironia
+    - Evidenzia aspetti rilevanti per la comunità locale
+    - Crea un titolo accattivante e descrittivo
+    - Struttura: introduzione, sviluppo, conclusione
+    
+    
+    Formattazione richiesta:
+    - Il titolo  è sempre plain text, senza markup
+    - Nel contenuto usa **grassetto** per nomi di persone e punti chiave
+    - Separa i paragrafi con doppia riga vuota
+    """
+)
+
+# Configurazione per Comune di Carpi (GraphQL API con fallback WordPress)
+COMUNE_CARPI_GRAPHQL_CONFIG = SiteConfig(
+    name="Comune Carpi GraphQL",
+    base_url="https://www.comune.carpi.mo.it/",
+    scraper_type="graphql",
+    category="Comunicazioni",
+    
+    # Configurazioni specifiche per GraphQL API
+    graphql_endpoint='https://api.wp.ai4smartcity.ai/graphql',
+    fallback_to_wordpress=True,
+    wordpress_config={
+        'api_url': 'https://www.comune.carpi.mo.it/wp-json/wp/v2/posts',
+        'per_page': 10
+    },
+    
+    # Generazione AI
+    use_ai_generation=True,
+    ai_api_key=settings.ANTHROPIC_API_KEY,
+    ai_system_prompt="""Sei Indro Montanelli. 
+    Il tuo compito è rielaborare comunicati stampa del Comune di Carpi per il giornale locale "Ombra del Portico".
+    
+    Stile richiesto:
+    - Tono professionale ma accessibile ai cittadini.
+    - Linguaggio chiaro e diretto
+    - Evidenzia l'impatto sulla comunità locale
+    - Mantieni focus sulla città di Carpi e le sue istituzioni
+    - Crea un titolo informativo e accattivante
+    - Struttura: introduzione, sviluppo, conclusione
+    
+    Formattazione richiesta:
+    - Il titolo è sempre plain text, senza markup
+    - Nel contenuto usa **grassetto** per decisioni importanti e progetti chiave
+    - separa i paragrafi con doppia riga vuota
+    
+    - Mantieni una struttura istituzionale ma leggibile"""
+)
+
+# Configurazione per ANSA Emilia-Romagna RSS
+ANSA_CONFIG = SiteConfig(
+    name="ANSA Emilia-Romagna",
+    base_url="https://www.ansa.it/",
+    scraper_type="html",
+    category="Cronaca",
+    
+    # Forza il sistema a usare direttamente l'RSS
+    news_url="https://www.ansa.it/emiliaromagna/notizie/emiliaromagna_rss.xml",
+    rss_url="https://www.ansa.it/emiliaromagna/notizie/emiliaromagna_rss.xml",
+    
+    # Selettori per ANSA quando scrapa contenuto degli articoli
+    selectors=[
+        '.news',
+        '.story',
+        'article', 
+        '.item',
+        '.news-item',
+        'div[class*="news"]'
+    ],
+    content_selectors=[
+        '.news-txt',           # Selettore principale ANSA (funzionante)
+        '#inArticle',
+        '.story-text',
+        '.content',
+        'article',
+        '.text',
+        '.entry-content',
+        'main'
+    ],
+    
+    # Filtro per articoli riguardanti Carpi (case insensitive)
+    content_filter_keywords=['Carpi', 'CARPI', 'carpi'],
+    
+    # Generazione AI per uniformare lo stile
+    use_ai_generation=True,
+    ai_api_key=settings.ANTHROPIC_API_KEY,
+    ai_system_prompt="""Sei Christopher Hitchens. 
+    Il tuo compito è rielaborare notizie ANSA dell'Emilia-Romagna per il giornale locale "Ombra del Portico".
+    
+    IMPORTANTE: Elabora SOLO notizie che riguardano direttamente o indirettamente Carpi.
+    
+    Stile richiesto:
+    - Tono professionale ma accessibile ai cittadini locali. Pungente.
+    - Linguaggio chiaro e diretto
+    - Evidenzia l'aspetto locale e l'impatto su Carpi quando rilevante
+    - Mantieni credibilità giornalistica ANSA
+    - Crea un titolo informativo che evidenzi il collegamento con Carpi
+    """
+)
+
+# Configurazione per Eventi Carpi (GraphQL API)
+EVENTI_CARPI_GRAPHQL_CONFIG = SiteConfig(
+    name="Eventi Carpi GraphQL",
+    base_url="https://www.comune.carpi.mo.it/",
+    scraper_type="graphql",
+    category="Eventi",
+    
+    # Configurazioni specifiche per GraphQL API - Eventi
+    graphql_endpoint='https://api.wp.ai4smartcity.ai/graphql',
+    graphql_headers={
+        'accept': '*/*',
+        'accept-language': 'it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7',
+        'content-language': 'it',
+        'origin': 'https://www.comune.carpi.mo.it',
+        'referer': 'https://www.comune.carpi.mo.it/',
+        'x-api-key': 'comune-carpi-mo-it',
+        'x-ref-host': 'www.comune.carpi.mo.it',
+        'url-referer': 'https://www.comune.carpi.mo.it/vivere-il-comune/'
+    },
+    graphql_query="""query getVivereIlComune {
+        eventiQuery {
+            eventi {
+                lista(
+                    filtri: {inEvidenza: {_eq: true}}
+                    ordinamento: {dataOraInizio: ASC, _orderBy: ["dataOraInizio"]}
+                ) {
+                    uniqueId
+                    costo
+                    immagineUrl
+                    inEvidenza
+                    dataOraInizio
+                    dataOraFine
+                    traduzioni {
+                        codiceLingua
+                        titolo
+                        sottotitolo
+                        descrizioneBreve
+                        descrizioneEstesa
+                        aChiERivolto
+                        ulterioriInformazioni
+                    }
+                    luoghi {
+                        nome
+                        descrizioneBreve
+                    }
+                }
+            }
+        }
+    }""",
+    graphql_operation_name="getVivereIlComune",
+    
+    # Generazione AI
+    use_ai_generation=True,
+    ai_api_key=settings.ANTHROPIC_API_KEY,
+    ai_system_prompt="""Sei Vincenzo Mollica. 
+    Il tuo compito è rielaborare eventi del Comune di Carpi per il giornale locale "Ombra del Portico".
+    
+    Stile richiesto:
+    - Tono professionale ma divertito e ironico
+    - Linguaggio chiaro e diretto
+    - Evidenzia l'importanza dell'evento per la comunità locale
+    - Mantieni focus su Carpi e le sue iniziative culturali e sociali
+    - Crea un titolo accattivante che invogli alla partecipazione
+    - Includi informazioni pratiche: data, ora, luogo, costi
+    - Struttura: introduzione, descrizione evento, informazioni pratiche"""
+)
+
+# Configurazione per La Voce di Carpi
+VOCE_CARPI_CONFIG = SiteConfig(
+    name="La Voce di Carpi",
+    base_url="http://www.voce.it/it/categoria/",
+    scraper_type="html",
+    category="Attualità",
+    
+    # Configurazioni specifiche per HTML scraping
+    news_url="http://www.voce.it/it/categoria/attualita",
+    selectors=[
+       # 'a[href*="../articolo/"]',
+       # 'a[href*="articolo/"]',
+        #'a[href^="../articolo/"]',
+        '.cat-img',
+        #'a[href*="/articolo/"]',
+        #'.articolo-preview',
+        #'a[title]'
+    ],
+    content_selectors=[
+        '.art-text',
+        '.articolo-testo',
+        '.articolo-corpo',
+        'div[class*="content"]',
+        '[itemprop="articleBody"]',
+        '#articolo',
+        '.testo-articolo',
+        '.post-content',
+        'article',
+        '.entry-content'
+    ],
+    
+    # Generazione AI
+    use_ai_generation=True,
+    ai_api_key=settings.ANTHROPIC_API_KEY,
+    ai_system_prompt="""Sei Enzo Biagi. 
+    Il tuo compito è rielaborare notizie per il giornale locale "Ombra del Portico".
+    
+    Stile richiesto:
+    - Tono professionale ma caldo e umano senza risparmiare ironia
+    - Linguaggio accessibile ai cittadini di Carpi
+    - Evidenzia l'aspetto umano e sociale delle notizie
+    - Mantieni focus sulla città di Carpi e i suoi abitanti
+    - Crea un titolo che catturi l'interesse del lettore
+    - Struttura: cambia la struttura della notizia in input senza snaturarne i contenuti. 
+    
+    Formattazione richiesta:
+    - il titolo è sempre plain text, senza markup
+    - Per il contenuto usa **grassetto** per nomi di persone e fatti importanti
+    - Separa i paragrafi con doppia riga vuota
+    - Crea una struttura giornalistica chiara e coinvolgente"""
+)
+TEMPO_CARPI_CONFIG = SiteConfig(
+    name="TempoNews",
+    base_url="https://temponews.it/",
+    scraper_type="html",
+    category="Attualità",
+    
+    # Configurazioni specifiche per HTML scraping
+    news_url="https://temponews.it/category/carpi/",
+    selectors=[
+       # 'a[href*="../articolo/"]',
+       # 'a[href*="articolo/"]',
+        #'a[href^="../articolo/"]',
+        
+        '.td-image-wrap',
+        '.entry-title td-module-title'
+        #'a[href*="/articolo/"]',
+        #'.articolo-preview',
+        #'a[title]'
+    ],
+    content_selectors=[
+        '.td-post-content',
+        'article'
+    ],
+    
+    # Generazione AI
+    use_ai_generation=True,
+    ai_api_key=settings.ANTHROPIC_API_KEY,
+    ai_system_prompt="""Sei Enzo Biagi. 
+    Il tuo compito è rielaborare notizie per il giornale locale "Ombra del Portico".
+    
+    Stile richiesto:
+    - Tono professionale ma caldo e umano senza risparmiare ironia
+    - Linguaggio accessibile ai cittadini di Carpi
+    - Evidenzia l'aspetto umano e sociale delle notizie
+    - Mantieni focus sulla città di Carpi e i suoi abitanti
+    - Crea un titolo che catturi l'interesse del lettore
+    - Cambia la struttura della notizia in input senza snaturarne i contenuti.
+    
+    Formattazione richiesta:
+    - il titolo è sempre plain text, senza markup
+    - Per il contenuto usa **grassetto** per nomi di persone e fatti importanti
+    - Separa i paragrafi con doppia riga vuota
+    - Crea una struttura giornalistica chiara e coinvolgente
+    """
+)
+
+# Configurazione per un sito generico HTML (esempio)
+GENERIC_HTML_CONFIG = SiteConfig(
+    name="Sito Generico",
+    base_url="https://example.com/",
+    scraper_type="html",
+    category="Attualità",
+    
+    # Configurazioni HTML personalizzabili
+    news_url="https://example.com/news/",
+    selectors=['.news', '.article', 'article'],
+    content_selectors=['.content', '.article-body', 'main'],
+    
+    # Senza AI - salvataggio diretto
+    use_ai_generation=False
+)
+
+# Dictionary per accesso facile alle configurazioni
+MONITOR_CONFIGS = {
+    'carpi_calcio': CARPI_CALCIO_CONFIG,
+    'comune_carpi': COMUNE_CARPI_CONFIG,
+    'comune_carpi_graphql': COMUNE_CARPI_GRAPHQL_CONFIG,
+    'eventi_carpi_graphql': EVENTI_CARPI_GRAPHQL_CONFIG,
+    'youtube_playlist': YOUTUBE_PLAYLIST_CONFIG,
+    'ansa_carpi': ANSA_CONFIG,
+    'voce_carpi': VOCE_CARPI_CONFIG,
+    'temponews': TEMPO_CARPI_CONFIG,
+    'generic_html': GENERIC_HTML_CONFIG
+}
+
+# Funzioni di utilità
+def get_config(name: str) -> SiteConfig:
+    """Ottiene configurazione per nome"""
+    config = MONITOR_CONFIGS.get(name)
+    if not config:
+        raise ValueError(f"Configurazione '{name}' non trovata. Disponibili: {list(MONITOR_CONFIGS.keys())}")
+    return config
+
+def list_configs():
+    """Lista tutte le configurazioni disponibili"""
+    return list(MONITOR_CONFIGS.keys())
+
+def create_custom_config(**kwargs) -> SiteConfig:
+    """Crea configurazione personalizzata"""
+    required_fields = ['name', 'base_url', 'scraper_type']
+    for field in required_fields:
+        if field not in kwargs:
+            raise ValueError(f"Campo obbligatorio mancante: {field}")
+    
+    return SiteConfig(**kwargs)
