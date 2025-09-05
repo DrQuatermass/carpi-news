@@ -1,0 +1,41 @@
+# Django .htaccess per Aruba Hosting
+RewriteEngine On
+
+# Force HTTPS
+RewriteCond %{HTTPS} off
+RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# Django static files
+RewriteCond %{REQUEST_URI} ^/static/.*$
+RewriteRule ^(.*)$ - [L]
+
+# Django media files  
+RewriteCond %{REQUEST_URI} ^/media/.*$
+RewriteRule ^(.*)$ - [L]
+
+# Forward all other requests to Django
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ /carpi_news/wsgi.py/$1 [QSA,L]
+
+# Security headers
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options nosniff
+    Header always set X-Frame-Options DENY
+    Header always set X-XSS-Protection "1; mode=block"
+    Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains"
+</IfModule>
+
+# Disable directory browsing
+Options -Indexes
+
+# Hide sensitive files
+<Files ".env">
+    Order allow,deny
+    Deny from all
+</Files>
+
+<Files "*.py">
+    Order allow,deny
+    Deny from all
+</Files>

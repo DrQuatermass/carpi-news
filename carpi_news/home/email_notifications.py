@@ -100,7 +100,7 @@ def send_test_email():
     Invia email di test per verificare la configurazione
     """
     try:
-        admin_email = getattr(settings, 'ADMIN_EMAIL', 'redazione@ombradelportico.it')
+        admin_email = getattr(settings, 'ADMIN_EMAIL', 'readazione@ombradelportico.it')
         
         send_mail(
             subject='[Test] Configurazione Email Ombra del Portico',
