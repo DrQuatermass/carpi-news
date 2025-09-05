@@ -7,7 +7,7 @@ import sys
 import os
 import logging
 import time
-
+from django.conf import settings
 # Setup Django
 sys.path.append(os.path.dirname(__file__))
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'carpi_news.settings')
