@@ -32,6 +32,9 @@ CARPI_CALCIO_CONFIG = SiteConfig(
         '.news-body'
     ],
     
+    # Approvazione automatica per Carpi Calcio
+    auto_approve=True,
+    
     # Generazione AI
     use_ai_generation=True,
     ai_api_key=settings.ANTHROPIC_API_KEY,
@@ -67,6 +70,10 @@ COMUNE_CARPI_CONFIG = SiteConfig(
     # Non servono selettori per WordPress API
     selectors=None,
     content_selectors=None,
+    
+    # Approvazione automatica per il Comune
+    auto_approve=True,
+    
     # Generazione AI
     use_ai_generation=True,
     ai_api_key=settings.ANTHROPIC_API_KEY,
@@ -136,6 +143,9 @@ COMUNE_CARPI_GRAPHQL_CONFIG = SiteConfig(
         'api_url': 'https://www.comune.carpi.mo.it/wp-json/wp/v2/posts',
         'per_page': 10
     },
+    
+    # Approvazione automatica per il Comune
+    auto_approve=True,
     
     # Generazione AI
     use_ai_generation=True,
@@ -260,6 +270,9 @@ EVENTI_CARPI_GRAPHQL_CONFIG = SiteConfig(
         }
     }""",
     graphql_operation_name="getVivereIlComune",
+    
+    # Approvazione automatica per gli Eventi
+    auto_approve=True,
     
     # Generazione AI
     use_ai_generation=True,

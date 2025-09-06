@@ -213,7 +213,7 @@ def salva_editoriale(titolo, contenuto, data_ieri, numero_articoli):
         sommario=sommario,
         categoria='Editoriale',
         slug=slug,
-        approvato=False, 
+        approvato=True, 
         data_pubblicazione=timezone.now(),
         fonte="www.carpinews.it",
         foto=static('home/images/portico_logo_nopayoff.svg'),

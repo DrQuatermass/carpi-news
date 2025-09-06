@@ -1244,6 +1244,11 @@ class UniversalNewsMonitor:
         except Exception as e:
             self.logger.error(f"Errore nel controllo articoli: {e}")
     
+    def should_auto_approve(self, category: str) -> bool:
+        """Determina se un articolo deve essere auto-approvato basandosi sulla configurazione"""
+        # Solo la configurazione specifica del sito determina l'auto-approvazione
+        return self.config.config.get('auto_approve', False)
+    
     def process_new_article(self, article_data: Dict[str, Any]):
         """Processa un nuovo articolo"""
         try:
@@ -1325,13 +1330,16 @@ class UniversalNewsMonitor:
             })
             
             # Salva nel database
+            # Determina se deve essere auto-approvato
+            auto_approve = self.should_auto_approve(self.config.category)
+            
             articolo = Articolo(
                 titolo=polished_data['titolo'],
                 contenuto=polished_data['contenuto'],
                 categoria=self.config.category,
                 fonte=article_data['url'],
                 foto=article_data.get('image_url'),
-                approvato=False,
+                approvato=auto_approve,  # Auto-approva se configurato
                 data_pubblicazione=timezone.now()
             )
             articolo.save()
@@ -1349,13 +1357,16 @@ class UniversalNewsMonitor:
             'contenuto': article_data['full_content']
         })
         
+        # Determina se deve essere auto-approvato
+        auto_approve = self.should_auto_approve(self.config.category)
+        
         articolo = Articolo(
             titolo=polished_data['titolo'],
             contenuto=polished_data['contenuto'],
             categoria=self.config.category,
             fonte=article_data['url'],
             foto=article_data.get('image_url'),
-            approvato=False,
+            approvato=auto_approve,  # Auto-approva se configurato
             data_pubblicazione=timezone.now()
         )
         articolo.save()
