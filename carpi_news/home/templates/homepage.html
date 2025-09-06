@@ -23,22 +23,24 @@
                             <div class="spinner"></div>
                         </div>
                         {% for articolo in articoli %}
-                        <article class="news-card loading">
-                            <div class="news-image">
-                                <img src="{{ articolo.get_image_url }}" alt="{{ articolo.titolo }}" class="card-img">
-                            </div>
-                            <div class="news-content">
-                                <div class="news-meta">
-                                    <span class="category-tag">{{ articolo.categoria }}</span>
-                                    <time datetime="{{ articolo.data_pubblicazione|date:'Y-m-d' }}">
-                                        {{ articolo.data_pubblicazione|date:'d M Y' }}
-                                    </time>
+                        <a href="{% url 'dettaglio-articolo' articolo.slug %}" class="news-card-link">
+                            <article class="news-card loading">
+                                <div class="news-image">
+                                    <img src="{{ articolo.get_image_url }}" alt="{{ articolo.titolo }}" class="card-img">
                                 </div>
-                                <h2 class="news-title">{{ articolo.titolo }}</h2>
-                                <p class="news-excerpt">{{ articolo.sommario|truncatewords:25 }}</p>
-                                <a href="{% url 'dettaglio-articolo' articolo.slug %}" class="read-more">Leggi tutto →</a>
-                            </div>
-                        </article>
+                                <div class="news-content">
+                                    <div class="news-meta">
+                                        <span class="category-tag">{{ articolo.categoria }}</span>
+                                        <time datetime="{{ articolo.data_pubblicazione|date:'Y-m-d' }}">
+                                            {{ articolo.data_pubblicazione|date:'d M Y' }}
+                                        </time>
+                                    </div>
+                                    <h2 class="news-title">{{ articolo.titolo }}</h2>
+                                    <p class="news-excerpt">{{ articolo.sommario|truncatewords:25 }}</p>
+                                    <span class="read-more">Leggi tutto →</span>
+                                </div>
+                            </article>
+                        </a>
                         {% endfor %}
                     </div>
 
@@ -202,8 +204,16 @@
         
         // Funzione per caricare il contenuto della pagina via AJAX
         function loadPageContent(pageNumber, slideInClass, slideOutClass) {
+            // Costruisci URL mantenendo la categoria attiva
+            let url = `?page=${pageNumber}`;
+            const urlParams = new URLSearchParams(window.location.search);
+            const categoria = urlParams.get('categoria');
+            if (categoria) {
+                url += `&categoria=${encodeURIComponent(categoria)}`;
+            }
+            
             const xhr = new XMLHttpRequest();
-            xhr.open('GET', `?page=${pageNumber}`, true);
+            xhr.open('GET', url, true);
             xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
             
             xhr.onreadystatechange = function() {
@@ -211,8 +221,14 @@
                     const data = JSON.parse(xhr.responseText);
                     updatePageContent(data, slideInClass, slideOutClass);
                 } else if (xhr.readyState === 4 && xhr.status !== 200) {
-                    // In caso di errore, ricarica la pagina normalmente
-                    window.location.href = `?page=${pageNumber}`;
+                    // In caso di errore, ricarica la pagina normalmente mantenendo la categoria
+                    let errorUrl = `?page=${pageNumber}`;
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const categoria = urlParams.get('categoria');
+                    if (categoria) {
+                        errorUrl += `&categoria=${encodeURIComponent(categoria)}`;
+                    }
+                    window.location.href = errorUrl;
                 }
             };
             
@@ -245,10 +261,11 @@
                 // Crea le nuove card ma non le mostrare ancora
                 const newCards = [];
                 data.articoli.forEach((articolo, index) => {
-                    const card = createNewsCard(articolo);
+                    const cardLink = createNewsCard(articolo);
+                    const card = cardLink.querySelector('.news-card');
                     card.style.opacity = '0';
                     card.style.transform = slideInClass.includes('left') ? 'translateX(-100%)' : 'translateX(100%)';
-                    newsGrid.appendChild(card);
+                    newsGrid.appendChild(cardLink);
                     newCards.push(card);
                 });
                 
@@ -285,6 +302,10 @@
         
         // Funzione per creare una card di notizia
         function createNewsCard(articolo) {
+            const cardLink = document.createElement('a');
+            cardLink.href = `/articolo/${articolo.slug}/`;
+            cardLink.className = 'news-card-link';
+            
             const card = document.createElement('article');
             card.className = 'news-card';
             
@@ -303,11 +324,12 @@
                     </div>
                     <h2 class="news-title">${articolo.titolo}</h2>
                     <p class="news-excerpt">${articolo.sommario}</p>
-                    <a href="/articolo/${articolo.slug}/" class="read-more">Leggi tutto →</a>
+                    <span class="read-more">Leggi tutto →</span>
                 </div>
             `;
             
-            return card;
+            cardLink.appendChild(card);
+            return cardLink;
         }
         
         // Funzione per aggiornare i pulsanti di navigazione
