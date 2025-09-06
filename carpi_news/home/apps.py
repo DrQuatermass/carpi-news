@@ -18,7 +18,6 @@ class HomeConfig(AppConfig):
     name = 'home'
     
     # Variabili di classe per prevenire avvii multipli
-    _playlist_monitor_started = False
     _universal_monitors_started = False
     _editorial_scheduler_started = False
     
@@ -51,47 +50,6 @@ class HomeConfig(AppConfig):
             else:
                 logger.info("Monitor automatici già programmati, skip")
     
-    def start_playlist_monitor(self):
-        """Avvia il monitor playlist in background"""
-        try:
-            # Previeni avvii multipli
-            if HomeConfig._playlist_monitor_started:
-                logger.info("Monitor playlist YouTube già avviato, skip")
-                return
-            
-            # Controlla se il monitor è abilitato
-            monitor_config = getattr(settings, 'YOUTUBE_PLAYLIST_MONITOR', {})
-            if not monitor_config.get('ENABLED', False):
-                logger.info("Monitor playlist YouTube disabilitato nelle impostazioni")
-                return
-            
-            from home.playlist_monitor import YouTubePlaylistMonitor
-            
-            # Configurazione da settings
-            playlist_id = monitor_config.get('PLAYLIST_ID')
-            api_key = monitor_config.get('API_KEY')
-            check_interval = monitor_config.get('CHECK_INTERVAL', 300)
-            
-            if not playlist_id or not api_key:
-                logger.error("PLAYLIST_ID o API_KEY non configurati in settings.YOUTUBE_PLAYLIST_MONITOR")
-                return
-            
-            # Crea e avvia il monitor
-            monitor = YouTubePlaylistMonitor(playlist_id, api_key, check_interval)
-            
-            # Avvia in un thread separato per non bloccare Django
-            def start_monitor():
-                monitor.start_monitoring()
-            
-            thread = threading.Thread(target=start_monitor, daemon=True)
-            thread.start()
-            
-            # Marca come avviato
-            HomeConfig._playlist_monitor_started = True
-            logger.info("Monitor playlist YouTube avviato automaticamente")
-            
-        except Exception as e:
-            logger.error(f"Errore nell'avvio automatico del monitor playlist: {e}")
     
     def start_universal_monitors(self):
         """Avvia i monitor universali in background"""

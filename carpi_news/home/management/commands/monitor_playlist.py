@@ -1,7 +1,7 @@
 import time
 from django.core.management.base import BaseCommand
 from django.conf import settings
-from home.playlist_monitor import YouTubePlaylistMonitor
+# NOTA: Questo comando è obsoleto - YouTube è ora gestito dal sistema universale
 
 
 class Command(BaseCommand):
@@ -28,25 +28,13 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        playlist_id = options['playlist_id']
-        api_key = options['api_key']
-        interval = options['interval']
-        
         self.stdout.write(
-            self.style.SUCCESS(
-                f'Avvio monitor playlist {playlist_id} ogni {interval} secondi'
+            self.style.WARNING(
+                'COMANDO OBSOLETO: Il monitoraggio YouTube è ora gestito automaticamente dal sistema universale.'
             )
         )
-        
-        monitor = YouTubePlaylistMonitor(playlist_id, api_key, interval)
-        monitor.start_monitoring()
-        
-        try:
-            # Mantieni il comando attivo
-            while True:
-                time.sleep(1)
-        except KeyboardInterrupt:
-            monitor.stop_monitoring()
-            self.stdout.write(
-                self.style.SUCCESS('Monitor fermato dall\'utente')
+        self.stdout.write(
+            self.style.SUCCESS(
+                'YouTube ("L\'Eco del Consiglio") si avvia automaticamente con il server Django.'
             )
+        )
