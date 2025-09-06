@@ -27,6 +27,8 @@ The `Articolo` model in `home/models.py:4` contains:
 - `approvato`: Approval status (BooleanField, default False)
 - `fonte`: Source URL (URLField, optional)
 - `foto`: Image URL (URLField, optional)
+- `richieste_modifica`: Text field for AI regeneration requests (TextField, optional)
+- `views`: View count (PositiveIntegerField, default 0)
 - `data_creazione`: Creation timestamp
 - `data_pubblicazione`: Publication timestamp
 
@@ -63,8 +65,8 @@ The project features a sophisticated multi-source news monitoring system:
 
 The project includes Django management commands in `home/management/commands/`:
 - `monitor_playlist.py`: Monitor specific YouTube playlists
-- `test_carpi_calcio.py`: Test Carpi Calcio scraper
-- `test_email.py`: Test email notification system
+- `manage_monitors.py`: Manage and control universal monitors
+- `update_editorial_images.py`: Update editorial content images
 
 ## Common Commands
 
@@ -90,8 +92,8 @@ python manage.py createsuperuser
 **Management Commands**:
 ```bash
 python manage.py monitor_playlist
-python manage.py test_carpi_calcio
-python manage.py test_email
+python manage.py manage_monitors
+python manage.py update_editorial_images
 ```
 
 **Testing**:
@@ -113,10 +115,14 @@ python migrate_to_universal.py
 
 - **Django**: 5.2.5 (web framework)
 - **anthropic**: 0.64.0 (AI integration)
-- **requests**: HTTP requests for web scraping
-- **beautifulsoup4**: HTML parsing
-- **youtube-transcript-api**: YouTube content processing
-- No requirements.txt - dependencies managed in virtual environment
+- **requests**: 2.31.0 (HTTP requests for web scraping)
+- **beautifulsoup4**: 4.12.2 (HTML parsing)
+- **youtube-transcript-api**: 0.6.1 (YouTube content processing)
+- **python-dotenv**: 1.0.0 (environment variables)
+- **gunicorn**: 21.2.0 (WSGI server for production)
+- **whitenoise**: 6.6.0 (static file serving)
+- **psycopg2-binary**: 2.9.9 (PostgreSQL adapter, optional)
+- Dependencies managed via `requirements.txt` in carpi_news/ directory
 
 ## Views and URLs
 
@@ -138,11 +144,41 @@ python migrate_to_universal.py
 - **Advanced CSS** (`home/static/home/css/style.css`): Modern styling with animations
 - All content in Italian language
 
+## Environment Configuration
+
+The project uses environment variables defined in `.env` file (based on `.env.example`):
+
+**Required Variables**:
+- `SECRET_KEY`: Django secret key (generate with `generate_secret_key.py`)
+- `ANTHROPIC_API_KEY`: Required for AI content processing
+- `DEBUG`: Set to False for production
+- `ALLOWED_HOSTS`: Comma-separated list of allowed domains
+
+**Optional Variables**:
+- `DATABASE_URL`: PostgreSQL connection string (uses SQLite if not set)
+- `EMAIL_*`: SMTP configuration for notifications
+- `YOUTUBE_API_KEY` & `YOUTUBE_PLAYLIST_ID`: YouTube integration
+- `MONITOR_INTERVAL_*`: Custom intervals for each monitor (seconds)
+
+**Virtual Environment**: 
+```bash
+# Activate virtual environment
+cd C:\news
+venv\Scripts\activate  # Windows
+source venv/bin/activate  # Unix/Linux
+
+# Install dependencies
+cd carpi_news
+pip install -r requirements.txt
+```
+
 ## Security Considerations
 
-- API keys should be moved to environment variables
+- Environment variables stored in `.env` file (not committed to git)
+- API keys should never be hardcoded in source code
 - Web scraping includes proper headers and rate limiting
 - Content polishing removes potentially harmful characters and symbols
+- Production security settings auto-enabled when DEBUG=False
 
 ## Project Documentation
 
