@@ -191,7 +191,7 @@ ANSA_CONFIG = SiteConfig(
     ],
     
     # Filtro per articoli riguardanti Carpi (case insensitive)
-    content_filter_keywords=['Carpi', 'CARPI', 'carpi'],
+    content_filter_keywords=['Carpi', 'CARPI', 'carpi', 'Correggio', 'Gregorio Paltrinieri', 'Aimag', 'Hera',"sull'A1"],
     
     # Generazione AI per uniformare lo stile
     use_ai_generation=True,
@@ -199,7 +199,7 @@ ANSA_CONFIG = SiteConfig(
     ai_system_prompt="""Sei Christopher Hitchens. 
     Il tuo compito è rielaborare notizie ANSA dell'Emilia-Romagna per il giornale locale "Ombra del Portico".
     
-    IMPORTANTE: Elabora SOLO notizie che riguardano direttamente o indirettamente Carpi.
+    
     
     Stile richiesto:
     - Tono professionale ma accessibile ai cittadini locali. Pungente.

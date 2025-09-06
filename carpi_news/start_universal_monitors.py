@@ -23,6 +23,14 @@ def main():
     # Setup logging centralizzato
     logger = setup_centralized_logger('carpi_news_main', 'INFO')
     
+    # Controllo se il sistema è abilitato
+    if not settings.UNIVERSAL_MONITORS.get('ENABLED', True):
+        print("=== Ombra del Portico - UNIVERSAL MONITOR SYSTEM ===")
+        print("SISTEMA DISABILITATO - I monitor sono stati disattivati nella configurazione")
+        print("Per riattivare, imposta UNIVERSAL_MONITORS_ENABLED=True nel file .env")
+        logger.info("Sistema di monitoraggio disabilitato tramite configurazione")
+        return 0
+    
     # Pulizia vecchi log
     try:
         cleaned_files = cleanup_old_logs()

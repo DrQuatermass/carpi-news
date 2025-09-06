@@ -71,7 +71,7 @@ def home(request):
                 'categoria': articolo.categoria,
                 'data_pubblicazione': articolo.data_pubblicazione.strftime('%d %b %Y'),
                 'slug': articolo.slug,
-                'foto': articolo.foto,
+                'foto': articolo.get_image_url(),
             })
         
         return JsonResponse({

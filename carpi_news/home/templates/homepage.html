@@ -24,11 +24,9 @@
                         </div>
                         {% for articolo in articoli %}
                         <article class="news-card loading">
-                            {% if articolo.foto %}
                             <div class="news-image">
-                                <img src="{{ articolo.foto }}" alt="{{ articolo.titolo }}" class="card-img">
+                                <img src="{{ articolo.get_image_url }}" alt="{{ articolo.titolo }}" class="card-img">
                             </div>
-                            {% endif %}
                             <div class="news-content">
                                 <div class="news-meta">
                                     <span class="category-tag">{{ articolo.categoria }}</span>
@@ -290,14 +288,11 @@
             const card = document.createElement('article');
             card.className = 'news-card';
             
-            let imageHtml = '';
-            if (articolo.foto) {
-                imageHtml = `
-                    <div class="news-image">
-                        <img src="${articolo.foto}" alt="${articolo.titolo}" class="card-img">
-                    </div>
-                `;
-            }
+            const imageHtml = `
+                <div class="news-image">
+                    <img src="${articolo.foto || '{% load static %}{% static "home/images/portico_logo_nopayoff.svg" %}'}" alt="${articolo.titolo}" class="card-img">
+                </div>
+            `;
             
             card.innerHTML = `
                 ${imageHtml}

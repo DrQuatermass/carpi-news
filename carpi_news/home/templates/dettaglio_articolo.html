@@ -15,11 +15,9 @@
             <br>
             <h1 class="article-title">{{ articolo.titolo }}</h1>
             <br>
-            {% if articolo.foto %}
             <div class="article-image">
-                <img src="{{ articolo.foto }}" alt="{{ articolo.titolo }}" class="img-responsive">
+                <img src="{{ articolo.get_image_url }}" alt="{{ articolo.titolo }}" class="img-responsive">
             </div>
-            {% endif %}
             
             <div class="article-content">
                 {{ articolo.contenuto|safe }}

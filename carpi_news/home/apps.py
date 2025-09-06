@@ -154,6 +154,12 @@ class HomeConfig(AppConfig):
                 logger.info("Monitor universali già avviati, skip")
                 return
             
+            # Controlla se i monitor universali sono abilitati
+            universal_config = getattr(settings, 'UNIVERSAL_MONITORS', {})
+            if not universal_config.get('ENABLED', True):  # Default abilitato
+                logger.info("Monitor universali disabilitati nelle impostazioni - sistema di monitoraggio NON avviato")
+                return
+            
             logger.info("Avvio monitor universali migliorato...")
             
             # Import dinamico per evitare problemi di inizializzazione
