@@ -43,8 +43,13 @@ The project features a sophisticated multi-source news monitoring system:
 - **`start_universal_monitors.py`**: Main entry point for starting all monitors
 
 ### Supported Sources
-- **Carpi Calcio**: HTML scraping with AI content generation
-- **Comune Carpi**: WordPress REST API integration
+- **Carpi Calcio**: HTML scraping with AI content generation and enhanced image selectors
+- **Comune Carpi GraphQL**: GraphQL API with automatic image download to media files
+- **Comune Carpi WordPress**: WordPress REST API integration (fallback)
+- **Eventi Carpi**: GraphQL API for events with AI content generation
+- **La Voce di Carpi**: HTML scraping with URL space encoding support
+- **ANSA Emilia-Romagna**: RSS feed with keyword filtering for Carpi-related content
+- **TempoNews**: HTML scraping for local news
 - **YouTube Channels**: Transcript-based article generation
 
 ### Legacy Monitors (Being Replaced)
@@ -54,12 +59,17 @@ The project features a sophisticated multi-source news monitoring system:
 
 ## Content Processing Pipeline
 
-1. **Monitoring**: Automated scraping of configured news sources
-2. **Content Extraction**: HTML parsing, API calls, or transcript processing
-3. **AI Enhancement**: Content polishing and uniformity via `content_polisher.py`
-4. **Image Processing**: Automatic image extraction and URL management
-5. **Approval Workflow**: Articles require manual approval before publication
-6. **Logging**: Comprehensive logging via `logger_config.py`
+1. **Monitoring**: Automated scraping of configured news sources with keyword filtering
+2. **Content Extraction**: HTML parsing, GraphQL/REST API calls, or transcript processing
+3. **Keyword Filtering**: Full-content filtering for ANSA articles (Carpi-related keywords only)
+4. **Image Processing**: 
+   - Automatic image extraction with enhanced selectors
+   - Download and local storage for Comune Carpi (GraphQL API images)
+   - URL encoding fix for spaces (La Voce images)
+   - Smart caching system with validation (30min-1hour TTL)
+5. **AI Enhancement**: Content polishing and uniformity via `content_polisher.py`
+6. **Approval Workflow**: Articles require manual approval before publication (auto-approval configurable per source)
+7. **Logging**: Comprehensive logging via `logger_config.py`
 
 ## Management Commands
 
@@ -109,6 +119,51 @@ python cleanup_old_logs.py
 **Migration to Universal System**:
 ```bash
 python migrate_to_universal.py
+```
+
+## Media Files and Image Management
+
+The project uses Django's media files system for storing downloaded images:
+
+- **Media Directory**: `carpi_news/media/images/downloaded/`
+- **Apache Configuration**: Serves `/media/` from filesystem
+- **Download System**: Automatic download for Comune Carpi GraphQL API images
+- **Image Validation**: Smart caching system validates external image URLs
+- **URL Encoding**: Automatic fix for image URLs with spaces (La Voce di Carpi)
+
+**Media files are served by Apache in production:**
+```apache
+Alias /media /var/www/carpi-news/carpi_news/media
+<Directory /var/www/carpi-news/carpi_news/media>
+    Require all granted
+</Directory>
+```
+
+## Monitoring System Status
+
+**Check active monitors:**
+```bash
+# View running processes
+ps aux | grep -E "(monitor|scheduler)" | grep -v grep
+
+# Check lock files
+ls -la locks/
+
+# View monitor logs
+tail -20 logs/monitors.log
+
+# Check specific monitor status
+python manage.py manage_monitors status
+```
+
+**Restart all monitors:**
+```bash
+# Stop all
+pkill -f "universal_news_monitor"
+rm -f locks/*.lock
+
+# Start all
+nohup python start_universal_monitors.py &
 ```
 
 ## Key Dependencies
@@ -179,6 +234,18 @@ pip install -r requirements.txt
 - Web scraping includes proper headers and rate limiting
 - Content polishing removes potentially harmful characters and symbols
 - Production security settings auto-enabled when DEBUG=False
+- Image validation system prevents loading malicious external images
+- Keyword filtering prevents processing of irrelevant content
+
+## Production Deployment Notes
+
+- **Gunicorn**: Serves Django via Unix socket (`carpi_news.sock`)
+- **Apache**: Reverse proxy with SSL termination (Let's Encrypt)
+- **Media Files**: Served directly by Apache for performance
+- **Static Files**: Collected via `collectstatic` and served by Apache
+- **Monitor Processes**: Run independently from web server
+- **Editorial Scheduler**: Automated daily articles at 8:00 AM
+- **Cache System**: Redis/Database caching for image validation (30min-1hour TTL)
 
 ## Project Documentation
 

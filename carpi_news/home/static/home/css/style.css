@@ -662,7 +662,7 @@ footer {
     background: linear-gradient(135deg, #5A5A5A 0%, #966C42 100%);
     color: white;
     text-align: center;
-    padding: 3rem 0;
+    padding: 3rem 0 1.5rem;
     margin-top: 4rem;
 }
 
@@ -671,24 +671,75 @@ footer {
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
     gap: 2rem;
     margin-bottom: 2rem;
+    text-align: left;
 }
 
 .footer-section h3 {
     margin-bottom: 1rem;
     font-size: 1.3rem;
+    color: white;
+}
+
+.footer-section p {
+    color: rgba(255, 255, 255, 0.9);
+    line-height: 1.6;
+}
+
+.footer-links {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
 }
 
 .footer-section a {
     color: rgba(255, 255, 255, 0.8);
     text-decoration: none;
     transition: all 0.3s ease;
-    display: block;
-    margin-bottom: 0.5rem;
+    display: inline-block;
 }
 
 .footer-section a:hover {
     color: white;
     transform: translateX(5px);
+}
+
+.contact-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 0.8rem;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.contact-item svg {
+    flex-shrink: 0;
+}
+
+.contact-item a {
+    color: rgba(255, 255, 255, 0.8);
+    text-decoration: none;
+    transition: color 0.3s ease;
+}
+
+.contact-item a:hover {
+    color: white;
+    transform: none;
+}
+
+.footer-bottom {
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    padding-top: 1.5rem;
+    text-align: center;
+}
+
+.footer-bottom p {
+    margin: 0.5rem 0;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.footer-tagline {
+    font-style: italic;
+    font-size: 0.9rem;
 }
 
 /* Responsive */

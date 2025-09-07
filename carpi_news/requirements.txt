@@ -16,6 +16,9 @@ anthropic==0.64.0
 # YouTube integration
 youtube-transcript-api==0.6.1
 
+# Twitter/X integration
+tweepy==4.16.0
+
 # Web server (for production)
 gunicorn==21.2.0
 whitenoise==6.6.0
