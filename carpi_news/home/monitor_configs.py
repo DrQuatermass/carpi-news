@@ -183,7 +183,8 @@ ANSA_CONFIG = SiteConfig(
         'article', 
         '.item',
         '.news-item',
-        'div[class*="news"]'
+        'div[class*="news"]',
+        'picture'
     ],
     content_selectors=[
         '.news-txt',           # Selettore principale ANSA (funzionante)
@@ -193,11 +194,12 @@ ANSA_CONFIG = SiteConfig(
         'article',
         '.text',
         '.entry-content',
-        'main'
+        'main',
+        'picture'
     ],
     
     # Filtro per articoli riguardanti Carpi (case insensitive)
-    content_filter_keywords=['Carpi', 'CARPI', 'carpi', 'Gregorio Paltrinieri', 'Aimag', 'Hera'],
+    content_filter_keywords=['Carpi', 'CARPI', 'Gregorio Paltrinieri', 'Aimag', 'Hera'],
     
     # Generazione AI per uniformare lo stile
     use_ai_generation=True,

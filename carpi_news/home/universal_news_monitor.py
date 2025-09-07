@@ -165,17 +165,17 @@ class HTMLScraper(BaseScraper):
                         description = description_elem.text if description_elem is not None else ''
                         pub_date = pub_date_elem.text if pub_date_elem is not None else ''
                         
-                        # Applica filtro per parole chiave se configurato
+                        # Scrapa il contenuto della pagina specifica PRIMA del filtro
+                        full_content = self.get_full_content(article_url)
+                        
+                        # Applica filtro per parole chiave su TUTTO il contenuto dell'articolo
                         filter_keywords = self.config.config.get('content_filter_keywords', [])
                         if filter_keywords:
-                            content_to_check = f"{title} {description}".lower()
+                            content_to_check = f"{title} {description} {full_content or ''}".lower()
                             has_keyword = any(keyword.lower() in content_to_check for keyword in filter_keywords)
                             if not has_keyword:
-                                self.logger.debug(f"Skipping article (no keywords): {title[:50]}...")
+                                self.logger.debug(f"Skipping article (no keywords in full content): {title[:50]}...")
                                 continue
-                        
-                        # Scrapa il contenuto della pagina specifica
-                        full_content = self.get_full_content(article_url)
                         
                         # Prova a estrarre immagine dal contenuto RSS
                         image_url = None
@@ -296,6 +296,16 @@ class HTMLScraper(BaseScraper):
         
         if len(content_preview) < 30:
             return None
+        
+        # Applica filtro keywords anche per HTML scraping (controllo su contenuto completo)
+        filter_keywords = self.config.config.get('content_filter_keywords', [])
+        if filter_keywords:
+            # Scarica contenuto completo per il filtro
+            full_content = self.get_full_content(article_url)
+            content_to_check = f"{title} {content_preview} {full_content or ''}".lower()
+            has_keyword = any(keyword.lower() in content_to_check for keyword in filter_keywords)
+            if not has_keyword:
+                return None
         
         # Immagine
         image_url = self._extract_image_from_html(item)
