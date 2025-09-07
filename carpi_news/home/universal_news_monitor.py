@@ -5,13 +5,15 @@ import logging
 import os
 import tempfile
 import platform
+import uuid
 from datetime import datetime
 from bs4 import BeautifulSoup
 import hashlib
 from django.utils import timezone
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 from abc import ABC, abstractmethod
 from typing import Dict, List, Optional, Any
+from django.conf import settings
 
 from home.models import Articolo
 
@@ -334,6 +336,19 @@ class HTMLScraper(BaseScraper):
         # Filtra loghi e icone
         if any(term in img_src.lower() for term in ['logo', 'icon', 'avatar', 'social', 'placeholder']):
             return None
+        
+        # Fix per URL con spazi (problema Voce di Carpi)
+        if ' ' in img_src:
+            from urllib.parse import quote
+            # Codifica solo la parte del path, mantenendo lo schema e host
+            if img_src.startswith('http'):
+                parts = img_src.split('/', 3)  # ['http:', '', 'domain.com', 'path/with spaces.jpg']
+                if len(parts) > 3:
+                    # Codifica solo il path mantenendo il resto
+                    encoded_path = quote(parts[3], safe='/')
+                    img_src = f"{parts[0]}//{parts[2]}/{encoded_path}"
+            else:
+                img_src = quote(img_src, safe='/:?#[]@!$&\'()*+,;=')
         
         if img_src.startswith('/'):
             return urljoin(self.config.base_url, img_src)
@@ -953,11 +968,16 @@ class GraphQLScraper(BaseScraper):
             # Costruisci URL evento
             article_url = f"{self.config.base_url}vivere-il-comune/eventi/{evento.get('uniqueId', '')}"
             
+            # Scarica e salva immagine localmente se è dall'API Comune Carpi
+            event_image_url = evento.get('immagineUrl')
+            if event_image_url and 'api.wp.ai4smartcity.ai' in event_image_url:
+                event_image_url = self.download_and_save_image(event_image_url, evento.get('uniqueId', ''))
+            
             return {
                 'title': title,
                 'url': article_url,
                 'preview': descrizione_breve or descrizione_estesa[:500],
-                'image_url': evento.get('immagineUrl'),
+                'image_url': event_image_url,
                 'full_content': full_content,
                 'event_id': evento.get('uniqueId'),
                 'event_start': evento.get('dataOraInizio'),
@@ -1032,11 +1052,16 @@ class GraphQLScraper(BaseScraper):
                         categoria = trad_tipo[0].get('nome', 'Comunicazioni')
                         break
             
+            # Scarica e salva immagine localmente se è dall'API Comune Carpi
+            final_image_url = immagine_url
+            if immagine_url and 'api.wp.ai4smartcity.ai' in immagine_url:
+                final_image_url = self.download_and_save_image(immagine_url, unique_id)
+
             return {
                 'title': titolo[:200],
                 'url': article_url,
                 'preview': content_preview[:500],
-                'image_url': immagine_url,
+                'image_url': final_image_url,
                 'publish_date': data_pubblicazione,
                 'full_content': testo_completo,
                 'source_id': unique_id,
@@ -1074,6 +1099,50 @@ class GraphQLScraper(BaseScraper):
         """Per GraphQL il contenuto completo è già disponibile nella risposta"""
         # Il testoCompleto è già incluso nella risposta GraphQL, non serve fetch aggiuntivo
         return None
+    
+    def download_and_save_image(self, api_image_url: str, unique_id: str) -> Optional[str]:
+        """Scarica immagine dall'API e la salva localmente"""
+        if not api_image_url or 'api.wp.ai4smartcity.ai' not in api_image_url:
+            return api_image_url
+        
+        try:
+            # Scarica l'immagine dall'API
+            response = requests.get(api_image_url, headers=self.graphql_headers, timeout=15)
+            response.raise_for_status()
+            
+            # Determina l'estensione dal content-type
+            content_type = response.headers.get('content-type', '').lower()
+            if 'jpeg' in content_type or 'jpg' in content_type:
+                ext = '.jpg'
+            elif 'png' in content_type:
+                ext = '.png'
+            elif 'webp' in content_type:
+                ext = '.webp'
+            else:
+                ext = '.jpg'  # Default
+            
+            # Crea nome file unico
+            filename = f"comune_carpi_{unique_id}_{uuid.uuid4().hex[:8]}{ext}"
+            
+            # Percorso per salvare l'immagine usando MEDIA files
+            media_dir = os.path.join(settings.MEDIA_ROOT, 'images', 'downloaded')
+            os.makedirs(media_dir, exist_ok=True)
+            
+            file_path = os.path.join(media_dir, filename)
+            
+            # Salva l'immagine
+            with open(file_path, 'wb') as f:
+                f.write(response.content)
+            
+            # Restituisci l'URL media Django
+            media_url = f"{settings.MEDIA_URL}images/downloaded/{filename}"
+            
+            self.logger.info(f"Immagine salvata: {filename}")
+            return media_url
+            
+        except Exception as e:
+            self.logger.error(f"Errore nel download immagine: {e}")
+            return None
 
 
 class UniversalNewsMonitor:
