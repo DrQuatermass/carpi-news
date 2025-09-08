@@ -87,12 +87,16 @@ def _share_article_background(article_id, article_title):
     Esegue la condivisione sui social in background
     """
     try:
+        # Piccolo ritardo per evitare race conditions con la transazione di approvazione
+        import time
+        time.sleep(1)
+        
         # Ricarica l'articolo dal database per sicurezza
         articolo = Articolo.objects.get(pk=article_id)
         
         # Verifica che sia ancora approvato (doppio controllo)
         if not articolo.approvato:
-            logger.warning(f"Articolo {article_title} non più approvato, annullo condivisione")
+            logger.warning(f"Articolo {article_title} non più approvato, annullo condivisione. Controllare signals, potrebbe essere un race condition.")
             return
         
         # Esegui la condivisione
