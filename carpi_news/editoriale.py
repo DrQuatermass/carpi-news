@@ -27,7 +27,7 @@ def setup_logging():
     return setup_centralized_logger('editoriale_quotidiano', 'INFO')
 
 def raccoglie_articoli_ieri():
-    """Raccoglie tutti gli articoli approvati del giorno precedente"""
+    """Raccoglie i 4 articoli più visti del giorno precedente, escludendo Eventi ed Editoriali"""
     ieri = timezone.now().date() - timedelta(days=1)
     inizio_ieri = timezone.make_aware(datetime.combine(ieri, datetime.min.time()))
     fine_ieri = timezone.make_aware(datetime.combine(ieri, datetime.max.time()))
@@ -36,8 +36,8 @@ def raccoglie_articoli_ieri():
         approvato=True,
         data_pubblicazione__range=(inizio_ieri, fine_ieri)
     ).exclude(
-        categoria='Editoriale'  # Esclude editoriali precedenti
-    ).order_by('categoria', 'data_pubblicazione')
+        categoria__in=['Editoriale', 'Eventi']  # Esclude editoriali precedenti ed eventi
+    ).order_by('-views')[:4]  # Ordina per visualizzazioni decrescenti e prende i primi 4
     
     return articoli
 
@@ -90,7 +90,7 @@ def genera_editoriale_ai(categorie, data_ieri):
 
 Oggi è {timezone.now().strftime('%d %B %Y')} e devi scrivere l'editoriale che riassume e commenti le notizie di ieri ({data_ieri.strftime('%d %B %Y')}) a Carpi.
 
-ARTICOLI DI IERI ({conteggio_totale} articoli totali):
+ARTICOLI PIÙ VISTI DI IERI (massimo 4 articoli selezionati per numero di visualizzazioni, esclusi Eventi):
 {"".join(contenuto_articoli)}
 
 COMPITO:
@@ -101,7 +101,7 @@ Scrivi un editoriale di circa 500-800 parole che:
 - Evidenzi l'impatto sulla comunità carpigiana
 - Concluda con una considerazione sulla della città
 
-IMPORTANTE: Dai maggiore peso e spazio agli articoli con più visualizzazioni.
+IMPORTANTE: Concentrati sui {conteggio_totale} articoli forniti, che sono già quelli con più interesse da parte dei lettori.
 
 STILE:
 
