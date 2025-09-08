@@ -47,7 +47,7 @@ class SocialMediaManager:
             Dict con il risultato della condivisione per ogni piattaforma
         """
         results = {}
-        article_url = f"https://carpinews.it/articolo/{articolo.slug}/"
+        article_url = f"https://ombradelportico.it/articolo/{articolo.slug}/"
         
         logger.info(f"Avvio condivisione automatica per articolo: {articolo.titolo}")
         
