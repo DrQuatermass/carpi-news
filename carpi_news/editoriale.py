@@ -215,7 +215,7 @@ def salva_editoriale(titolo, contenuto, data_ieri, numero_articoli):
         slug=slug,
         approvato=True, 
         data_pubblicazione=timezone.now(),
-        fonte="www.carpinews.it",
+    
         foto=static('home/images/portico_logo_nopayoff.svg'),
     )
     

@@ -22,6 +22,16 @@
             <div class="article-content">
                 {{ articolo.contenuto|safe }}
             </div>
+            
+            {% if articolo.fonte %}
+            <div class="article-source">
+                <small>
+                    <a href="{{ articolo.fonte }}" target="_blank" rel="noopener noreferrer" class="source-link">
+                        Fonte
+                    </a>
+                </small>
+            </div>
+            {% endif %}
 <br><br>
             <!-- Social Share Section 
             <div class="social-share-section">

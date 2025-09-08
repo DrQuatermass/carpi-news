@@ -854,6 +854,25 @@ footer {
     clear: both;
 }
 
+.article-source {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(150, 108, 66, 0.2);
+    text-align: left;
+}
+
+.source-link {
+    color: #966C42;
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.source-link:hover {
+    color: #7A5635;
+    text-decoration: underline;
+}
+
 .img-responsive {
     max-width: 100%;
     height: auto;
