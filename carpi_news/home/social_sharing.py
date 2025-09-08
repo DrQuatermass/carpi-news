@@ -163,7 +163,7 @@ class SocialMediaManager:
             return False
     
     def _share_to_telegram(self, articolo, article_url: str) -> bool:
-        """Condivide su Telegram tramite Bot API"""
+        """Condivide su Telegram tramite Bot API con foto se disponibile"""
         try:
             config = self.platforms['telegram']
             if not config['bot_token'] or not config['chat_id']:
@@ -173,20 +173,33 @@ class SocialMediaManager:
             # Prepara il messaggio
             message = f"📰 *{articolo.titolo}*\n\n{articolo.sommario[:300]}...\n\n[Leggi tutto]({article_url})\n\n#CarpiNews #OmbraDelPortico"
             
-            # URL dell'API Telegram
-            url = f"https://api.telegram.org/bot{config['bot_token']}/sendMessage"
-            
-            data = {
-                'chat_id': config['chat_id'],
-                'text': message,
-                'parse_mode': 'Markdown',
-                'disable_web_page_preview': False
-            }
+            # Se l'articolo ha una foto, usa sendPhoto, altrimenti sendMessage
+            if articolo.foto:
+                # URL dell'API Telegram per inviare foto
+                url = f"https://api.telegram.org/bot{config['bot_token']}/sendPhoto"
+                
+                data = {
+                    'chat_id': config['chat_id'],
+                    'photo': articolo.foto,
+                    'caption': message,
+                    'parse_mode': 'Markdown'
+                }
+            else:
+                # URL dell'API Telegram per messaggio di testo
+                url = f"https://api.telegram.org/bot{config['bot_token']}/sendMessage"
+                
+                data = {
+                    'chat_id': config['chat_id'],
+                    'text': message,
+                    'parse_mode': 'Markdown',
+                    'disable_web_page_preview': False
+                }
             
             response = requests.post(url, data=data, timeout=10)
             
             if response.status_code == 200:
-                logger.info(f"Articolo condiviso su Telegram: {articolo.titolo}")
+                photo_info = " con foto" if articolo.foto else ""
+                logger.info(f"Articolo condiviso su Telegram{photo_info}: {articolo.titolo}")
                 return True
             else:
                 logger.error(f"Errore condivisione Telegram: {response.status_code} - {response.text}")
