@@ -124,6 +124,9 @@
 
             // Animazione parallasse per hero
             window.addEventListener('scroll', function() {
+                // Disabilita parallasse durante le transizioni per evitare conflitti
+                if (isTransitioning) return;
+                
                 const hero = document.querySelector('.hero');
                 if (hero) {
                     const scrolled = window.pageYOffset;
@@ -193,6 +196,17 @@
                 const newsGrid = document.getElementById('news-grid');
                 newsGrid.classList.add('transitioning');
                 
+                // Salva l'altezza corrente della griglia per evitare layout shift
+                const newsNav = document.querySelector('.news-nav');
+                const currentHeight = newsNav.offsetHeight;
+                newsNav.style.minHeight = currentHeight + 'px';
+                
+                // Blocca temporaneamente l'effetto parallasse resettando il transform
+                const hero = document.querySelector('.hero');
+                if (hero) {
+                    hero.style.transform = 'translateY(0px)';
+                }
+                
                 // Mostra loading spinner
                 const loadingSpinner = document.getElementById('loading-spinner');
                 loadingSpinner.classList.add('active');
@@ -255,8 +269,9 @@
             
             // Dopo l'animazione di uscita, sostituisci con le nuove card
             setTimeout(() => {
-                // Rimuovi tutte le card esistenti
-                existingCards.forEach(card => card.remove());
+                // Rimuovi SOLO le card, mantieni lo spinner
+                const existingCardLinks = newsGrid.querySelectorAll('.news-card-link');
+                existingCardLinks.forEach(link => link.remove());
                 
                 // Crea le nuove card ma non le mostrare ancora
                 const newCards = [];
@@ -292,10 +307,22 @@
                     // Rimuovi classe di transizione
                     newsGrid.classList.remove('transitioning');
                     
+                    // Ripristina l'altezza naturale della griglia
+                    const newsNav = document.querySelector('.news-nav');
+                    newsNav.style.minHeight = '';
+                    
+                    // Ricalcola e ripristina l'effetto parallasse basato sulla posizione di scroll corrente
+                    const hero = document.querySelector('.hero');
+                    if (hero) {
+                        const scrolled = window.pageYOffset;
+                        const rate = scrolled * -0.5;
+                        hero.style.transform = 'translateY(' + rate + 'px)';
+                    }
+                    
                     // Riabilita le transizioni
                     setTimeout(() => {
                         isTransitioning = false;
-                    }, 500);
+                    }, 300);
                 }, 50);
             }, 400);
         }
