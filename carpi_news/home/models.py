@@ -3,6 +3,8 @@ from django.utils.text import slugify
 from django.utils import timezone
 from django.templatetags.static import static
 from django.core.cache import cache
+from django.conf import settings
+from urllib.parse import quote
 import re
 import requests
 
@@ -38,22 +40,51 @@ class Articolo(models.Model):
         if not self.foto:
             return fallback_image
         
-        # Controlla cache per URL già verificati
-        cache_key = f"image_valid_{hash(self.foto)}"
+        # Se l'immagine è locale (inizia con /media/), aggiungi il dominio
+        if self.foto.startswith('/media/'):
+            # Ottieni il dominio dalle impostazioni CSRF_TRUSTED_ORIGINS o usa https://ombradelportico.it
+            domain = 'https://ombradelportico.it'
+            if hasattr(settings, 'CSRF_TRUSTED_ORIGINS') and settings.CSRF_TRUSTED_ORIGINS:
+                domain = settings.CSRF_TRUSTED_ORIGINS[0]
+                # Se non inizia con http, aggiungi https://
+                if not domain.startswith('http'):
+                    domain = f"https://{domain}"
+            return f"{domain}{self.foto}"
+        
+        # Fix per URL con spazi prima della validazione
+        validated_url = self.foto
+        if ' ' in validated_url:
+            # Codifica solo la parte del path, mantenendo lo schema e host
+            if validated_url.startswith('http'):
+                parts = validated_url.split('/', 3)  # ['http:', '', 'domain.com', 'path/with spaces.jpg']
+                if len(parts) > 3:
+                    # Codifica solo il path mantenendo il resto
+                    encoded_path = quote(parts[3], safe='/')
+                    validated_url = f"{parts[0]}//{parts[2]}/{encoded_path}"
+            else:
+                validated_url = quote(validated_url, safe='/:?#[]@!$&\'()*+,;=')
+        
+        # Per alcuni domini noti che hanno problemi di connessione, salta la validazione
+        trusted_domains = ['voce.it', 'ombradelportico.it']
+        if any(domain in validated_url for domain in trusted_domains):
+            return validated_url
+        
+        # Per URL esterni, mantieni la validazione con cache
+        cache_key = f"image_valid_{hash(validated_url)}"
         cached_result = cache.get(cache_key)
         
         if cached_result is not None:
-            return self.foto if cached_result else fallback_image
+            return validated_url if cached_result else fallback_image
         
         try:
             # Controlla se l'URL è raggiungibile
-            response = requests.head(self.foto, timeout=3, allow_redirects=True)
+            response = requests.head(validated_url, timeout=3, allow_redirects=True)
             is_valid = response.status_code == 200
             
             # Cache il risultato per 1 ora
             cache.set(cache_key, is_valid, 3600)
             
-            return self.foto if is_valid else fallback_image
+            return validated_url if is_valid else fallback_image
         except:
             # Se c'è qualsiasi errore, cache fallimento e usa il fallback
             cache.set(cache_key, False, 1800)  # Cache errori per 30 min
