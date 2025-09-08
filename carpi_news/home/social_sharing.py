@@ -197,6 +197,11 @@ class SocialMediaManager:
             
             response = requests.post(url, data=data, timeout=10)
             
+            # Debug logging per analizzare la risposta dell'API
+            logger.info(f"Telegram API response status: {response.status_code}")
+            logger.info(f"Telegram API response body: {response.text}")
+            logger.info(f"Telegram foto URL: {articolo.foto if articolo.foto else 'Nessuna foto'}")
+            
             if response.status_code == 200:
                 photo_info = " con foto" if articolo.foto else ""
                 logger.info(f"Articolo condiviso su Telegram{photo_info}: {articolo.titolo}")
