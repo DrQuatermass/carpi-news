@@ -52,7 +52,9 @@ def main():
         ('ansa_carpi', 300),             # 5 minuti (notizie nazionali su Carpi)
         ('voce_carpi', 600),             # 10 minuti (La Voce di Carpi)
         ('temponews', 600),              # 10 minuti (TempoNews Carpi)
-        ('youtube_playlist', 1800),      # 30 minuti (meno frequente)
+        ('terre_argine', 900),           # 15 minuti (Unione Terre d'Argine)
+        ('youtube_playlist', 1800),      # 30 minuti (YouTube Playlist 1)
+        ('youtube_playlist_2', 1800),    # 30 minuti (YouTube Playlist 2)
     ]
     
     for config_name, interval in configs:

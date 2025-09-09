@@ -127,6 +127,41 @@ YOUTUBE_PLAYLIST_CONFIG = SiteConfig(
     """
 )
 
+# Configurazione per YouTube Playlist 2
+YOUTUBE_PLAYLIST_2_CONFIG = SiteConfig(
+    name="YouTube Carpi 2",
+    base_url="https://www.youtube.com/",
+    scraper_type="youtube_api",
+    category="L'Eco del Consiglio",
+    
+    # Configurazioni specifiche per YouTube API
+    api_key="AIzaSyCbZnwmOERY27gUwWqaGnRShZgk48TOdZo",
+    playlist_id="PLjPk0q8kILQj0_8e2IcrPLCfj7czVoPb2",
+    max_results=5,
+    
+    # Rate limiting per evitare il ban di YouTube
+    transcript_delay=60,  # secondi di pausa tra le richieste di trascrizione
+    
+    # Generazione AI per articoli da video
+    use_ai_generation=True,
+    ai_api_key=settings.ANTHROPIC_API_KEY,
+    ai_system_prompt="""Sei  Umberto Eco che assiste al consiglio comunale di Carpi. 
+    Il tuo compito è trasformare trascrizioni di video YouTube in articoli per il giornale locale "Ombra del Portico".
+    
+    Stile richiesto:
+    - Tono professionale, ma con tanta ironia
+    - Evidenzia aspetti rilevanti per la comunità locale
+    - Crea un titolo accattivante e descrittivo
+    - Struttura: introduzione, sviluppo, conclusione
+    
+    
+    Formattazione richiesta:
+    - Il titolo  è sempre plain text, senza markup
+    - Nel contenuto usa **grassetto** per nomi di persone e punti chiave
+    - Separa i paragrafi con doppia riga vuota
+    """
+)
+
 # Configurazione per Comune di Carpi (GraphQL API con fallback WordPress)
 COMUNE_CARPI_GRAPHQL_CONFIG = SiteConfig(
     name="Comune Carpi GraphQL",
@@ -382,6 +417,42 @@ TEMPO_CARPI_CONFIG = SiteConfig(
     """
 )
 
+# Configurazione per Terre d'Argine (WordPress API)
+TERRE_ARGINE_CONFIG = SiteConfig(
+    name="Terre d'Argine",
+    base_url="https://www.terredargine.it/",
+    scraper_type="wordpress_api",
+    category="Attualità",
+    
+    # Configurazioni specifiche per WordPress API
+    api_url="https://www.terredargine.it/wp-json/wp/v2/posts",
+    per_page=10,
+    
+    # Non servono selettori per WordPress API
+    selectors=None,
+    content_selectors=None,
+    
+    # Generazione AI
+    use_ai_generation=True,
+    ai_api_key=settings.ANTHROPIC_API_KEY,
+    ai_system_prompt="""Sei Paolo Rumiz. 
+    Il tuo compito è rielaborare notizie dell'Unione Terre d'Argine per il giornale locale "Ombra del Portico".
+    
+    Stile richiesto:
+    - Tono professionale ma narrativo e coinvolgente
+    - Linguaggio accessibile ai cittadini del territorio
+    - Evidenzia l'aspetto territoriale e l'impatto sui comuni dell'Unione
+    - Mantieni focus su Carpi e le Terre d'Argine (Campogalliano, Novi di Modena, Soliera)
+    - Crea un titolo che evidenzi il collegamento territoriale
+    - Struttura: introduzione, sviluppo, impatto locale
+    
+    Formattazione richiesta:
+    - Il titolo è sempre plain text, senza markup
+    - Nel contenuto usa **grassetto** per decisioni importanti e progetti chiave
+    - Separa i paragrafi con doppia riga vuota
+    - Crea una struttura territoriale e istituzionale ma leggibile"""
+)
+
 # Configurazione per un sito generico HTML (esempio)
 GENERIC_HTML_CONFIG = SiteConfig(
     name="Sito Generico",
@@ -405,9 +476,11 @@ MONITOR_CONFIGS = {
     'comune_carpi_graphql': COMUNE_CARPI_GRAPHQL_CONFIG,
     'eventi_carpi_graphql': EVENTI_CARPI_GRAPHQL_CONFIG,
     'youtube_playlist': YOUTUBE_PLAYLIST_CONFIG,
+    'youtube_playlist_2': YOUTUBE_PLAYLIST_2_CONFIG,
     'ansa_carpi': ANSA_CONFIG,
     'voce_carpi': VOCE_CARPI_CONFIG,
     'temponews': TEMPO_CARPI_CONFIG,
+    'terre_argine': TERRE_ARGINE_CONFIG,
     'generic_html': GENERIC_HTML_CONFIG
 }
 
