@@ -40,16 +40,11 @@ class Articolo(models.Model):
         if not self.foto:
             return fallback_image
         
-        # Se l'immagine è locale (inizia con /media/), aggiungi il dominio
-        if self.foto.startswith('/media/'):
-            # Ottieni il dominio dalle impostazioni CSRF_TRUSTED_ORIGINS o usa https://ombradelportico.it
-            domain = 'https://ombradelportico.it'
-            if hasattr(settings, 'CSRF_TRUSTED_ORIGINS') and settings.CSRF_TRUSTED_ORIGINS:
-                domain = settings.CSRF_TRUSTED_ORIGINS[0]
-                # Se non inizia con http, aggiungi https://
-                if not domain.startswith('http'):
-                    domain = f"https://{domain}"
-            return f"{domain}{self.foto}"
+        # Se l'immagine è locale (inizia con /media/ o /static/), aggiungi il dominio
+        if self.foto.startswith('/media/') or self.foto.startswith('/static/'):
+            # Usa SITE_URL dal .env, fallback a https://ombradelportico.it
+            site_url = getattr(settings, 'SITE_URL', 'https://ombradelportico.it')
+            return f"{site_url}{self.foto}"
         
         # Fix per URL con spazi prima della validazione
         validated_url = self.foto

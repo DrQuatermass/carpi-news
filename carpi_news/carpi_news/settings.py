@@ -267,6 +267,9 @@ if not DEBUG:
 # Anthropic API Configuration
 ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY', '')
 
+# Site URL for media files
+SITE_URL = os.getenv('SITE_URL', 'https://ombradelportico.it')
+
 # YouTube API Configuration
 YOUTUBE_API_KEY = os.getenv('YOUTUBE_API_KEY', '')
 YOUTUBE_PLAYLIST_ID = os.getenv('YOUTUBE_PLAYLIST_ID', '')
