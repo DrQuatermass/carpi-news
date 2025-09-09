@@ -104,13 +104,18 @@ class ArticoloAdmin(admin.ModelAdmin):
         return redirect('admin:home_articolo_changelist')
     
     def _rigenera_articolo_background(self, articolo):
+        import logging
+        logger = logging.getLogger(__name__)
+        
         try:
+            logger.info(f"Inizio rigenerazione articolo: {articolo.titolo} (ID: {articolo.id})")
             import anthropic
             
             # Inizializza il client Anthropic
             from django.conf import settings
             api_key = settings.ANTHROPIC_API_KEY
             if not api_key:
+                logger.error("ERRORE: ANTHROPIC_API_KEY non configurata!")
                 print("ERRORE: ANTHROPIC_API_KEY non configurata!")
                 return
                 
@@ -138,7 +143,7 @@ ISTRUZIONI:
             
             # Chiamata all'API Anthropic
             response = client.messages.create(
-                model="claude-3-5-sonnet-20241022",
+                model="claude-sonnet-4-20250514",
                 max_tokens=4000,
                 temperature=0.3,
                 messages=[{
@@ -157,11 +162,14 @@ ISTRUZIONI:
                 # Imposta come non approvato per revisione
                 articolo.approvato = False
                 articolo.save()
+                logger.info(f"Articolo '{articolo.titolo}' rigenerato e salvato con successo")
                 print(f"Articolo '{articolo.titolo}' rigenerato con successo")
             else:
+                logger.warning(f"Nessuna modifica generata per l'articolo '{articolo.titolo}'")
                 print(f"Nessuna modifica generata per l'articolo '{articolo.titolo}'")
                 
         except Exception as e:
             # Log dell'errore (il sistema di logging dovrebbe catturarlo)
+            logger.error(f"Errore nella rigenerazione background: {str(e)}")
             print(f"Errore nella rigenerazione background: {str(e)}")
             # Puoi aggiungere logging più sofisticato qui se necessario 

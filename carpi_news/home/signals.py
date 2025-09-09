@@ -23,11 +23,17 @@ def track_approval_change(sender, instance, **kwargs):
                 'is_approved': instance.approvato
             }, 60)  # Cache per 1 minuto
         except Articolo.DoesNotExist:
-            # Nuovo articolo
+            # Caso edge: pk esiste ma oggetto non trovato
             cache.set(f'article_approval_state_{instance.pk}', {
                 'was_approved': False,
                 'is_approved': instance.approvato
             }, 60)
+    else:
+        # Nuovo articolo (pk è None) - usa l'id dell'oggetto Python temporaneamente
+        cache.set(f'article_approval_state_new_{id(instance)}', {
+            'was_approved': False,
+            'is_approved': instance.approvato
+        }, 60)
 
 
 @receiver(post_save, sender=Articolo)
@@ -57,6 +63,12 @@ def handle_article_approval(sender, instance, created, **kwargs):
     # Recupera lo stato di approvazione dalla cache
     approval_state = cache.get(f'article_approval_state_{instance.pk}')
     
+    # Per articoli nuovi, controlla anche la cache temporanea
+    if not approval_state and created:
+        approval_state = cache.get(f'article_approval_state_new_{id(instance)}')
+        if approval_state:
+            cache.delete(f'article_approval_state_new_{id(instance)}')
+    
     if not approval_state:
         # Se non c'è cache, assumiamo sia un nuovo articolo
         was_approved = False
@@ -65,7 +77,8 @@ def handle_article_approval(sender, instance, created, **kwargs):
         was_approved = approval_state['was_approved']
         is_approved = approval_state['is_approved']
         # Pulizia cache
-        cache.delete(f'article_approval_state_{instance.pk}')
+        if instance.pk:
+            cache.delete(f'article_approval_state_{instance.pk}')
     
     # Condividi solo se l'articolo è passato da non approvato ad approvato
     if not was_approved and is_approved:

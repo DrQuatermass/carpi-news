@@ -83,16 +83,34 @@ class SocialMediaManager:
                 logger.warning("Configurazione Facebook incompleta")
                 return False
             
-            # Prepara il messaggio
-            message = f"{articolo.titolo}\n\n{articolo.sommario[:200]}...\n\n#CarpiNews #OmbraDelPortico"
+            # Prepara il messaggio (ottimizzato per Facebook 2025)
+            # Titolo più accattivante con emoji
+            emoji = "📰" if articolo.categoria != "Sport" else "⚽"
+            title = f"{emoji} {articolo.titolo}"
             
-            # Parametri per la Graph API
-            url = f"https://graph.facebook.com/v18.0/{config['page_id']}/feed"
+            # Sommario limitato per leggibilità
+            summary = articolo.sommario[:180] + "..." if len(articolo.sommario) > 180 else articolo.sommario
+            
+            # Hashtag specifici per categoria
+            hashtags = f"#CarpiNews #OmbraDelPortico"
+            if articolo.categoria:
+                category_tag = f"#{articolo.categoria.replace(' ', '')}"
+                hashtags = f"{category_tag} {hashtags}"
+            
+            message = f"{title}\n\n{summary}\n\n{hashtags}"
+            
+            # Parametri per la Graph API (v22.0 è la versione più recente 2025)
+            url = f"https://graph.facebook.com/v22.0/{config['page_id']}/feed"
             data = {
                 'message': message,
                 'link': article_url,
                 'access_token': config['access_token']
             }
+            
+            # Aggiungi immagine se disponibile (migliora engagement)
+            if articolo.foto:
+                # Facebook preferisce immagini separate dal link per miglior rendering
+                data['picture'] = articolo.foto
             
             response = requests.post(url, data=data, timeout=10)
             
