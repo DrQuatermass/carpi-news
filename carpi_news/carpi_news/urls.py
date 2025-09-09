@@ -23,6 +23,7 @@ from home import views
 urlpatterns = [
     path('',views.home, name='home'),
     path('articolo/<slug:slug>/', views.dettaglio_articolo, name='dettaglio-articolo'),
+    path('privacy-policy/', views.privacy_policy, name='privacy-policy'),
     path('admin/', admin.site.urls),
 ]
 

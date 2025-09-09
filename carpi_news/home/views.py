@@ -118,3 +118,25 @@ def dettaglio_articolo(request, slug):
     }
     
     return render(request, "dettaglio_articolo.html", context)
+
+def privacy_policy(request):
+    """Vista per la pagina della Privacy Policy"""
+    # Ottieni categorie per il menu di navigazione
+    categorie_raw = Articolo.objects.filter(approvato=True).values_list('categoria', flat=True).distinct()
+    categorie_disponibili = []
+    has_rubriche = False
+    
+    for cat in sorted(categorie_raw):
+        if cat in ['Editoriale', "L'Eco del Consiglio"]:
+            if not has_rubriche:
+                categorie_disponibili.append('Rubriche')
+                has_rubriche = True
+        else:
+            categorie_disponibili.append(cat)
+    
+    context = {
+        'categorie_disponibili': list(categorie_disponibili),
+        'current_year': 2025,
+    }
+    
+    return render(request, "privacy_policy.html", context)
