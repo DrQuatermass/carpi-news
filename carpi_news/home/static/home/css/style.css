@@ -661,69 +661,107 @@ main {
 footer {
     background: linear-gradient(135deg, #5A5A5A 0%, #966C42 100%);
     color: white;
-    text-align: center;
     padding: 3rem 0 1.5rem;
     margin-top: 4rem;
 }
 
 .footer-content {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 2rem;
+    grid-template-columns: 2fr 1fr 1fr;
+    gap: 3rem;
     margin-bottom: 2rem;
     text-align: left;
 }
 
 .footer-section h3 {
-    margin-bottom: 1rem;
+    margin-bottom: 1.2rem;
     font-size: 1.3rem;
     color: white;
+    font-weight: 600;
 }
 
-.footer-section p {
+.footer-about p {
     color: rgba(255, 255, 255, 0.9);
     line-height: 1.6;
+    margin-bottom: 1rem;
 }
 
-.footer-links {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
+.footer-description {
+    color: rgba(255, 255, 255, 0.7) !important;
+    font-size: 0.95rem;
+    font-style: italic;
 }
 
-.footer-section a {
-    color: rgba(255, 255, 255, 0.8);
-    text-decoration: none;
-    transition: all 0.3s ease;
-    display: inline-block;
-}
-
-.footer-section a:hover {
-    color: white;
-    transform: translateX(5px);
-}
-
+/* Contact Section */
 .contact-item {
     display: flex;
     align-items: center;
-    gap: 10px;
-    margin-bottom: 0.8rem;
+    gap: 12px;
+    margin-bottom: 1rem;
     color: rgba(255, 255, 255, 0.9);
 }
 
 .contact-item svg {
     flex-shrink: 0;
+    opacity: 0.8;
 }
 
 .contact-item a {
     color: rgba(255, 255, 255, 0.8);
     text-decoration: none;
-    transition: color 0.3s ease;
+    transition: all 0.3s ease;
+    font-size: 0.95rem;
 }
 
 .contact-item a:hover {
     color: white;
-    transform: none;
+    transform: translateX(3px);
+}
+
+/* Social Links Section */
+.social-links {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.social-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: rgba(255, 255, 255, 0.8);
+    text-decoration: none;
+    padding: 8px 12px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    font-size: 0.95rem;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.social-link:hover {
+    color: white;
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateX(5px);
+}
+
+.social-link svg {
+    flex-shrink: 0;
+}
+
+.social-link.telegram:hover {
+    background: rgba(0, 136, 204, 0.3);
+}
+
+.social-link.facebook:hover {
+    background: rgba(24, 119, 242, 0.3);
+}
+
+.social-link.twitter:hover {
+    background: rgba(29, 161, 242, 0.3);
+}
+
+.social-link.instagram:hover {
+    background: rgba(225, 48, 108, 0.3);
 }
 
 .footer-bottom {
@@ -868,11 +906,50 @@ footer {
     .hero {
         display: none;
     }
-
-    .hero h1 {
-        font-size: 2.5rem;
+    
+    /* Footer responsive */
+    .footer-content {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+        text-align: center;
     }
-
+    
+    .footer-about {
+        order: 1;
+    }
+    
+    .footer-contacts {
+        order: 2;
+    }
+    
+    .footer-social {
+        order: 3;
+    }
+    
+    .social-links {
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 0.5rem;
+    }
+    
+    .social-link {
+        flex: 1 1 calc(50% - 0.25rem);
+        min-width: 120px;
+        justify-content: center;
+        text-align: center;
+    }
+    
+    .contact-item {
+        justify-content: center;
+    }
+    
+    /* News grid mobile */
+    .news-grid {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+    
     .nav-arrow {
         width: 55px;
         height: 55px;
@@ -893,10 +970,6 @@ footer {
     .pagination-info {
         font-size: 0.85rem;
         padding: 0.5rem 1rem;
-    }
-
-    .news-grid {
-        grid-template-columns: 1fr;
     }
 
     .local-section {
