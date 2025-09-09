@@ -742,10 +742,127 @@ footer {
     font-size: 0.9rem;
 }
 
+/* Mobile Menu Styles */
+.mobile-menu-container {
+    display: none;
+    position: relative;
+}
+
+.mobile-menu-btn {
+    background: none;
+    border: none;
+    padding: 8px;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    transition: all 0.3s ease;
+    border-radius: 6px;
+}
+
+.mobile-menu-btn:hover {
+    background: rgba(150, 108, 66, 0.1);
+}
+
+.hamburger-line {
+    width: 25px;
+    height: 3px;
+    background: #966C42;
+    border-radius: 2px;
+    transition: all 0.3s ease;
+}
+
+/* Hamburger animation when active */
+.mobile-menu-btn.active .hamburger-line:nth-child(1) {
+    transform: rotate(45deg) translate(6px, 6px);
+}
+
+.mobile-menu-btn.active .hamburger-line:nth-child(2) {
+    opacity: 0;
+}
+
+.mobile-menu-btn.active .hamburger-line:nth-child(3) {
+    transform: rotate(-45deg) translate(6px, -6px);
+}
+
+.mobile-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    background: rgba(250, 247, 240, 0.98);
+    backdrop-filter: blur(15px);
+    border-radius: 10px;
+    box-shadow: 0 8px 25px rgba(44, 44, 44, 0.15);
+    border: 1px solid rgba(150, 108, 66, 0.2);
+    min-width: 200px;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.3s ease;
+    z-index: 1001;
+}
+
+.mobile-dropdown.active {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.mobile-nav-links {
+    list-style: none;
+    padding: 10px 0;
+    margin: 0;
+}
+
+.mobile-nav-links li {
+    border-bottom: 1px solid rgba(150, 108, 66, 0.1);
+}
+
+.mobile-nav-links li:last-child {
+    border-bottom: none;
+}
+
+.mobile-nav-links a {
+    display: block;
+    padding: 12px 20px;
+    text-decoration: none;
+    color: #5A5A5A;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    position: relative;
+    font-size: 0.95rem;
+}
+
+.mobile-nav-links a:hover {
+    background: rgba(150, 108, 66, 0.1);
+    color: #966C42;
+    padding-left: 25px;
+}
+
+.mobile-nav-links a.active {
+    background: rgba(150, 108, 66, 0.15);
+    color: #966C42;
+    font-weight: 600;
+}
+
+.mobile-nav-links a.active::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: linear-gradient(45deg, #966C42, #B8956A);
+}
+
 /* Responsive */
 @media (max-width: 768px) {
-    .nav-links {
+    .desktop-nav {
         display: none;
+    }
+    
+    .mobile-menu-container {
+        display: block;
     }
 
     .hero {

@@ -22,12 +22,33 @@
                 <img src="{% static 'home/images/portico_logo_nopayoff.svg' %}" alt="Ombra del Portico" class="logo-img">
                 <span class="logo-text">Ombra del Portico</span>
             </div>
-            <ul class="nav-links">
+            
+            <!-- Menu desktop -->
+            <ul class="nav-links desktop-nav">
                 <li><a href="{% url 'home' %}?categoria=tutti" {% if not categoria_attiva or categoria_attiva == 'Home' %}class="active"{% endif %}>Home</a></li>
                 {% for categoria in categorie_disponibili %}
                 <li><a href="{% url 'home' %}?categoria={{ categoria|urlencode }}" {% if categoria_attiva == categoria %}class="active"{% endif %}>{{ categoria }}</a></li>
                 {% endfor %}
             </ul>
+            
+            <!-- Hamburger menu mobile -->
+            <div class="mobile-menu-container">
+                <button class="mobile-menu-btn" id="mobileMenuBtn" aria-label="Menu">
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                </button>
+                
+                <!-- Dropdown menu mobile -->
+                <div class="mobile-dropdown" id="mobileDropdown">
+                    <ul class="mobile-nav-links">
+                        <li><a href="{% url 'home' %}?categoria=tutti" {% if not categoria_attiva or categoria_attiva == 'Home' %}class="active"{% endif %}>Home</a></li>
+                        {% for categoria in categorie_disponibili %}
+                        <li><a href="{% url 'home' %}?categoria={{ categoria|urlencode }}" {% if categoria_attiva == categoria %}class="active"{% endif %}>{{ categoria }}</a></li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
         </nav>
     </header>
 
@@ -179,6 +200,37 @@
                     }
                 });
             });
+
+            // Mobile menu functionality
+            const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+            const mobileDropdown = document.getElementById('mobileDropdown');
+            
+            if (mobileMenuBtn && mobileDropdown) {
+                mobileMenuBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    // Toggle active state
+                    mobileMenuBtn.classList.toggle('active');
+                    mobileDropdown.classList.toggle('active');
+                });
+                
+                // Close menu when clicking outside
+                document.addEventListener('click', function(e) {
+                    if (!mobileMenuBtn.contains(e.target) && !mobileDropdown.contains(e.target)) {
+                        mobileMenuBtn.classList.remove('active');
+                        mobileDropdown.classList.remove('active');
+                    }
+                });
+                
+                // Close menu when clicking on a link
+                mobileDropdown.querySelectorAll('a').forEach(link => {
+                    link.addEventListener('click', function() {
+                        mobileMenuBtn.classList.remove('active');
+                        mobileDropdown.classList.remove('active');
+                    });
+                });
+            }
 
             // Inizializzazione specifica per pagina
             if (typeof initPageSpecific === 'function') {
