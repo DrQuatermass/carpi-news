@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Scheduler per l'editoriale quotidiano
-Esegue l'editoriale ogni giorno alle 6:00 UTC (8:00 italiane)
+Esegue l'editoriale ogni giorno alle 10:00 (ora italiana)
 """
 import threading
 import time
@@ -46,14 +46,14 @@ def run_editoriale():
 def start_scheduler():
     """Avvia lo scheduler per l'editoriale"""
     try:
-        # Programma l'editoriale alle 6:00 UTC ogni giorno (8:00 italiane)
-        schedule.every().day.at("06:00").do(run_editoriale)
+        # Programma l'editoriale alle 10:00 ogni giorno (ora italiana)
+        schedule.every().day.at("10:00").do(run_editoriale)
         
-        logger.info("📅 Scheduler editoriale avviato - esecuzione alle 6:00 UTC (8:00 italiane) ogni giorno")
+        logger.info("📅 Scheduler editoriale avviato - esecuzione alle 10:00 ogni giorno")
         
-        # Esegui un test immediato (se è dopo le 6:00 UTC e non c'è già l'editoriale di oggi)
+        # Esegui un test immediato (se è dopo le 10:00 e non c'è già l'editoriale di oggi)
         now = datetime.now()
-        if now.hour >= 6:
+        if now.hour >= 10:
             # Controlla se esiste già l'editoriale di oggi
             from home.models import Articolo
             from django.utils import timezone

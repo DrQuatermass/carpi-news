@@ -235,13 +235,13 @@ class HomeConfig(AppConfig):
             def scheduler_loop():
                 """Loop principale dello scheduler"""
                 try:
-                    # Programma l'editoriale alle 8:00 ogni giorno
-                    schedule.every().day.at("08:00").do(run_editoriale)
-                    logger.info("Scheduler editoriale configurato - esecuzione alle 8:00 ogni giorno")
+                    # Programma l'editoriale alle 10:00 ogni giorno (ora italiana)
+                    schedule.every().day.at("10:00").do(run_editoriale)
+                    logger.info("Scheduler editoriale configurato - esecuzione alle 10:00 ogni giorno")
                     
-                    # Esegui un test immediato se è dopo le 8:00 e non c'è già l'editoriale di oggi
+                    # Esegui un test immediato se è dopo le 10:00 e non c'è già l'editoriale di oggi
                     now = datetime.now()
-                    if now.hour >= 8:
+                    if now.hour >= 10:
                         from home.models import Articolo
                         today = timezone.now().date()
                         today_editorial = Articolo.objects.filter(
