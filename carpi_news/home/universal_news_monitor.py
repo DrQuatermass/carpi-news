@@ -6,6 +6,7 @@ import os
 import tempfile
 import platform
 import uuid
+import subprocess
 from datetime import datetime
 from bs4 import BeautifulSoup
 import hashlib
