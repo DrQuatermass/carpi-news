@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load italian_dates %}
 
 {% block title %}Ombra del Portico - Le notizie della tua città{% endblock %}
 
@@ -32,7 +33,7 @@
                                     <div class="news-meta">
                                         <span class="category-tag">{{ articolo.categoria }}</span>
                                         <time datetime="{{ articolo.data_pubblicazione|date:'Y-m-d' }}">
-                                            {{ articolo.data_pubblicazione|date:'d M Y' }}
+                                            {{ articolo.data_pubblicazione|italian_date:'short' }}
                                         </time>
                                     </div>
                                     <h2 class="news-title">{{ articolo.titolo }}</h2>
@@ -327,6 +328,24 @@
             }, 400);
         }
         
+        // Funzione per costruire URL immagine
+        function buildImageUrl(foto) {
+            if (!foto) return '{% load static %}{% static "home/images/portico_logo_nopayoff.svg" %}';
+            
+            // Se inizia con http/https è una URL esterna
+            if (foto.startsWith('http://') || foto.startsWith('https://')) {
+                return foto;
+            }
+            
+            // Se inizia con /media è un file locale
+            if (foto.startsWith('/media/')) {
+                return '{{ SITE_URL }}' + foto;
+            }
+            
+            // Default per altri casi
+            return foto;
+        }
+
         // Funzione per creare una card di notizia
         function createNewsCard(articolo) {
             const cardLink = document.createElement('a');
@@ -338,7 +357,7 @@
             
             const imageHtml = `
                 <div class="news-image">
-                    <img src="${articolo.foto || '{% load static %}{% static "home/images/portico_logo_nopayoff.svg" %}'}" alt="${articolo.titolo}" class="card-img">
+                    <img src="${buildImageUrl(articolo.foto)}" alt="${articolo.titolo}" class="card-img">
                 </div>
             `;
             

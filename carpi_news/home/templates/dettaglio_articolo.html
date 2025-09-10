@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load italian_dates %}
 
 {% block title %}{{ articolo.titolo }} - Ombra del Portico{% endblock %}
 
@@ -9,7 +10,7 @@
                 <a href="{% url 'home' %}" class="back-link">← Home</a>
                 <span class="category-tag">{{ articolo.categoria }}</span>
                 <time datetime="{{ articolo.data_pubblicazione|date:'Y-m-d' }}">
-                       {{ articolo.data_pubblicazione|date:'d M Y' }}
+                       {{ articolo.data_pubblicazione|italian_date }}
                 </time>
             </div>
             <br>

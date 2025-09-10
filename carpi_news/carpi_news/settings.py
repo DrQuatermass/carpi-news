@@ -125,7 +125,20 @@ TIME_ZONE = 'Europe/Rome'
 
 USE_I18N = True
 
+USE_L10N = True
+
 USE_TZ = True
+
+# Date and time formats
+DATE_FORMAT = 'd F Y'
+DATETIME_FORMAT = 'd F Y H:i'
+SHORT_DATE_FORMAT = 'd/m/Y'
+
+# Month names in Italian
+MONTH_NAMES = [
+    None, 'gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno',
+    'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'
+]
 
 
 # Static files (CSS, JavaScript, Images)
