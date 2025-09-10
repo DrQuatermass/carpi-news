@@ -1267,7 +1267,6 @@ class UniversalNewsMonitor:
         try:
             if platform.system() == 'Windows':
                 # Su Windows, usa tasklist per controllare se il PID esiste
-                import subprocess
                 result = subprocess.run(['tasklist', '/FI', f'PID eq {pid}'], 
                                       capture_output=True, text=True)
                 return str(pid) in result.stdout
