@@ -7,9 +7,9 @@ import tempfile
 import platform
 import uuid
 import subprocess
+import hashlib
 from datetime import datetime
 from bs4 import BeautifulSoup
-import hashlib
 from django.utils import timezone
 from urllib.parse import urljoin, urlparse
 from abc import ABC, abstractmethod
@@ -1111,8 +1111,34 @@ class GraphQLScraper(BaseScraper):
         # Il testoCompleto è già incluso nella risposta GraphQL, non serve fetch aggiuntivo
         return None
     
+    def _get_image_hash(self, image_content: bytes) -> str:
+        """Calcola hash MD5 del contenuto dell'immagine"""
+        return hashlib.md5(image_content).hexdigest()
+    
+    def _find_existing_image_by_hash(self, image_hash: str, media_dir: str) -> Optional[str]:
+        """Cerca un'immagine esistente con lo stesso hash"""
+        try:
+            if not os.path.exists(media_dir):
+                return None
+                
+            for filename in os.listdir(media_dir):
+                if filename.startswith('comune_carpi_') and filename.endswith(('.jpg', '.png', '.webp')):
+                    file_path = os.path.join(media_dir, filename)
+                    try:
+                        with open(file_path, 'rb') as f:
+                            existing_hash = self._get_image_hash(f.read())
+                            if existing_hash == image_hash:
+                                return filename
+                    except Exception as e:
+                        self.logger.warning(f"Errore nel leggere {filename}: {e}")
+                        continue
+            return None
+        except Exception as e:
+            self.logger.warning(f"Errore nella ricerca immagini esistenti: {e}")
+            return None
+    
     def download_and_save_image(self, api_image_url: str, unique_id: str) -> Optional[str]:
-        """Scarica immagine dall'API e la salva localmente"""
+        """Scarica immagine dall'API e la salva localmente (evitando duplicati)"""
         if not api_image_url or 'api.wp.ai4smartcity.ai' not in api_image_url:
             return api_image_url
         
@@ -1120,6 +1146,21 @@ class GraphQLScraper(BaseScraper):
             # Scarica l'immagine dall'API
             response = requests.get(api_image_url, headers=self.graphql_headers, timeout=15)
             response.raise_for_status()
+            
+            # Calcola hash del contenuto
+            image_content = response.content
+            image_hash = self._get_image_hash(image_content)
+            
+            # Directory per le immagini
+            media_dir = os.path.join(settings.MEDIA_ROOT, 'images', 'downloaded')
+            os.makedirs(media_dir, exist_ok=True)
+            
+            # Controlla se esiste già un'immagine con lo stesso hash
+            existing_filename = self._find_existing_image_by_hash(image_hash, media_dir)
+            if existing_filename:
+                media_url = f"{settings.MEDIA_URL}images/downloaded/{existing_filename}"
+                self.logger.info(f"Immagine già esistente riutilizzata: {existing_filename} (hash: {image_hash[:12]}...)")
+                return media_url
             
             # Determina l'estensione dal content-type
             content_type = response.headers.get('content-type', '').lower()
@@ -1132,23 +1173,18 @@ class GraphQLScraper(BaseScraper):
             else:
                 ext = '.jpg'  # Default
             
-            # Crea nome file unico
-            filename = f"comune_carpi_{unique_id}_{uuid.uuid4().hex[:8]}{ext}"
-            
-            # Percorso per salvare l'immagine usando MEDIA files
-            media_dir = os.path.join(settings.MEDIA_ROOT, 'images', 'downloaded')
-            os.makedirs(media_dir, exist_ok=True)
-            
+            # Crea nome file basato sull'hash invece che UUID casuale
+            filename = f"comune_carpi_{unique_id}_{image_hash[:12]}{ext}"
             file_path = os.path.join(media_dir, filename)
             
             # Salva l'immagine
             with open(file_path, 'wb') as f:
-                f.write(response.content)
+                f.write(image_content)
             
             # Restituisci l'URL media Django
             media_url = f"{settings.MEDIA_URL}images/downloaded/{filename}"
             
-            self.logger.info(f"Immagine salvata: {filename}")
+            self.logger.info(f"Nuova immagine salvata: {filename} (hash: {image_hash[:12]}...)")
             return media_url
             
         except Exception as e:
