@@ -7,7 +7,7 @@ import os
 from pathlib import Path
 
 
-def setup_centralized_logger(name: str = None, log_level: str = "INFO") -> logging.Logger:
+def setup_centralized_logger(name: str = None, log_level: str = "WARNING") -> logging.Logger:
     """
     Configura logger centralizzato per tutti i monitor
     
@@ -42,15 +42,15 @@ def setup_centralized_logger(name: str = None, log_level: str = "INFO") -> loggi
         datefmt='%H:%M:%S'
     )
     
-    # Handler per file con rotazione
+    # Handler per file con rotazione (ridotta)
     file_handler = logging.handlers.RotatingFileHandler(
         log_file,
-        maxBytes=10*1024*1024,  # 10 MB
-        backupCount=5,
+        maxBytes=2*1024*1024,  # 2 MB (ridotto da 10 MB)
+        backupCount=2,         # solo 2 backup (ridotto da 5)
         encoding='utf-8'
     )
     file_handler.setFormatter(formatter)
-    file_handler.setLevel(logging.DEBUG)
+    file_handler.setLevel(logging.WARNING)  # Solo WARNING e ERROR (ridotto da DEBUG)
     
     # Handler per console (solo INFO e superiori)
     console_handler = logging.StreamHandler()
@@ -58,7 +58,7 @@ def setup_centralized_logger(name: str = None, log_level: str = "INFO") -> loggi
         '%(asctime)s [%(levelname)s] %(message)s',
         datefmt='%H:%M:%S'
     ))
-    console_handler.setLevel(logging.INFO)
+    console_handler.setLevel(logging.WARNING)  # Solo WARNING e superiori (ridotto da INFO)
     
     # Aggiungi handler
     logger.addHandler(file_handler)
@@ -165,16 +165,16 @@ def configure_django_logging():
         },
         'handlers': {
             'file': {
-                'level': 'DEBUG',
+                'level': 'WARNING',  # Solo WARNING e ERROR (ridotto da DEBUG)
                 'class': 'logging.handlers.RotatingFileHandler',
                 'filename': os.path.join(os.path.dirname(__file__), '..', 'logs', 'monitors.log'),
-                'maxBytes': 10*1024*1024,
-                'backupCount': 5,
+                'maxBytes': 2*1024*1024,  # 2 MB (ridotto da 10 MB)
+                'backupCount': 2,         # solo 2 backup (ridotto da 5)
                 'formatter': 'detailed',
                 'encoding': 'utf-8',
             },
             'console': {
-                'level': 'INFO',
+                'level': 'WARNING',  # Solo WARNING e superiori (ridotto da INFO)
                 'class': 'logging.StreamHandler',
                 'formatter': 'simple',
             },
@@ -182,12 +182,12 @@ def configure_django_logging():
         'loggers': {
             'carpi_news_monitors': {
                 'handlers': ['file', 'console'],
-                'level': 'DEBUG',
+                'level': 'WARNING',  # Solo WARNING e superiori (ridotto da DEBUG)
                 'propagate': False,
             },
             'home': {
                 'handlers': ['file', 'console'], 
-                'level': 'INFO',
+                'level': 'WARNING',  # Solo WARNING e superiori (ridotto da INFO)
                 'propagate': False,
             },
         },
