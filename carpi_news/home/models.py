@@ -16,7 +16,7 @@ class Articolo(models.Model):
     slug = models.SlugField(max_length=200, unique=True, blank=True)
     approvato = models.BooleanField(default=False)
     fonte = models.URLField(blank=True, null=True)
-    foto = models.URLField(blank=True, null=True)
+    foto = models.TextField(blank=True, null=True)
     richieste_modifica = models.TextField(blank=True, null=True, help_text="Richieste specifiche per la rigenerazione AI dell'articolo")
     views = models.PositiveIntegerField(default=0, help_text="Numero di visualizzazioni dell'articolo")
     data_creazione = models.DateTimeField(auto_now_add=True)
