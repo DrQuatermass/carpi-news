@@ -297,6 +297,16 @@
                 url.searchParams.set('page', currentPage);
                 window.history.pushState({}, '', url);
                 
+                // Scroll automatico all'inizio delle card per mostrare il nuovo contenuto
+                const newsSection = document.querySelector('.news-section');
+                if (newsSection) {
+                    const offsetTop = newsSection.offsetTop - 100; // 100px di margine dall'header fisso
+                    window.scrollTo({
+                        top: offsetTop,
+                        behavior: 'smooth'
+                    });
+                }
+                
                 // Ora anima le nuove card in entrata
                 setTimeout(() => {
                     newCards.forEach((card, index) => {
