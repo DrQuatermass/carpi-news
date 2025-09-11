@@ -6,7 +6,7 @@ python-dotenv==1.0.0
 dj-database-url==2.1.0
 psycopg2-binary==2.9.9  # For PostgreSQL (optional)
 
-# Web scraping
+# Web scraping and monitoring
 requests==2.31.0
 beautifulsoup4==4.12.2
 
@@ -16,12 +16,16 @@ anthropic==0.64.0
 # YouTube integration
 youtube-transcript-api==0.6.1
 
-# Twitter/X integration
-tweepy==4.16.0
+# Social media integration
+# Note: Facebook/Twitter now handled via RSS + IFTTT
+# Only Telegram Bot API used directly (via requests)
 
 # Web server (for production)
 gunicorn==21.2.0
 whitenoise==6.6.0
+
+# RSS feed generation (built into Django)
+# No additional dependencies needed for RSS feeds
 
 # Environment and utilities
 python-decouple==3.8  # Alternative to python-dotenv
