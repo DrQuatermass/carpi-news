@@ -2,8 +2,57 @@ from django.contrib.syndication.views import Feed
 from django.urls import reverse
 from django.utils.feedgenerator import Rss201rev2Feed
 from django.conf import settings
+from django.core.cache import cache
 from .models import Articolo
 from datetime import datetime
+import requests
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+def validate_image_url(url):
+    """
+    Valida se un URL immagine è accessibile
+    
+    Args:
+        url: URL dell'immagine da validare
+        
+    Returns:
+        bool: True se l'immagine è accessibile, False altrimenti
+    """
+    if not url:
+        return False
+    
+    # Usa la cache per evitare troppe richieste HTTP
+    cache_key = f"image_validation_{url}"
+    cached_result = cache.get(cache_key)
+    if cached_result is not None:
+        return cached_result
+    
+    try:
+        # Usa HEAD request per non scaricare l'immagine completa
+        response = requests.head(url, timeout=5, allow_redirects=True)
+        is_valid = response.status_code == 200
+        
+        # Se HEAD non funziona, prova con GET (alcuni server non supportano HEAD)
+        if not is_valid:
+            response = requests.get(url, timeout=5, stream=True)
+            is_valid = response.status_code == 200
+            
+        # Cache il risultato per 1 ora
+        cache.set(cache_key, is_valid, 3600)
+        
+        if not is_valid:
+            logger.warning(f"Immagine non accessibile per RSS feed: {url} (status: {response.status_code})")
+            
+        return is_valid
+        
+    except requests.RequestException as e:
+        logger.warning(f"Errore validazione immagine RSS: {url} - {str(e)}")
+        # Cache il risultato negativo per 30 minuti (meno tempo per retry)
+        cache.set(cache_key, False, 1800)
+        return False
 
 
 class ArticoliFeedRSS(Feed):
@@ -63,17 +112,26 @@ class ArticoliFeedRSS(Feed):
         return categories
     
     def item_enclosure_url(self, item):
-        """URL dell'immagine associata (se presente)"""
-        if item.foto:
-            # Se è già un URL assoluto
-            if item.foto.startswith('http://') or item.foto.startswith('https://'):
-                return item.foto
-            # Se è un percorso locale
-            elif item.foto.startswith('/media/'):
-                return f"https://ombradelportico.it{item.foto}"
-            else:
-                return f"https://ombradelportico.it/media/{item.foto}"
-        return None
+        """URL dell'immagine associata (solo se presente e valida)"""
+        if not item.foto:
+            return None
+        
+        # Costruisci URL assoluto
+        if item.foto.startswith('http://') or item.foto.startswith('https://'):
+            image_url = item.foto
+        elif item.foto.startswith('/media/'):
+            image_url = f"https://ombradelportico.it{item.foto}"
+        elif not item.foto.startswith('/'):
+            image_url = f"https://ombradelportico.it/media/{item.foto}"
+        else:
+            image_url = f"https://ombradelportico.it{item.foto}"
+        
+        # Valida l'accessibilità dell'immagine
+        if not validate_image_url(image_url):
+            logger.info(f"Immagine non accessibile per articolo '{item.titolo}': {image_url}")
+            return None
+        
+        return image_url
     
     def item_enclosure_length(self, item):
         """Lunghezza del file (richiesto per enclosure, usiamo 0 come placeholder)"""
@@ -182,14 +240,26 @@ class ArticoliRecentiFeed(Feed):
         return item.data_pubblicazione
     
     def item_enclosure_url(self, item):
-        if item.foto:
-            if item.foto.startswith('http://') or item.foto.startswith('https://'):
-                return item.foto
-            elif item.foto.startswith('/media/'):
-                return f"https://ombradelportico.it{item.foto}"
-            else:
-                return f"https://ombradelportico.it/media/{item.foto}"
-        return None
+        """URL dell'immagine per feed IFTTT (solo se presente e valida)"""
+        if not item.foto:
+            return None
+        
+        # Costruisci URL assoluto
+        if item.foto.startswith('http://') or item.foto.startswith('https://'):
+            image_url = item.foto
+        elif item.foto.startswith('/media/'):
+            image_url = f"https://ombradelportico.it{item.foto}"
+        elif not item.foto.startswith('/'):
+            image_url = f"https://ombradelportico.it/media/{item.foto}"
+        else:
+            image_url = f"https://ombradelportico.it{item.foto}"
+        
+        # Valida l'accessibilità dell'immagine per IFTTT
+        if not validate_image_url(image_url):
+            logger.info(f"Immagine non accessibile per articolo IFTTT '{item.titolo}': {image_url}")
+            return None
+        
+        return image_url
     
     def item_enclosure_length(self, item):
         return "0"
