@@ -62,6 +62,14 @@ nav {
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+    white-space: nowrap;
+}
+
+/* Increase logo text size on mobile */
+@media (max-width: 768px) {
+    .logo-text {
+        font-size: clamp(1.4rem, 3vw, 1.4rem);
+    }
 }
 
 @keyframes logoGlow {
@@ -118,6 +126,14 @@ nav {
 main {
     margin-top: 80px;
     padding: 2rem 0;
+}
+
+/* Responsive main content - reduce top margin on mobile when hero is hidden */
+@media (max-width: 768px) {
+    main {
+        margin-top: 65px;
+        padding: 1rem 0;
+    }
 }
 
 /* Hero Section */

@@ -13,8 +13,6 @@ CARPI_CALCIO_CONFIG = SiteConfig(
     # Configurazioni specifiche per HTML scraping
     news_url="https://www.carpicalcio.it/news/",
     selectors=[
-        '.post-entry',           # Selettore più specifico per WordPress
-        '.avia-content-section', # Contenitore principale articoli
         '.news-item',
         '.article-preview', 
         '.post',
@@ -37,7 +35,7 @@ CARPI_CALCIO_CONFIG = SiteConfig(
     ],
     
     # Approvazione automatica per Carpi Calcio
-    auto_approve=True,
+    auto_approve=False,
     
     # Generazione AI
     use_ai_generation=True,
