@@ -31,13 +31,23 @@ def validate_image_url(url):
         return cached_result
     
     try:
+        # Usa gli stessi header del monitor universale per evitare blocchi
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'it-IT,it;q=0.8,en-US;q=0.5,en;q=0.3',
+            'Accept-Encoding': 'gzip, deflate',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+        }
+        
         # Usa HEAD request per non scaricare l'immagine completa
-        response = requests.head(url, timeout=5, allow_redirects=True)
+        response = requests.head(url, timeout=10, allow_redirects=True, headers=headers)
         is_valid = response.status_code == 200
         
         # Se HEAD non funziona, prova con GET (alcuni server non supportano HEAD)
         if not is_valid:
-            response = requests.get(url, timeout=5, stream=True)
+            response = requests.get(url, timeout=10, stream=True, headers=headers)
             is_valid = response.status_code == 200
             
         # Cache il risultato per 1 ora
