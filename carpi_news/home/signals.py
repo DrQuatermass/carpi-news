@@ -3,11 +3,43 @@ import threading
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 from django.core.cache import cache
+from django.core.cache.utils import make_template_fragment_key
 from .models import Articolo
 from .email_notifications import send_article_approval_notification
 from .social_sharing import social_manager
 
 logger = logging.getLogger(__name__)
+
+
+def invalidate_rss_feeds():
+    """
+    Invalida la cache dei feed RSS per forzare l'aggiornamento immediato
+    """
+    try:
+        # Django syndication framework usa cache interno per i feed
+        # Invalidiamo le chiavi di cache comuni per i feed RSS
+        cache_keys_to_invalidate = [
+            'syndication:rss-feed',
+            'syndication:atom-feed', 
+            'syndication:recenti-feed',
+            'feeds:ArticoliFeedRSS',
+            'feeds:ArticoliFeedAtom',
+            'feeds:ArticoliRecentiFeed',
+        ]
+        
+        for key in cache_keys_to_invalidate:
+            cache.delete(key)
+        
+        # Invalida anche eventuali cache con timestamp
+        from datetime import datetime
+        today = datetime.now().strftime('%Y%m%d')
+        cache.delete(f'rss_feed_{today}')
+        cache.delete(f'rss_recenti_{today}')
+        
+        logger.info("Cache dei feed RSS invalidata per aggiornamento immediato")
+        
+    except Exception as e:
+        logger.error(f"Errore nell'invalidazione cache RSS: {e}")
 
 
 @receiver(pre_save, sender=Articolo)
@@ -80,9 +112,14 @@ def handle_article_approval(sender, instance, created, **kwargs):
         if instance.pk:
             cache.delete(f'article_approval_state_{instance.pk}')
     
-    # Condividi solo se l'articolo è passato da non approvato ad approvato
-    if not was_approved and is_approved:
-        logger.info(f"Articolo '{instance.titolo}' appena approvato, avvio condivisione automatica")
+    # Condividi se:
+    # 1. L'articolo è passato da non approvato ad approvato (approvazione manuale)
+    # 2. L'articolo è nuovo e già approvato (auto-approvazione)
+    if (not was_approved and is_approved) or (created and is_approved):
+        logger.info(f"Articolo '{instance.titolo}' appena approvato, aggiorno feed RSS e avvio condivisione automatica")
+        
+        # Invalida immediatamente la cache RSS per IFTTT
+        invalidate_rss_feeds()
         
         # Avvia la condivisione in background per non bloccare la request
         thread = threading.Thread(
@@ -92,7 +129,7 @@ def handle_article_approval(sender, instance, created, **kwargs):
         thread.daemon = True
         thread.start()
         
-        logger.info(f"Thread di condivisione avviato per articolo: {instance.titolo}")
+        logger.info(f"Feed RSS aggiornato e thread di condivisione avviato per articolo: {instance.titolo}")
 
 
 def _share_article_background(article_id, article_title):

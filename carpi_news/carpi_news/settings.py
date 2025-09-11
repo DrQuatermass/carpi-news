@@ -288,19 +288,13 @@ YOUTUBE_API_KEY = os.getenv('YOUTUBE_API_KEY', '')
 YOUTUBE_PLAYLIST_ID = os.getenv('YOUTUBE_PLAYLIST_ID', '')
 
 # Social Media Auto-Sharing Configuration
-# Facebook
-FACEBOOK_AUTO_SHARE = os.getenv('FACEBOOK_AUTO_SHARE', 'False').lower() in ['true', '1', 'yes']
-FACEBOOK_PAGE_ID = os.getenv('FACEBOOK_PAGE_ID', '')
-FACEBOOK_ACCESS_TOKEN = os.getenv('FACEBOOK_ACCESS_TOKEN', '')
+# Facebook e Twitter ora gestiti automaticamente via RSS + IFTTT
+# Vedi feed RSS disponibili:
+# - https://ombradelportico.it/feed/rss/
+# - https://ombradelportico.it/feed/recenti/ (ottimizzato per IFTTT)
+# - https://ombradelportico.it/feed/atom/
 
-# Twitter/X
-TWITTER_AUTO_SHARE = os.getenv('TWITTER_AUTO_SHARE', 'False').lower() in ['true', '1', 'yes']
-TWITTER_API_KEY = os.getenv('TWITTER_API_KEY', '')
-TWITTER_API_SECRET = os.getenv('TWITTER_API_SECRET', '')
-TWITTER_ACCESS_TOKEN = os.getenv('TWITTER_ACCESS_TOKEN', '')
-TWITTER_ACCESS_TOKEN_SECRET = os.getenv('TWITTER_ACCESS_TOKEN_SECRET', '')
-
-# Telegram
+# Telegram (condivisione diretta tramite Bot API)
 TELEGRAM_AUTO_SHARE = os.getenv('TELEGRAM_AUTO_SHARE', 'False').lower() in ['true', '1', 'yes']
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '')
 TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID', '')

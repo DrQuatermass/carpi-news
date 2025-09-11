@@ -19,11 +19,18 @@ from django.urls import path
 from django.conf import settings
 from django.conf.urls.static import static
 from home import views
+from home.feeds import ArticoliFeedRSS, ArticoliFeedAtom, ArticoliRecentiFeed
 
 urlpatterns = [
     path('',views.home, name='home'),
     path('articolo/<slug:slug>/', views.dettaglio_articolo, name='dettaglio-articolo'),
     path('privacy-policy/', views.privacy_policy, name='privacy-policy'),
+    
+    # RSS Feeds per IFTTT e social sharing
+    path('feed/rss/', ArticoliFeedRSS(), name='rss-feed'),
+    path('feed/atom/', ArticoliFeedAtom(), name='atom-feed'),
+    path('feed/recenti/', ArticoliRecentiFeed(), name='recenti-feed'),
+    
     path('admin/', admin.site.urls),
 ]
 

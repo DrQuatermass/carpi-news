@@ -1,6 +1,8 @@
 import logging
+import urllib.parse
 import requests
-from typing import Dict, Optional
+import time
+from typing import Dict, List, Optional
 from django.conf import settings
 
 
@@ -8,10 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 class SocialMediaManager:
-    """Gestisce la condivisione automatica sui social media - Solo Telegram
-    
-    Facebook e Twitter sono ora gestiti automaticamente via RSS + IFTTT
-    """
+    """Gestisce la condivisione automatica sui social media"""
     
     def __init__(self):
         # Solo Telegram - Facebook e Twitter ora gestiti via RSS + IFTTT
@@ -90,6 +89,113 @@ class SocialMediaManager:
                 logger.warning("Configurazione Telegram incompleta")
                 return False
             
+            # Prepara il messaggio (ottimizzato per Facebook 2025)
+            # Titolo più accattivante con emoji
+            emoji = "📰" if articolo.categoria != "Sport" else "⚽"
+            title = f"{emoji} {articolo.titolo}"
+            
+            # Sommario limitato per leggibilità
+            summary = articolo.sommario[:180] + "..." if len(articolo.sommario) > 180 else articolo.sommario
+            
+            # Hashtag specifici per categoria
+            hashtags = f"#CarpiNews #OmbraDelPortico"
+            if articolo.categoria:
+                category_tag = f"#{articolo.categoria.replace(' ', '')}"
+                hashtags = f"{category_tag} {hashtags}"
+            
+            message = f"{title}\n\n{summary}\n\n{hashtags}"
+            
+            # Parametri per la Graph API (v22.0 è la versione più recente 2025)
+            url = f"https://graph.facebook.com/v22.0/{config['page_id']}/feed"
+            data = {
+                'message': message,
+                'link': article_url,
+                'access_token': config['access_token']
+            }
+            
+            # Aggiungi immagine se disponibile (migliora engagement)
+            if articolo.foto:
+                # Facebook preferisce immagini separate dal link per miglior rendering
+                absolute_image_url = self._get_absolute_image_url(articolo.foto)
+                if absolute_image_url:
+                    data['picture'] = absolute_image_url
+            
+            response = requests.post(url, data=data, timeout=10)
+            
+            if response.status_code == 200:
+                logger.info(f"Articolo condiviso su Facebook: {articolo.titolo}")
+                return True
+            else:
+                logger.error(f"Errore condivisione Facebook: {response.status_code} - {response.text}")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Errore condivisione Facebook per articolo '{articolo.titolo}': {str(e)}")
+            return False
+    
+    def _share_to_twitter(self, articolo, article_url: str) -> bool:
+        """Condivide su Twitter/X tramite API v2"""
+        try:
+            config = self.platforms['twitter']
+            if not all([config['api_key'], config['api_secret'], config['access_token'], config['access_token_secret']]):
+                logger.warning("Configurazione Twitter incompleta")
+                return False
+            
+            # Importa tweepy solo se necessario
+            try:
+                import tweepy
+            except ImportError:
+                logger.error("tweepy non installato. Installa con: pip install tweepy")
+                return False
+            
+            # Autenticazione
+            auth = tweepy.OAuth1UserHandler(
+                config['api_key'],
+                config['api_secret'],
+                config['access_token'],
+                config['access_token_secret']
+            )
+            
+            api = tweepy.API(auth)
+            client = tweepy.Client(
+                consumer_key=config['api_key'],
+                consumer_secret=config['api_secret'],
+                access_token=config['access_token'],
+                access_token_secret=config['access_token_secret']
+            )
+            
+            # Prepara il tweet (max 280 caratteri)
+            base_text = f"{articolo.titolo}"
+            hashtags = " #CarpiNews #OmbraDelPortico"
+            available_chars = 280 - len(article_url) - len(hashtags) - 3  # 3 per spazi
+            
+            if len(base_text) > available_chars:
+                base_text = base_text[:available_chars-3] + "..."
+            
+            tweet_text = f"{base_text} {article_url}{hashtags}"
+            
+            # Invia il tweet
+            response = client.create_tweet(text=tweet_text)
+            
+            if response.data:
+                logger.info(f"Articolo condiviso su Twitter: {articolo.titolo}")
+                return True
+            else:
+                logger.error(f"Errore condivisione Twitter per articolo '{articolo.titolo}'")
+                return False
+                
+        except Exception as e:
+            logger.error(f"Errore condivisione Twitter per articolo '{articolo.titolo}': {str(e)}")
+            return False
+    
+    def _share_to_telegram(self, articolo, article_url: str) -> bool:
+        """Condivide su Telegram tramite Bot API con foto se disponibile"""
+        try:
+            config = self.platforms['telegram']
+            if not config['bot_token'] or not config['chat_id']:
+                logger.warning("Configurazione Telegram incompleta")
+                return False
+            
             # Prepara il messaggio
             message = f"📰 *{articolo.titolo}*\n\n{articolo.sommario[:300]}...\n\n[Leggi tutto]({article_url})\n\n#CarpiNews #OmbraDelPortico"
             
@@ -149,32 +255,25 @@ class SocialMediaManager:
             return False
     
     def get_platform_status(self) -> Dict[str, Dict]:
-        """Restituisce lo stato di configurazione delle piattaforme (solo Telegram)"""
+        """Restituisce lo stato di configurazione delle piattaforme"""
         status = {}
-        
-        # Solo Telegram è gestito via API diretta
-        config = self.platforms['telegram']
-        is_configured = bool(config['bot_token'] and config['chat_id'])
-        
-        status['telegram'] = {
-            'name': config['name'],
-            'enabled': config['enabled'],
-            'configured': is_configured,
-            'ready': config['enabled'] and is_configured
-        }
-        
-        # Aggiungi info sui social gestiti via RSS
-        status['rss_managed'] = {
-            'name': 'Facebook/Twitter via RSS+IFTTT',
-            'enabled': True,  # RSS è sempre attivo
-            'configured': True,  # Non richiede configurazione
-            'ready': True,
-            'feeds': [
-                'https://ombradelportico.it/feed/rss/',
-                'https://ombradelportico.it/feed/recenti/',
-                'https://ombradelportico.it/feed/atom/'
-            ]
-        }
+        for platform_id, config in self.platforms.items():
+            is_configured = False
+            
+            if platform_id == 'facebook':
+                is_configured = bool(config['page_id'] and config['access_token'])
+            elif platform_id == 'twitter':
+                is_configured = bool(all([config['api_key'], config['api_secret'], 
+                                       config['access_token'], config['access_token_secret']]))
+            elif platform_id == 'telegram':
+                is_configured = bool(config['bot_token'] and config['chat_id'])
+            
+            status[platform_id] = {
+                'name': config['name'],
+                'enabled': config['enabled'],
+                'configured': is_configured,
+                'ready': config['enabled'] and is_configured
+            }
         
         return status
 
