@@ -286,11 +286,8 @@ class ArticoliRecentiFeed(Feed):
         else:
             image_url = f"https://ombradelportico.it{item.foto}"
         
-        # Valida l'accessibilità dell'immagine per IFTTT
-        if not validate_image_url(image_url):
-            logger.info(f"Immagine non accessibile per articolo IFTTT '{item.titolo}': {image_url}")
-            return None
-        
+        # Restituisci l'URL dell'immagine senza validazione per IFTTT
+        # La validazione può bloccare immagini valide di siti esterni
         return image_url
     
     def item_enclosure_length(self, item):
