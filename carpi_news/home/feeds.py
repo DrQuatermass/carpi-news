@@ -83,10 +83,14 @@ class ArticoliFeedRSS(Feed):
         ).order_by('-data_pubblicazione')[:10]
     
     def feed_extra_kwargs(self, obj):
-        """Aggiungi metadati extra al feed per forzare aggiornamenti"""
-        from datetime import datetime
+        """Aggiungi metadati extra al feed basati sull'ultimo articolo approvato"""
+        # Usa la data dell'ultimo articolo approvato come lastBuildDate
+        # invece di datetime.now() per evitare falsi aggiornamenti
+        latest_article = Articolo.objects.filter(approvato=True).order_by('-data_pubblicazione').first()
+        last_build = latest_article.data_pubblicazione if latest_article else datetime.now()
+        
         return {
-            'lastBuildDate': datetime.now(),
+            'lastBuildDate': last_build,
             'generator': 'Ombra del Portico RSS Generator v2.0'
         }
     
@@ -208,10 +212,20 @@ class ArticoliRecentiFeed(Feed):
         ).order_by('-data_pubblicazione')
     
     def feed_extra_kwargs(self, obj):
-        """Forza aggiornamento immediato per IFTTT"""
-        from datetime import datetime
+        """Forza aggiornamento solo quando ci sono nuovi articoli nelle ultime 24 ore"""
+        from datetime import datetime, timedelta
+        ieri = datetime.now() - timedelta(days=1)
+        
+        # Usa la data dell'ultimo articolo nelle ultime 24 ore
+        latest_article = Articolo.objects.filter(
+            approvato=True,
+            data_pubblicazione__gte=ieri
+        ).order_by('-data_pubblicazione').first()
+        
+        last_build = latest_article.data_pubblicazione if latest_article else datetime.now() - timedelta(days=2)
+        
         return {
-            'lastBuildDate': datetime.now(),
+            'lastBuildDate': last_build,
             'generator': 'Ombra del Portico IFTTT Feed v2.0'
         }
     
