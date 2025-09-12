@@ -4,6 +4,26 @@
 
 {% block title %}Ombra del Portico - Le notizie della tua città{% endblock %}
 
+{% block extra_css %}
+<!-- Open Graph meta tags per homepage -->
+<meta property="og:title" content="Ombra del Portico - Notizie di Carpi">
+<meta property="og:description" content="Portale di informazione locale della città di Carpi e dintorni. Notizie, eventi e tutto quello che accade nella nostra comunità.">
+<meta property="og:image" content="https://ombradelportico.it{% static 'home/images/portico_logo_nopayoff.png' %}">
+<meta property="og:url" content="{{ request.build_absolute_uri }}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Ombra del Portico">
+
+<!-- Twitter Card meta tags -->
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Ombra del Portico - Notizie di Carpi">
+<meta name="twitter:description" content="Portale di informazione locale della città di Carpi e dintorni.">
+<meta name="twitter:image" content="https://ombradelportico.it{% static 'home/images/portico_logo_nopayoff.png' %}">
+<meta name="twitter:site" content="@ombradelportico">
+
+<!-- Meta description generale -->
+<meta name="description" content="Portale di informazione locale della città di Carpi e dintorni. Notizie, eventi e tutto quello che accade nella nostra comunità.">
+{% endblock %}
+
 {% block content %}
     <div class="container">
             <!-- Hero Section -->

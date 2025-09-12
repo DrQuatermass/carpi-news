@@ -3,6 +3,28 @@
 
 {% block title %}{{ articolo.titolo }} - Ombra del Portico{% endblock %}
 
+{% block extra_css %}
+<!-- Open Graph meta tags per condivisione social -->
+<meta property="og:title" content="{{ articolo.titolo }}">
+<meta property="og:description" content="{{ articolo.sommario|truncatechars:300|striptags }}">
+<meta property="og:image" content="{% if 'portico_logo_nopayoff.png' not in articolo.foto %}{{ articolo.get_image_url }}{% endif %}">
+<meta property="og:url" content="{{ request.build_absolute_uri }}">
+<meta property="og:type" content="article">
+<meta property="og:site_name" content="Ombra del Portico">
+<meta property="article:published_time" content="{{ articolo.data_pubblicazione|date:'c' }}">
+<meta property="article:section" content="{{ articolo.categoria }}">
+
+<!-- Twitter Card meta tags -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="{{ articolo.titolo }}">
+<meta name="twitter:description" content="{{ articolo.sommario|truncatechars:200|striptags }}">
+<meta name="twitter:image" content="{% if 'portico_logo_nopayoff.png' not in articolo.foto %}{{ articolo.get_image_url }}{% endif %}">
+<meta name="twitter:site" content="@ombradelportico">
+
+<!-- Meta description generale -->
+<meta name="description" content="{{ articolo.sommario|truncatechars:160|striptags }}">
+{% endblock %}
+
 {% block content %}
     <div class="container">
         <article class="article-detail">
