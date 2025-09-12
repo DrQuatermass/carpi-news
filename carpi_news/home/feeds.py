@@ -130,6 +130,10 @@ class ArticoliFeedRSS(Feed):
         if not item.foto:
             return None
         
+        # Se l'immagine è il logo fallback, non includerla nel feed
+        if 'portico_logo_nopayoff.png' in item.foto:
+            return None
+        
         # Costruisci URL assoluto
         if item.foto.startswith('http://') or item.foto.startswith('https://'):
             image_url = item.foto
@@ -266,6 +270,10 @@ class ArticoliRecentiFeed(Feed):
     def item_enclosure_url(self, item):
         """URL dell'immagine per feed IFTTT (solo se presente e valida)"""
         if not item.foto:
+            return None
+        
+        # Se l'immagine è il logo fallback, non includerla nel feed IFTTT
+        if 'portico_logo_nopayoff.png' in item.foto:
             return None
         
         # Costruisci URL assoluto
