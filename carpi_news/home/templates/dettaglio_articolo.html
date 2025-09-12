@@ -7,7 +7,7 @@
 <!-- Open Graph meta tags per condivisione social -->
 <meta property="og:title" content="{{ articolo.titolo }}">
 <meta property="og:description" content="{{ articolo.sommario|truncatechars:300|striptags }}">
-<meta property="og:image" content="{% if 'portico_logo_nopayoff.png' not in articolo.foto %}{{ articolo.get_image_url }}{% endif %}">
+{% if articolo.foto and 'portico_logo_nopayoff.png' not in articolo.foto %}<meta property="og:image" content="{{ articolo.get_image_url }}">{% endif %}
 <meta property="og:url" content="{{ request.build_absolute_uri }}">
 <meta property="og:type" content="article">
 <meta property="og:site_name" content="Ombra del Portico">
@@ -15,10 +15,10 @@
 <meta property="article:section" content="{{ articolo.categoria }}">
 
 <!-- Twitter Card meta tags -->
-<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:card" content="{% if articolo.foto and 'portico_logo_nopayoff.png' not in articolo.foto %}summary_large_image{% else %}summary{% endif %}">
 <meta name="twitter:title" content="{{ articolo.titolo }}">
 <meta name="twitter:description" content="{{ articolo.sommario|truncatechars:200|striptags }}">
-<meta name="twitter:image" content="{% if 'portico_logo_nopayoff.png' not in articolo.foto %}{{ articolo.get_image_url }}{% endif %}">
+{% if articolo.foto and 'portico_logo_nopayoff.png' not in articolo.foto %}<meta name="twitter:image" content="{{ articolo.get_image_url }}">{% endif %}
 <meta name="twitter:site" content="@ombradelportico">
 
 <!-- Meta description generale -->
