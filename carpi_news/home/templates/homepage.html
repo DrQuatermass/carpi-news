@@ -340,7 +340,7 @@
         
         // Funzione per costruire URL immagine
         function buildImageUrl(foto) {
-            if (!foto) return '{% load static %}{% static "home/images/portico_logo_nopayoff.svg" %}';
+            if (!foto) return '{% load static %}{% static "home/images/portico_logo_nopayoff.png" %}';
             
             // Se inizia con http/https è una URL esterna
             if (foto.startsWith('http://') || foto.startsWith('https://')) {

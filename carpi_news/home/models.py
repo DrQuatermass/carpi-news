@@ -35,7 +35,7 @@ class Articolo(models.Model):
 
     def get_image_url(self):
         """Restituisce l'URL dell'immagine o il fallback se non disponibile/raggiungibile"""
-        fallback_image = static('home/images/portico_logo_nopayoff.svg')
+        fallback_image = static('home/images/portico_logo_nopayoff.png')
         
         if not self.foto:
             return fallback_image

@@ -1,0 +1,39 @@
+# Robots.txt per Ombra del Portico - Notizie di Carpi
+User-agent: *
+
+# Permetti accesso agli articoli (contenuto principale)
+Allow: /articolo/
+Allow: /
+
+# Permetti RSS feeds (per indicizzazione e IFTTT)
+Allow: /feed/
+
+# Blocca aree amministrative
+Disallow: /admin/
+Disallow: /django-admin/
+
+# Blocca file di sistema e cache
+Disallow: /media/cache/
+Disallow: /static/admin/
+Disallow: /*.log$
+
+# Blocca pagine di test e sviluppo
+Disallow: /test/
+Disallow: /debug/
+
+# Incoraggia indicizzazione dei feed per news aggregators
+# Sitemap: https://ombradelportico.it/sitemap.xml
+
+# Per bot social media e news aggregators
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: Twitterbot
+Allow: /
+
+User-agent: GoogleBot-News
+Allow: /
+Allow: /feed/
+
+# Crawl-delay per bot generici (1 secondo tra richieste)
+Crawl-delay: 1

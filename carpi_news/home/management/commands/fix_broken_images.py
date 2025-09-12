@@ -148,7 +148,7 @@ class Command(BaseCommand):
             
             # URL del logo di fallback (stesso del metodo get_image_url del model)
             from django.templatetags.static import static
-            fallback_url = static('home/images/portico_logo_nopayoff.svg')
+            fallback_url = static('home/images/portico_logo_nopayoff.png')
             
             recovered_count = 0
             fallback_count = 0

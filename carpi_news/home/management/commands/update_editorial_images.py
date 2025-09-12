@@ -29,7 +29,7 @@ class Command(BaseCommand):
             return
 
         # URL del logo
-        logo_url = static('home/images/portico_logo_nopayoff.svg')
+        logo_url = static('home/images/portico_logo_nopayoff.png')
         
         # Contatore per statistiche
         updated_count = 0
