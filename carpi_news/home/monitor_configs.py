@@ -12,16 +12,24 @@ CARPI_CALCIO_CONFIG = SiteConfig(
     
     # Configurazioni specifiche per HTML scraping
     news_url="https://www.carpicalcio.it/news/",
+    disable_rss=True,  # Disabilita RSS per evitare duplicati
     selectors=[
+        '.news-list-item',
+        '.news-entry',
         '.news-item',
-        '.article-preview', 
+        '.article-preview',
         '.post',
         'article',
-        '.news-card',
-        '.content-item',
-        'div[class*="news"]',
-        'div[class*="article"]',
         '.big-preview.single-big'
+    ],
+
+    # Selettori specifici per immagini di Carpi Calcio
+    image_selectors=[
+        '.news-list-item img',
+        'img[src*="/wp-content/uploads/"]',
+        '.featured-image img',
+        '.post-thumbnail img',
+        'img[class*="wp-post-image"]'
     ],
     content_selectors=[
         '.article-content',
@@ -52,7 +60,7 @@ CARPI_CALCIO_CONFIG = SiteConfig(
     - Struttura: introduzione, sviluppo, conclusione
     
     Formattazione richiesta:
-    - TITOLO: sempre plain text, senza markup
+    - TITOLO: sempre plain text, senza markup, in formato normale (non tutto maiuscolo)
     - CONTENUTO: usa **grassetto** per nomi di giocatori importanti e risultati
     - CONTENUTO: separa i paragrafi con doppia riga vuota
     - Crea una struttura chiara e coinvolgente"""

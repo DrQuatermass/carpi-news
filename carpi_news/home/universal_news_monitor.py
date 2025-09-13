@@ -78,11 +78,12 @@ class HTMLScraper(BaseScraper):
     def scrape_articles(self) -> List[Dict[str, Any]]:
         """Scrape articoli tramite HTML con supporto RSS discovery"""
         articles = []
-        
-        # 1. Prima prova RSS discovery per trovare URLs di articoli reali
-        rss_articles = self._discover_articles_from_rss()
-        articles.extend(rss_articles)
-        
+
+        # 1. Se RSS non è disabilitato, prova RSS discovery prima
+        if not self.config.config.get('disable_rss', False):
+            rss_articles = self._discover_articles_from_rss()
+            articles.extend(rss_articles)
+
         # 2. Poi scrapa pagine HTML normalmente
         urls_to_scrape = [self.config.config.get('news_url', self.config.base_url)]
         
@@ -320,7 +321,18 @@ class HTMLScraper(BaseScraper):
         }
     
     def _extract_image_from_html(self, item) -> Optional[str]:
-        """Estrae URL immagine da elemento HTML"""
+        """Estrae URL immagine da elemento HTML usando selettori personalizzati se configurati"""
+        # Usa selettori immagine personalizzati se configurati
+        image_selectors = self.config.config.get('image_selectors', ['img'])
+
+        for selector in image_selectors:
+            img_elem = item.select_one(selector)
+            if img_elem:
+                image_url = self._extract_image_from_html_elem(img_elem)
+                if image_url:
+                    return image_url
+
+        # Fallback al metodo standard
         img_elem = item.find('img')
         if not img_elem:
             return None
