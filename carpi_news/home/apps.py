@@ -19,7 +19,6 @@ class HomeConfig(AppConfig):
     
     # Variabili di classe per prevenire avvii multipli
     _universal_monitors_started = False
-    _editorial_scheduler_started = False
     
     def ready(self):
         """Chiamato quando l'app è pronta - avvia il monitor playlist e registra segnali"""
@@ -37,7 +36,6 @@ class HomeConfig(AppConfig):
                 time.sleep(5)  # Aspetta 5 secondi per evitare conflitti
                 try:
                     self.start_universal_monitors_improved()
-                    self.start_editorial_scheduler()
                 except Exception as e:
                     logger.error(f"Errore nell'avvio ritardato dei monitor: {e}")
             
@@ -193,83 +191,3 @@ class HomeConfig(AppConfig):
             import traceback
             logger.error(f"Traceback: {traceback.format_exc()}")
     
-    def start_editorial_scheduler(self):
-        """Avvia lo scheduler per l'editoriale quotidiano"""
-        try:
-            # Previeni avvii multipli
-            if HomeConfig._editorial_scheduler_started:
-                logger.info("Scheduler editoriale già avviato, skip")
-                return
-            
-            logger.info("Avvio scheduler editoriale...")
-            
-            # Import dinamico per evitare problemi di inizializzazione
-            import schedule
-            import threading
-            import time
-            from datetime import datetime
-            from django.utils import timezone
-            
-            def run_editoriale():
-                """Esegue l'editoriale quotidiano"""
-                try:
-                    logger.info("Avvio editoriale quotidiano schedulato")
-                    
-                    # Import dinamico per evitare problemi di inizializzazione
-                    import subprocess
-                    import sys
-                    import os
-                    
-                    # Esegui editoriale.py
-                    script_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'editoriale.py')
-                    result = subprocess.run([sys.executable, script_path], 
-                                          capture_output=True, text=True, 
-                                          cwd=os.path.dirname(os.path.dirname(__file__)))
-                    
-                    if result.returncode == 0:
-                        logger.info("Editoriale quotidiano completato con successo")
-                    else:
-                        logger.error(f"Errore nell'editoriale: {result.stderr}")
-                        
-                except Exception as e:
-                    logger.error(f"Errore nell'esecuzione schedulata dell'editoriale: {e}")
-            
-            def scheduler_loop():
-                """Loop principale dello scheduler"""
-                try:
-                    # Programma l'editoriale alle 8:00 ogni giorno (ora italiana)
-                    schedule.every().day.at("08:00").do(run_editoriale)
-                    logger.info("Scheduler editoriale configurato - esecuzione alle 8:00 ogni giorno")
-                    
-                    # Esegui un test immediato se è dopo le 8:00 e non c'è già l'editoriale di oggi
-                    now = datetime.now()
-                    if now.hour >= 8:
-                        from home.models import Articolo
-                        today = timezone.now().date()
-                        today_editorial = Articolo.objects.filter(
-                            categoria='Editoriale',
-                            data_pubblicazione__date=today
-                        ).exists()
-                        
-                        if not today_editorial:
-                            logger.info("Esecuzione immediata dell'editoriale (non presente per oggi)")
-                            run_editoriale()
-                    
-                    # Loop principale dello scheduler
-                    while True:
-                        schedule.run_pending()
-                        time.sleep(60)  # Controlla ogni minuto
-                        
-                except Exception as e:
-                    logger.error(f"Errore nel loop dello scheduler editoriale: {e}")
-            
-            # Avvia lo scheduler in un thread separato
-            thread = threading.Thread(target=scheduler_loop, daemon=True)
-            thread.start()
-            
-            # Marca come avviato
-            HomeConfig._editorial_scheduler_started = True
-            logger.info("Scheduler editoriale avviato automaticamente")
-            
-        except Exception as e:
-            logger.error(f"Errore nell'avvio automatico dello scheduler editoriale: {e}")
