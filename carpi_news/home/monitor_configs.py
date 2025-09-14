@@ -337,6 +337,7 @@ VOCE_CARPI_CONFIG = SiteConfig(
     
     # Configurazioni specifiche per HTML scraping
     news_url="http://www.voce.it/it/categoria/attualita",
+    disable_rss=True,  # Disabilita RSS per evitare duplicati
     selectors=[
        # 'a[href*="../articolo/"]',
        # 'a[href*="articolo/"]',
@@ -387,6 +388,7 @@ TEMPO_CARPI_CONFIG = SiteConfig(
     
     # Configurazioni specifiche per HTML scraping
     news_url="https://temponews.it/category/carpi/",
+    disable_rss=True,  # Disabilita RSS per evitare duplicati
     selectors=[
        # 'a[href*="../articolo/"]',
        # 'a[href*="articolo/"]',
