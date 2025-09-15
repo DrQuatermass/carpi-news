@@ -126,14 +126,14 @@ class ArticoliFeedRSS(Feed):
         return categories
     
     def item_enclosure_url(self, item):
-        """URL dell'immagine associata (solo se presente e valida)"""
+        """URL dell'immagine associata (solo se presente)"""
         if not item.foto:
             return None
-        
+
         # Se l'immagine è il logo fallback, non includerla nel feed
         if 'portico_logo_nopayoff.png' in item.foto:
             return None
-        
+
         # Costruisci URL assoluto
         if item.foto.startswith('http://') or item.foto.startswith('https://'):
             image_url = item.foto
@@ -143,12 +143,9 @@ class ArticoliFeedRSS(Feed):
             image_url = f"https://ombradelportico.it/media/{item.foto}"
         else:
             image_url = f"https://ombradelportico.it{item.foto}"
-        
-        # Valida l'accessibilità dell'immagine
-        if not validate_image_url(image_url):
-            logger.info(f"Immagine non accessibile per articolo '{item.titolo}': {image_url}")
-            return None
-        
+
+        # Restituisci l'URL dell'immagine senza validazione per evitare fallback a logo_nopayoff
+        # La validazione può bloccare immagini valide di siti esterni
         return image_url
     
     def item_enclosure_length(self, item):
