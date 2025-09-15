@@ -46,8 +46,16 @@ class Articolo(models.Model):
             site_url = getattr(settings, 'SITE_URL', 'https://ombradelportico.it')
             return f"{site_url}{self.foto}"
         
-        # Fix per URL con spazi prima della validazione
+        # Fix per URL con spazi e doppi slash prima della validazione
         validated_url = self.foto
+
+        # Fix per doppi slash negli URL (es. voce.it/upload//articolo)
+        if '://' in validated_url:
+            protocol, rest = validated_url.split('://', 1)
+            # Rimuovi doppi slash nel path ma mantieni quelli dopo il protocollo
+            rest = re.sub(r'/+', '/', rest)
+            validated_url = f"{protocol}://{rest}"
+
         if ' ' in validated_url:
             # Codifica solo la parte del path, mantenendo lo schema e host
             if validated_url.startswith('http'):
