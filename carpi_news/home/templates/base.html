@@ -15,9 +15,19 @@
     <link rel="icon" type="image/png" sizes="16x16" href="{% static 'home/images/portico_logo_nopayoff.png' %}">
     <link rel="apple-touch-icon" href="{% static 'home/images/portico_logo_nopayoff.png' %}">
     
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-MSCYFFSNGD"></script>
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-MSCYFFSNGD');
+    </script>
+
     <!-- Google AdSense -->
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3345905614586761" crossorigin="anonymous"></script>
-    
+
     {% block extra_css %}{% endblock %}
 </head>
 <body>
