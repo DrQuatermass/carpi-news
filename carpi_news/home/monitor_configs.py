@@ -1,5 +1,6 @@
 from home.universal_news_monitor import SiteConfig
 from django.conf import settings
+import os
 
 # Configurazioni per i diversi siti monitorati
 
@@ -469,14 +470,79 @@ GENERIC_HTML_CONFIG = SiteConfig(
     base_url="https://example.com/",
     scraper_type="html",
     category="Attualità",
-    
+
     # Configurazioni HTML personalizzabili
     news_url="https://example.com/news/",
     selectors=['.news', '.article', 'article'],
     content_selectors=['.content', '.article-body', 'main'],
-    
+
     # Senza AI - salvataggio diretto
     use_ai_generation=False
+)
+
+# Configurazione per Email Monitor - Ombra del Portico
+EMAIL_COMUNICATI_CONFIG = SiteConfig(
+    name="Email Comunicati Stampa",
+    base_url="email://comunicati_stampa@ombradelportico.it",
+    scraper_type="email",
+    category="Comunicati Stampa",
+
+    # Configurazioni IMAP per Aruba
+    imap_server="imaps.aruba.it",
+    imap_port=993,
+    email="comunicati_stampa@ombradelportico.it",
+    password=os.getenv('EMAIL_COMUNICATI_PASSWORD', ''),
+    mailbox="INBOX",
+
+    # Filtri opzionali
+    sender_filter=[],  # Filtra per mittenti specifici se necessario
+    subject_filter=[],  # Nessun filtro - elabora tutte le email
+
+    # Generazione AI per comunicati stampa
+    use_ai_generation=True,
+    ai_api_key=settings.ANTHROPIC_API_KEY,
+
+    # Prompt principale per comunicati formali
+    ai_system_prompt="""Sei Sergio Zavoli.
+    Il tuo compito è rielaborare comunicati stampa ricevuti via email per il giornale locale "Ombra del Portico".
+
+    Stile richiesto:
+    - Tono professionale ma accessibile ai cittadini
+    - Linguaggio chiaro e diretto, senza perdere l'autorevolezza
+    - Evidenzia l'impatto sulla comunità locale di Carpi
+    - Mantieni l'essenza del comunicato ma rendilo più coinvolgente
+    - Crea un titolo informativo e accattivante
+    - Struttura: introduzione, sviluppo, conclusione con impatto locale
+    - Se sono presenti link con contenuto aggiuntivo, integra le informazioni per arricchire l'articolo
+
+    Formattazione richiesta:
+    - Il titolo è sempre plain text, senza markup
+    - Nel contenuto usa **grassetto** per nomi di persone e punti chiave
+    - Separa i paragrafi con doppia riga vuota
+    - Mantieni una struttura giornalistica professionale ma leggibile
+    - Integra informazioni dai link senza citarli esplicitamente, rendendo l'articolo più completo
+    - Se il comunicato contiene informazioni di contatto, includile alla fine""",
+
+    # Prompt alternativo per contenuti Twitter/Social
+    ai_twitter_prompt="""Sei Beppe Severgnini.
+    Il tuo compito è trasformare tweet della Polizia Locale di Terre d'Argine in articoli di cronaca per "Ombra del Portico".
+
+    Stile richiesto:
+    - Tono giornalistico ma immediato e accessibile
+    - Linguaggio diretto per notizie di cronaca locale
+    - Evidenzia l'aspetto pratico per i cittadini di Carpi
+    - Trasforma hashtag e mention in linguaggio naturale
+    - Crea titoli informativi per la cronaca locale
+    - Struttura: fatto, dettagli pratici, impatto sui cittadini
+    - Se sono presenti link con contenuto aggiuntivo, integra le informazioni per fornire un quadro completo
+
+    Formattazione richiesta:
+    - Il titolo è sempre plain text, senza markup
+    - Nel contenuto usa **grassetto** per luoghi e informazioni pratiche
+    - Separa i paragrafi con doppia riga vuota
+    - Trasforma gli hashtag in testo normale (es. #ViabilitàCarpi → "viabilità a Carpi")
+    - Se ci sono deviazioni stradali, evidenziale chiaramente
+    - Integra informazioni dai link riferiti senza citarli esplicitamente"""
 )
 
 # Dictionary per accesso facile alle configurazioni
@@ -491,7 +557,8 @@ MONITOR_CONFIGS = {
     'voce_carpi': VOCE_CARPI_CONFIG,
     'temponews': TEMPO_CARPI_CONFIG,
     'terre_argine': TERRE_ARGINE_CONFIG,
-    'generic_html': GENERIC_HTML_CONFIG
+    'generic_html': GENERIC_HTML_CONFIG,
+    'email_comunicati': EMAIL_COMUNICATI_CONFIG
 }
 
 # Funzioni di utilità

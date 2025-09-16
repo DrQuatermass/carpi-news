@@ -49,7 +49,7 @@ class SiteConfig:
         self.config = kwargs
         
         # Validazione base
-        if scraper_type not in ['html', 'wordpress_api', 'youtube_api', 'graphql']:
+        if scraper_type not in ['html', 'wordpress_api', 'youtube_api', 'graphql', 'email']:
             raise ValueError(f"Tipo scraper non supportato: {scraper_type}")
 
 
@@ -1204,6 +1204,503 @@ class GraphQLScraper(BaseScraper):
             return None
 
 
+class EmailScraper(BaseScraper):
+    """Scraper per monitoraggio email IMAP"""
+
+    def __init__(self, config: SiteConfig, headers: Dict[str, str]):
+        super().__init__(config, headers)
+        self.imap_server = config.config.get('imap_server')
+        self.imap_port = config.config.get('imap_port', 993)
+        self.email = config.config.get('email')
+        self.password = config.config.get('password')
+        self.mailbox = config.config.get('mailbox', 'INBOX')
+        self.sender_filter = config.config.get('sender_filter', [])
+        self.subject_filter = config.config.get('subject_filter', [])
+
+        if not all([self.imap_server, self.email, self.password]):
+            raise ValueError("EmailScraper richiede imap_server, email e password nella configurazione")
+
+        # Import IMAP solo se necessario
+        import imaplib
+        import email as email_lib
+        import email.utils
+        from email.mime.text import MIMEText
+
+        self.imaplib = imaplib
+        self.email_lib = email_lib
+
+    def scrape_articles(self) -> List[Dict[str, Any]]:
+        """Scrape articoli dalle email"""
+        articles = []
+
+        try:
+            # Connessione IMAP (prova SSL prima, poi normale)
+            self.logger.info(f"Connessione a {self.imap_server}:{self.imap_port}")
+
+            try:
+                mail = self.imaplib.IMAP4_SSL(self.imap_server, self.imap_port)
+            except Exception as e:
+                self.logger.info(f"SSL fallito, provo connessione normale: {e}")
+                mail = self.imaplib.IMAP4(self.imap_server, 143)
+                mail.starttls()
+
+            mail.login(self.email, self.password)
+            mail.select(self.mailbox)
+
+            # Cerca email non lette
+            status, messages = mail.search(None, 'UNSEEN')
+
+            if status == 'OK':
+                email_ids = messages[0].split()
+                self.logger.info(f"Trovate {len(email_ids)} email non lette")
+
+                for email_id in email_ids[-10:]:  # Prendi massimo ultime 10 email
+                    try:
+                        article = self._process_email(mail, email_id)
+                        if article:
+                            articles.append(article)
+                            # Marca come letta
+                            mail.store(email_id, '+FLAGS', '\\Seen')
+                    except Exception as e:
+                        self.logger.error(f"Errore processamento email {email_id}: {e}")
+
+            mail.close()
+            mail.logout()
+
+        except Exception as e:
+            self.logger.error(f"Errore connessione IMAP: {e}")
+
+        return articles
+
+    def _process_email(self, mail, email_id) -> Optional[Dict[str, Any]]:
+        """Processa singola email"""
+        try:
+            # Fetch email
+            status, msg_data = mail.fetch(email_id, '(RFC822)')
+            if status != 'OK':
+                return None
+
+            # Parse email
+            email_message = self.email_lib.message_from_bytes(msg_data[0][1])
+
+            # Estrai informazioni base
+            subject = email_message.get('Subject', '')
+            sender = email_message.get('From', '')
+            date_received = email_message.get('Date', '')
+
+            # Applica filtri se configurati
+            if self.sender_filter and not any(s.lower() in sender.lower() for s in self.sender_filter):
+                return None
+
+            if self.subject_filter and not any(s.lower() in subject.lower() for s in self.subject_filter):
+                return None
+
+            # Estrai contenuto
+            content = self._extract_email_content(email_message)
+            if not content:
+                return None
+
+            # Prima estrai il contenuto HTML grezzo per le immagini (prima della conversione a testo)
+            raw_html_content = self._get_raw_html_content(email_message)
+
+            # Rileva tipo di contenuto automaticamente
+            content_type, category, image_url, source_url = self._detect_content_type(content, sender, subject, raw_html_content)
+
+            # Estrai e verifica link nel contenuto
+            links_content = self._extract_and_fetch_links(content)
+
+            self.logger.info(f"Email processata: {subject[:50]}... (Tipo: {content_type})")
+
+            # Per tweet usa l'URL del tweet, per comunicati usa email://
+            article_url = source_url if source_url else f"email://{email_id}"
+
+            return {
+                'title': subject,
+                'content': content,
+                'preview': content[:300] + '...' if len(content) > 300 else content,
+                'url': article_url,
+                'date': self._parse_email_date(date_received),
+                'sender': sender,
+                'image': image_url,
+                'content_type': content_type,  # 'twitter' o 'comunicato'
+                'category_override': category,  # Categoria specifica
+                'links_content': links_content  # Contenuto dei link estratti
+            }
+
+        except Exception as e:
+            self.logger.error(f"Errore processing email: {e}")
+            return None
+
+    def _detect_content_type(self, content: str, sender: str, subject: str, raw_html: str = "") -> tuple[str, str, Optional[str], Optional[str]]:
+        """Rileva automaticamente il tipo di contenuto, estrae immagini e determina fonte"""
+
+        # Indicatori per contenuto Twitter/Social
+        twitter_indicators = [
+            'twitter.com', 'pic.twitter.com', '@', '#', 'twitter-tweet',
+            'action@ifttt.com', 'PMTerredargine', 'Polizia Locale'
+        ]
+
+        # Indicatori per comunicati stampa formali
+        comunicato_indicators = [
+            'comunicato stampa', 'comunicato', 'ufficio stampa', 'press release',
+            'si comunica', 'si informa', 'sindaco', 'giunta', 'comune'
+        ]
+
+        content_lower = content.lower()
+        subject_lower = subject.lower()
+        sender_lower = sender.lower()
+
+        # Controlla se è contenuto Twitter/Social
+        is_twitter = (
+            any(indicator in content_lower for indicator in twitter_indicators) or
+            any(indicator in sender_lower for indicator in twitter_indicators) or
+            'action@ifttt.com' in sender_lower
+        )
+
+        if is_twitter:
+            # Estrai immagine Twitter e link al tweet usando HTML grezzo
+            twitter_image = self._extract_twitter_image(raw_html or content)
+            tweet_url = self._extract_tweet_url(raw_html or content)
+            return 'twitter', 'Cronaca Social', twitter_image, tweet_url
+
+        # Controlla se è comunicato formale
+        is_comunicato = any(indicator in content_lower or indicator in subject_lower
+                           for indicator in comunicato_indicators)
+
+        if is_comunicato:
+            # Estrai immagine standard, fonte vuota per comunicati
+            standard_image = self._extract_first_image(content)
+            return 'comunicato', 'Comunicati Stampa', standard_image, None
+
+        # Default: tratta come comunicato generico
+        return 'comunicato', 'Comunicati Stampa', self._extract_first_image(content), None
+
+    def _extract_twitter_image(self, content: str) -> Optional[str]:
+        """Estrae URL immagini da contenuto Twitter"""
+        import re
+
+        # Pattern per link immagini Twitter
+        twitter_image_patterns = [
+            r'pic\.twitter\.com/\w+',
+            r'https://pic\.twitter\.com/\w+',
+            r'http://pic\.twitter\.com/\w+',
+            r'https://pbs\.twimg\.com/media/[\w-]+\.(?:jpg|jpeg|png|gif)'
+        ]
+
+        for pattern in twitter_image_patterns:
+            matches = re.findall(pattern, content)
+            if matches:
+                url = matches[0]
+                # Assicurati che abbia https://
+                if not url.startswith('http'):
+                    url = f'https://{url}'
+                return url
+
+        # Fallback: cerca immagini standard
+        return self._extract_first_image(content)
+
+    def _extract_tweet_url(self, content: str) -> Optional[str]:
+        """Estrae URL del tweet originale da contenuto IFTTT"""
+        import re
+
+        # Pattern per link diretti al tweet
+        tweet_url_patterns = [
+            r'https://twitter\.com/\w+/status/\d+',
+            r'http://twitter\.com/\w+/status/\d+',
+            r'https://x\.com/\w+/status/\d+',
+            r'http://x\.com/\w+/status/\d+'
+        ]
+
+        for pattern in tweet_url_patterns:
+            matches = re.findall(pattern, content)
+            if matches:
+                url = matches[0]
+                # Converti twitter.com in x.com se necessario
+                if 'twitter.com' in url:
+                    url = url.replace('twitter.com', 'x.com')
+                return url
+
+        # Se non trova link diretti, cerca negli href dei tag <a>
+        try:
+            soup = BeautifulSoup(content, 'html.parser')
+            for link in soup.find_all('a', href=True):
+                href = link['href']
+                if any(domain in href for domain in ['twitter.com/status/', 'x.com/status/']):
+                    if 'twitter.com' in href:
+                        href = href.replace('twitter.com', 'x.com')
+                    return href
+        except Exception:
+            pass
+
+        return None
+
+    def _get_raw_html_content(self, email_message) -> str:
+        """Estrae contenuto HTML grezzo senza conversioni per l'estrazione link/immagini"""
+        if email_message.is_multipart():
+            for part in email_message.walk():
+                if part.get_content_type() == "text/html":
+                    try:
+                        return part.get_payload(decode=True).decode('utf-8', errors='replace')
+                    except (UnicodeDecodeError, AttributeError):
+                        return str(part.get_payload(decode=True), errors='replace')
+        else:
+            if email_message.get_content_type() == "text/html":
+                try:
+                    return email_message.get_payload(decode=True).decode('utf-8', errors='replace')
+                except (UnicodeDecodeError, AttributeError):
+                    return str(email_message.get_payload(decode=True), errors='replace')
+        return ""
+
+    def _extract_and_fetch_links(self, content: str) -> List[Dict[str, str]]:
+        """Estrae link dal contenuto e ne scarica il contenuto"""
+        import re
+        import requests
+        from urllib.parse import urlparse
+
+        links_content = []
+
+        try:
+            # Pattern per trovare link HTTP/HTTPS
+            url_patterns = [
+                r'https?://[^\s<>"\']+',  # Link diretti
+                r'href=["\']([^"\']+)["\']'  # Link in tag HTML
+            ]
+
+            found_urls = set()
+
+            # Estrai URL con regex
+            for pattern in url_patterns:
+                matches = re.findall(pattern, content, re.IGNORECASE)
+                for match in matches:
+                    url = match.strip()
+                    if url.startswith(('http://', 'https://')):
+                        found_urls.add(url)
+
+            # Estrai URL da tag HTML
+            try:
+                soup = BeautifulSoup(content, 'html.parser')
+                for link in soup.find_all('a', href=True):
+                    href = link['href']
+                    if href.startswith(('http://', 'https://')):
+                        found_urls.add(href)
+            except Exception:
+                pass
+
+            # Filtra URL rilevanti (esclude Twitter, immagini, etc.)
+            excluded_domains = [
+                'twitter.com', 'x.com', 'pic.twitter.com', 'pbs.twimg.com',
+                't.co',  # URL shortener Twitter
+                'facebook.com', 'instagram.com', 'youtube.com'
+            ]
+
+            relevant_urls = []
+            for url in found_urls:
+                parsed = urlparse(url)
+                domain = parsed.netloc.lower()
+
+                # Esclude domini social e estensioni immagini
+                if (not any(excluded in domain for excluded in excluded_domains) and
+                    not url.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.pdf'))):
+                    relevant_urls.append(url)
+
+            # Limita a massimo 3 link per evitare overhead
+            for url in relevant_urls[:3]:
+                try:
+                    self.logger.info(f"Scaricando contenuto da: {url}")
+
+                    headers = {
+                        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                    }
+
+                    response = requests.get(url, headers=headers, timeout=10, allow_redirects=True)
+                    response.raise_for_status()
+
+                    # Parse HTML e estrai contenuto testuale
+                    soup = BeautifulSoup(response.content, 'html.parser')
+
+                    # Rimuovi script, style, nav, footer
+                    for tag in soup(["script", "style", "nav", "footer", "header"]):
+                        tag.decompose()
+
+                    # Estrai titolo
+                    title = ""
+                    if soup.title:
+                        title = soup.title.string.strip()
+
+                    # Estrai contenuto principale
+                    content_tags = soup.find_all(['p', 'h1', 'h2', 'h3', 'article', 'main'])
+                    text_content = ' '.join(tag.get_text(strip=True) for tag in content_tags)
+
+                    # Pulisci e limita il contenuto
+                    clean_content = ' '.join(text_content.split())[:1000]  # Max 1000 caratteri
+
+                    if clean_content and len(clean_content) > 100:  # Solo se ha contenuto significativo
+                        links_content.append({
+                            'url': url,
+                            'title': title,
+                            'content': clean_content
+                        })
+
+                except Exception as e:
+                    self.logger.warning(f"Impossibile scaricare {url}: {e}")
+                    continue
+
+        except Exception as e:
+            self.logger.error(f"Errore estrazione link: {e}")
+
+        return links_content
+
+    def _extract_email_content(self, email_message) -> str:
+        """Estrai contenuto dall'email (HTML o testo)"""
+        content = ""
+
+        if email_message.is_multipart():
+            for part in email_message.walk():
+                if part.get_content_type() == "text/html":
+                    try:
+                        content = part.get_payload(decode=True).decode('utf-8', errors='replace')
+                        # Converti HTML in testo leggibile, preservando il contenuto HTML per estrazione immagini
+                        content = self._html_to_text(content)
+                        break
+                    except (UnicodeDecodeError, AttributeError):
+                        # Fallback con encoding più permissivo
+                        content = str(part.get_payload(decode=True), errors='replace')
+                        content = self._html_to_text(content)
+                        break
+                elif part.get_content_type() == "text/plain" and not content:
+                    try:
+                        content = part.get_payload(decode=True).decode('utf-8', errors='replace')
+                    except (UnicodeDecodeError, AttributeError):
+                        content = str(part.get_payload(decode=True), errors='replace')
+        else:
+            content_type = email_message.get_content_type()
+            if content_type == "text/html":
+                try:
+                    content = email_message.get_payload(decode=True).decode('utf-8', errors='replace')
+                    content = self._html_to_text(content)
+                except (UnicodeDecodeError, AttributeError):
+                    content = str(email_message.get_payload(decode=True), errors='replace')
+                    content = self._html_to_text(content)
+            elif content_type == "text/plain":
+                try:
+                    content = email_message.get_payload(decode=True).decode('utf-8', errors='replace')
+                except (UnicodeDecodeError, AttributeError):
+                    content = str(email_message.get_payload(decode=True), errors='replace')
+
+        return content.strip()
+
+    def _html_to_text(self, html_content: str) -> str:
+        """Converti HTML in testo pulito con gestione migliorata per tweet"""
+        try:
+            import html
+
+            # Prima fai unescape dell'HTML per gestire contenuto escaped
+            unescaped_content = html.unescape(html_content)
+
+            soup = BeautifulSoup(unescaped_content, 'html.parser')
+
+            # Rimuovi script, style, e altri elementi non necessari
+            for tag in soup(["script", "style", "head", "meta", "link"]):
+                tag.decompose()
+
+            # Per tweet IFTTT, cerca il contenuto specifico del tweet
+            tweet_content = ""
+
+            # Cerca blockquote twitter-tweet per contenuto tweet
+            twitter_blockquote = soup.find('blockquote', class_='twitter-tweet')
+            if twitter_blockquote:
+                # Estrai solo il testo del tweet, non i link ai profili
+                tweet_p = twitter_blockquote.find('p')
+                if tweet_p:
+                    # Sostituisci hashtag e mention con testo normale
+                    for link in tweet_p.find_all('a'):
+                        href = link.get('href', '')
+                        text = link.get_text()
+
+                        if '/hashtag/' in href:
+                            # Trasforma #hashtag in testo normale
+                            link.replace_with(text)
+                        elif href.startswith('https://twitter.com/') and not '/status/' in href:
+                            # Trasforma @mention in testo normale
+                            link.replace_with(text)
+                        else:
+                            # Mantieni altri link
+                            link.replace_with(f" {text} ")
+
+                    tweet_content = tweet_p.get_text()
+
+            # Se non trova tweet specifico, estrai tutto il testo
+            if not tweet_content:
+                text = soup.get_text()
+            else:
+                text = tweet_content
+
+            # Pulisci il testo
+            # Rimuovi caratteri di controllo e sostituisci emoji problematici
+            import re
+
+            # Sostituisci emoji comuni con testo
+            emoji_replacements = {
+                '👮': 'agenti',
+                '🚔': 'pattuglia',
+                '👉': '',
+                '⚠️': 'attenzione',
+                '🚧': 'cantiere',
+                '🚗': 'traffico',
+                '📍': 'posizione'
+            }
+
+            for emoji, replacement in emoji_replacements.items():
+                text = text.replace(emoji, f' {replacement} ')
+
+            # Pulisci spazi multipli e newline
+            text = re.sub(r'\s+', ' ', text)
+            text = text.strip()
+
+            # Se il testo è troppo corto o sembra vuoto, prova estrazione alternativa
+            if len(text) < 20:
+                text = soup.get_text()
+                text = re.sub(r'\s+', ' ', text).strip()
+
+            return text
+
+        except Exception as e:
+            self.logger.error(f"Errore conversione HTML: {e}")
+            # Fallback: restituisci HTML grezzo pulito
+            import re
+            clean_text = re.sub(r'<[^>]+>', ' ', html_content)
+            clean_text = re.sub(r'\s+', ' ', clean_text).strip()
+            return clean_text
+
+    def _extract_first_image(self, content: str) -> Optional[str]:
+        """Estrai prima immagine dal contenuto HTML"""
+        try:
+            if 'http' not in content:
+                return None
+
+            soup = BeautifulSoup(content, 'html.parser')
+            img = soup.find('img')
+            if img and img.get('src'):
+                return img['src']
+        except Exception:
+            pass
+        return None
+
+    def _parse_email_date(self, date_str: str) -> str:
+        """Parse data email"""
+        try:
+            if date_str:
+                parsed_date = self.email_lib.utils.parsedate_to_datetime(date_str)
+                return parsed_date.strftime('%Y-%m-%d %H:%M:%S')
+        except Exception:
+            pass
+        return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+    def get_full_content(self, article_url: str) -> Optional[str]:
+        """Per email, il contenuto è già completo"""
+        return None  # Il contenuto è già estratto in scrape_articles
+
+
 class UniversalNewsMonitor:
     """Monitor universale per diversi tipi di siti news"""
     
@@ -1246,7 +1743,8 @@ class UniversalNewsMonitor:
             'html': HTMLScraper,
             'wordpress_api': WordPressAPIScraper,
             'youtube_api': YouTubeAPIScraper,
-            'graphql': GraphQLScraper
+            'graphql': GraphQLScraper,
+            'email': EmailScraper
         }
         
         scraper_class = scraper_classes.get(self.config.scraper_type)
@@ -1418,18 +1916,35 @@ class UniversalNewsMonitor:
             
             client = Anthropic(api_key=api_key)
             
-            # Prompt personalizzabile
-            system_prompt = self.config.config.get('ai_system_prompt', 
-                """Sei un giornalista esperto. Rielabora questa notizia per il giornale locale.""")
+            # Scegli prompt in base al tipo di contenuto
+            content_type = article_data.get('content_type', 'comunicato')
+            if content_type == 'twitter':
+                system_prompt = self.config.config.get('ai_twitter_prompt',
+                    self.config.config.get('ai_system_prompt',
+                    """Sei un giornalista esperto. Rielabora questa notizia per il giornale locale."""))
+            else:
+                system_prompt = self.config.config.get('ai_system_prompt',
+                    """Sei un giornalista esperto. Rielabora questa notizia per il giornale locale.""")
             
+            # Costruisci contenuto con eventuali link
+            links_section = ""
+            if article_data.get('links_content'):
+                links_section = "\n\nContenuto aggiuntivo dai link riferiti:\n"
+                for i, link_data in enumerate(article_data['links_content'], 1):
+                    links_section += f"\n--- Link {i}: {link_data['url']} ---\n"
+                    if link_data.get('title'):
+                        links_section += f"Titolo: {link_data['title']}\n"
+                    links_section += f"Contenuto: {link_data['content']}\n"
+
             user_content = f"""
             Fonte: {article_data['url']}
             Titolo originale: {article_data['title']}
-            
-            Contenuto da rielaborare:
+
+            Contenuto principale da rielaborare:
             {article_data['full_content']}
-            
-            Rielabora questa notizia creando un articolo coinvolgente.
+            {links_section}
+
+            Rielabora questa notizia creando un articolo coinvolgente. Se ci sono link con contenuto aggiuntivo, integra le informazioni rilevanti per creare un articolo più completo e informativo.
             """
             
             message = client.messages.create(
@@ -1457,13 +1972,16 @@ class UniversalNewsMonitor:
             })
             
             # Salva nel database
+            # Usa categoria override se disponibile, altrimenti quella di default
+            category = article_data.get('category_override', self.config.category)
+
             # Determina se deve essere auto-approvato
-            auto_approve = self.should_auto_approve(self.config.category)
-            
+            auto_approve = self.should_auto_approve(category)
+
             articolo = Articolo(
                 titolo=polished_data['titolo'],
                 contenuto=polished_data['contenuto'],
-                categoria=self.config.category,
+                categoria=category,
                 fonte=article_data['url'],
                 foto=article_data.get('image_url'),
                 approvato=auto_approve,  # Auto-approva se configurato
