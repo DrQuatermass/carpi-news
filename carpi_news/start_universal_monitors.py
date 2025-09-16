@@ -55,6 +55,7 @@ def main():
         ('terre_argine', 900),           # 15 minuti (Unione Terre d'Argine)
         ('youtube_playlist', 1800),      # 30 minuti (YouTube Playlist 1)
         ('youtube_playlist_2', 1800),    # 30 minuti (YouTube Playlist 2)
+        ('email_comunicati', 300),       # 5 minuti (Email comunicati stampa + IFTTT)
     ]
     
     for config_name, interval in configs:

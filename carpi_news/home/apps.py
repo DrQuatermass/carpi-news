@@ -129,10 +129,11 @@ class HomeConfig(AppConfig):
                 ('eventi_carpi_graphql', 1800),  # 30 minuti - Eventi con descrizione_estesa
                 ('ansa_carpi', 300),             # 5 minuti - ANSA Emilia-Romagna (filtro Carpi)
                 ('youtube_playlist', 1800),      # 30 minuti - YouTube Playlist 1
-                ('youtube_playlist_2', 1800),    # 30 minuti - YouTube Playlist 2  
+                ('youtube_playlist_2', 1800),    # 30 minuti - YouTube Playlist 2
                 ('temponews', 600),
                 ('voce_carpi', 600),             # 10 minuti - La Voce di Carpi
                 ('terre_argine', 900),           # 15 minuti - Terre d'Argine
+                ('email_comunicati', 300),       # 5 minuti - Email comunicati stampa + IFTTT
             ]
             
             # Verifica che le configurazioni esistano
