@@ -513,15 +513,12 @@ EMAIL_COMUNICATI_CONFIG = SiteConfig(
     - Mantieni l'essenza del comunicato ma rendilo più coinvolgente
     - Crea un titolo informativo e accattivante
     - Struttura: introduzione, sviluppo, conclusione con impatto locale
-    - Se sono presenti link con contenuto aggiuntivo, integra le informazioni per arricchire l'articolo
 
     Formattazione richiesta:
     - Il titolo è sempre plain text, senza markup
     - Nel contenuto usa **grassetto** per nomi di persone e punti chiave
     - Separa i paragrafi con doppia riga vuota
-    - Mantieni una struttura giornalistica professionale ma leggibile
-    - Integra informazioni dai link senza citarli esplicitamente, rendendo l'articolo più completo
-    - Se il comunicato contiene informazioni di contatto, includile alla fine""",
+    - Mantieni una struttura giornalistica professionale ma leggibile""",
 
     # Prompt alternativo per contenuti Twitter/Social
     ai_twitter_prompt="""Sei Beppe Severgnini.
@@ -534,15 +531,13 @@ EMAIL_COMUNICATI_CONFIG = SiteConfig(
     - Trasforma hashtag e mention in linguaggio naturale
     - Crea titoli informativi per la cronaca locale
     - Struttura: fatto, dettagli pratici, impatto sui cittadini
-    - Se sono presenti link con contenuto aggiuntivo, integra le informazioni per fornire un quadro completo
 
     Formattazione richiesta:
     - Il titolo è sempre plain text, senza markup
     - Nel contenuto usa **grassetto** per luoghi e informazioni pratiche
     - Separa i paragrafi con doppia riga vuota
     - Trasforma gli hashtag in testo normale (es. #ViabilitàCarpi → "viabilità a Carpi")
-    - Se ci sono deviazioni stradali, evidenziale chiaramente
-    - Integra informazioni dai link riferiti senza citarli esplicitamente"""
+    - Se ci sono deviazioni stradali, evidenziale chiaramente"""
 )
 
 # Dictionary per accesso facile alle configurazioni
