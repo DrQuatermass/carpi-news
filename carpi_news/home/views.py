@@ -1,7 +1,9 @@
 import logging
 from django.shortcuts import render, get_object_or_404
 from django.core.paginator import Paginator
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponse
+from django.template import loader
+from datetime import datetime, timedelta
 from .models import Articolo
 
 
@@ -140,3 +142,18 @@ def privacy_policy(request):
     }
     
     return render(request, "privacy_policy.html", context)
+
+def news_sitemap(request):
+    """Vista per la sitemap Google News"""
+    # Solo articoli approvati degli ultimi 2 giorni
+    cutoff_date = datetime.now() - timedelta(days=2)
+    articles = Articolo.objects.filter(
+        approvato=True,
+        data_pubblicazione__gte=cutoff_date
+    ).order_by('-data_pubblicazione')
+
+    logger.info(f"Generata sitemap news con {len(articles)} articoli")
+
+    template = loader.get_template('sitemap_news.xml')
+    context = {'articles': articles}
+    return HttpResponse(template.render(context, request), content_type='application/xml')

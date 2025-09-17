@@ -24,7 +24,7 @@ from home.feeds import ArticoliFeedRSS, ArticoliFeedAtom, ArticoliRecentiFeed
 
 urlpatterns = [
     path('',views.home, name='home'),
-    path('articolo/<slug:slug>/', views.dettaglio_articolo, name='dettaglio-articolo'),
+    path('articolo/<slug:slug>/', views.dettaglio_articolo, name='dettaglio_articolo'),
     path('privacy-policy/', views.privacy_policy, name='privacy-policy'),
     
     # RSS Feeds per IFTTT e social sharing
@@ -34,6 +34,7 @@ urlpatterns = [
     
     # SEO e bot management
     path('robots.txt', TemplateView.as_view(template_name='robots.txt', content_type='text/plain'), name='robots'),
+    path('sitemap-news.xml', views.news_sitemap, name='news_sitemap'),
     
     path('admin/', admin.site.urls),
 ]
