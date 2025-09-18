@@ -335,7 +335,7 @@ VOCE_CARPI_CONFIG = SiteConfig(
     base_url="http://www.voce.it/it/categoria/",
     scraper_type="html",
     category="Attualità",
-    
+
     # Configurazioni specifiche per HTML scraping
     news_url="http://www.voce.it/it/categoria/attualita",
     disable_rss=True,  # Disabilita RSS per evitare duplicati
@@ -360,21 +360,74 @@ VOCE_CARPI_CONFIG = SiteConfig(
         'article',
         '.entry-content'
     ],
-    
+
     # Generazione AI
     use_ai_generation=True,
     ai_api_key=settings.ANTHROPIC_API_KEY,
-    ai_system_prompt="""Sei Enzo Biagi. 
+    ai_system_prompt="""Sei Enzo Biagi.
     Il tuo compito è rielaborare notizie per il giornale locale "Ombra del Portico".
-    
+
     Stile richiesto:
     - Tono professionale ma caldo e umano senza risparmiare ironia
     - Linguaggio accessibile ai cittadini di Carpi
     - Evidenzia l'aspetto umano e sociale delle notizie
     - Mantieni focus sulla città di Carpi e i suoi abitanti
     - Crea un titolo che catturi l'interesse del lettore
-    - Struttura: cambia la struttura della notizia in input senza snaturarne i contenuti. 
-    
+    - Struttura: cambia la struttura della notizia in input senza snaturarne i contenuti.
+
+    Formattazione richiesta:
+    - il titolo è sempre plain text, senza markup
+    - Per il contenuto usa **grassetto** per nomi di persone e fatti importanti
+    - Separa i paragrafi con doppia riga vuota
+    - Crea una struttura giornalistica chiara e coinvolgente"""
+)
+
+# Configurazione per La Voce di Carpi Sport
+VOCE_CARPI_SPORT_CONFIG = SiteConfig(
+    name="La Voce di Carpi Sport",
+    base_url="http://www.voce.it/it/categoria/",
+    scraper_type="html",
+    category="Sport",
+
+    # Configurazioni specifiche per HTML scraping
+    news_url="http://www.voce.it/it/categoria/sport",
+    disable_rss=True,  # Disabilita RSS per evitare duplicati
+    selectors=[
+       # 'a[href*="../articolo/"]',
+       # 'a[href*="articolo/"]',
+        #'a[href^="../articolo/"]',
+        '.cat-img',
+        #'a[href*="/articolo/"]',
+        #'.articolo-preview',
+        #'a[title]'
+    ],
+    content_selectors=[
+        '.art-text',
+        '.articolo-testo',
+        '.articolo-corpo',
+        'div[class*="content"]',
+        '[itemprop="articleBody"]',
+        '#articolo',
+        '.testo-articolo',
+        '.post-content',
+        'article',
+        '.entry-content'
+    ],
+
+    # Generazione AI
+    use_ai_generation=True,
+    ai_api_key=settings.ANTHROPIC_API_KEY,
+    ai_system_prompt="""Sei Gianni Brera.
+    Il tuo compito è rielaborare notizie per il giornale locale "Ombra del Portico".
+
+    Stile richiesto:
+    - Tono professionale ma caldo e umano senza risparmiare ironia
+    - Linguaggio accessibile ai cittadini di Carpi
+    - Evidenzia l'aspetto umano e sociale delle notizie
+    - Mantieni focus sulla città di Carpi e i suoi abitanti
+    - Crea un titolo che catturi l'interesse del lettore
+    - Struttura: cambia la struttura della notizia in input senza snaturarne i contenuti.
+
     Formattazione richiesta:
     - il titolo è sempre plain text, senza markup
     - Per il contenuto usa **grassetto** per nomi di persone e fatti importanti
@@ -550,6 +603,7 @@ MONITOR_CONFIGS = {
     'youtube_playlist_2': YOUTUBE_PLAYLIST_2_CONFIG,
     'ansa_carpi': ANSA_CONFIG,
     'voce_carpi': VOCE_CARPI_CONFIG,
+    'voce_carpi_sport': VOCE_CARPI_SPORT_CONFIG,
     'temponews': TEMPO_CARPI_CONFIG,
     'terre_argine': TERRE_ARGINE_CONFIG,
     'generic_html': GENERIC_HTML_CONFIG,

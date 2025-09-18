@@ -132,6 +132,7 @@ class HomeConfig(AppConfig):
                 ('youtube_playlist_2', 1800),    # 30 minuti - YouTube Playlist 2
                 ('temponews', 600),
                 ('voce_carpi', 600),             # 10 minuti - La Voce di Carpi
+                ('voce_carpi_sport', 600),       # 10 minuti - La Voce di Carpi Sport
                 ('terre_argine', 900),           # 15 minuti - Terre d'Argine
                 ('email_comunicati', 300),       # 5 minuti - Email comunicati stampa + IFTTT
             ]

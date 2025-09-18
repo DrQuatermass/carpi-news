@@ -51,6 +51,7 @@ def main():
         ('eventi_carpi_graphql', 1800),  # 30 minuti (eventi con descrizione_estesa)
         ('ansa_carpi', 300),             # 5 minuti (notizie nazionali su Carpi)
         ('voce_carpi', 600),             # 10 minuti (La Voce di Carpi)
+        ('voce_carpi_sport', 600),       # 10 minuti (La Voce di Carpi Sport)
         ('temponews', 600),              # 10 minuti (TempoNews Carpi)
         ('terre_argine', 900),           # 15 minuti (Unione Terre d'Argine)
         ('youtube_playlist', 1800),      # 30 minuti (YouTube Playlist 1)
