@@ -21,11 +21,11 @@ def trascrivi(video_id):
         # Crea un'istanza dell'API
         api = YouTubeTranscriptApi()
 
-        # Usa il metodo fetch() con la nuova API
-        transcript = api.fetch(video_id, languages=['it'])
+        # Usa il metodo get_transcript() con la nuova API
+        transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=['it'])
 
         # Concatena tutto il testo
-        text = " ".join([entry.text for entry in transcript])
+        text = " ".join([entry['text'] for entry in transcript])
         logger.info(f"Trascrizione completata: {len(text)} caratteri")
 
         return text
