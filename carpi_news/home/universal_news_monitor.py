@@ -650,13 +650,45 @@ class YouTubeAPIScraper(BaseScraper):
     
     def scrape_articles(self) -> List[Dict[str, Any]]:
         """Scrape video da playlist YouTube o usa fallback IDs"""
-        
+        articles = []
+
+        # Controlla prima i video in attesa di retry
+        pending_videos = self._check_pending_retries()
+        if pending_videos:
+            self.logger.info(f"Processando {len(pending_videos)} video in retry")
+            for video_id in pending_videos:
+                try:
+                    article_data = {
+                        'title': f"Consiglio Comunale Carpi - Video {video_id} (Retry)",
+                        'url': f"https://www.youtube.com/watch?v={video_id}",
+                        'preview': "Trascrizione del consiglio comunale di Carpi (processamento differito)",
+                        'image_url': f"https://img.youtube.com/vi/{video_id}/mqdefault.jpg",
+                        'video_id': video_id,
+                        'published_at': None
+                    }
+
+                    # Prova di nuovo il transcript
+                    transcript = self.get_video_transcript(video_id)
+                    if transcript:
+                        article_data['full_content'] = transcript
+                        articles.append(article_data)
+                        self.logger.info(f"Retry riuscito per video {video_id}")
+                    else:
+                        self.logger.warning(f"Retry fallito per video {video_id}")
+
+                except Exception as e:
+                    self.logger.error(f"Errore nel retry video {video_id}: {e}")
+
         # Se abbiamo API key e playlist, usa YouTube API
         if self.api_key and self.playlist_id and not self.api_key.startswith("AIzaSyDummy"):
-            return self._scrape_from_api()
-        
-        # Altrimenti usa modalità fallback
-        return self._scrape_from_fallback_ids()
+            new_articles = self._scrape_from_api()
+            articles.extend(new_articles)
+        else:
+            # Altrimenti usa modalità fallback
+            new_articles = self._scrape_from_fallback_ids()
+            articles.extend(new_articles)
+
+        return articles
     
     def _scrape_from_api(self) -> List[Dict[str, Any]]:
         """Scrape usando YouTube API (quando configurata)"""
@@ -733,26 +765,106 @@ class YouTubeAPIScraper(BaseScraper):
             return None
     
     def get_video_transcript(self, video_id: str) -> Optional[str]:
-        """Estrae trascrizione da video YouTube con rate limiting"""
+        """Estrae trascrizione da video YouTube con rate limiting e gestione dirette"""
         try:
             from youtube_transcript_api import YouTubeTranscriptApi
-            
+            from youtube_transcript_api._errors import TranscriptsDisabled, NoTranscriptFound
+
             # Applica rate limiting se configurato
             delay = self.config.config.get('transcript_delay', 0)
             if delay > 0:
                 self.logger.info(f"Applicando pausa di {delay} secondi prima della richiesta transcript")
                 time.sleep(delay)
-            
+
             self.logger.info(f"Estrazione transcript per video {video_id}")
             api = YouTubeTranscriptApi()
             transcript = api.fetch(video_id, languages=['it'])
             text = " ".join([entry.text for entry in transcript])
             self.logger.info(f"Transcript estratto: {len(text)} caratteri")
             return text
-            
+
+        except (TranscriptsDisabled, NoTranscriptFound) as e:
+            # Verifica se è una diretta in corso
+            if self._is_live_stream(video_id):
+                self.logger.info(f"Video {video_id} è una diretta in corso - sarà riprovato più tardi")
+                self._schedule_retry(video_id)
+                return None
+            else:
+                self.logger.error(f"Transcript non disponibile per video {video_id}: {e}")
+                return None
+
         except Exception as e:
             self.logger.error(f"Errore nell'estrazione transcript per {video_id}: {e}")
             return None
+
+    def _is_live_stream(self, video_id: str) -> bool:
+        """Controlla se un video è una diretta in corso"""
+        try:
+            import requests
+            # Usa YouTube oEmbed API per ottenere info base
+            oembed_url = f"https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v={video_id}&format=json"
+            response = requests.get(oembed_url, timeout=10)
+
+            if response.status_code == 200:
+                data = response.json()
+                title = data.get('title', '').lower()
+                # Indica diretta se nel titolo c'è "live", "diretta", "streaming"
+                return any(keyword in title for keyword in ['live', 'diretta', 'streaming', 'in corso'])
+
+            return False
+        except Exception:
+            # Se non riusciamo a verificare, assumiamo che sia una diretta
+            return True
+
+    def _schedule_retry(self, video_id: str):
+        """Programma un retry per il video"""
+        try:
+            retry_delay = self.config.config.get('live_stream_retry_delay', 3600)  # 1 ora default
+            retry_file = f"youtube_retry_{video_id}.txt"
+            retry_path = os.path.join(tempfile.gettempdir(), retry_file)
+
+            # Salva timestamp per il retry
+            retry_time = time.time() + retry_delay
+            with open(retry_path, 'w') as f:
+                f.write(str(retry_time))
+
+            self.logger.info(f"Scheduled retry for video {video_id} in {retry_delay} seconds")
+
+        except Exception as e:
+            self.logger.error(f"Errore scheduling retry per {video_id}: {e}")
+
+    def _check_pending_retries(self) -> List[str]:
+        """Controlla se ci sono video da riprovare"""
+        try:
+            import glob
+            retry_files = glob.glob(os.path.join(tempfile.gettempdir(), "youtube_retry_*.txt"))
+            ready_videos = []
+
+            current_time = time.time()
+
+            for retry_file in retry_files:
+                try:
+                    with open(retry_file, 'r') as f:
+                        retry_time = float(f.read().strip())
+
+                    if current_time >= retry_time:
+                        # È ora di riprovare
+                        video_id = os.path.basename(retry_file).replace('youtube_retry_', '').replace('.txt', '')
+                        ready_videos.append(video_id)
+                        os.unlink(retry_file)  # Rimuovi il file di retry
+
+                except Exception as e:
+                    # File corrotto, rimuovilo
+                    try:
+                        os.unlink(retry_file)
+                    except:
+                        pass
+
+            return ready_videos
+
+        except Exception as e:
+            self.logger.error(f"Errore checking pending retries: {e}")
+            return []
 
 
 class GraphQLScraper(BaseScraper):
@@ -1379,7 +1491,7 @@ class EmailScraper(BaseScraper):
         """Estrae URL immagini da contenuto Twitter"""
         import re
 
-        # Pattern per link immagini Twitter
+        # Pattern per link immagini Twitter diretti
         twitter_image_patterns = [
             r'pic\.twitter\.com/\w+',
             r'https://pic\.twitter\.com/\w+',
@@ -1395,6 +1507,24 @@ class EmailScraper(BaseScraper):
                 if not url.startswith('http'):
                     url = f'https://{url}'
                 return url
+
+        # Se non trova immagini dirette, cerca link t.co e prova a espanderli
+        t_co_pattern = r'https://t\.co/\w+'
+        t_co_matches = re.findall(t_co_pattern, content)
+
+        if t_co_matches:
+            for t_co_url in t_co_matches:
+                try:
+                    # Espandi il link t.co per trovare l'URL del tweet originale
+                    expanded_url = self._expand_short_url(t_co_url)
+                    if expanded_url and ('twitter.com' in expanded_url or 'x.com' in expanded_url):
+                        # Estrai l'immagine dal tweet originale
+                        tweet_image = self._fetch_tweet_image(expanded_url)
+                        if tweet_image:
+                            return tweet_image
+                except Exception as e:
+                    self.logger.debug(f"Errore espansione t.co {t_co_url}: {e}")
+                    continue
 
         # Fallback: cerca immagini standard
         return self._extract_first_image(content)
@@ -1420,6 +1550,23 @@ class EmailScraper(BaseScraper):
                     url = url.replace('twitter.com', 'x.com')
                 return url
 
+        # Se non trova link diretti, cerca link t.co e prova a espanderli
+        t_co_pattern = r'https://t\.co/\w+'
+        t_co_matches = re.findall(t_co_pattern, content)
+
+        if t_co_matches:
+            for t_co_url in t_co_matches:
+                try:
+                    expanded_url = self._expand_short_url(t_co_url)
+                    if expanded_url and ('twitter.com' in expanded_url or 'x.com' in expanded_url):
+                        # Converti twitter.com in x.com se necessario
+                        if 'twitter.com' in expanded_url:
+                            expanded_url = expanded_url.replace('twitter.com', 'x.com')
+                        return expanded_url
+                except Exception as e:
+                    self.logger.debug(f"Errore espansione t.co per URL tweet {t_co_url}: {e}")
+                    continue
+
         # Se non trova link diretti, cerca negli href dei tag <a>
         try:
             soup = BeautifulSoup(content, 'html.parser')
@@ -1431,6 +1578,56 @@ class EmailScraper(BaseScraper):
                     return href
         except Exception:
             pass
+
+        return None
+
+    def _expand_short_url(self, short_url: str) -> Optional[str]:
+        """Espande un URL accorciato (t.co) per ottenere l'URL originale"""
+        try:
+            response = requests.head(short_url, allow_redirects=True, timeout=10)
+            return response.url
+        except Exception as e:
+            self.logger.debug(f"Errore espansione URL {short_url}: {e}")
+            return None
+
+    def _fetch_tweet_image(self, tweet_url: str) -> Optional[str]:
+        """Estrae l'immagine da un tweet usando web scraping semplice"""
+        try:
+            # Headers per sembrare un browser normale
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+
+            response = requests.get(tweet_url, headers=headers, timeout=10)
+            if response.status_code != 200:
+                return None
+
+            soup = BeautifulSoup(response.content, 'html.parser')
+
+            # Cerca immagini nelle meta tag Open Graph
+            og_image = soup.find('meta', property='og:image')
+            if og_image and og_image.get('content'):
+                image_url = og_image['content']
+                if 'twimg.com' in image_url:
+                    return image_url
+
+            # Cerca immagini nei tag img con pattern Twitter
+            img_tags = soup.find_all('img')
+            for img in img_tags:
+                src = img.get('src', '')
+                if 'twimg.com' in src and ('media' in src or 'card_img' in src):
+                    return src
+
+            # Fallback: cerca link pic.twitter.com nel contenuto della pagina
+            page_text = soup.get_text()
+            import re
+            pic_pattern = r'pic\.twitter\.com/\w+'
+            matches = re.findall(pic_pattern, page_text)
+            if matches:
+                return f'https://{matches[0]}'
+
+        except Exception as e:
+            self.logger.debug(f"Errore estrazione immagine da tweet {tweet_url}: {e}")
 
         return None
 
