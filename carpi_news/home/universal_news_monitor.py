@@ -777,8 +777,9 @@ class YouTubeAPIScraper(BaseScraper):
                 time.sleep(delay)
 
             self.logger.info(f"Estrazione transcript per video {video_id}")
-            transcript = YouTubeTranscriptApi.get_transcript(video_id, languages=['it'])
-            text = " ".join([entry['text'] for entry in transcript])
+            api = YouTubeTranscriptApi()
+            transcript_data = api.fetch(video_id, languages=['it'])
+            text = " ".join([snippet.text for snippet in transcript_data])
             self.logger.info(f"Transcript estratto: {len(text)} caratteri")
             return text
 
