@@ -14,7 +14,7 @@ beautifulsoup4==4.12.2
 anthropic==0.64.0
 
 # YouTube integration
-youtube-transcript-api==0.6.1
+youtube-transcript-api>=0.7.0
 
 # Social media integration
 # Note: Facebook/Twitter now handled via RSS + IFTTT
