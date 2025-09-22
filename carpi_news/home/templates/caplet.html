@@ -9,27 +9,11 @@
 
 {% block content %}
 <div class="container">
-    <!-- Header del gioco -->
-    <section class="hero">
-        <div class="hero-content">
-            <h1 class="game-title">🍲 Caplet</h1>
-            <p class="game-subtitle">Il gioco strategico delle bolle di brodo</p>
-        </div>
-    </section>
-
-    <!-- Regole del gioco -->
-    <section class="game-rules">
-        <div class="rules-container">
-            <h2>Come si gioca:</h2>
-            <ul>
-                <li>🟡 Piazza una bolla di brodo in ogni zona colorata</li>
-                <li>📏 Ogni riga e colonna deve avere esattamente una bolla</li>
-                <li>🚫 Le bolle non possono essere adiacenti (neanche in diagonale)</li>
-                <li>🍝 Usa i cappelletti per segnare ipotesi (non contano per le regole)</li>
-                <li>🎯 Trova l'unica soluzione possibile!</li>
-            </ul>
-        </div>
-    </section>
+    <!-- Titolo del gioco -->
+    <header class="game-header">
+        <h1 class="game-title">🍲 Caplet</h1>
+        <p class="game-subtitle">Il gioco strategico delle bolle di brodo</p>
+    </header>
 
     <!-- Area di gioco -->
     <section class="game-section">
@@ -51,16 +35,13 @@
                         <span class="grid-size">{{ puzzle.size }}x{{ puzzle.size }}</span>
                     </div>
                     <div class="game-status">
-                        <span id="status-text">Piazza le bolle gialle di brodo...</span>
+                        <span id="status-text">Piazza le bollicine di brodo...</span>
                     </div>
                 </div>
 
                 <div class="control-buttons">
                     <button id="reset-btn" class="btn btn-secondary">
                         🔄 Ricomincia
-                    </button>
-                    <button id="hint-btn" class="btn btn-info">
-                        💡 Suggerimento
                     </button>
                     <button id="new-puzzle-btn" class="btn btn-primary">
                         🎲 Nuovo Puzzle
@@ -85,6 +66,20 @@
                     🎲 Nuovo Puzzle
                 </button>
             </div>
+        </div>
+    </section>
+
+    <!-- Regole del gioco -->
+    <section class="game-rules">
+        <div class="rules-container">
+            <h2>Come si gioca:</h2>
+            <ul>
+                <li>🫧 Piazza una bolla di brodo in ogni zona colorata</li>
+                <li>📏 Ogni riga e colonna deve avere esattamente una bolla</li>
+                <li>🚫 Le bolle non possono essere adiacenti (neanche in diagonale)</li>
+                <li>🍝 Usa i cappelletti per segnare ipotesi (non contano per le regole)</li>
+                <li>🎯 Trova l'unica soluzione possibile!</li>
+            </ul>
         </div>
     </section>
 </div>
@@ -113,30 +108,19 @@ class CapletGame {
     }
 
     initializeGame() {
-        console.log("Initializing game with size:", this.size);
-        console.log("Zones:", this.zones);
         this.createGrid();
         this.updateStatus();
         this.updateProgress();
     }
 
     createGrid() {
-        console.log("Creating grid...");
         const gameGrid = document.getElementById('game-grid');
-        if (!gameGrid) {
-            console.error("Game grid element not found!");
-            return;
-        }
-
         gameGrid.innerHTML = '';
 
         // Imposta le dimensioni della griglia CSS
         gameGrid.style.gridTemplateColumns = `repeat(${this.size}, 1fr)`;
         gameGrid.style.gridTemplateRows = `repeat(${this.size}, 1fr)`;
 
-        console.log("Grid template set to:", gameGrid.style.gridTemplateColumns);
-
-        console.log("Starting cell creation loop...");
         for (let row = 0; row < this.size; row++) {
             for (let col = 0; col < this.size; col++) {
                 const cell = document.createElement('div');
@@ -154,7 +138,6 @@ class CapletGame {
                 gameGrid.appendChild(cell);
             }
         }
-        console.log("Grid creation completed. Total cells:", gameGrid.children.length);
     }
 
     getZoneColor(zone) {
@@ -184,7 +167,6 @@ class CapletGame {
 
         // Pulsanti di controllo
         document.getElementById('reset-btn').addEventListener('click', () => this.resetGame());
-        document.getElementById('hint-btn').addEventListener('click', () => this.showHint());
         document.getElementById('new-puzzle-btn').addEventListener('click', () => this.newPuzzle());
         document.getElementById('victory-new-puzzle').addEventListener('click', () => this.newPuzzle());
     }
@@ -216,7 +198,7 @@ class CapletGame {
             cell.classList.add('has-bubble');
             const symbol = document.createElement('div');
             symbol.className = 'symbol bubble';
-            symbol.textContent = '🟡';
+            symbol.textContent = '🫧';
             cell.appendChild(symbol);
         }
 
@@ -331,55 +313,107 @@ class CapletGame {
 
         if (violations.length === 0 && bubbleCount === this.size) {
             setTimeout(() => {
-                document.getElementById('victory-message').style.display = 'block';
+                this.showVictoryAnimation();
             }, 500);
         }
+    }
+
+    showVictoryAnimation() {
+        const gameGrid = document.getElementById('game-grid');
+        const plate = document.getElementById('game-plate');
+
+        // Raccogli tutti i cappelletti e le bolle dalla griglia
+        const cappelletti = [];
+        const bolle = [];
+
+        document.querySelectorAll('.game-cell').forEach(cell => {
+            const cappelletto = cell.querySelector('.symbol.hat');
+            const bolla = cell.querySelector('.symbol.bubble');
+
+            if (cappelletto) {
+                const rect = cell.getBoundingClientRect();
+                const plateRect = plate.getBoundingClientRect();
+                cappelletti.push({
+                    element: cappelletto.cloneNode(true),
+                    x: ((rect.left - plateRect.left) / plateRect.width) * 100,
+                    y: ((rect.top - plateRect.top) / plateRect.height) * 100
+                });
+            }
+
+            if (bolla) {
+                const rect = cell.getBoundingClientRect();
+                const plateRect = plate.getBoundingClientRect();
+                bolle.push({
+                    element: bolla.cloneNode(true),
+                    x: ((rect.left - plateRect.left) / plateRect.width) * 100,
+                    y: ((rect.top - plateRect.top) / plateRect.height) * 100
+                });
+            }
+        });
+
+        // Fai sparire solo la struttura della griglia mantenendo i simboli dove sono
+        document.querySelectorAll('.game-cell').forEach(cell => {
+            cell.style.transition = 'background-color 1.5s ease-out, border-color 1.5s ease-out';
+            cell.style.backgroundColor = 'transparent';
+            cell.style.borderColor = 'transparent';
+        });
+
+        setTimeout(() => {
+            // Fai sparire anche il contenitore della griglia
+            const gameGrid = document.getElementById('game-grid');
+            gameGrid.style.transition = 'background 1s ease-out, padding 1s ease-out, border-radius 1s ease-out';
+            gameGrid.style.background = 'transparent';
+            gameGrid.style.padding = '0';
+            gameGrid.style.borderRadius = '0';
+
+            // Aggiungi semplicemente il brodo dietro la griglia esistente
+            const gridContainer = document.querySelector('.grid-container');
+            gridContainer.style.background = 'radial-gradient(circle, rgba(255, 215, 0, 0.8) 0%, rgba(255, 193, 7, 0.6) 100%)';
+            gridContainer.style.borderRadius = '50%';
+            gridContainer.style.transition = 'background 2s ease-in-out';
+
+            // Aggiungi l'effetto brodo al piatto
+            plate.style.background = 'linear-gradient(135deg, #FFD700 0%, #FFC107 50%, #FFB300 100%)';
+            plate.style.transition = 'background 2s ease-in-out';
+
+            // Fai ondulare le icone come se galleggiassero nel brodo
+            setTimeout(() => {
+                document.querySelectorAll('.symbol').forEach((symbol, index) => {
+                    symbol.style.animation = `floatInBroth ${3 + Math.random() * 2}s ease-in-out infinite`;
+                    symbol.style.animationDelay = `${index * 0.2}s`;
+                });
+            }, 1000);
+
+            // Mostra il messaggio di vittoria
+            setTimeout(() => {
+                document.getElementById('victory-message').style.display = 'block';
+            }, 2500);
+        }, 1500);
     }
 
     resetGame() {
         this.grid = Array(this.size).fill().map(() => Array(this.size).fill(0));
 
-        // Rimuovi tutti i simboli dalle celle
-        document.querySelectorAll('.game-cell').forEach(cell => {
-            cell.classList.remove('has-bubble', 'has-hat');
-            const symbol = cell.querySelector('.symbol');
-            if (symbol) symbol.remove();
-        });
+        // Ripristina la griglia originale se è stata sostituita dall'animazione di vittoria
+        const plate = document.getElementById('game-plate');
+        const gameGrid = document.getElementById('game-grid');
+
+        if (!gameGrid || gameGrid.style.opacity === '0') {
+            this.initializeGame(); // Ricrea completamente la griglia
+        } else {
+            // Rimuovi tutti i simboli dalle celle esistenti
+            document.querySelectorAll('.game-cell').forEach(cell => {
+                cell.classList.remove('has-bubble', 'has-hat');
+                const symbol = cell.querySelector('.symbol');
+                if (symbol) symbol.remove();
+            });
+        }
 
         document.getElementById('victory-message').style.display = 'none';
         this.updateStatus();
         this.updateProgress();
     }
 
-    showHint() {
-        // Implementazione semplice del suggerimento
-        const violations = this.getViolations();
-        if (violations.length > 0) {
-            alert('Prima risolvi i conflitti: ' + violations[0]);
-            return;
-        }
-
-        // Trova una cella vuota che può essere piazzata
-        for (let row = 0; row < this.size; row++) {
-            for (let col = 0; col < this.size; col++) {
-                if (this.grid[row][col] === 0) {
-                    // Test se questa posizione è valida per una bolla
-                    this.grid[row][col] = 2;
-                    const testViolations = this.getViolations();
-                    this.grid[row][col] = 0;
-
-                    if (testViolations.length === 0) {
-                        const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
-                        cell.classList.add('hint-cell');
-                        setTimeout(() => cell.classList.remove('hint-cell'), 2000);
-                        return;
-                    }
-                }
-            }
-        }
-
-        alert('💡 Non riesco a trovare un suggerimento ovvio!');
-    }
 
     newPuzzle() {
         window.location.reload();

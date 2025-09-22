@@ -1521,21 +1521,27 @@ footer {
 
 /* ===== CAPLET GAME STYLES ===== */
 
-/* Game Title */
-.game-title {
-    font-size: 3rem;
-    color: #C4965A;
+/* Game Header */
+.game-header {
     text-align: center;
+    padding: 1rem 0 2rem 0;
+    margin-bottom: 1rem;
+}
+
+.game-title {
+    font-size: 2.5rem;
+    color: #C4965A;
     margin-bottom: 0.5rem;
     text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+    font-weight: 700;
 }
 
 .game-subtitle {
-    text-align: center;
     color: #8B6F47;
-    font-size: 1.2rem;
+    font-size: 1.1rem;
     font-style: italic;
-    margin-bottom: 2rem;
+    margin: 0;
+    font-weight: 500;
 }
 
 /* Rules Section */
@@ -1543,6 +1549,7 @@ footer {
     background: rgba(255, 255, 255, 0.9);
     border-radius: 15px;
     padding: 1.5rem;
+    margin-top: 3rem;
     margin-bottom: 2rem;
     border: 2px solid #E5D5C8;
     box-shadow: 0 4px 15px rgba(44, 44, 44, 0.1);
@@ -1575,14 +1582,17 @@ footer {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 2rem;
+    gap: 1.5rem;
+    padding: 0 1rem;
 }
 
 .game-container {
-    display: flex;
-    gap: 3rem;
-    align-items: flex-start;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 2rem;
+    max-width: 900px;
+    width: 100%;
+    align-items: start;
     justify-content: center;
 }
 
@@ -1665,8 +1675,8 @@ footer {
 }
 
 .symbol.hat {
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
     background: url('../images/cappelletto.svg') no-repeat center;
     background-size: contain;
     font-size: 0; /* Nascondi il testo emoji */
@@ -1707,10 +1717,12 @@ footer {
 .game-controls {
     background: rgba(255, 255, 255, 0.95);
     border-radius: 15px;
-    padding: 2rem;
-    min-width: 300px;
+    padding: 1.5rem;
+    width: 280px;
+    max-width: 100%;
     border: 2px solid #E5D5C8;
     box-shadow: 0 4px 15px rgba(44, 44, 44, 0.1);
+    justify-self: start;
 }
 
 .game-info {
@@ -1838,33 +1850,56 @@ footer {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0, 0, 0, 0.8);
+    background: rgba(0, 0, 0, 0.7);
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 9999;
-    animation: victoryFadeIn 0.5s ease-out;
+    animation: victoryFadeIn 0.8s ease-out;
 }
 
 .victory-content {
-    background: white;
+    background: linear-gradient(135deg, #FFF8DC 0%, #F5E6A3 100%);
     padding: 3rem;
-    border-radius: 20px;
+    border-radius: 25px;
     text-align: center;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-    animation: victoryBounce 0.5s ease-out;
+    box-shadow:
+        0 12px 40px rgba(255, 215, 0, 0.4),
+        inset 0 2px 4px rgba(255, 255, 255, 0.8),
+        0 0 30px rgba(255, 193, 7, 0.6);
+    border: 3px solid #FFD700;
+    animation: victoryBounce 0.8s ease-out;
+    position: relative;
+    overflow: hidden;
+}
+
+.victory-content::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(45deg, transparent 30%, rgba(255, 255, 255, 0.1) 50%, transparent 70%);
+    animation: shimmer 3s ease-in-out infinite;
 }
 
 .victory-content h2 {
-    color: #C4965A;
-    font-size: 2.5rem;
+    color: #B8860B;
+    font-size: 2.8rem;
     margin-bottom: 1rem;
+    text-shadow: 2px 2px 4px rgba(184, 134, 11, 0.3);
+    position: relative;
+    z-index: 1;
 }
 
 .victory-content p {
-    font-size: 1.2rem;
+    font-size: 1.3rem;
     margin-bottom: 2rem;
-    color: #2C2C2C;
+    color: #8B4513;
+    font-weight: 600;
+    position: relative;
+    z-index: 1;
 }
 
 @keyframes victoryFadeIn {
@@ -1879,11 +1914,156 @@ footer {
     100% { transform: scale(1) translateY(0); opacity: 1; }
 }
 
+@keyframes shimmer {
+    0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+    50% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+    100% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+}
+
+/* Stile del pulsante nel popup di vittoria */
+.victory-content .btn {
+    background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+    border: 2px solid #FF8C00;
+    color: #8B4513;
+    font-weight: bold;
+    position: relative;
+    z-index: 1;
+    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4);
+}
+
+.victory-content .btn:hover {
+    background: linear-gradient(135deg, #FFA500 0%, #FF8C00 100%);
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(255, 140, 0, 0.5);
+}
+
+/* Victory Plate Animation */
+.victory-plate {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.broth-bowl {
+    width: 280px;
+    height: 280px;
+    background: linear-gradient(135deg, #FFD700 0%, #FFC107 50%, #FFB300 100%);
+    border-radius: 50%;
+    position: relative;
+    overflow: hidden;
+    border: 4px solid #FF8F00;
+    box-shadow:
+        inset 0 10px 20px rgba(255, 255, 255, 0.3),
+        inset 0 -10px 20px rgba(0, 0, 0, 0.2),
+        0 0 30px rgba(255, 215, 0, 0.6);
+}
+
+.broth-surface {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    background: radial-gradient(circle at center, rgba(255, 215, 0, 0.9) 0%, rgba(255, 193, 7, 0.7) 100%);
+}
+
+.floating-cappelletto {
+    position: absolute;
+    font-size: 1.8rem;
+    animation: floatInBroth 3s ease-in-out infinite;
+    z-index: 2;
+}
+
+.floating-cappelletto.symbol.hat {
+    width: 36px;
+    height: 36px;
+    background: url('../images/cappelletto.svg') no-repeat center;
+    background-size: contain;
+    font-size: 0;
+}
+
+.rising-bubble {
+    position: absolute;
+    bottom: -20px;
+    font-size: 1.2rem;
+    animation: bubbleRise 4s linear infinite;
+    z-index: 3;
+}
+
+.floating-bubble {
+    position: absolute;
+    font-size: 1.8rem;
+    animation: floatInBroth 2s ease-in-out infinite;
+    z-index: 3;
+}
+
+.floating-bubble.symbol.bubble {
+    font-size: 1.8rem;
+}
+
+.rising-bubble.symbol.bubble {
+    font-size: 1.8rem;
+}
+
+@keyframes floatInBroth {
+    0%, 100% {
+        transform: translate(0, 0) rotate(0deg);
+        opacity: 1;
+    }
+    25% {
+        transform: translate(3px, -2px) rotate(3deg);
+        opacity: 0.95;
+    }
+    50% {
+        transform: translate(-2px, 3px) rotate(-2deg);
+        opacity: 0.9;
+    }
+    75% {
+        transform: translate(2px, -1px) rotate(1deg);
+        opacity: 0.95;
+    }
+}
+
+@keyframes bubbleRise {
+    0% {
+        bottom: -20px;
+        opacity: 0;
+        transform: translateX(0) scale(0.5);
+    }
+    10% {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+    90% {
+        opacity: 1;
+        transform: translateX(10px) scale(1.2);
+    }
+    100% {
+        bottom: 300px;
+        opacity: 0;
+        transform: translateX(20px) scale(0.8);
+    }
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
+    .game-header {
+        padding: 0.5rem 0 1.5rem 0;
+    }
+
+    .game-title {
+        font-size: 2rem;
+    }
+
+    .game-subtitle {
+        font-size: 1rem;
+    }
+
     .game-container {
-        flex-direction: column;
-        gap: 2rem;
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+        justify-items: center;
     }
 
     .plate {
@@ -1897,30 +2077,51 @@ footer {
     }
 
     .game-controls {
-        min-width: auto;
         width: 100%;
         max-width: 320px;
-    }
-
-    .game-title {
-        font-size: 2.5rem;
+        order: 2;
     }
 
     .control-buttons {
         flex-direction: row;
-        flex-wrap: wrap;
-        gap: 0.5rem;
+        gap: 0.8rem;
     }
 
     .btn {
         flex: 1;
-        min-width: 120px;
-        padding: 0.6rem 0.8rem;
+        padding: 0.7rem 0.5rem;
         font-size: 0.9rem;
+        min-width: 0;
+    }
+
+    .game-rules {
+        padding: 1rem;
+        margin-top: 2rem;
     }
 }
 
 @media (max-width: 480px) {
+    .container {
+        padding: 0 10px;
+    }
+
+    .game-header {
+        padding: 0.5rem 0 1rem 0;
+    }
+
+    .game-title {
+        font-size: 1.8rem;
+    }
+
+    .game-subtitle {
+        font-size: 0.9rem;
+    }
+
+    .game-section {
+        gap: 1rem;
+        padding: 0;
+    }
+
     .plate {
         width: 280px;
         height: 280px;
@@ -1932,16 +2133,29 @@ footer {
         height: 220px;
     }
 
-    .game-title {
-        font-size: 2rem;
-    }
-
-    .game-subtitle {
-        font-size: 1rem;
-    }
-
-    .rules-container {
+    .game-controls {
         padding: 1rem;
+        width: 100%;
+        max-width: 280px;
+    }
+
+    .btn {
+        padding: 0.6rem 0.4rem;
+        font-size: 0.8rem;
+    }
+
+    .game-rules {
+        padding: 1rem;
+        margin-top: 1.5rem;
+    }
+
+    .rules-container h2 {
+        font-size: 1.3rem;
+    }
+
+    .rules-container li {
+        font-size: 1rem;
+        padding: 0.4rem 0;
     }
 
     .victory-content {
