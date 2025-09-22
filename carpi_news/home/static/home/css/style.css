@@ -1524,24 +1524,27 @@ footer {
 /* Game Header */
 .game-header {
     text-align: center;
-    padding: 1rem 0 2rem 0;
-    margin-bottom: 1rem;
+    padding: 1rem 0 1.5rem 0;
+    margin-bottom: 1.5rem;
+    margin-top: 0;
 }
 
 .game-title {
-    font-size: 2.5rem;
+    font-size: 3.2rem;
     color: #C4965A;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.3rem;
     text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
     font-weight: 700;
+    line-height: 1.1;
 }
 
 .game-subtitle {
     color: #8B6F47;
-    font-size: 1.1rem;
+    font-size: 1.3rem;
     font-style: italic;
     margin: 0;
     font-weight: 500;
+    opacity: 0.9;
 }
 
 /* Rules Section */
@@ -1729,13 +1732,6 @@ footer {
     margin-bottom: 1.5rem;
 }
 
-.puzzle-info {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 1rem;
-    font-size: 0.9rem;
-    color: #8B6F47;
-}
 
 .game-status {
     text-align: center;
@@ -2049,15 +2045,16 @@ footer {
 /* Responsive Design */
 @media (max-width: 768px) {
     .game-header {
-        padding: 0.5rem 0 1.5rem 0;
+        padding: 0.8rem 0 1.2rem 0;
+        margin-bottom: 1rem;
     }
 
     .game-title {
-        font-size: 2rem;
+        font-size: 2.5rem;
     }
 
     .game-subtitle {
-        font-size: 1rem;
+        font-size: 1.1rem;
     }
 
     .game-container {
@@ -2106,15 +2103,16 @@ footer {
     }
 
     .game-header {
-        padding: 0.5rem 0 1rem 0;
+        padding: 0.6rem 0 1rem 0;
+        margin-bottom: 0.8rem;
     }
 
     .game-title {
-        font-size: 1.8rem;
+        font-size: 2.2rem;
     }
 
     .game-subtitle {
-        font-size: 0.9rem;
+        font-size: 1rem;
     }
 
     .game-section {
