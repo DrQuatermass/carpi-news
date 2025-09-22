@@ -1,0 +1,394 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Caplet - Il gioco strategico{% endblock %}
+
+{% block extra_css %}
+<meta name="description" content="Gioca a Caplet, il gioco strategico delle bolle di brodo. Piazza i segnalini seguendo le regole delle zone, righe e colonne.">
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Header del gioco -->
+    <section class="hero">
+        <div class="hero-content">
+            <h1 class="game-title">🍲 Caplet</h1>
+            <p class="game-subtitle">Il gioco strategico delle bolle di brodo</p>
+        </div>
+    </section>
+
+    <!-- Regole del gioco -->
+    <section class="game-rules">
+        <div class="rules-container">
+            <h2>Come si gioca:</h2>
+            <ul>
+                <li>🟡 Piazza una bolla di brodo in ogni zona colorata</li>
+                <li>📏 Ogni riga e colonna deve avere esattamente una bolla</li>
+                <li>🚫 Le bolle non possono essere adiacenti (neanche in diagonale)</li>
+                <li>🍝 Usa i cappelletti per segnare ipotesi (non contano per le regole)</li>
+                <li>🎯 Trova l'unica soluzione possibile!</li>
+            </ul>
+        </div>
+    </section>
+
+    <!-- Area di gioco -->
+    <section class="game-section">
+        <div class="game-container">
+            <!-- Piatto rotondo -->
+            <div class="plate" id="game-plate">
+                <div class="grid-container">
+                    <div class="game-grid" id="game-grid" data-size="{{ puzzle.size }}">
+                        <!-- Le celle verranno generate dinamicamente dal JavaScript -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pannello di controllo -->
+            <div class="game-controls">
+                <div class="game-info">
+                    <div class="puzzle-info">
+                        <span class="puzzle-id">Puzzle: {{ puzzle.id }}</span>
+                        <span class="grid-size">{{ puzzle.size }}x{{ puzzle.size }}</span>
+                    </div>
+                    <div class="game-status">
+                        <span id="status-text">Piazza le bolle gialle di brodo...</span>
+                    </div>
+                </div>
+
+                <div class="control-buttons">
+                    <button id="reset-btn" class="btn btn-secondary">
+                        🔄 Ricomincia
+                    </button>
+                    <button id="hint-btn" class="btn btn-info">
+                        💡 Suggerimento
+                    </button>
+                    <button id="new-puzzle-btn" class="btn btn-primary">
+                        🎲 Nuovo Puzzle
+                    </button>
+                </div>
+
+                <div class="progress-info">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progress-fill"></div>
+                    </div>
+                    <span id="progress-text">0/{{ puzzle.size }} bolle piazzate</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Zona vittoria -->
+        <div class="victory-message" id="victory-message" style="display: none;">
+            <div class="victory-content">
+                <h2>🎉 Complimenti!</h2>
+                <p>Hai risolto il puzzle!</p>
+                <button id="victory-new-puzzle" class="btn btn-primary">
+                    🎲 Nuovo Puzzle
+                </button>
+            </div>
+        </div>
+    </section>
+</div>
+
+<!-- Dati del puzzle per JavaScript -->
+<script>
+// Dati del puzzle
+const puzzleData = {
+    "id": "{{ puzzle.id }}",
+    "size": {{ puzzle.size }},
+    "zones": {{ puzzle_zones_json|safe }}
+};
+
+console.log("Puzzle data loaded:", puzzleData);
+
+class CapletGame {
+    constructor(puzzleData) {
+        this.puzzle = puzzleData;
+        this.size = puzzleData.size;
+        this.zones = puzzleData.zones;
+        this.grid = Array(this.size).fill().map(() => Array(this.size).fill(0)); // 0=vuoto, 1=cappelletto, 2=bolla
+        this.selectedCell = null;
+
+        this.initializeGame();
+        this.bindEvents();
+    }
+
+    initializeGame() {
+        console.log("Initializing game with size:", this.size);
+        console.log("Zones:", this.zones);
+        this.createGrid();
+        this.updateStatus();
+        this.updateProgress();
+    }
+
+    createGrid() {
+        console.log("Creating grid...");
+        const gameGrid = document.getElementById('game-grid');
+        if (!gameGrid) {
+            console.error("Game grid element not found!");
+            return;
+        }
+
+        gameGrid.innerHTML = '';
+
+        // Imposta le dimensioni della griglia CSS
+        gameGrid.style.gridTemplateColumns = `repeat(${this.size}, 1fr)`;
+        gameGrid.style.gridTemplateRows = `repeat(${this.size}, 1fr)`;
+
+        console.log("Grid template set to:", gameGrid.style.gridTemplateColumns);
+
+        console.log("Starting cell creation loop...");
+        for (let row = 0; row < this.size; row++) {
+            for (let col = 0; col < this.size; col++) {
+                const cell = document.createElement('div');
+                cell.className = 'game-cell';
+                cell.dataset.row = row;
+                cell.dataset.col = col;
+
+                // Assegna il colore della zona
+                const zone = this.zones[row][col];
+                cell.dataset.zone = zone;
+                cell.style.backgroundColor = this.getZoneColor(zone);
+
+                // Non aggiungiamo più i numeri delle zone
+
+                gameGrid.appendChild(cell);
+            }
+        }
+        console.log("Grid creation completed. Total cells:", gameGrid.children.length);
+    }
+
+    getZoneColor(zone) {
+        const colors = [
+            '#FFD700', // Oro
+            '#87CEEB', // Azzurro cielo
+            '#DDA0DD', // Prugna
+            '#98FB98', // Verde pallido
+            '#FFB6C1', // Rosa chiaro
+            '#F0E68C', // Khaki
+            '#AFEEEE', // Turchese pallido
+            '#FFDAB9'  // Pesca
+        ];
+        return colors[(zone - 1) % colors.length];
+    }
+
+    bindEvents() {
+        // Click sulle celle
+        document.getElementById('game-grid').addEventListener('click', (e) => {
+            const cell = e.target.closest('.game-cell');
+            if (cell) {
+                const row = parseInt(cell.dataset.row);
+                const col = parseInt(cell.dataset.col);
+                this.toggleCell(row, col);
+            }
+        });
+
+        // Pulsanti di controllo
+        document.getElementById('reset-btn').addEventListener('click', () => this.resetGame());
+        document.getElementById('hint-btn').addEventListener('click', () => this.showHint());
+        document.getElementById('new-puzzle-btn').addEventListener('click', () => this.newPuzzle());
+        document.getElementById('victory-new-puzzle').addEventListener('click', () => this.newPuzzle());
+    }
+
+    toggleCell(row, col) {
+        // Cicla tra: 0 (vuoto) -> 1 (cappelletto) -> 2 (bolla) -> 0 (vuoto)
+        this.grid[row][col] = (this.grid[row][col] + 1) % 3;
+
+        const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+
+        // Rimuovi eventuali simboli esistenti
+        const existingSymbol = cell.querySelector('.symbol');
+        if (existingSymbol) existingSymbol.remove();
+
+        // Rimuovi le classi di stato
+        cell.classList.remove('has-hat', 'has-bubble');
+
+        // Aggiungi il nuovo simbolo
+        if (this.grid[row][col] === 1) {
+            // Cappelletto (pasta ripiena)
+            cell.classList.add('has-hat');
+            const symbol = document.createElement('div');
+            const randomRotation = Math.floor(Math.random() * 8);
+            symbol.className = `symbol hat rotate-${randomRotation}`;
+            symbol.textContent = ''; // Usiamo l'icona SVG
+            cell.appendChild(symbol);
+        } else if (this.grid[row][col] === 2) {
+            // Bolla gialla
+            cell.classList.add('has-bubble');
+            const symbol = document.createElement('div');
+            symbol.className = 'symbol bubble';
+            symbol.textContent = '🟡';
+            cell.appendChild(symbol);
+        }
+
+        this.updateStatus();
+        this.updateProgress();
+        this.checkVictory();
+    }
+
+    updateStatus() {
+        const violations = this.getViolations();
+        const statusText = document.getElementById('status-text');
+
+        if (violations.length === 0) {
+            const bubbleCount = this.countBubbles();
+            if (bubbleCount === this.size) {
+                statusText.textContent = '🎉 Puzzle risolto!';
+                statusText.className = 'status-success';
+            } else {
+                statusText.textContent = 'Ottimo! Continua così...';
+                statusText.className = 'status-good';
+            }
+        } else {
+            statusText.textContent = violations[0];
+            statusText.className = 'status-error';
+        }
+    }
+
+    getViolations() {
+        const violations = [];
+
+        // Controlla righe (solo le bolle contano, non i cappelletti)
+        for (let row = 0; row < this.size; row++) {
+            const rowBubbles = this.grid[row].filter(cell => cell === 2).length;
+            if (rowBubbles > 1) {
+                violations.push(`❌ Riga ${row + 1}: troppe bolle`);
+            }
+        }
+
+        // Controlla colonne (solo le bolle contano)
+        for (let col = 0; col < this.size; col++) {
+            let colBubbles = 0;
+            for (let row = 0; row < this.size; row++) {
+                if (this.grid[row][col] === 2) colBubbles++;
+            }
+            if (colBubbles > 1) {
+                violations.push(`❌ Colonna ${col + 1}: troppe bolle`);
+            }
+        }
+
+        // Controlla zone (solo le bolle contano)
+        const zoneBubbles = {};
+        for (let row = 0; row < this.size; row++) {
+            for (let col = 0; col < this.size; col++) {
+                if (this.grid[row][col] === 2) {
+                    const zone = this.zones[row][col];
+                    zoneBubbles[zone] = (zoneBubbles[zone] || 0) + 1;
+                }
+            }
+        }
+
+        for (const [zone, count] of Object.entries(zoneBubbles)) {
+            if (count > 1) {
+                violations.push(`❌ Zona ${zone}: troppe bolle`);
+            }
+        }
+
+        // Controlla adiacenze (solo le bolle contano)
+        for (let row = 0; row < this.size; row++) {
+            for (let col = 0; col < this.size; col++) {
+                if (this.grid[row][col] === 2) {
+                    for (let dr = -1; dr <= 1; dr++) {
+                        for (let dc = -1; dc <= 1; dc++) {
+                            if (dr === 0 && dc === 0) continue;
+                            const newRow = row + dr;
+                            const newCol = col + dc;
+                            if (newRow >= 0 && newRow < this.size &&
+                                newCol >= 0 && newCol < this.size &&
+                                this.grid[newRow][newCol] === 2) {
+                                violations.push(`❌ Bolle adiacenti trovate`);
+                                return violations;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return violations;
+    }
+
+    countBubbles() {
+        let count = 0;
+        for (let row = 0; row < this.size; row++) {
+            for (let col = 0; col < this.size; col++) {
+                if (this.grid[row][col] === 2) count++;
+            }
+        }
+        return count;
+    }
+
+    updateProgress() {
+        const bubbleCount = this.countBubbles();
+        const progressPercent = (bubbleCount / this.size) * 100;
+
+        document.getElementById('progress-fill').style.width = `${progressPercent}%`;
+        document.getElementById('progress-text').textContent = `${bubbleCount}/${this.size} bolle piazzate`;
+    }
+
+    checkVictory() {
+        const violations = this.getViolations();
+        const bubbleCount = this.countBubbles();
+
+        if (violations.length === 0 && bubbleCount === this.size) {
+            setTimeout(() => {
+                document.getElementById('victory-message').style.display = 'block';
+            }, 500);
+        }
+    }
+
+    resetGame() {
+        this.grid = Array(this.size).fill().map(() => Array(this.size).fill(0));
+
+        // Rimuovi tutti i simboli dalle celle
+        document.querySelectorAll('.game-cell').forEach(cell => {
+            cell.classList.remove('has-bubble', 'has-hat');
+            const symbol = cell.querySelector('.symbol');
+            if (symbol) symbol.remove();
+        });
+
+        document.getElementById('victory-message').style.display = 'none';
+        this.updateStatus();
+        this.updateProgress();
+    }
+
+    showHint() {
+        // Implementazione semplice del suggerimento
+        const violations = this.getViolations();
+        if (violations.length > 0) {
+            alert('Prima risolvi i conflitti: ' + violations[0]);
+            return;
+        }
+
+        // Trova una cella vuota che può essere piazzata
+        for (let row = 0; row < this.size; row++) {
+            for (let col = 0; col < this.size; col++) {
+                if (this.grid[row][col] === 0) {
+                    // Test se questa posizione è valida per una bolla
+                    this.grid[row][col] = 2;
+                    const testViolations = this.getViolations();
+                    this.grid[row][col] = 0;
+
+                    if (testViolations.length === 0) {
+                        const cell = document.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+                        cell.classList.add('hint-cell');
+                        setTimeout(() => cell.classList.remove('hint-cell'), 2000);
+                        return;
+                    }
+                }
+            }
+        }
+
+        alert('💡 Non riesco a trovare un suggerimento ovvio!');
+    }
+
+    newPuzzle() {
+        window.location.reload();
+    }
+}
+
+// Inizializza il gioco quando la pagina è caricata
+document.addEventListener('DOMContentLoaded', () => {
+    new CapletGame(puzzleData);
+});
+</script>
+{% endblock %}

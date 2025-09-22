@@ -1518,3 +1518,438 @@ footer {
         height: 18px;
     }
 }
+
+/* ===== CAPLET GAME STYLES ===== */
+
+/* Game Title */
+.game-title {
+    font-size: 3rem;
+    color: #C4965A;
+    text-align: center;
+    margin-bottom: 0.5rem;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+}
+
+.game-subtitle {
+    text-align: center;
+    color: #8B6F47;
+    font-size: 1.2rem;
+    font-style: italic;
+    margin-bottom: 2rem;
+}
+
+/* Rules Section */
+.game-rules {
+    background: rgba(255, 255, 255, 0.9);
+    border-radius: 15px;
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+    border: 2px solid #E5D5C8;
+    box-shadow: 0 4px 15px rgba(44, 44, 44, 0.1);
+}
+
+.rules-container h2 {
+    color: #C4965A;
+    margin-bottom: 1rem;
+    font-size: 1.5rem;
+}
+
+.rules-container ul {
+    list-style: none;
+    padding: 0;
+}
+
+.rules-container li {
+    padding: 0.5rem 0;
+    font-size: 1.1rem;
+    color: #2C2C2C;
+    border-bottom: 1px solid rgba(196, 150, 90, 0.2);
+}
+
+.rules-container li:last-child {
+    border-bottom: none;
+}
+
+/* Game Section */
+.game-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2rem;
+}
+
+.game-container {
+    display: flex;
+    gap: 3rem;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+/* Piatto rotondo */
+.plate {
+    width: 400px;
+    height: 400px;
+    background: linear-gradient(135deg, #F8F5F0 0%, #E8E2D5 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow:
+        0 8px 32px rgba(44, 44, 44, 0.15),
+        inset 0 4px 8px rgba(255, 255, 255, 0.5),
+        inset 0 -4px 8px rgba(0, 0, 0, 0.1);
+    border: 8px solid #C4965A;
+    position: relative;
+}
+
+.plate::before {
+    content: '';
+    position: absolute;
+    top: -15px;
+    left: -15px;
+    right: -15px;
+    bottom: -15px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #D4B896 0%, #C4965A 100%);
+    z-index: -1;
+}
+
+.grid-container {
+    width: 320px;
+    height: 320px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Griglia di gioco */
+.game-grid {
+    display: grid;
+    gap: 2px;
+    background: rgba(196, 150, 90, 0.3);
+    padding: 8px;
+    border-radius: 10px;
+    width: 100%;
+    height: 100%;
+}
+
+.game-cell {
+    background: #FAF7F0;
+    border: 3px solid rgba(139, 111, 71, 0.6);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    position: relative;
+    transition: all 0.3s ease;
+    font-weight: bold;
+    color: #8B6F47;
+}
+
+.game-cell:hover {
+    transform: scale(1.05);
+    border-color: #C4965A;
+    box-shadow: 0 2px 8px rgba(196, 150, 90, 0.4);
+}
+
+/* Non cambiamo più il colore di sfondo delle celle */
+
+.symbol {
+    font-size: 1.8rem;
+    animation: symbolPop 0.3s ease-out;
+    position: absolute;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.symbol.hat {
+    width: 32px;
+    height: 32px;
+    background: url('../images/cappelletto.svg') no-repeat center;
+    background-size: contain;
+    font-size: 0; /* Nascondi il testo emoji */
+}
+
+.symbol.hat.rotate-0 { transform: rotate(0deg); }
+.symbol.hat.rotate-1 { transform: rotate(45deg); }
+.symbol.hat.rotate-2 { transform: rotate(90deg); }
+.symbol.hat.rotate-3 { transform: rotate(135deg); }
+.symbol.hat.rotate-4 { transform: rotate(180deg); }
+.symbol.hat.rotate-5 { transform: rotate(225deg); }
+.symbol.hat.rotate-6 { transform: rotate(270deg); }
+.symbol.hat.rotate-7 { transform: rotate(315deg); }
+
+.symbol.bubble {
+    font-size: 1.8rem;
+}
+
+/* Zone labels rimossi - ora si usano solo i colori */
+
+.hint-cell {
+    animation: hintPulse 1s ease-in-out infinite;
+    border-color: #FF9800 !important;
+}
+
+@keyframes symbolPop {
+    0% { transform: scale(0); opacity: 0; }
+    50% { transform: scale(1.2); opacity: 0.8; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes hintPulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 0 rgba(255, 152, 0, 0.7); }
+    50% { transform: scale(1.1); box-shadow: 0 0 20px rgba(255, 152, 0, 0.7); }
+}
+
+/* Pannello di controllo */
+.game-controls {
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 15px;
+    padding: 2rem;
+    min-width: 300px;
+    border: 2px solid #E5D5C8;
+    box-shadow: 0 4px 15px rgba(44, 44, 44, 0.1);
+}
+
+.game-info {
+    margin-bottom: 1.5rem;
+}
+
+.puzzle-info {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+    color: #8B6F47;
+}
+
+.game-status {
+    text-align: center;
+    padding: 1rem;
+    border-radius: 10px;
+    background: rgba(196, 150, 90, 0.1);
+    margin-bottom: 1rem;
+}
+
+#status-text {
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+.status-success {
+    color: #2E7D32 !important;
+}
+
+.status-good {
+    color: #1976D2 !important;
+}
+
+.status-error {
+    color: #D32F2F !important;
+}
+
+.control-buttons {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+    margin-bottom: 1.5rem;
+}
+
+.btn {
+    padding: 0.8rem 1.2rem;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-block;
+    text-align: center;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #C4965A 0%, #B8864A 100%);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #B8864A 0%, #A6763A 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(196, 150, 90, 0.4);
+}
+
+.btn-secondary {
+    background: linear-gradient(135deg, #6C757D 0%, #5A6268 100%);
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: linear-gradient(135deg, #5A6268 0%, #495057 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(108, 117, 125, 0.4);
+}
+
+.btn-info {
+    background: linear-gradient(135deg, #17A2B8 0%, #138496 100%);
+    color: white;
+}
+
+.btn-info:hover {
+    background: linear-gradient(135deg, #138496 0%, #117A8B 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(23, 162, 184, 0.4);
+}
+
+/* Progress Bar */
+.progress-info {
+    text-align: center;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 20px;
+    background: rgba(196, 150, 90, 0.2);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(135deg, #C4965A 0%, #B8864A 100%);
+    width: 0%;
+    transition: width 0.5s ease;
+    border-radius: 10px;
+}
+
+#progress-text {
+    font-size: 0.9rem;
+    color: #8B6F47;
+    font-weight: bold;
+}
+
+/* Victory Message */
+.victory-message {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    animation: victoryFadeIn 0.5s ease-out;
+}
+
+.victory-content {
+    background: white;
+    padding: 3rem;
+    border-radius: 20px;
+    text-align: center;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    animation: victoryBounce 0.5s ease-out;
+}
+
+.victory-content h2 {
+    color: #C4965A;
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+}
+
+.victory-content p {
+    font-size: 1.2rem;
+    margin-bottom: 2rem;
+    color: #2C2C2C;
+}
+
+@keyframes victoryFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes victoryBounce {
+    0% { transform: scale(0.3) translateY(-100px); opacity: 0; }
+    50% { transform: scale(1.05); }
+    70% { transform: scale(0.9); }
+    100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .game-container {
+        flex-direction: column;
+        gap: 2rem;
+    }
+
+    .plate {
+        width: 320px;
+        height: 320px;
+    }
+
+    .grid-container {
+        width: 260px;
+        height: 260px;
+    }
+
+    .game-controls {
+        min-width: auto;
+        width: 100%;
+        max-width: 320px;
+    }
+
+    .game-title {
+        font-size: 2.5rem;
+    }
+
+    .control-buttons {
+        flex-direction: row;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+
+    .btn {
+        flex: 1;
+        min-width: 120px;
+        padding: 0.6rem 0.8rem;
+        font-size: 0.9rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .plate {
+        width: 280px;
+        height: 280px;
+        border-width: 6px;
+    }
+
+    .grid-container {
+        width: 220px;
+        height: 220px;
+    }
+
+    .game-title {
+        font-size: 2rem;
+    }
+
+    .game-subtitle {
+        font-size: 1rem;
+    }
+
+    .rules-container {
+        padding: 1rem;
+    }
+
+    .victory-content {
+        padding: 2rem 1.5rem;
+        margin: 1rem;
+    }
+
+    .victory-content h2 {
+        font-size: 2rem;
+    }
+}

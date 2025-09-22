@@ -26,16 +26,18 @@ urlpatterns = [
     path('',views.home, name='home'),
     path('articolo/<slug:slug>/', views.dettaglio_articolo, name='dettaglio_articolo'),
     path('privacy-policy/', views.privacy_policy, name='privacy-policy'),
-    
+    path('caplet/', views.caplet, name='caplet'),
+
     # RSS Feeds per IFTTT e social sharing
     path('feed/rss/', ArticoliFeedRSS(), name='rss-feed'),
     path('feed/atom/', ArticoliFeedAtom(), name='atom-feed'),
     path('feed/recenti/', ArticoliRecentiFeed(), name='recenti-feed'),
-    
+
     # SEO e bot management
     path('robots.txt', TemplateView.as_view(template_name='robots.txt', content_type='text/plain'), name='robots'),
+    path('ads.txt', TemplateView.as_view(template_name='ads.txt', content_type='text/plain'), name='ads'),
     path('sitemap-news.xml', views.news_sitemap, name='news_sitemap'),
-    
+
     path('admin/', admin.site.urls),
 ]
 

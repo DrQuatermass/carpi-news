@@ -44,7 +44,7 @@
                             <div class="spinner"></div>
                         </div>
                         {% for articolo in articoli %}
-                        <a href="{% url 'dettaglio-articolo' articolo.slug %}" class="news-card-link">
+                        <a href="{% url 'dettaglio_articolo' articolo.slug %}" class="news-card-link">
                             <article class="news-card loading">
                                 <div class="news-image">
                                     <img src="{{ articolo.get_image_url }}" alt="{{ articolo.titolo }}" class="card-img">

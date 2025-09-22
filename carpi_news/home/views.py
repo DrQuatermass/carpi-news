@@ -1,8 +1,12 @@
 import logging
+import json
+import os
+import random
 from django.shortcuts import render, get_object_or_404
 from django.core.paginator import Paginator
 from django.http import JsonResponse, HttpResponse
 from django.template import loader
+from django.conf import settings
 from datetime import datetime, timedelta
 from .models import Articolo
 
@@ -157,3 +161,69 @@ def news_sitemap(request):
     template = loader.get_template('sitemap_news.xml')
     context = {'articles': articles}
     return HttpResponse(template.render(context, request), content_type='application/xml')
+
+def caplet(request):
+    """Vista per il gioco Caplet"""
+    # Carica i puzzle dal file JSON
+    puzzle_file = os.path.join(settings.BASE_DIR, 'home', 'static', 'home', 'strategic_puzzles_20250922_085045.json')
+
+    try:
+        with open(puzzle_file, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+
+        # Seleziona un puzzle casuale
+        puzzles = data.get('puzzles', [])
+        if puzzles:
+            puzzle = random.choice(puzzles)
+        else:
+            # Puzzle di fallback se il file non è valido
+            puzzle = {
+                "id": "puzzle_5x5_fallback",
+                "size": 5,
+                "zones": [
+                    [1, 1, 2, 2, 2],
+                    [1, 3, 3, 2, 2],
+                    [1, 3, 4, 4, 5],
+                    [1, 3, 4, 5, 5],
+                    [1, 3, 4, 5, 5]
+                ]
+            }
+    except (FileNotFoundError, json.JSONDecodeError, KeyError):
+        # Puzzle di fallback se il file non esiste o è corrotto
+        puzzle = {
+            "id": "puzzle_5x5_fallback",
+            "size": 5,
+            "zones": [
+                [1, 1, 2, 2, 2],
+                [1, 3, 3, 2, 2],
+                [1, 3, 4, 4, 5],
+                [1, 3, 4, 5, 5],
+                [1, 3, 4, 5, 5]
+            ]
+        }
+
+    # Ottieni categorie per il menu di navigazione
+    categorie_raw = Articolo.objects.filter(approvato=True).values_list('categoria', flat=True).distinct()
+    categorie_disponibili = []
+    has_rubriche = False
+
+    for cat in sorted(categorie_raw):
+        if cat in ['Editoriale', "L'Eco del Consiglio"]:
+            if not has_rubriche:
+                categorie_disponibili.append('Rubriche')
+                has_rubriche = True
+        else:
+            categorie_disponibili.append(cat)
+
+    # Serializza le zone come JSON per il template
+    puzzle_zones_json = json.dumps(puzzle['zones'])
+
+    context = {
+        'puzzle': puzzle,
+        'puzzle_zones_json': puzzle_zones_json,
+        'categorie_disponibili': list(categorie_disponibili),
+        'categoria_attiva': None,
+        'current_year': 2025,
+    }
+
+    return render(request, "caplet.html", context)
