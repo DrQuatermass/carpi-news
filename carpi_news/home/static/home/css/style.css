@@ -122,6 +122,114 @@ nav {
     width: 100%;
 }
 
+/* Dropdown Menu Styles */
+.dropdown {
+    position: relative;
+}
+
+.dropdown-toggle {
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.dropdown-toggle::after {
+    content: '▼';
+    font-size: 0.8rem;
+    transition: transform 0.3s ease;
+}
+
+.dropdown.active .dropdown-toggle::after {
+    transform: rotate(180deg);
+}
+
+.dropdown-menu {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    background: rgba(250, 247, 240, 0.98);
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(150, 108, 66, 0.15);
+    border-radius: 8px;
+    box-shadow: 0 8px 25px rgba(44, 44, 44, 0.15);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.3s ease;
+    z-index: 1001;
+    min-width: 200px;
+    list-style: none;
+    padding: 0.5rem 0;
+}
+
+.dropdown.active .dropdown-menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.dropdown-menu li {
+    margin: 0;
+}
+
+.dropdown-menu a {
+    display: block;
+    padding: 0.75rem 1.25rem;
+    color: #5A5A5A;
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    border-bottom: none !important;
+}
+
+.dropdown-menu a:hover {
+    background: rgba(150, 108, 66, 0.1);
+    color: #966C42;
+    transform: none;
+}
+
+.dropdown-menu a::after {
+    display: none;
+}
+
+/* Mobile Dropdown Styles */
+.mobile-dropdown-item {
+    border-bottom: 1px solid rgba(150, 108, 66, 0.1);
+}
+
+.mobile-dropdown-header {
+    display: block;
+    padding: 0.75rem 1rem;
+    font-weight: 600;
+    color: #966C42;
+    background: rgba(150, 108, 66, 0.05);
+}
+
+.mobile-submenu {
+    list-style: none;
+    padding: 0;
+    background: rgba(250, 247, 240, 0.5);
+}
+
+.mobile-submenu li {
+    margin: 0;
+}
+
+.mobile-submenu a {
+    display: block;
+    padding: 0.5rem 2rem;
+    color: #5A5A5A;
+    text-decoration: none;
+    font-size: 0.9rem;
+    border-bottom: 1px solid rgba(150, 108, 66, 0.05);
+}
+
+.mobile-submenu a:hover {
+    background: rgba(150, 108, 66, 0.1);
+    color: #966C42;
+}
+
 /* Main Content */
 main {
     margin-top: 80px;

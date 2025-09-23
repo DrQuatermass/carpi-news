@@ -41,9 +41,22 @@
             <!-- Menu desktop -->
             <ul class="nav-links desktop-nav">
                 <li><a href="{% url 'home' %}?categoria=tutti" {% if not categoria_attiva or categoria_attiva == 'Home' %}class="active"{% endif %}>Home</a></li>
+
                 {% for categoria in categorie_disponibili %}
-                <li><a href="{% url 'home' %}?categoria={{ categoria|urlencode }}" {% if categoria_attiva == categoria %}class="active"{% endif %}>{{ categoria }}</a></li>
+                    {% if categoria != 'Rubriche' %}
+                    <li><a href="{% url 'home' %}?categoria={{ categoria|urlencode }}" {% if categoria_attiva == categoria %}class="active"{% endif %}>{{ categoria }}</a></li>
+                    {% endif %}
                 {% endfor %}
+
+                <!-- Dropdown Rubriche -->
+                <li class="dropdown">
+                    <a href="#" class="dropdown-toggle">Rubriche</a>
+                    <ul class="dropdown-menu">
+                        <li><a href="{% url 'home' %}?categoria=L'Eco del Consiglio">L'Eco del consiglio</a></li>
+                        <li><a href="{% url 'home' %}?categoria=Editoriale">Editoriale</a></li>
+                        <li><a href="/caplet/">Caplet</a></li>
+                    </ul>
+                </li>
             </ul>
             
             <!-- Hamburger menu mobile -->
@@ -58,9 +71,22 @@
                 <div class="mobile-dropdown" id="mobileDropdown">
                     <ul class="mobile-nav-links">
                         <li><a href="{% url 'home' %}?categoria=tutti" {% if not categoria_attiva or categoria_attiva == 'Home' %}class="active"{% endif %}>Home</a></li>
+
                         {% for categoria in categorie_disponibili %}
-                        <li><a href="{% url 'home' %}?categoria={{ categoria|urlencode }}" {% if categoria_attiva == categoria %}class="active"{% endif %}>{{ categoria }}</a></li>
+                            {% if categoria != 'Rubriche' %}
+                            <li><a href="{% url 'home' %}?categoria={{ categoria|urlencode }}" {% if categoria_attiva == categoria %}class="active"{% endif %}>{{ categoria }}</a></li>
+                            {% endif %}
                         {% endfor %}
+
+                        <!-- Rubriche nel menu mobile -->
+                        <li class="mobile-dropdown-item">
+                            <span class="mobile-dropdown-header">Rubriche</span>
+                            <ul class="mobile-submenu">
+                                <li><a href="{% url 'home' %}?categoria=L'Eco del Consiglio">L'Eco del consiglio</a></li>
+                                <li><a href="{% url 'home' %}?categoria=Editoriale">Editoriale</a></li>
+                                <li><a href="/caplet/">Caplet</a></li>
+                            </ul>
+                        </li>
                     </ul>
                 </div>
             </div>
@@ -214,20 +240,38 @@
                 });
             });
 
+            // Desktop dropdown functionality
+            document.querySelectorAll('.dropdown').forEach(dropdown => {
+                const toggle = dropdown.querySelector('.dropdown-toggle');
+                const menu = dropdown.querySelector('.dropdown-menu');
+
+                toggle.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    dropdown.classList.toggle('active');
+                });
+
+                // Close when clicking outside
+                document.addEventListener('click', function(e) {
+                    if (!dropdown.contains(e.target)) {
+                        dropdown.classList.remove('active');
+                    }
+                });
+            });
+
             // Mobile menu functionality
             const mobileMenuBtn = document.getElementById('mobileMenuBtn');
             const mobileDropdown = document.getElementById('mobileDropdown');
-            
+
             if (mobileMenuBtn && mobileDropdown) {
                 mobileMenuBtn.addEventListener('click', function(e) {
                     e.preventDefault();
                     e.stopPropagation();
-                    
+
                     // Toggle active state
                     mobileMenuBtn.classList.toggle('active');
                     mobileDropdown.classList.toggle('active');
                 });
-                
+
                 // Close menu when clicking outside
                 document.addEventListener('click', function(e) {
                     if (!mobileMenuBtn.contains(e.target) && !mobileDropdown.contains(e.target)) {
@@ -235,7 +279,7 @@
                         mobileDropdown.classList.remove('active');
                     }
                 });
-                
+
                 // Close menu when clicking on a link
                 mobileDropdown.querySelectorAll('a').forEach(link => {
                     link.addEventListener('click', function() {
