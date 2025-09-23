@@ -11,12 +11,17 @@
 <div class="container">
     <!-- Titolo del gioco -->
     <div class="game-header">
-        <h1 class="game-title">🍲 Caplet</h1>
+        <h1 class="game-title">Caplet</h1>
         <p class="game-subtitle">Il gioco delle bolle nel brodo</p>
     </div>
 
     <!-- Area di gioco -->
     <section class="game-section">
+        <!-- Timer sopra tutto -->
+        <div class="timer-display" style="text-align: center; margin-bottom: 20px;">
+            <span id="timer-text" style="font-size: 2rem; font-weight: bold;">00:00</span>
+        </div>
+
         <div class="game-container">
             <!-- Piatto rotondo -->
             <div class="plate" id="game-plate">
@@ -37,10 +42,10 @@
 
                 <div class="control-buttons">
                     <button id="reset-btn" class="btn btn-secondary">
-                        🔄 Ricomincia
+                        Ricomincia
                     </button>
                     <button id="new-puzzle-btn" class="btn btn-primary">
-                        🎲 Nuovo Puzzle
+                        Nuovo Puzzle
                     </button>
                 </div>
 
@@ -54,13 +59,39 @@
         </div>
 
         <!-- Zona vittoria -->
-        <div class="victory-message" id="victory-message" style="display: none;">
-            <div class="victory-content">
-                <h2>🎉 Complimenti!</h2>
-                <p>Hai riempito il piatto!</p>
-                <button id="victory-new-puzzle" class="btn btn-primary">
-                    🎲 Nuovo Puzzle
-                </button>
+        <div class="victory-message" id="victory-message" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.8); z-index: 1000; align-items: center; justify-content: center;">
+            <div class="victory-content" style="background: linear-gradient(135deg, #fff 0%, #f8f9fa 100%); border-radius: 15px; padding: 40px; max-width: 500px; width: 90%; text-align: center; box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3); border: 3px solid #FFD700; position: relative;">
+                <button id="close-victory" style="position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 24px; cursor: pointer; color: #666; line-height: 1; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 50%;" onmouseover="this.style.backgroundColor='#f0f0f0'" onmouseout="this.style.backgroundColor='transparent'">×</button>
+                <h2 style="color: #2c3e50; margin-bottom: 15px; font-size: 2rem;">Complimenti!</h2>
+                <p style="color: #34495e; margin-bottom: 20px; font-size: 1.1rem;">Hai completato il puzzle Caplet!</p>
+
+                <div class="completion-time" style="background: #fff3cd; border-radius: 10px; padding: 15px; margin: 20px 0; border-left: 5px solid #FFD700;">
+                    <span id="final-time" style="font-size: 1.5rem; font-weight: bold; color: #856404;">Tempo: 00:00</span>
+                </div>
+
+                <div class="share-section" style="margin: 25px 0;">
+                    <h3 style="color: #2c3e50; margin-bottom: 15px; font-size: 1.2rem;">Condividi il tuo risultato:</h3>
+                    <div class="share-buttons" style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 20px 0;">
+                        <button id="share-twitter" class="btn" style="background: linear-gradient(135deg, #1DA1F2, #0d8bd9); color: white; border: none; padding: 12px 20px; border-radius: 25px; font-weight: 500; transition: transform 0.2s; cursor: pointer;">
+                            Twitter
+                        </button>
+                        <button id="share-facebook" class="btn" style="background: linear-gradient(135deg, #4267B2, #365899); color: white; border: none; padding: 12px 20px; border-radius: 25px; font-weight: 500; transition: transform 0.2s; cursor: pointer;">
+                            Facebook
+                        </button>
+                        <button id="copy-link" class="btn" style="background: linear-gradient(135deg, #6c757d, #5a6268); color: white; border: none; padding: 12px 20px; border-radius: 25px; font-weight: 500; transition: transform 0.2s; cursor: pointer;">
+                            Copia Link
+                        </button>
+                    </div>
+                </div>
+
+                <div class="victory-actions" style="display: flex; gap: 15px; justify-content: center; flex-wrap: wrap; margin-top: 25px;">
+                    <button id="victory-new-puzzle" class="btn" style="background: linear-gradient(135deg, #28a745, #20c997); color: white; border: none; padding: 15px 25px; border-radius: 25px; font-weight: 600; font-size: 1.1rem; transition: transform 0.2s; cursor: pointer;">
+                        Nuovo Puzzle
+                    </button>
+                    <button id="back-to-home" class="btn" style="background: linear-gradient(135deg, #6c757d, #5a6268); color: white; border: none; padding: 15px 25px; border-radius: 25px; font-weight: 600; font-size: 1.1rem; transition: transform 0.2s; cursor: pointer;" onclick="window.location.href='/'">
+                        Torna alla Home
+                    </button>
+                </div>
             </div>
         </div>
     </section>
@@ -70,11 +101,11 @@
         <div class="rules-container">
             <h2>Come si gioca:</h2>
             <ul>
-                <li>🫧 Piazza una bolla di brodo in ogni zona colorata</li>
-                <li>📏 Ogni riga e colonna deve avere esattamente una bolla</li>
-                <li>🚫 Le bolle non possono essere adiacenti (neanche in diagonale)</li>
-                <li>🍝 Usa i cappelletti per segnare ipotesi (non contano per le regole)</li>
-                <li>🎯 Riempi il piatto!</li>
+                <li>Piazza una bolla di brodo in ogni zona colorata</li>
+                <li>Ogni riga e colonna deve avere esattamente una bolla</li>
+                <li>Le bolle non possono essere adiacenti (neanche in diagonale)</li>
+                <li>Usa i cappelletti per segnare ipotesi (non contano per le regole)</li>
+                <li>Riempi il piatto!</li>
             </ul>
         </div>
     </section>
@@ -100,6 +131,9 @@ class CapletGame {
         this.zones = puzzleData.zones;
         this.grid = Array(this.size).fill().map(() => Array(this.size).fill(0)); // 0=vuoto, 1=cappelletto, 2=bolla
         this.selectedCell = null;
+        this.startTime = null;
+        this.timerInterval = null;
+        this.gameCompleted = false;
 
         this.initializeGame();
         this.bindEvents();
@@ -109,6 +143,7 @@ class CapletGame {
         this.createGrid();
         this.updateStatus();
         this.updateProgress();
+        this.resetTimer();
     }
 
     createGrid() {
@@ -167,9 +202,27 @@ class CapletGame {
         document.getElementById('reset-btn').addEventListener('click', () => this.resetGame());
         document.getElementById('new-puzzle-btn').addEventListener('click', () => this.newPuzzle());
         document.getElementById('victory-new-puzzle').addEventListener('click', () => this.newPuzzle());
+
+        // Pulsanti di condivisione
+        document.getElementById('share-twitter').addEventListener('click', () => this.shareOnTwitter());
+        document.getElementById('share-facebook').addEventListener('click', () => this.shareOnFacebook());
+        document.getElementById('copy-link').addEventListener('click', () => this.copyGameLink());
+
+        // Chiusura popup di vittoria
+        document.getElementById('close-victory').addEventListener('click', () => this.closeVictoryMessage());
+        document.getElementById('victory-message').addEventListener('click', (e) => {
+            if (e.target.id === 'victory-message') {
+                this.closeVictoryMessage();
+            }
+        });
     }
 
     toggleCell(row, col) {
+        // Avvia il timer alla prima mossa
+        if (!this.startTime && !this.gameCompleted) {
+            this.startTimer();
+        }
+
         // Cicla tra: 0 (vuoto) -> 1 (cappelletto) -> 2 (bolla) -> 0 (vuoto)
         this.grid[row][col] = (this.grid[row][col] + 1) % 3;
 
@@ -212,7 +265,7 @@ class CapletGame {
         if (violations.length === 0) {
             const bubbleCount = this.countBubbles();
             if (bubbleCount === this.size) {
-                statusText.textContent = '🎉 Puzzle risolto!';
+                statusText.textContent = 'Puzzle risolto!';
                 statusText.className = 'status-success';
             } else {
                 statusText.textContent = 'Ottimo! Continua così...';
@@ -231,7 +284,7 @@ class CapletGame {
         for (let row = 0; row < this.size; row++) {
             const rowBubbles = this.grid[row].filter(cell => cell === 2).length;
             if (rowBubbles > 1) {
-                violations.push(`❌ Riga ${row + 1}: troppe bolle`);
+                violations.push(`Riga ${row + 1}: troppe bolle`);
             }
         }
 
@@ -242,7 +295,7 @@ class CapletGame {
                 if (this.grid[row][col] === 2) colBubbles++;
             }
             if (colBubbles > 1) {
-                violations.push(`❌ Colonna ${col + 1}: troppe bolle`);
+                violations.push(`Colonna ${col + 1}: troppe bolle`);
             }
         }
 
@@ -259,7 +312,7 @@ class CapletGame {
 
         for (const [zone, count] of Object.entries(zoneBubbles)) {
             if (count > 1) {
-                violations.push(`❌ Zona ${zone}: troppe bolle`);
+                violations.push(`Zona ${zone}: troppe bolle`);
             }
         }
 
@@ -275,7 +328,7 @@ class CapletGame {
                             if (newRow >= 0 && newRow < this.size &&
                                 newCol >= 0 && newCol < this.size &&
                                 this.grid[newRow][newCol] === 2) {
-                                violations.push(`❌ Bolle adiacenti trovate`);
+                                violations.push(`Bolle adiacenti trovate`);
                                 return violations;
                             }
                         }
@@ -310,6 +363,8 @@ class CapletGame {
         const bubbleCount = this.countBubbles();
 
         if (violations.length === 0 && bubbleCount === this.size) {
+            this.gameCompleted = true;
+            this.stopTimer();
             setTimeout(() => {
                 this.showVictoryAnimation();
             }, 500);
@@ -384,13 +439,16 @@ class CapletGame {
 
             // Mostra il messaggio di vittoria
             setTimeout(() => {
-                document.getElementById('victory-message').style.display = 'block';
+                this.showFinalTime();
+                document.getElementById('victory-message').style.display = 'flex';
             }, 2500);
         }, 1500);
     }
 
     resetGame() {
         this.grid = Array(this.size).fill().map(() => Array(this.size).fill(0));
+        this.gameCompleted = false;
+        this.resetTimer();
 
         // Ripristina la griglia originale se è stata sostituita dall'animazione di vittoria
         const plate = document.getElementById('game-plate');
@@ -415,6 +473,130 @@ class CapletGame {
 
     newPuzzle() {
         window.location.reload();
+    }
+
+    startTimer() {
+        this.startTime = Date.now();
+        this.timerInterval = setInterval(() => {
+            this.updateTimer();
+        }, 1000);
+    }
+
+    stopTimer() {
+        if (this.timerInterval) {
+            clearInterval(this.timerInterval);
+            this.timerInterval = null;
+        }
+    }
+
+    resetTimer() {
+        this.stopTimer();
+        this.startTime = null;
+        this.gameCompleted = false;
+        document.getElementById('timer-text').textContent = '⏱️ 00:00';
+    }
+
+    updateTimer() {
+        if (!this.startTime || this.gameCompleted) return;
+
+        const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
+        const minutes = Math.floor(elapsed / 60);
+        const seconds = elapsed % 60;
+
+        const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        document.getElementById('timer-text').textContent = `⏱️ ${timeString}`;
+    }
+
+    showFinalTime() {
+        if (!this.startTime) return;
+
+        const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
+        const minutes = Math.floor(elapsed / 60);
+        const seconds = elapsed % 60;
+
+        const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+        document.getElementById('final-time').textContent = `Tempo: ${timeString}`;
+    }
+
+    async shareOnTwitter() {
+        const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
+        const minutes = Math.floor(elapsed / 60);
+        const seconds = elapsed % 60;
+        const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+        const text = `Puzzle Caplet completato!\nTempo: ${timeString}\nGriglia ${this.size}x${this.size}\n\nProva anche tu su Ombra del Portico!`;
+        const url = window.location.href;
+
+        // Twitter web
+        const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+        window.open(twitterUrl, '_blank');
+    }
+
+    async shareOnFacebook() {
+        const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
+        const minutes = Math.floor(elapsed / 60);
+        const seconds = elapsed % 60;
+        const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+        const url = window.location.href;
+        const title = `Ho completato un puzzle Caplet in ${timeString}!`;
+        const description = `Prova anche tu questo gioco di logica su Ombra del Portico`;
+
+        // Facebook web con parametri
+        const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}&quote=${encodeURIComponent(title + ' ' + description)}`;
+        window.open(facebookUrl, '_blank');
+    }
+
+    async copyGameLink() {
+        try {
+            const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
+            const minutes = Math.floor(elapsed / 60);
+            const seconds = elapsed % 60;
+            const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+            const shareText = `Ho completato un puzzle Caplet in ${timeString}! Prova anche tu: ${window.location.href}`;
+            await navigator.clipboard.writeText(shareText);
+
+            // Feedback visivo
+            const button = document.getElementById('copy-link');
+            const originalText = button.textContent;
+            button.textContent = 'Link Copiato!';
+            button.style.backgroundColor = '#28a745';
+
+            setTimeout(() => {
+                button.textContent = originalText;
+                button.style.backgroundColor = '';
+            }, 2000);
+        } catch (err) {
+            // Fallback per browser che non supportano clipboard API
+            const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
+            const minutes = Math.floor(elapsed / 60);
+            const seconds = elapsed % 60;
+            const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+            const shareText = `Ho completato un puzzle Caplet in ${timeString}! Prova anche tu: ${window.location.href}`;
+            const textArea = document.createElement('textarea');
+            textArea.value = shareText;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+
+            // Feedback visivo
+            const button = document.getElementById('copy-link');
+            const originalText = button.textContent;
+            button.textContent = 'Link Copiato!';
+            button.style.backgroundColor = '#28a745';
+
+            setTimeout(() => {
+                button.textContent = originalText;
+                button.style.backgroundColor = '';
+            }, 2000);
+        }
+    }
+
+    closeVictoryMessage() {
+        document.getElementById('victory-message').style.display = 'none';
     }
 }
 
