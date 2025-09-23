@@ -448,7 +448,7 @@ class CapletGame {
     resetGame() {
         this.grid = Array(this.size).fill().map(() => Array(this.size).fill(0));
         this.gameCompleted = false;
-        this.resetTimer();
+        // Non resettare il timer - solo pulire la griglia
 
         // Ripristina la griglia originale se è stata sostituita dall'animazione di vittoria
         const plate = document.getElementById('game-plate');
