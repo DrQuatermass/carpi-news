@@ -528,12 +528,24 @@ NOVI_MODENA_CONFIG = SiteConfig(
     news_url="https://www.comune.novi.mo.it/novita/",
     disable_rss=True,
 
-    # Selettori HTML per scraping - basati sulla struttura reale
+    # Selettori HTML per scraping - tutte le card dalla pagina novita
     selectors=[
-        'div.row.g-2.g-md-0.flex-md-column',
         '.card-body',
-        'div[class*="row g-2"]'
+        '.card',
+        '.cmp-card-simple'
     ],
+
+    # Download delle immagini
+    download_images=True,
+    image_selectors=[
+        'img',
+        '.card img',
+        '.featured-image img',
+        'img[src*="/wp-content/uploads/"]',
+        'img[src*="/media/"]',
+        'img[src*="/images/"]'
+    ],
+
     content_selectors=[
         'article',
         '.richtext-wrapper',
@@ -572,12 +584,24 @@ SOLIERA_CONFIG = SiteConfig(
     news_url="https://www.comune.soliera.mo.it/novita/",
     disable_rss=True,
 
-    # Selettori HTML per scraping - struttura specifica
+    # Selettori HTML per scraping - tutte le card dalla pagina novita
     selectors=[
-        'div.row.g-2.g-md-0.flex-md-column',
-        '.card-wrapper.cmp-list-card-img',
-        '.card-body'
+        '.card-body',
+        '.card',
+        '.cmp-card-simple'
     ],
+
+    # Download delle immagini
+    download_images=True,
+    image_selectors=[
+        'img',
+        '.card img',
+        '.featured-image img',
+        'img[src*="/wp-content/uploads/"]',
+        'img[src*="/media/"]',
+        'img[src*="/images/"]'
+    ],
+
     content_selectors=[
         'article',
         '.richtext-wrapper',
@@ -616,12 +640,24 @@ CAMPOGALLIANO_CONFIG = SiteConfig(
     news_url="https://www.comune.campogalliano.mo.it/novita/",
     disable_rss=True,
 
-    # Selettori HTML per scraping - struttura specifica
+    # Selettori HTML per scraping - tutte le card dalla pagina novita
     selectors=[
-        'div.row.g-2.g-md-0.flex-md-column',
-        '.card-wrapper.cmp-list-card-img',
-        '.card-body'
+        '.card-body',
+        '.card',
+        '.cmp-card-simple'
     ],
+
+    # Download delle immagini
+    download_images=True,
+    image_selectors=[
+        'img',
+        '.card img',
+        '.featured-image img',
+        'img[src*="/wp-content/uploads/"]',
+        'img[src*="/media/"]',
+        'img[src*="/images/"]'
+    ],
+
     content_selectors=[
         'article',
         '.richtext-wrapper',
