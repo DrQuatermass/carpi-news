@@ -239,6 +239,9 @@ class CapletGame {
         // Pulsante copia link (solo questo rimane)
         document.getElementById('copy-link').addEventListener('click', () => this.copyGameLink());
 
+        // Event listener per Facebook con copia automatica del testo
+        document.getElementById('facebook-share').addEventListener('click', (e) => this.handleFacebookShare(e));
+
         // Chiusura popup di vittoria
         document.getElementById('close-victory').addEventListener('click', () => this.closeVictoryMessage());
         document.getElementById('victory-message').addEventListener('click', (e) => {
@@ -582,6 +585,39 @@ class CapletGame {
         whatsappLink.href = `https://wa.me/?text=${shareTextEncoded}%20${urlEncoded}`;
     }
 
+    async handleFacebookShare(e) {
+        // Copia automaticamente il testo di condivisione negli appunti per Facebook
+        try {
+            let shareText;
+            if (this.startTime && this.gameCompleted) {
+                const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
+                const minutes = Math.floor(elapsed / 60);
+                const seconds = elapsed % 60;
+                const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                shareText = `Ho riempito il piatto in ${timeString}. Sai fare di meglio? Prova Caplet su Ombra del Portico!`;
+            } else {
+                shareText = `Ho riempito il piatto! Sai fare di meglio? Prova Caplet su Ombra del Portico!`;
+            }
+
+            await navigator.clipboard.writeText(shareText);
+
+            // Mostra un tooltip/notifica temporanea
+            const tooltip = document.createElement('div');
+            tooltip.innerHTML = 'Testo copiato! Incollalo nel post Facebook';
+            tooltip.style.cssText = 'position:fixed;top:20px;right:20px;background:#4267B2;color:white;padding:10px 15px;border-radius:5px;z-index:10000;font-size:14px;';
+            document.body.appendChild(tooltip);
+
+            setTimeout(() => {
+                document.body.removeChild(tooltip);
+            }, 3000);
+
+        } catch (err) {
+            console.log('Clipboard access not available');
+        }
+
+        // Procedi con l'apertura di Facebook (il testo sarà negli appunti)
+        return true;
+    }
 
     async copyGameLink() {
         try {
