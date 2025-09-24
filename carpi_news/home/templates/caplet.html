@@ -558,6 +558,17 @@ class CapletGame {
         const shareTextEncoded = encodeURIComponent(shareText);
         const urlEncoded = encodeURIComponent(baseUrl);
 
+        // Aggiorna i meta tag Open Graph per Facebook
+        const ogTitle = document.querySelector('meta[property="og:title"]');
+        const ogDescription = document.querySelector('meta[property="og:description"]');
+        const twitterTitle = document.querySelector('meta[name="twitter:title"]');
+        const twitterDescription = document.querySelector('meta[name="twitter:description"]');
+
+        if (ogTitle) ogTitle.content = `Caplet completato in ${timeString}!`;
+        if (ogDescription) ogDescription.content = shareText;
+        if (twitterTitle) twitterTitle.content = `Caplet completato in ${timeString}!`;
+        if (twitterDescription) twitterDescription.content = shareText;
+
         // Aggiorna Facebook
         const facebookLink = document.getElementById('facebook-share');
         facebookLink.href = `https://www.facebook.com/sharer/sharer.php?u=${baseUrl}&quote=${shareTextEncoded}`;
