@@ -4,6 +4,22 @@
 {% block title %}Caplet - Il gioco strategico{% endblock %}
 
 {% block extra_css %}
+<!-- Open Graph meta tags per condivisione social -->
+<meta property="og:title" content="Caplet - Il gioco delle bolle nel brodo">
+<meta property="og:description" content="Ho riempito il piatto! Sai fare di meglio? Prova questo gioco di logica su Ombra del Portico">
+<meta property="og:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'home/images/cappelletto.png' %}">
+<meta property="og:url" content="{{ request.build_absolute_uri }}">
+<meta property="og:type" content="game">
+<meta property="og:site_name" content="Ombra del Portico">
+
+<!-- Twitter Card meta tags -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Caplet - Il gioco delle bolle nel brodo">
+<meta name="twitter:description" content="Ho riempito il piatto! Sai fare di meglio? Prova questo gioco di logica su Ombra del Portico">
+<meta name="twitter:image" content="{{ request.scheme }}://{{ request.get_host }}{% static 'home/images/cappelletto.png' %}">
+<meta name="twitter:site" content="@ombradelportico">
+
+<!-- Meta description generale -->
 <meta name="description" content="Gioca a Caplet, il gioco delle bolle nel brodo. Piazza i segnalini seguendo le regole delle zone, righe e colonne.">
 {% endblock %}
 
@@ -70,15 +86,24 @@
                 </div>
 
                 <div class="share-section" style="margin: 25px 0;">
-                    <h3 style="color: #2c3e50; margin-bottom: 15px; font-size: 1.2rem;">Condividi il tuo risultato:</h3>
-                    <div class="share-buttons" style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 20px 0;">
-                        <button id="share-twitter" class="btn" style="background: linear-gradient(135deg, #1DA1F2, #0d8bd9); color: white; border: none; padding: 12px 20px; border-radius: 25px; font-weight: 500; transition: transform 0.2s; cursor: pointer;">
-                            Twitter
-                        </button>
-                        <button id="share-facebook" class="btn" style="background: linear-gradient(135deg, #4267B2, #365899); color: white; border: none; padding: 12px 20px; border-radius: 25px; font-weight: 500; transition: transform 0.2s; cursor: pointer;">
+                    <h3 style="color: #2c3e50; margin-bottom: 15px; font-size: 1.2rem;">Condividi Caplet:</h3>
+                    <div class="social-share-buttons" style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 20px 0;">
+                        <a href="https://www.facebook.com/sharer/sharer.php?u={{ request.build_absolute_uri }}&quote=Ho%20riempito%20il%20piatto!%20Sai%20fare%20di%20meglio?%20Prova%20Caplet%20su%20Ombra%20del%20Portico"
+                           target="_blank" rel="noopener noreferrer"
+                           class="social-btn facebook" style="background: linear-gradient(135deg, #4267B2, #365899); color: white; text-decoration: none; padding: 12px 20px; border-radius: 25px; font-weight: 500; transition: transform 0.2s; display: inline-block;">
                             Facebook
-                        </button>
-                        <button id="copy-link" class="btn" style="background: linear-gradient(135deg, #6c757d, #5a6268); color: white; border: none; padding: 12px 20px; border-radius: 25px; font-weight: 500; transition: transform 0.2s; cursor: pointer;">
+                        </a>
+                        <a href="https://twitter.com/intent/tweet?text=Ho%20riempito%20il%20piatto!%20Sai%20fare%20di%20meglio?%20Prova%20Caplet%20su%20Ombra%20del%20Portico&url={{ request.build_absolute_uri|urlencode }}"
+                           target="_blank" rel="noopener noreferrer"
+                           class="social-btn x-twitter" style="background: linear-gradient(135deg, #1DA1F2, #0d8bd9); color: white; text-decoration: none; padding: 12px 20px; border-radius: 25px; font-weight: 500; transition: transform 0.2s; display: inline-block;">
+                            Twitter
+                        </a>
+                        <a href="https://wa.me/?text=Ho%20riempito%20il%20piatto!%20Sai%20fare%20di%20meglio?%20Prova%20Caplet%20su%20Ombra%20del%20Portico%20{{ request.build_absolute_uri|urlencode }}"
+                           target="_blank" rel="noopener noreferrer"
+                           class="social-btn whatsapp" style="background: linear-gradient(135deg, #25D366, #128C7E); color: white; text-decoration: none; padding: 12px 20px; border-radius: 25px; font-weight: 500; transition: transform 0.2s; display: inline-block;">
+                            WhatsApp
+                        </a>
+                        <button id="copy-link" class="social-btn copy-link" style="background: linear-gradient(135deg, #6c757d, #5a6268); color: white; border: none; padding: 12px 20px; border-radius: 25px; font-weight: 500; transition: transform 0.2s; cursor: pointer;">
                             Copia Link
                         </button>
                     </div>
@@ -203,9 +228,7 @@ class CapletGame {
         document.getElementById('new-puzzle-btn').addEventListener('click', () => this.newPuzzle());
         document.getElementById('victory-new-puzzle').addEventListener('click', () => this.newPuzzle());
 
-        // Pulsanti di condivisione
-        document.getElementById('share-twitter').addEventListener('click', () => this.shareOnTwitter());
-        document.getElementById('share-facebook').addEventListener('click', () => this.shareOnFacebook());
+        // Pulsante copia link (solo questo rimane)
         document.getElementById('copy-link').addEventListener('click', () => this.copyGameLink());
 
         // Chiusura popup di vittoria
@@ -518,43 +541,10 @@ class CapletGame {
         document.getElementById('final-time').textContent = `Tempo: ${timeString}`;
     }
 
-    async shareOnTwitter() {
-        const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
-        const minutes = Math.floor(elapsed / 60);
-        const seconds = elapsed % 60;
-        const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-
-        const text = `Puzzle Caplet completato!\nTempo: ${timeString}\nGriglia ${this.size}x${this.size}\n\nProva anche tu su Ombra del Portico!`;
-        const url = window.location.href;
-
-        // Twitter web
-        const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
-        window.open(twitterUrl, '_blank');
-    }
-
-    async shareOnFacebook() {
-        const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
-        const minutes = Math.floor(elapsed / 60);
-        const seconds = elapsed % 60;
-        const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-
-        const url = window.location.href;
-        const title = `Ho completato un puzzle Caplet in ${timeString}!`;
-        const description = `Prova anche tu questo gioco di logica su Ombra del Portico`;
-
-        // Facebook web con parametri
-        const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}&quote=${encodeURIComponent(title + ' ' + description)}`;
-        window.open(facebookUrl, '_blank');
-    }
 
     async copyGameLink() {
         try {
-            const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
-            const minutes = Math.floor(elapsed / 60);
-            const seconds = elapsed % 60;
-            const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-
-            const shareText = `Ho completato un puzzle Caplet in ${timeString}! Prova anche tu: ${window.location.href}`;
+            const shareText = `Ho riempito il piatto! Sai fare di meglio? Prova Caplet su Ombra del Portico: ${window.location.href}`;
             await navigator.clipboard.writeText(shareText);
 
             // Feedback visivo
@@ -569,12 +559,7 @@ class CapletGame {
             }, 2000);
         } catch (err) {
             // Fallback per browser che non supportano clipboard API
-            const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
-            const minutes = Math.floor(elapsed / 60);
-            const seconds = elapsed % 60;
-            const timeString = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-
-            const shareText = `Ho completato un puzzle Caplet in ${timeString}! Prova anche tu: ${window.location.href}`;
+            const shareText = `Ho riempito il piatto! Sai fare di meglio? Prova Caplet su Ombra del Portico: ${window.location.href}`;
             const textArea = document.createElement('textarea');
             textArea.value = shareText;
             document.body.appendChild(textArea);
