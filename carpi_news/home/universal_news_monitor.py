@@ -909,6 +909,11 @@ class GraphQLScraper(BaseScraper):
             'X-API-Key': 'comune-carpi-mo-it',
             'X-Ref-Host': 'www.comune.carpi.mo.it'
         }
+
+        # Sovrascrivi con header specifici dalla configurazione se presenti
+        config_headers = config.config.get('graphql_headers', {})
+        if config_headers:
+            self.graphql_headers.update(config_headers)
     
     def scrape_articles(self) -> List[Dict[str, Any]]:
         """Scrape articoli da API GraphQL con fallback a WordPress"""

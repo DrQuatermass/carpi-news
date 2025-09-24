@@ -521,38 +521,25 @@ TERRE_ARGINE_CONFIG = SiteConfig(
 NOVI_MODENA_CONFIG = SiteConfig(
     name="Comune Novi di Modena",
     base_url="https://www.comune.novi.mo.it/",
-    scraper_type="html",
+    scraper_type="graphql",
     category="Attualità",
 
-    # Configurazioni specifiche per HTML scraping
-    news_url="https://www.comune.novi.mo.it/novita/",
-    disable_rss=True,
-
-    # Selettori HTML per scraping - tutte le card dalla pagina novita
-    selectors=[
-        '.card-body',
-        '.card',
-        '.cmp-card-simple'
-    ],
+    # Configurazioni specifiche per GraphQL API
+    graphql_endpoint='https://api.wp.ai4smartcity.ai/graphql',
+    graphql_headers={
+        'accept': '*/*',
+        'accept-language': 'it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7',
+        'content-language': 'it',
+        'origin': 'https://www.comune.novi.mo.it',
+        'referer': 'https://www.comune.novi.mo.it/',
+        'x-api-key': 'comune-novi-mo-it',
+        'x-ref-host': 'www.comune.novi.mo.it',
+        'url-referer': 'https://www.comune.novi.mo.it/novita/'
+    },
+    fallback_to_wordpress=False,
 
     # Download delle immagini
     download_images=True,
-    image_selectors=[
-        'img',
-        '.card img',
-        '.featured-image img',
-        'img[src*="/wp-content/uploads/"]',
-        'img[src*="/media/"]',
-        'img[src*="/images/"]'
-    ],
-
-    content_selectors=[
-        'article',
-        '.richtext-wrapper',
-        'div.richtext-wrapper.lora',
-        'article.it-page-section',
-        '.single-post'
-    ],
     # Generazione AI
     use_ai_generation=True,
     ai_api_key=settings.ANTHROPIC_API_KEY,
@@ -577,38 +564,26 @@ NOVI_MODENA_CONFIG = SiteConfig(
 SOLIERA_CONFIG = SiteConfig(
     name="Comune Soliera",
     base_url="https://www.comune.soliera.mo.it/",
-    scraper_type="html",
+    scraper_type="graphql",
     category="Attualità",
 
-    # Configurazioni specifiche per HTML scraping
-    news_url="https://www.comune.soliera.mo.it/novita/",
-    disable_rss=True,
-
-    # Selettori HTML per scraping - tutte le card dalla pagina novita
-    selectors=[
-        '.card-body',
-        '.card',
-        '.cmp-card-simple'
-    ],
+    # Configurazioni specifiche per GraphQL API
+    graphql_endpoint='https://api.wp.ai4smartcity.ai/graphql',
+    graphql_headers={
+        'accept': '*/*',
+        'accept-language': 'it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7',
+        'content-language': 'it',
+        'origin': 'https://www.comune.soliera.mo.it',
+        'referer': 'https://www.comune.soliera.mo.it/',
+        'x-api-key': 'comune-soliera-mo-it',
+        'x-ref-host': 'www.comune.soliera.mo.it',
+        'url-referer': 'https://www.comune.soliera.mo.it/novita/'
+    },
+    fallback_to_wordpress=False,
 
     # Download delle immagini
     download_images=True,
-    image_selectors=[
-        'img',
-        '.card img',
-        '.featured-image img',
-        'img[src*="/wp-content/uploads/"]',
-        'img[src*="/media/"]',
-        'img[src*="/images/"]'
-    ],
 
-    content_selectors=[
-        'article',
-        '.richtext-wrapper',
-        'div.richtext-wrapper.lora',
-        'article.it-page-section',
-        '.single-post'
-    ],
     # Generazione AI
     use_ai_generation=True,
     ai_api_key=settings.ANTHROPIC_API_KEY,
@@ -633,38 +608,26 @@ SOLIERA_CONFIG = SiteConfig(
 CAMPOGALLIANO_CONFIG = SiteConfig(
     name="Comune Campogalliano",
     base_url="https://www.comune.campogalliano.mo.it/",
-    scraper_type="html",
+    scraper_type="graphql",
     category="Attualità",
 
-    # Configurazioni specifiche per HTML scraping
-    news_url="https://www.comune.campogalliano.mo.it/novita/",
-    disable_rss=True,
-
-    # Selettori HTML per scraping - tutte le card dalla pagina novita
-    selectors=[
-        '.card-body',
-        '.card',
-        '.cmp-card-simple'
-    ],
+    # Configurazioni specifiche per GraphQL API
+    graphql_endpoint='https://api.wp.ai4smartcity.ai/graphql',
+    graphql_headers={
+        'accept': '*/*',
+        'accept-language': 'it-IT,it;q=0.9,en-US;q=0.8,en;q=0.7',
+        'content-language': 'it',
+        'origin': 'https://www.comune.campogalliano.mo.it',
+        'referer': 'https://www.comune.campogalliano.mo.it/',
+        'x-api-key': 'comune-campogalliano-mo-it',
+        'x-ref-host': 'www.comune.campogalliano.mo.it',
+        'url-referer': 'https://www.comune.campogalliano.mo.it/novita/'
+    },
+    fallback_to_wordpress=False,
 
     # Download delle immagini
     download_images=True,
-    image_selectors=[
-        'img',
-        '.card img',
-        '.featured-image img',
-        'img[src*="/wp-content/uploads/"]',
-        'img[src*="/media/"]',
-        'img[src*="/images/"]'
-    ],
 
-    content_selectors=[
-        'article',
-        '.richtext-wrapper',
-        'div.richtext-wrapper.lora',
-        'article.it-page-section',
-        '.single-post'
-    ],
     # Generazione AI
     use_ai_generation=True,
     ai_api_key=settings.ANTHROPIC_API_KEY,
