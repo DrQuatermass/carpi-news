@@ -134,6 +134,9 @@ class HomeConfig(AppConfig):
                 ('voce_carpi', 600),             # 10 minuti - La Voce di Carpi
                 ('voce_carpi_sport', 600),       # 10 minuti - La Voce di Carpi Sport
                 ('terre_argine', 900),           # 15 minuti - Terre d'Argine
+                ('novi_modena', 900),            # 15 minuti - Comune Novi di Modena
+                ('soliera', 900),                # 15 minuti - Comune Soliera
+                ('campogalliano', 900),          # 15 minuti - Comune Campogalliano
                 ('email_comunicati', 300),       # 5 minuti - Email comunicati stampa + IFTTT
             ]
             

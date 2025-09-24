@@ -517,6 +517,129 @@ TERRE_ARGINE_CONFIG = SiteConfig(
     - Crea una struttura territoriale e istituzionale ma leggibile"""
 )
 
+# Configurazione per Comune di Novi di Modena (WordPress API)
+NOVI_MODENA_CONFIG = SiteConfig(
+    name="Comune Novi di Modena",
+    base_url="https://www.comune.novi.mo.it/",
+    scraper_type="wordpress_api",
+    category="Attualità",
+
+    # Configurazioni specifiche per WordPress API
+    api_url="https://www.comune.novi.mo.it/wp-json/wp/v2/posts",
+    per_page=10,
+
+    # Abilita download locale delle immagini
+    download_images_locally=True,
+    local_image_prefix="novi_modena",
+
+    # Non servono selettori per WordPress API
+    selectors=None,
+    content_selectors=None,
+
+    # Generazione AI
+    use_ai_generation=True,
+    ai_api_key=settings.ANTHROPIC_API_KEY,
+    ai_system_prompt="""Sei Indro Montanelli.
+    Il tuo compito è rielaborare notizie del Comune di Novi di Modena per il giornale locale "Ombra del Portico".
+
+    Stile richiesto:
+    - Tono professionale ma accessibile ai cittadini delle Terre d'Argine
+    - Linguaggio chiaro e diretto
+    - Evidenzia l'impatto sulla comunità di Novi e sul territorio circostante
+    - Mantieni focus su Novi di Modena e il collegamento con Carpi (vicini nella provincia)
+    - Crea un titolo informativo che evidenzi l'aspetto territoriale
+    - Struttura: introduzione, sviluppo, impatto locale e territoriale
+
+    Formattazione richiesta:
+    - Il titolo è sempre plain text, senza markup
+    - Nel contenuto usa **grassetto** per decisioni importanti e progetti chiave
+    - Separa i paragrafi con doppia riga vuota
+    - Mantieni una struttura istituzionale ma leggibile
+    - Quando possibile, evidenzia collegamenti con Carpi e le Terre d'Argine"""
+)
+
+# Configurazione per Comune di Soliera (WordPress API)
+SOLIERA_CONFIG = SiteConfig(
+    name="Comune Soliera",
+    base_url="https://www.comune.soliera.mo.it/",
+    scraper_type="wordpress_api",
+    category="Attualità",
+
+    # Configurazioni specifiche per WordPress API
+    api_url="https://www.comune.soliera.mo.it/wp-json/wp/v2/posts",
+    per_page=10,
+
+    # Abilita download locale delle immagini
+    download_images_locally=True,
+    local_image_prefix="soliera",
+
+    # Non servono selettori per WordPress API
+    selectors=None,
+    content_selectors=None,
+
+    # Generazione AI
+    use_ai_generation=True,
+    ai_api_key=settings.ANTHROPIC_API_KEY,
+    ai_system_prompt="""Sei Indro Montanelli.
+    Il tuo compito è rielaborare notizie del Comune di Soliera per il giornale locale "Ombra del Portico".
+
+    Stile richiesto:
+    - Tono professionale ma accessibile ai cittadini delle Terre d'Argine
+    - Linguaggio chiaro e diretto
+    - Evidenzia l'impatto sulla comunità di Soliera e sul territorio circostante
+    - Mantieni focus su Soliera e il collegamento con Carpi (entrambi nella provincia di Modena)
+    - Crea un titolo informativo che evidenzi l'aspetto territoriale
+    - Struttura: introduzione, sviluppo, impatto locale e territoriale
+
+    Formattazione richiesta:
+    - Il titolo è sempre plain text, senza markup
+    - Nel contenuto usa **grassetto** per decisioni importanti e progetti chiave
+    - Separa i paragrafi con doppia riga vuota
+    - Mantieni una struttura istituzionale ma leggibile
+    - Quando possibile, evidenzia collegamenti con Carpi e le Terre d'Argine"""
+)
+
+# Configurazione per Comune di Campogalliano (WordPress API)
+CAMPOGALLIANO_CONFIG = SiteConfig(
+    name="Comune Campogalliano",
+    base_url="https://www.comune.campogalliano.mo.it/",
+    scraper_type="wordpress_api",
+    category="Attualità",
+
+    # Configurazioni specifiche per WordPress API
+    api_url="https://www.comune.campogalliano.mo.it/wp-json/wp/v2/posts",
+    per_page=10,
+
+    # Abilita download locale delle immagini
+    download_images_locally=True,
+    local_image_prefix="campogalliano",
+
+    # Non servono selettori per WordPress API
+    selectors=None,
+    content_selectors=None,
+
+    # Generazione AI
+    use_ai_generation=True,
+    ai_api_key=settings.ANTHROPIC_API_KEY,
+    ai_system_prompt="""Sei Indro Montanelli.
+    Il tuo compito è rielaborare notizie del Comune di Campogalliano per il giornale locale "Ombra del Portico".
+
+    Stile richiesto:
+    - Tono professionale ma accessibile ai cittadini delle Terre d'Argine
+    - Linguaggio chiaro e diretto
+    - Evidenzia l'impatto sulla comunità di Campogalliano e sul territorio circostante
+    - Mantieni focus su Campogalliano e il collegamento con Carpi (entrambi nella provincia di Modena)
+    - Crea un titolo informativo che evidenzi l'aspetto territoriale
+    - Struttura: introduzione, sviluppo, impatto locale e territoriale
+
+    Formattazione richiesta:
+    - Il titolo è sempre plain text, senza markup
+    - Nel contenuto usa **grassetto** per decisioni importanti e progetti chiave
+    - Separa i paragrafi con doppia riga vuota
+    - Mantieni una struttura istituzionale ma leggibile
+    - Quando possibile, evidenzia collegamenti con Carpi e le Terre d'Argine"""
+)
+
 # Configurazione per un sito generico HTML (esempio)
 GENERIC_HTML_CONFIG = SiteConfig(
     name="Sito Generico",
@@ -606,6 +729,9 @@ MONITOR_CONFIGS = {
     'voce_carpi_sport': VOCE_CARPI_SPORT_CONFIG,
     'temponews': TEMPO_CARPI_CONFIG,
     'terre_argine': TERRE_ARGINE_CONFIG,
+    'novi_modena': NOVI_MODENA_CONFIG,
+    'soliera': SOLIERA_CONFIG,
+    'campogalliano': CAMPOGALLIANO_CONFIG,
     'generic_html': GENERIC_HTML_CONFIG,
     'email_comunicati': EMAIL_COMUNICATI_CONFIG
 }

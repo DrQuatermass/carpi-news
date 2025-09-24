@@ -599,11 +599,24 @@ class WordPressAPIScraper(BaseScraper):
         if not image_url and full_content:
             image_url = self._extract_image_from_wp_content(full_content)
         
+        # Download image locally if configured
+        final_image_url = image_url
+        if image_url and getattr(self.config, 'download_images_locally', False):
+            try:
+                # Use article ID as unique identifier for download
+                article_id = str(post.get('id', ''))
+                downloaded_url = self.download_and_save_image(image_url, article_id, force_download=True)
+                if downloaded_url:
+                    final_image_url = downloaded_url
+                    self.logger.info(f"Downloaded image locally: {downloaded_url}")
+            except Exception as e:
+                self.logger.warning(f"Failed to download image {image_url}: {e}")
+
         return {
             'title': title,
             'url': article_url,
             'preview': content_preview[:500],
-            'image_url': image_url,
+            'image_url': final_image_url,
             'full_content': full_content
         }
     
@@ -1261,31 +1274,47 @@ class GraphQLScraper(BaseScraper):
             self.logger.warning(f"Errore nella ricerca immagini esistenti: {e}")
             return None
     
-    def download_and_save_image(self, api_image_url: str, unique_id: str) -> Optional[str]:
+    def download_and_save_image(self, api_image_url: str, unique_id: str, force_download: bool = False) -> Optional[str]:
         """Scarica immagine dall'API e la salva localmente (evitando duplicati)"""
-        if not api_image_url or 'api.wp.ai4smartcity.ai' not in api_image_url:
-            return api_image_url
+        # Se non c'è configurazione per download locale, restituisci URL originale
+        if not force_download and not getattr(self.config, 'download_images_locally', False):
+            # Solo per GraphQL Carpi (comportamento legacy)
+            if not api_image_url or 'api.wp.ai4smartcity.ai' not in api_image_url:
+                return api_image_url
         
         try:
-            # Scarica l'immagine dall'API
-            response = requests.get(api_image_url, headers=self.graphql_headers, timeout=15)
+            # Se non abbiamo un URL valido
+            if not api_image_url:
+                return None
+
+            # Scegli header appropriati
+            headers = {}
+            if hasattr(self, 'graphql_headers') and 'api.wp.ai4smartcity.ai' in api_image_url:
+                headers = self.graphql_headers
+            else:
+                headers = {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                }
+
+            # Scarica l'immagine
+            response = requests.get(api_image_url, headers=headers, timeout=15)
             response.raise_for_status()
-            
+
             # Calcola hash del contenuto
             image_content = response.content
             image_hash = self._get_image_hash(image_content)
-            
+
             # Directory per le immagini
             media_dir = os.path.join(settings.MEDIA_ROOT, 'images', 'downloaded')
             os.makedirs(media_dir, exist_ok=True)
-            
+
             # Controlla se esiste già un'immagine con lo stesso hash
             existing_filename = self._find_existing_image_by_hash(image_hash, media_dir)
             if existing_filename:
                 media_url = f"{settings.MEDIA_URL}images/downloaded/{existing_filename}"
                 self.logger.info(f"Immagine già esistente riutilizzata: {existing_filename} (hash: {image_hash[:12]}...)")
                 return media_url
-            
+
             # Determina l'estensione dal content-type
             content_type = response.headers.get('content-type', '').lower()
             if 'jpeg' in content_type or 'jpg' in content_type:
@@ -1296,18 +1325,19 @@ class GraphQLScraper(BaseScraper):
                 ext = '.webp'
             else:
                 ext = '.jpg'  # Default
-            
-            # Crea nome file basato sull'hash invece che UUID casuale
-            filename = f"comune_carpi_{unique_id}_{image_hash[:12]}{ext}"
+
+            # Genera nome file con prefisso configurabile
+            prefix = getattr(self.config, 'local_image_prefix', 'comune_carpi')
+            filename = f"{prefix}_{unique_id}_{image_hash[:12]}{ext}"
             file_path = os.path.join(media_dir, filename)
-            
+
             # Salva l'immagine
             with open(file_path, 'wb') as f:
                 f.write(image_content)
-            
+
             # Restituisci l'URL media Django
             media_url = f"{settings.MEDIA_URL}images/downloaded/{filename}"
-            
+
             self.logger.info(f"Nuova immagine salvata: {filename} (hash: {image_hash[:12]}...)")
             return media_url
             
