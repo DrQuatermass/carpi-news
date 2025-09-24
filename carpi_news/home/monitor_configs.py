@@ -528,23 +528,18 @@ NOVI_MODENA_CONFIG = SiteConfig(
     news_url="https://www.comune.novi.mo.it/novita/",
     disable_rss=True,
 
-    # Selettori HTML per scraping
+    # Selettori HTML per scraping - basati sulla struttura reale
     selectors=[
-        '.card',
+        'div.row.g-2.g-md-0.flex-md-column',
         '.card-body',
-        'div[class*="card"]',
-        '.list-item',
-        'article',
-        '.post'
+        'div[class*="row g-2"]'
     ],
     content_selectors=[
         'article',
-        'main article',
-        '.single-post',
-        'main .container',
-        '.entry-content',
-        '.post-content',
-        '.content'
+        '.richtext-wrapper',
+        'div.richtext-wrapper.lora',
+        'article.it-page-section',
+        '.single-post'
     ],
     # Generazione AI
     use_ai_generation=True,
@@ -577,23 +572,18 @@ SOLIERA_CONFIG = SiteConfig(
     news_url="https://www.comune.soliera.mo.it/novita/",
     disable_rss=True,
 
-    # Selettori HTML per scraping
+    # Selettori HTML per scraping - struttura specifica
     selectors=[
-        '.card',
-        '.card-body',
-        'div[class*="card"]',
-        '.list-item',
-        'article',
-        '.post'
+        'div.row.g-2.g-md-0.flex-md-column',
+        '.card-wrapper.cmp-list-card-img',
+        '.card-body'
     ],
     content_selectors=[
         'article',
-        'main article',
-        '.single-post',
-        'main .container',
-        '.entry-content',
-        '.post-content',
-        '.content'
+        '.richtext-wrapper',
+        'div.richtext-wrapper.lora',
+        'article.it-page-section',
+        '.single-post'
     ],
     # Generazione AI
     use_ai_generation=True,
@@ -626,23 +616,18 @@ CAMPOGALLIANO_CONFIG = SiteConfig(
     news_url="https://www.comune.campogalliano.mo.it/novita/",
     disable_rss=True,
 
-    # Selettori HTML per scraping
+    # Selettori HTML per scraping - struttura specifica
     selectors=[
-        '.card',
-        '.card-body',
-        'div[class*="card"]',
-        '.list-item',
-        'article',
-        '.post'
+        'div.row.g-2.g-md-0.flex-md-column',
+        '.card-wrapper.cmp-list-card-img',
+        '.card-body'
     ],
     content_selectors=[
         'article',
-        'main article',
-        '.single-post',
-        'main .container',
-        '.entry-content',
-        '.post-content',
-        '.content'
+        '.richtext-wrapper',
+        'div.richtext-wrapper.lora',
+        'article.it-page-section',
+        '.single-post'
     ],
     # Generazione AI
     use_ai_generation=True,
