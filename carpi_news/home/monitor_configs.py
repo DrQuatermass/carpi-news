@@ -521,28 +521,29 @@ TERRE_ARGINE_CONFIG = SiteConfig(
 NOVI_MODENA_CONFIG = SiteConfig(
     name="Comune Novi di Modena",
     base_url="https://www.comune.novi.mo.it/",
-    scraper_type="wordpress_api",
+    scraper_type="html",
     category="Attualità",
 
-    # Configurazioni specifiche per WordPress API
-    api_url="https://www.comune.novi.mo.it/wp-json/wp/v2/posts",
-    per_page=10,
+    # Configurazioni specifiche per HTML scraping
+    news_url="https://www.comune.novi.mo.it/novita/",
+    disable_rss=True,
 
-    # Selettori HTML come fallback per WordPress API
+    # Selettori HTML per scraping
     selectors=[
-        '.wp-block-post-template',
+        '.card',
+        '.card-body',
+        'div[class*="card"]',
+        '.list-item',
         'article',
-        '.notizie',
-        '.entry',
-        '.news-item',
         '.post'
     ],
     content_selectors=[
-        '.wp-block-post-content',
+        'article',
+        'main article',
+        '.single-post',
+        'main .container',
         '.entry-content',
-        'article .content',
         '.post-content',
-        'main',
         '.content'
     ],
     # Generazione AI
@@ -569,28 +570,29 @@ NOVI_MODENA_CONFIG = SiteConfig(
 SOLIERA_CONFIG = SiteConfig(
     name="Comune Soliera",
     base_url="https://www.comune.soliera.mo.it/",
-    scraper_type="wordpress_api",
+    scraper_type="html",
     category="Attualità",
 
-    # Configurazioni specifiche per WordPress API
-    api_url="https://www.comune.soliera.mo.it/wp-json/wp/v2/posts",
-    per_page=10,
+    # Configurazioni specifiche per HTML scraping
+    news_url="https://www.comune.soliera.mo.it/novita/",
+    disable_rss=True,
 
-    # Selettori HTML come fallback per WordPress API
+    # Selettori HTML per scraping
     selectors=[
-        '.wp-block-post-template',
+        '.card',
+        '.card-body',
+        'div[class*="card"]',
+        '.list-item',
         'article',
-        '.notizie',
-        '.entry',
-        '.news-item',
         '.post'
     ],
     content_selectors=[
-        '.wp-block-post-content',
+        'article',
+        'main article',
+        '.single-post',
+        'main .container',
         '.entry-content',
-        'article .content',
         '.post-content',
-        'main',
         '.content'
     ],
     # Generazione AI
@@ -617,28 +619,29 @@ SOLIERA_CONFIG = SiteConfig(
 CAMPOGALLIANO_CONFIG = SiteConfig(
     name="Comune Campogalliano",
     base_url="https://www.comune.campogalliano.mo.it/",
-    scraper_type="wordpress_api",
+    scraper_type="html",
     category="Attualità",
 
-    # Configurazioni specifiche per WordPress API
-    api_url="https://www.comune.campogalliano.mo.it/wp-json/wp/v2/posts",
-    per_page=10,
+    # Configurazioni specifiche per HTML scraping
+    news_url="https://www.comune.campogalliano.mo.it/novita/",
+    disable_rss=True,
 
-    # Selettori HTML come fallback per WordPress API
+    # Selettori HTML per scraping
     selectors=[
-        '.wp-block-post-template',
+        '.card',
+        '.card-body',
+        'div[class*="card"]',
+        '.list-item',
         'article',
-        '.notizie',
-        '.entry',
-        '.news-item',
         '.post'
     ],
     content_selectors=[
-        '.wp-block-post-content',
+        'article',
+        'main article',
+        '.single-post',
+        'main .container',
         '.entry-content',
-        'article .content',
         '.post-content',
-        'main',
         '.content'
     ],
     # Generazione AI
