@@ -115,7 +115,10 @@ YOUTUBE_PLAYLIST_CONFIG = SiteConfig(
     
     # Rate limiting per evitare il ban di YouTube
     transcript_delay=60,  # secondi di pausa tra le richieste di trascrizione
-    
+
+    # Gestione dirette live
+    live_stream_retry_delay=3600,  # 1 ora di attesa prima di riprovare una diretta
+
     # Generazione AI per articoli da video
     use_ai_generation=True,
     ai_api_key=settings.ANTHROPIC_API_KEY,
@@ -142,15 +145,18 @@ YOUTUBE_PLAYLIST_2_CONFIG = SiteConfig(
     base_url="https://www.youtube.com/",
     scraper_type="youtube_api",
     category="L'Eco del Consiglio",
-    
+
     # Configurazioni specifiche per YouTube API
     api_key="AIzaSyCbZnwmOERY27gUwWqaGnRShZgk48TOdZo",
     playlist_id="PLjPk0q8kILQj0_8e2IcrPLCfj7czVoPb2",
     max_results=5,
-    
+
     # Rate limiting per evitare il ban di YouTube
     transcript_delay=60,  # secondi di pausa tra le richieste di trascrizione
-    
+
+    # Gestione dirette live
+    live_stream_retry_delay=3600,  # 1 ora di attesa prima di riprovare una diretta
+
     # Generazione AI per articoli da video
     use_ai_generation=True,
     ai_api_key=settings.ANTHROPIC_API_KEY,
