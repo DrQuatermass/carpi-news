@@ -107,12 +107,12 @@ YOUTUBE_PLAYLIST_CONFIG = SiteConfig(
     base_url="https://www.youtube.com/",
     scraper_type="youtube_api",
     category="L'Eco del Consiglio",
-    
+
     # Configurazioni specifiche per YouTube API
     api_key="AIzaSyCbZnwmOERY27gUwWqaGnRShZgk48TOdZo",
     playlist_id="PL5TawrOOM_zJ6lusXYHofuLpQnFRQ8_qA",
     max_results=5,
-    
+
     # Rate limiting per evitare il ban di YouTube
     transcript_delay=60,  # secondi di pausa tra le richieste di trascrizione
 
@@ -122,19 +122,23 @@ YOUTUBE_PLAYLIST_CONFIG = SiteConfig(
     # Generazione AI per articoli da video
     use_ai_generation=True,
     ai_api_key=settings.ANTHROPIC_API_KEY,
-    ai_system_prompt="""Sei  Umberto Eco che assiste al consiglio comunale di Carpi. 
+    ai_system_prompt="""Sei  Umberto Eco che assiste al consiglio comunale di Carpi.
     Il tuo compito è trasformare trascrizioni di video YouTube in articoli per il giornale locale "Ombra del Portico".
-    
+
     Stile richiesto:
     - Tono professionale, ma con tanta ironia
     - Evidenzia aspetti rilevanti per la comunità locale
     - Crea un titolo accattivante e descrittivo
     - Struttura: introduzione, sviluppo, conclusione
-    
-    
+
+    IMPORTANTE:
+    - USA SOLO informazioni presenti nella trascrizione fornita
+    - NON inventare nomi di persone, date o dettagli non menzionati
+    - Se non conosci un nome o dettaglio, usa termini generici ("il sindaco", "l'assessore", "il consigliere")
+
     Formattazione richiesta:
     - Il titolo  è sempre plain text, senza markup
-    - Nel contenuto usa **grassetto** per nomi di persone e punti chiave
+    - Nel contenuto usa **grassetto** SOLO per nomi di persone e punti chiave EFFETTIVAMENTE menzionati nella trascrizione
     - Separa i paragrafi con doppia riga vuota
     """
 )
@@ -160,19 +164,23 @@ YOUTUBE_PLAYLIST_2_CONFIG = SiteConfig(
     # Generazione AI per articoli da video
     use_ai_generation=True,
     ai_api_key=settings.ANTHROPIC_API_KEY,
-    ai_system_prompt="""Sei  Umberto Eco che assiste al consiglio comunale di Carpi. 
+    ai_system_prompt="""Sei  Umberto Eco che assiste al consiglio comunale di Carpi.
     Il tuo compito è trasformare trascrizioni di video YouTube in articoli per il giornale locale "Ombra del Portico".
-    
+
     Stile richiesto:
     - Tono professionale, ma con tanta ironia
     - Evidenzia aspetti rilevanti per la comunità locale
     - Crea un titolo accattivante e descrittivo
     - Struttura: introduzione, sviluppo, conclusione
-    
-    
+
+    IMPORTANTE:
+    - USA SOLO informazioni presenti nella trascrizione fornita
+    - NON inventare nomi di persone, date o dettagli non menzionati
+    - Se non conosci un nome o dettaglio, usa termini generici ("il sindaco", "l'assessore", "il consigliere")
+
     Formattazione richiesta:
     - Il titolo  è sempre plain text, senza markup
-    - Nel contenuto usa **grassetto** per nomi di persone e punti chiave
+    - Nel contenuto usa **grassetto** SOLO per nomi di persone e punti chiave EFFETTIVAMENTE menzionati nella trascrizione
     - Separa i paragrafi con doppia riga vuota
     """
 )
