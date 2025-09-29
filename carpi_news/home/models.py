@@ -17,6 +17,7 @@ class Articolo(models.Model):
     approvato = models.BooleanField(default=False)
     fonte = models.URLField(blank=True, null=True)
     foto = models.TextField(blank=True, null=True)
+    foto_upload = models.ImageField(upload_to='images/uploaded/', blank=True, null=True, help_text="Upload di un'immagine per l'articolo")
     richieste_modifica = models.TextField(blank=True, null=True, help_text="Richieste specifiche per la rigenerazione AI dell'articolo")
     views = models.PositiveIntegerField(default=0, help_text="Numero di visualizzazioni dell'articolo")
     data_creazione = models.DateTimeField(auto_now_add=True)
@@ -36,7 +37,11 @@ class Articolo(models.Model):
     def get_image_url(self):
         """Restituisce l'URL dell'immagine o il fallback se non disponibile/raggiungibile"""
         fallback_image = static('home/images/portico_logo_nopayoff.png')
-        
+
+        # Priorità: foto_upload prima di foto URL
+        if self.foto_upload:
+            return self.foto_upload.url
+
         if not self.foto:
             return fallback_image
         

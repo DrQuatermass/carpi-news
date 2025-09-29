@@ -12,7 +12,7 @@ import urllib.parse
 class ArticoloAdmin(admin.ModelAdmin):
     list_display = ("titolo", "approvato", "data_pubblicazione", "views", "condividi_social")
     list_filter = ['approvato']
-    fields = ('titolo', 'contenuto', 'sommario', 'categoria', 'approvato', 'fonte', 'foto', 'views', 'richieste_modifica', 'rigenera_button')
+    fields = ('titolo', 'contenuto', 'sommario', 'categoria', 'approvato', 'fonte', 'foto', 'foto_upload', 'views', 'richieste_modifica', 'rigenera_button')
     readonly_fields = ('rigenera_button', 'views')
     
     def rigenera_button(self, obj):
