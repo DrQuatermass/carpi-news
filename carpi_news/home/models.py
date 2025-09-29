@@ -40,7 +40,9 @@ class Articolo(models.Model):
 
         # Priorità: foto_upload prima di foto URL
         if self.foto_upload:
-            return self.foto_upload.url
+            # Per le immagini caricate, aggiungi sempre il dominio completo per IFTTT
+            site_url = getattr(settings, 'SITE_URL', 'https://ombradelportico.it')
+            return f"{site_url}{self.foto_upload.url}"
 
         if not self.foto:
             return fallback_image
