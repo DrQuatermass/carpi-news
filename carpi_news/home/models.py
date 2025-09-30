@@ -7,6 +7,7 @@ from django.conf import settings
 from urllib.parse import quote
 import re
 import requests
+import json
 
 class Articolo(models.Model):
     titolo = models.CharField(max_length=200)
@@ -19,6 +20,7 @@ class Articolo(models.Model):
     foto = models.TextField(blank=True, null=True)
     foto_upload = models.ImageField(upload_to='images/uploaded/', blank=True, null=True, help_text="Upload di un'immagine per l'articolo")
     richieste_modifica = models.TextField(blank=True, null=True, help_text="Richieste specifiche per la rigenerazione AI dell'articolo")
+    fonti_web = models.JSONField(blank=True, null=True, help_text="Fonti web utilizzate durante la generazione AI con ricerca web")
     views = models.PositiveIntegerField(default=0, help_text="Numero di visualizzazioni dell'articolo")
     data_creazione = models.DateTimeField(auto_now_add=True)
     data_pubblicazione = models.DateTimeField(blank=True, null=True,default=timezone.now)

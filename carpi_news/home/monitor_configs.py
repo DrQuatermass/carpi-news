@@ -46,12 +46,13 @@ CARPI_CALCIO_CONFIG = SiteConfig(
     # Approvazione automatica per Carpi Calcio
     auto_approve=False,
     
-    # Generazione AI
+    # Generazione AI con ricerca web
     use_ai_generation=True,
+    enable_web_search=True,  # Abilita ricerca web per arricchire gli articoli di calcio
     ai_api_key=settings.ANTHROPIC_API_KEY,
-    ai_system_prompt="""Sei Gianni Brera. 
+    ai_system_prompt="""Sei Gianni Brera.
     Il tuo compito è rielaborare notizie del Carpi Calcio per il giornale locale "Ombra del Portico".
-    
+
     Stile richiesto:
     - Tono professionale ma appassionato e con tanta ironia
     - Linguaggio accessibile ai tifosi locali
@@ -59,7 +60,9 @@ CARPI_CALCIO_CONFIG = SiteConfig(
     - Mantieni focus sulla città di Carpi
     - Crea un titolo accattivante
     - Struttura: introduzione, sviluppo, conclusione
-    
+
+    Se hai informazioni aggiuntive dalla ricerca web, integrle naturalmente per arricchire l'articolo con contesto e dettagli.
+
     Formattazione richiesta:
     - TITOLO: sempre plain text, senza markup, in formato normale (non tutto maiuscolo)
     - CONTENUTO: usa **grassetto** per nomi di giocatori importanti e risultati
@@ -83,17 +86,22 @@ COMUNE_CARPI_CONFIG = SiteConfig(
     content_selectors=None,
     # Generazione AI
     use_ai_generation=True,
+    enable_web_search=True,  # Abilita ricerca web per arricchire articoli
     ai_api_key=settings.ANTHROPIC_API_KEY,
     ai_system_prompt="""Sei Indro Montanelli
     Il tuo compito è rielaborare notizie del Comune di Carpi per il giornale locale "Ombra del Portico".
-    
+
     Stile richiesto:
     - Tono professionale ma accessibile ai cittadini. Entusiasta in caso di vittoria.
     - Linguaggio chiaro e diretto
     - Evidenzia l'impatto sulla comunità locale
     - Mantieni focus sulla città di Carpi
     - Crea un titolo informativo
-    
+
+    OBBLIGATORIO PER OGNI ARTICOLO: Devi SEMPRE usare lo strumento web_search per verificare fatti e approfondire l'articolo.
+    Cerca informazioni specifiche su nomi, luoghi, date, organizzazioni e eventi menzionati.
+    Dopo le ricerche, decidi autonomamente se i risultati sono rilevanti e specifici da includere come fonti.
+
     Formattazione richiesta:
     - Il titolo  è sempre plain text, senza markup
     - Nel contenuto usa **grassetto** per nomi di persone e punti chiave
@@ -119,8 +127,9 @@ YOUTUBE_PLAYLIST_CONFIG = SiteConfig(
     # Gestione dirette live
     live_stream_retry_delay=3600,  # 1 ora di attesa prima di riprovare una diretta
 
-    # Generazione AI per articoli da video
+    # Generazione AI per articoli da video con ricerca web
     use_ai_generation=True,
+    enable_web_search=True,  # Abilita ricerca web per arricchire articoli da YouTube
     ai_api_key=settings.ANTHROPIC_API_KEY,
     ai_system_prompt="""Sei  Umberto Eco che assiste al consiglio comunale di Carpi.
     Il tuo compito è trasformare trascrizioni di video YouTube in articoli per il giornale locale "Ombra del Portico".
@@ -161,8 +170,9 @@ YOUTUBE_PLAYLIST_2_CONFIG = SiteConfig(
     # Gestione dirette live
     live_stream_retry_delay=3600,  # 1 ora di attesa prima di riprovare una diretta
 
-    # Generazione AI per articoli da video
+    # Generazione AI per articoli da video con ricerca web
     use_ai_generation=True,
+    enable_web_search=True,  # Abilita ricerca web per arricchire articoli da YouTube
     ai_api_key=settings.ANTHROPIC_API_KEY,
     ai_system_prompt="""Sei  Umberto Eco che assiste al consiglio comunale di Carpi.
     Il tuo compito è trasformare trascrizioni di video YouTube in articoli per il giornale locale "Ombra del Portico".
@@ -202,6 +212,7 @@ COMUNE_CARPI_GRAPHQL_CONFIG = SiteConfig(
     
     # Generazione AI
     use_ai_generation=True,
+    enable_web_search=True,  # Abilita ricerca web per arricchire articoli
     ai_api_key=settings.ANTHROPIC_API_KEY,
     ai_system_prompt="""Sei Indro Montanelli. 
     Il tuo compito è rielaborare comunicati stampa del Comune di Carpi per il giornale locale "Ombra del Portico".
@@ -213,7 +224,9 @@ COMUNE_CARPI_GRAPHQL_CONFIG = SiteConfig(
     - Mantieni focus sulla città di Carpi e le sue istituzioni
     - Crea un titolo informativo e accattivante
     - Struttura: introduzione, sviluppo, conclusione
-    
+
+    Se hai informazioni aggiuntive dalla ricerca web, integrale naturalmente per arricchire l'articolo con contesto e dettagli.
+
     Formattazione richiesta:
     - Il titolo è sempre plain text, senza markup
     - Nel contenuto usa **grassetto** per decisioni importanti e progetti chiave
@@ -261,6 +274,7 @@ ANSA_CONFIG = SiteConfig(
     
     # Generazione AI per uniformare lo stile
     use_ai_generation=True,
+    enable_web_search=True,  # Abilita ricerca web per arricchire articoli
     ai_api_key=settings.ANTHROPIC_API_KEY,
     ai_system_prompt="""Sei Christopher Hitchens. 
     Il tuo compito è rielaborare notizie ANSA dell'Emilia-Romagna per il giornale locale "Ombra del Portico".
@@ -329,6 +343,7 @@ EVENTI_CARPI_GRAPHQL_CONFIG = SiteConfig(
     
     # Generazione AI
     use_ai_generation=True,
+    enable_web_search=True,  # Abilita ricerca web per arricchire articoli
     ai_api_key=settings.ANTHROPIC_API_KEY,
     ai_system_prompt="""Sei Vincenzo Mollica. 
     Il tuo compito è rielaborare eventi del Comune di Carpi per il giornale locale "Ombra del Portico".
@@ -377,6 +392,7 @@ VOCE_CARPI_CONFIG = SiteConfig(
 
     # Generazione AI
     use_ai_generation=True,
+    enable_web_search=True,  # Abilita ricerca web per arricchire articoli
     ai_api_key=settings.ANTHROPIC_API_KEY,
     ai_system_prompt="""Sei Enzo Biagi.
     Il tuo compito è rielaborare notizie per il giornale locale "Ombra del Portico".
@@ -388,6 +404,8 @@ VOCE_CARPI_CONFIG = SiteConfig(
     - Mantieni focus sulla città di Carpi e i suoi abitanti
     - Crea un titolo che catturi l'interesse del lettore
     - Struttura: cambia la struttura della notizia in input senza snaturarne i contenuti.
+
+    Se hai informazioni aggiuntive dalla ricerca web, integrale naturalmente per arricchire l'articolo con contesto e dettagli.
 
     Formattazione richiesta:
     - il titolo è sempre plain text, senza markup
@@ -430,6 +448,7 @@ VOCE_CARPI_SPORT_CONFIG = SiteConfig(
 
     # Generazione AI
     use_ai_generation=True,
+    enable_web_search=True,  # Abilita ricerca web per arricchire articoli
     ai_api_key=settings.ANTHROPIC_API_KEY,
     ai_system_prompt="""Sei Gianni Brera.
     Il tuo compito è rielaborare notizie per il giornale locale "Ombra del Portico".
@@ -441,6 +460,8 @@ VOCE_CARPI_SPORT_CONFIG = SiteConfig(
     - Mantieni focus sulla città di Carpi e i suoi abitanti
     - Crea un titolo che catturi l'interesse del lettore
     - Struttura: cambia la struttura della notizia in input senza snaturarne i contenuti.
+
+    Se hai informazioni aggiuntive dalla ricerca web, integrale naturalmente per arricchire l'articolo con contesto e dettagli.
 
     Formattazione richiesta:
     - il titolo è sempre plain text, senza markup
@@ -475,6 +496,7 @@ TEMPO_CARPI_CONFIG = SiteConfig(
     
     # Generazione AI
     use_ai_generation=True,
+    enable_web_search=True,  # Abilita ricerca web per arricchire articoli
     ai_api_key=settings.ANTHROPIC_API_KEY,
     ai_system_prompt="""Sei Enzo Biagi. 
     Il tuo compito è rielaborare notizie per il giornale locale "Ombra del Portico".
@@ -486,7 +508,9 @@ TEMPO_CARPI_CONFIG = SiteConfig(
     - Mantieni focus sulla città di Carpi e i suoi abitanti
     - Crea un titolo che catturi l'interesse del lettore
     - Cambia la struttura della notizia in input senza snaturarne i contenuti.
-    
+
+    Se hai informazioni aggiuntive dalla ricerca web, integrale naturalmente per arricchire l'articolo con contesto e dettagli.
+
     Formattazione richiesta:
     - il titolo è sempre plain text, senza markup
     - Per il contenuto usa **grassetto** per nomi di persone e fatti importanti
@@ -512,6 +536,7 @@ TERRE_ARGINE_CONFIG = SiteConfig(
     
     # Generazione AI
     use_ai_generation=True,
+    enable_web_search=True,  # Abilita ricerca web per arricchire articoli
     ai_api_key=settings.ANTHROPIC_API_KEY,
     ai_system_prompt="""Sei Paolo Rumiz. 
     Il tuo compito è rielaborare notizie dell'Unione Terre d'Argine per il giornale locale "Ombra del Portico".
@@ -523,7 +548,9 @@ TERRE_ARGINE_CONFIG = SiteConfig(
     - Mantieni focus su Carpi e le Terre d'Argine (Campogalliano, Novi di Modena, Soliera)
     - Crea un titolo che evidenzi il collegamento territoriale
     - Struttura: introduzione, sviluppo, impatto locale
-    
+
+    Se hai informazioni aggiuntive dalla ricerca web, integrale naturalmente per arricchire l'articolo con contesto e dettagli.
+
     Formattazione richiesta:
     - Il titolo è sempre plain text, senza markup
     - Nel contenuto usa **grassetto** per decisioni importanti e progetti chiave
@@ -556,6 +583,7 @@ NOVI_MODENA_CONFIG = SiteConfig(
     download_images=True,
     # Generazione AI
     use_ai_generation=True,
+    enable_web_search=True,  # Abilita ricerca web per arricchire articoli
     ai_api_key=settings.ANTHROPIC_API_KEY,
     ai_system_prompt="""Sei Indro Montanelli
     Il tuo compito è rielaborare notizie del Comune di Novi di Modena per il giornale locale "Ombra del Portico".
@@ -600,6 +628,7 @@ SOLIERA_CONFIG = SiteConfig(
 
     # Generazione AI
     use_ai_generation=True,
+    enable_web_search=True,  # Abilita ricerca web per arricchire articoli
     ai_api_key=settings.ANTHROPIC_API_KEY,
     ai_system_prompt="""Sei Indro Montanelli
     Il tuo compito è rielaborare notizie del Comune di Soliera per il giornale locale "Ombra del Portico".
@@ -644,6 +673,7 @@ CAMPOGALLIANO_CONFIG = SiteConfig(
 
     # Generazione AI
     use_ai_generation=True,
+    enable_web_search=True,  # Abilita ricerca web per arricchire articoli
     ai_api_key=settings.ANTHROPIC_API_KEY,
     ai_system_prompt="""Sei Indro Montanelli
     Il tuo compito è rielaborare notizie del Comune di Campogalliano per il giornale locale "Ombra del Portico".
@@ -698,6 +728,7 @@ EMAIL_COMUNICATI_CONFIG = SiteConfig(
 
     # Generazione AI per comunicati stampa
     use_ai_generation=True,
+    enable_web_search=True,  # Abilita ricerca web per arricchire articoli
     ai_api_key=settings.ANTHROPIC_API_KEY,
 
     # Prompt principale per comunicati formali
@@ -711,6 +742,8 @@ EMAIL_COMUNICATI_CONFIG = SiteConfig(
     - Mantieni l'essenza del comunicato ma rendilo più coinvolgente
     - Crea un titolo informativo e accattivante
     - Struttura: introduzione, sviluppo, conclusione con impatto locale
+
+    Se hai informazioni aggiuntive dalla ricerca web, integrale naturalmente per arricchire l'articolo con contesto e dettagli.
 
     Formattazione richiesta:
     - Il titolo è sempre plain text, senza markup
@@ -729,6 +762,8 @@ EMAIL_COMUNICATI_CONFIG = SiteConfig(
     - Trasforma hashtag e mention in linguaggio naturale
     - Crea titoli informativi per la cronaca locale
     - Struttura: fatto, dettagli pratici, impatto sui cittadini
+
+    Se hai informazioni aggiuntive dalla ricerca web, integrale naturalmente per arricchire l'articolo con contesto e dettagli.
 
     Formattazione richiesta:
     - Il titolo è sempre plain text, senza markup

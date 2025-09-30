@@ -216,24 +216,4 @@ if __name__ != "__main__":
         pass  # Ignora errori durante l'import
 
 
-# Utility per testing
-if __name__ == "__main__":
-    print("=== TEST LOGGING CENTRALIZZATO ===")
-    
-    # Test setup
-    logger = setup_centralized_logger('test_logger')
-    logger.info("Test del logger centralizzato")
-    
-    # Test monitor specifici
-    calcio_logger = get_monitor_logger('carpi_calcio')
-    calcio_logger.info("Test logger Carpi Calcio")
-    
-    comune_logger = get_monitor_logger('comune_carpi')
-    comune_logger.info("Test logger Comune Carpi")
-    
-    # Test cleanup
-    print("Pulendo vecchi log...")
-    cleaned = cleanup_old_logs()
-    print(f"File puliti: {cleaned}")
-    
-    print("Test completato! Controlla logs/monitors.log")
+# Production ready - no test code

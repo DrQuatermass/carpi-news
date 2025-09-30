@@ -2137,18 +2137,17 @@ class UniversalNewsMonitor:
             self.logger.error(f"Errore nel processare articolo: {e}")
     
     def generate_ai_article(self, article_data: Dict[str, Any]) -> str:
-        """Genera articolo con AI (da implementare in subclass o config)"""
-        # Questa logica può essere personalizzata per sito
+        """Genera articolo con AI con ricerca web conversazionale integrata"""
         try:
             from anthropic import Anthropic
-            
+
             api_key = self.config.config.get('ai_api_key')
             if not api_key:
                 raise ValueError("API key mancante per generazione AI")
-            
+
             client = Anthropic(api_key=api_key)
-            
-            # Scegli prompt in base al tipo di contenuto
+
+            # Scegli prompt in base al tipo di contenuto (MANTENIAMO IDENTICI)
             content_type = article_data.get('content_type', 'comunicato')
             if content_type == 'twitter':
                 system_prompt = self.config.config.get('ai_twitter_prompt',
@@ -2157,8 +2156,8 @@ class UniversalNewsMonitor:
             else:
                 system_prompt = self.config.config.get('ai_system_prompt',
                     """Sei un giornalista esperto. Rielabora questa notizia per il giornale locale.""")
-            
-            # Costruisci contenuto con eventuali link
+
+            # Costruisci contenuto con eventuali link (MANTENIAMO)
             links_section = ""
             if article_data.get('links_content'):
                 links_section = "\n\nContenuto aggiuntivo dai link riferiti:\n"
@@ -2168,41 +2167,94 @@ class UniversalNewsMonitor:
                         links_section += f"Titolo: {link_data['title']}\n"
                     links_section += f"Contenuto: {link_data['content']}\n"
 
-            user_content = f"""
-            Fonte: {article_data['url']}
-            Titolo originale: {article_data['title']}
+            # Setup per Tool Use conversazionale autonomo
+            enable_web_search = self.config.config.get('enable_web_search', False)
+            web_sources = []  # Lista delle fonti web utilizzate da Claude
 
-            Contenuto principale da rielaborare:
-            {article_data['full_content']}
-            {links_section}
 
-            Rielabora questa notizia creando un articolo coinvolgente. Se ci sono link con contenuto aggiuntivo, integra le informazioni rilevanti per creare un articolo più completo e informativo.
-            """
-            
+            # Tool definition per ricerca web (aggiuntiva, opzionale)
+            web_search_tool_def = None
+            if enable_web_search:
+                web_search_tool_def = {
+                    "name": "web_search",
+                    "description": """MANDATORY: Always search the web to verify facts and enrich articles with additional information.
+
+                    You MUST use this tool for EVERY article to:
+                    - VERIFY dates, names, places, and facts mentioned in the article
+                    - FIND additional details about people, organizations, or events
+                    - DISCOVER related context, background, or recent developments
+                    - CHECK for updates or corrections to the information provided
+                    - ENRICH the article with relevant statistics, quotes, or related news
+
+                    ALWAYS perform at least one search to fact-check the article content.
+                    Then decide whether the search results are relevant enough to include as sources.
+                    Focus on factual verification and content enrichment, not just style improvements.
+                    Search for specific details that can make the article more informative and accurate.""",
+                    "input_schema": {
+                        "type": "object",
+                        "properties": {
+                            "query": {
+                                "type": "string",
+                                "description": "Specific search query related to the article content"
+                            },
+                            "max_results": {
+                                "type": "integer",
+                                "default": 3,
+                                "description": "Numero massimo di risultati (1-5)"
+                            }
+                        },
+                        "required": ["query"]
+                    }
+                }
+
+            # Contenuto iniziale per Claude con ricerca forzata
+            user_content = f"""Fonte: {article_data['url']}
+Titolo originale: {article_data['title']}
+
+Contenuto principale da rielaborare:
+{article_data['full_content']}
+{links_section}
+
+Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
+{f"OBBLIGATORIO: Devi SEMPRE usare web_search almeno una volta per verificare fatti e approfondire l'articolo. Cerca informazioni specifiche sui nomi, luoghi, date, organizzazioni e eventi menzionati. Dopo aver fatto le ricerche, decidi autonomamente se i risultati sono abbastanza rilevanti e specifici da includere come fonti, oppure se è meglio non includere fonti generiche o poco pertinenti." if enable_web_search else "Lavora solo con il contenuto fornito."}"""
+
+            # Tools da includere
+            tools = [web_search_tool_def] if web_search_tool_def else None
+
+            self.logger.info(f"Inizio generazione AI articolo: '{article_data['title']}' (web search: {enable_web_search})")
+
+            # Prima chiamata ad Anthropic
             message = client.messages.create(
                 system=system_prompt,
                 max_tokens=4096,
                 messages=[{"role": "user", "content": user_content}],
-                model="claude-sonnet-4-20250514",
+                tools=tools,
+                model="claude-sonnet-4-20250514"
             )
-            
-            articolo_testo = message.content[0].text
-            
+
+            # Processa risposta e gestisci tool use conversazionale
+            articolo_testo, used_sources = self._process_conversational_response(
+                client, message, system_prompt, user_content, tools, web_sources
+            )
+
+            if not articolo_testo:
+                raise Exception("Nessun contenuto ricevuto dalla conversazione AI")
+
             # Estrai titolo e contenuto usando il content polisher
             titolo, contenuto = content_polisher.extract_clean_title_from_ai_response(articolo_testo)
-            
+
             # Se l'estrazione fallisce, usa il metodo fallback
             if not titolo:
                 titolo = content_polisher.clean_title(article_data['title'])[:200]
             if not contenuto:
                 contenuto = content_polisher.clean_content(articolo_testo)
-            
+
             # Applica polishing finale
             polished_data = content_polisher.polish_article({
                 'titolo': titolo,
                 'contenuto': contenuto
             })
-            
+
             # Salva nel database
             # Usa categoria override se disponibile, altrimenti quella di default
             category = article_data.get('category_override', self.config.category)
@@ -2216,16 +2268,122 @@ class UniversalNewsMonitor:
                 categoria=category,
                 fonte=article_data['url'],
                 foto=article_data.get('image_url'),
+                fonti_web=used_sources if used_sources else None,  # Salva fonti web utilizzate
                 approvato=auto_approve,  # Auto-approva se configurato
                 data_pubblicazione=timezone.now()
             )
             articolo.save()
-            
-            return f"Articolo AI salvato con ID: {articolo.id}"
-            
+
+            search_status = f" (fonti web: {len(used_sources)})" if enable_web_search and used_sources else ""
+            return f"Articolo AI salvato con ID: {articolo.id}{search_status}"
+
         except Exception as e:
             return f"Errore nella generazione AI: {e}"
-    
+
+    def _process_conversational_response(self, client, message, system_prompt: str,
+                                       initial_user_content: str, tools, web_sources: List) -> tuple[str, List[Dict]]:
+        """Processa la risposta conversazionale di Anthropic gestendo tool use"""
+        try:
+            conversation = [{"role": "user", "content": initial_user_content}]
+            current_message = message
+            max_iterations = 5  # Limite per evitare loop infiniti
+            iteration = 0
+
+            while iteration < max_iterations:
+                response_content = ""
+                tool_uses = []
+
+                # Analizza i blocchi di contenuto
+                for content_block in current_message.content:
+                    if content_block.type == "text":
+                        response_content += content_block.text
+                    elif content_block.type == "tool_use":
+                        tool_uses.append(content_block)
+
+                # Se non ci sono tool use, abbiamo finito
+                if not tool_uses:
+                    self.logger.info(f"Conversazione AI completata dopo {iteration} iterazioni")
+                    return response_content, web_sources
+
+                # Aggiungi la risposta assistant alla conversazione
+                conversation.append({"role": "assistant", "content": current_message.content})
+
+                # Processa i tool use
+                tool_results = []
+                for tool_use in tool_uses:
+                    if tool_use.name == "web_search":
+                        query = tool_use.input.get("query", "")
+                        max_results = tool_use.input.get("max_results", 3)
+
+                        self.logger.info(f"Claude richiede ricerca web: '{query}'")
+
+                        # Effettua ricerca con contenuto completo
+                        from home.web_search_tool import web_search_tool
+                        search_results = web_search_tool.search_with_content(
+                            query, max_results, fetch_content=True
+                        )
+
+                        # Salva le fonti utilizzate
+                        for result in search_results:
+                            if result['url'] not in [s['url'] for s in web_sources]:
+                                web_sources.append({
+                                    'url': result['url'],
+                                    'title': result.get('page_title', result['title']),
+                                    'query_used': query
+                                })
+
+                        # Formatta per Claude con contenuto completo
+                        formatted_results = web_search_tool.format_results_with_content_for_ai(search_results)
+
+                        tool_results.append({
+                            "type": "tool_result",
+                            "tool_use_id": tool_use.id,
+                            "content": formatted_results
+                        })
+
+                        self.logger.info(f"Forniti {len(search_results)} risultati con contenuto completo a Claude")
+
+                # Se abbiamo tool results, continua la conversazione
+                if tool_results:
+                    conversation.append({"role": "user", "content": tool_results})
+
+                    # Nuova chiamata ad Anthropic
+                    current_message = client.messages.create(
+                        system=system_prompt,
+                        max_tokens=4096,
+                        messages=conversation,
+                        tools=tools,
+                        model="claude-sonnet-4-20250514"
+                    )
+
+                    iteration += 1
+                else:
+                    break
+
+            # Se arriviamo qui, abbiamo raggiunto il limite di iterazioni
+            self.logger.warning(f"Conversazione AI interrotta dopo {max_iterations} iterazioni")
+
+            # Restituisci l'ultimo contenuto disponibile
+            final_content = ""
+            for content_block in current_message.content:
+                if content_block.type == "text":
+                    final_content += content_block.text
+
+            return final_content, web_sources
+
+        except Exception as e:
+            self.logger.error(f"Errore nella conversazione AI: {e}")
+            # Fallback: prova a estrarre il testo dalla risposta originale
+            try:
+                fallback_content = ""
+                for content_block in message.content:
+                    if content_block.type == "text":
+                        fallback_content += content_block.text
+                return fallback_content, web_sources
+            except:
+                return "", web_sources
+
+
     def save_article_directly(self, article_data: Dict[str, Any]):
         """Salva articolo direttamente senza AI"""
         # Applica polishing anche al salvataggio diretto
