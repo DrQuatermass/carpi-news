@@ -2641,8 +2641,22 @@ footer {
         padding: 20px 15px;
     }
 
+    .fonti-header {
+        margin-bottom: 30px;
+    }
+
     .fonti-header h1 {
         font-size: 24px;
+    }
+
+    .back-to-article {
+        font-size: 14px;
+        margin-bottom: 15px;
+    }
+
+    .back-to-article svg {
+        width: 18px;
+        height: 18px;
     }
 
     .article-title-ref {
@@ -2650,14 +2664,123 @@ footer {
     }
 
     .fonti-section {
-        padding: 20px;
+        padding: 20px 15px;
+        border-radius: 8px;
+    }
+
+    .fonti-section h2 {
+        font-size: 20px;
+    }
+
+    .fonti-section h2 svg {
+        width: 20px;
+        height: 20px;
     }
 
     .fonte-item {
         padding: 15px;
+        border-radius: 6px;
+        margin-bottom: 12px;
     }
 
     .fonte-title {
         font-size: 16px;
+    }
+
+    .fonte-url {
+        font-size: 13px;
+    }
+}
+
+/* Responsive per schermi molto piccoli */
+@media (max-width: 480px) {
+    .fonti-container {
+        padding: 15px 10px;
+    }
+
+    .fonti-header {
+        margin-bottom: 25px;
+    }
+
+    .fonti-header h1 {
+        font-size: 20px;
+        margin-bottom: 12px;
+    }
+
+    .back-to-article {
+        font-size: 13px;
+        gap: 6px;
+    }
+
+    .back-to-article svg {
+        width: 16px;
+        height: 16px;
+    }
+
+    .article-title-ref {
+        font-size: 14px;
+        line-height: 1.4;
+    }
+
+    .fonti-section {
+        padding: 15px 12px;
+        margin-bottom: 20px;
+        border-radius: 6px;
+    }
+
+    .fonti-section h2 {
+        font-size: 18px;
+        margin-bottom: 15px;
+    }
+
+    .fonti-section h2 svg {
+        width: 18px;
+        height: 18px;
+    }
+
+    .fonti-section p {
+        font-size: 14px;
+    }
+
+    .fonte-item {
+        padding: 12px;
+        border-radius: 4px;
+        margin-bottom: 10px;
+    }
+
+    .fonte-item:hover {
+        transform: none;
+    }
+
+    .fonte-title {
+        font-size: 15px;
+        margin-bottom: 6px;
+    }
+
+    .fonte-url {
+        font-size: 12px;
+        line-height: 1.4;
+    }
+
+    .no-fonti {
+        padding: 30px 15px;
+        font-size: 15px;
+    }
+
+    .no-fonti svg {
+        width: 40px !important;
+        height: 40px !important;
+    }
+}
+
+/* Responsive per tablet in landscape */
+@media (min-width: 769px) and (max-width: 1024px) {
+    .fonti-container {
+        max-width: 700px;
+        padding: 35px 25px;
+    }
+
+    .fonti-section {
+        padding: 25px;
     }
 }
