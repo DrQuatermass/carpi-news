@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% load italian_dates %}
+
+{% block title %}Fonti - {{ articolo.titolo }} - Ombra del Portico{% endblock %}
+
+{% block extra_css %}
+<meta name="robots" content="noindex, follow">
+{% endblock %}
+
+{% block content %}
+<div class="fonti-container">
+    <div class="fonti-header">
+        <a href="{% url 'dettaglio_articolo' articolo.slug %}" class="back-to-article">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/>
+            </svg>
+            Torna all'articolo
+        </a>
+        <h1>Fonti dell'articolo</h1>
+        <p class="article-title-ref">{{ articolo.titolo }}</p>
+    </div>
+
+    {% if articolo.fonte or articolo.fonti_web %}
+        <div class="fonti-section">
+            <h2>
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
+                </svg>
+                Fonti
+            </h2>
+            <p style="color: #666; margin-bottom: 20px; font-size: 15px;">
+                Fonti utilizzate per questo articolo:
+            </p>
+
+            {% if articolo.fonte %}
+            <div class="fonte-item">
+                <a href="{{ articolo.fonte }}" target="_blank" rel="noopener noreferrer" class="fonte-link">
+                    <div class="fonte-title">{{ articolo.fonte|truncatechars:80 }}</div>
+                    <div class="fonte-url">{{ articolo.fonte }}</div>
+                </a>
+            </div>
+            {% endif %}
+
+            {% if articolo.fonti_web %}
+                {% for fonte in articolo.fonti_web %}
+                    {% if fonte.hidden != True %}
+                    <div class="fonte-item">
+                        <a href="{{ fonte.url }}" target="_blank" rel="noopener noreferrer" class="fonte-link">
+                            <div class="fonte-title">{{ fonte.title }}</div>
+                            <div class="fonte-url">{{ fonte.url }}</div>
+                        </a>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            {% endif %}
+        </div>
+    {% else %}
+        <div class="no-fonti">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor" style="opacity: 0.3; margin-bottom: 15px;">
+                <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
+            </svg>
+            <p>Nessuna fonte esterna disponibile per questo articolo.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

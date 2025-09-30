@@ -162,6 +162,34 @@ def news_sitemap(request):
     context = {'articles': articles}
     return HttpResponse(template.render(context, request), content_type='application/xml')
 
+def fonti_articolo(request, slug):
+    """Vista per mostrare tutte le fonti di un articolo"""
+    articolo = get_object_or_404(Articolo, slug=slug, approvato=True)
+
+    logger.info(f"Visualizzazione fonti articolo: {articolo.titolo}")
+
+    # Ottieni liste categorie per il menu di navigazione
+    categorie_raw = Articolo.objects.filter(approvato=True).values_list('categoria', flat=True).distinct()
+    categorie_disponibili = []
+    has_rubriche = False
+
+    for cat in sorted(categorie_raw):
+        if cat in ['Editoriale', "L'Eco del Consiglio"]:
+            if not has_rubriche:
+                categorie_disponibili.append('Rubriche')
+                has_rubriche = True
+        else:
+            categorie_disponibili.append(cat)
+
+    context = {
+        'articolo': articolo,
+        'categorie_disponibili': list(categorie_disponibili),
+        'categoria_attiva': None,
+        'current_year': 2025,
+    }
+
+    return render(request, "fonti.html", context)
+
 def caplet(request):
     """Vista per il gioco Caplet"""
     # Carica i puzzle dal file JSON

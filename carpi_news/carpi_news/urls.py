@@ -25,6 +25,7 @@ from home.feeds import ArticoliFeedRSS, ArticoliFeedAtom, ArticoliRecentiFeed
 urlpatterns = [
     path('',views.home, name='home'),
     path('articolo/<slug:slug>/', views.dettaglio_articolo, name='dettaglio_articolo'),
+    path('articolo/<slug:slug>/fonti/', views.fonti_articolo, name='fonti_articolo'),
     path('privacy-policy/', views.privacy_policy, name='privacy-policy'),
     path('caplet/', views.caplet, name='caplet'),
 

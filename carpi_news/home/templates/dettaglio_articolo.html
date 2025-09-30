@@ -45,14 +45,18 @@
             <div class="article-content">
                 {{ articolo.contenuto|safe }}
             </div>
-            
-            {% if articolo.fonte %}
-            <div class="article-source">
-                <small>
-                    <a href="{{ articolo.fonte }}" target="_blank" rel="noopener noreferrer" class="source-link">
-                        Fonte
-                    </a>
-                </small>
+
+            {% if articolo.fonte or articolo.fonti_web %}
+            <div class="article-sources-link">
+                <a href="{% url 'fonti_articolo' articolo.slug %}" class="sources-button">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/>
+                    </svg>
+                    <span>Visualizza le fonti dell'articolo</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/>
+                    </svg>
+                </a>
             </div>
             {% endif %}
 <br><br>
@@ -304,6 +308,56 @@
         .social-share-buttons .social-btn.copy-link:hover {
             background: #4b5563 !important;
             box-shadow: 0 4px 12px rgba(107, 114, 128, 0.3) !important;
+        }
+
+        /* Stili per la sezione fonti web */
+        .web-sources-section {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #6c757d;
+        }
+
+        .web-sources-title {
+            margin: 0 0 15px 0;
+            font-size: 16px;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .web-sources-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .web-source-item {
+            margin-bottom: 8px;
+            padding: 0;
+        }
+
+        .web-source-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .web-source-link {
+            color: #007bff;
+            text-decoration: none;
+            font-size: 14px;
+            transition: color 0.2s ease;
+            display: inline-block;
+        }
+
+        .web-source-link:hover {
+            color: #0056b3;
+            text-decoration: underline;
+        }
+
+        .web-source-link::before {
+            content: "🔗 ";
+            opacity: 0.7;
+            font-size: 12px;
         }
     `;
     document.head.appendChild(style);

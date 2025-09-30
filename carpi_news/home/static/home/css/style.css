@@ -2273,3 +2273,391 @@ footer {
         font-size: 2rem;
     }
 }
+
+/* ===== FONTI WEB SECTION ===== */
+.web-sources-section {
+    background: linear-gradient(135deg, #f8f6f3 0%, #f2f0ed 100%);
+    border: 1px solid rgba(150, 108, 66, 0.2);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin: 2rem 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.web-sources-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid rgba(150, 108, 66, 0.15);
+}
+
+.web-sources-icon {
+    color: #966C42;
+    flex-shrink: 0;
+}
+
+.web-sources-title {
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: #2C2C2C;
+    margin: 0;
+    font-family: 'Playfair Display', serif;
+}
+
+.web-sources-description {
+    margin-bottom: 1.5rem;
+}
+
+.web-sources-description p {
+    font-size: 0.95rem;
+    color: #5A5A5A;
+    margin: 0;
+    line-height: 1.5;
+    font-style: italic;
+}
+
+.web-sources-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.web-source-item {
+    background: white;
+    border: 1px solid rgba(150, 108, 66, 0.1);
+    border-radius: 8px;
+    padding: 1rem;
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.web-source-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: linear-gradient(135deg, #966C42, #B8956A);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.web-source-item:hover {
+    border-color: rgba(150, 108, 66, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+}
+
+.web-source-item:hover::before {
+    opacity: 1;
+}
+
+.web-source-main {
+    margin-bottom: 0.5rem;
+}
+
+.web-source-link {
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    transition: color 0.3s ease;
+}
+
+.web-source-link:hover {
+    color: #966C42;
+}
+
+.web-source-title {
+    font-weight: 600;
+    font-size: 1rem;
+    color: #2C2C2C;
+    margin-bottom: 0.25rem;
+    line-height: 1.4;
+}
+
+.web-source-url {
+    font-size: 0.85rem;
+    color: #966C42;
+    font-family: 'Courier New', monospace;
+    word-break: break-all;
+}
+
+.web-source-meta {
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid rgba(150, 108, 66, 0.1);
+}
+
+.web-source-query {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    color: #7A7A7A;
+    font-size: 0.8rem;
+    font-style: italic;
+}
+
+.web-source-query svg {
+    color: #966C42;
+    flex-shrink: 0;
+}
+
+.web-sources-footer {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid rgba(150, 108, 66, 0.15);
+}
+
+.web-sources-disclaimer {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    color: #7A7A7A;
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+.web-sources-disclaimer svg {
+    color: #966C42;
+    flex-shrink: 0;
+    margin-top: 0.1rem;
+}
+
+/* Stili per il pulsante link alle fonti */
+.article-sources-link {
+    margin: 30px 0;
+    text-align: center;
+}
+
+.sources-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 28px;
+    background: linear-gradient(135deg, #966C42 0%, #7A5734 100%);
+    color: white;
+    text-decoration: none;
+    border-radius: 30px;
+    font-size: 16px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(150, 108, 66, 0.3);
+}
+
+.sources-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(150, 108, 66, 0.4);
+    background: linear-gradient(135deg, #7A5734 0%, #5E3E21 100%);
+}
+
+.sources-button:active {
+    transform: translateY(0);
+}
+
+.sources-button svg {
+    flex-shrink: 0;
+}
+
+.sources-button span {
+    flex: 1;
+}
+
+/* Responsive per fonti web */
+@media (max-width: 768px) {
+    .web-sources-section {
+        padding: 1rem;
+        margin: 1.5rem 0;
+    }
+
+    .web-sources-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+
+    .web-sources-title {
+        font-size: 1.1rem;
+    }
+
+    .web-source-item {
+        padding: 0.75rem;
+    }
+
+    .web-source-title {
+        font-size: 0.95rem;
+    }
+
+    .web-source-url {
+        font-size: 0.8rem;
+    }
+
+    .sources-button {
+        padding: 12px 20px;
+        font-size: 14px;
+    }
+}
+
+/* Pagina Fonti */
+.fonti-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 40px 20px;
+}
+
+.fonti-header {
+    margin-bottom: 40px;
+}
+
+.fonti-header h1 {
+    font-size: 28px;
+    font-weight: 600;
+    color: #2c3e50;
+    margin-bottom: 15px;
+}
+
+.back-to-article {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: #5A5A5A;
+    text-decoration: none;
+    font-size: 16px;
+    margin-bottom: 20px;
+    transition: color 0.3s ease;
+}
+
+.back-to-article:hover {
+    color: #966C42;
+}
+
+.back-to-article svg {
+    width: 20px;
+    height: 20px;
+}
+
+.article-title-ref {
+    font-size: 18px;
+    color: #666;
+    font-style: italic;
+    margin-top: 10px;
+}
+
+.fonti-section {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 30px;
+    margin-bottom: 30px;
+    border-left: 4px solid #966C42;
+}
+
+.fonti-section h2 {
+    font-size: 22px;
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.fonti-section h2 svg {
+    width: 24px;
+    height: 24px;
+    color: #966C42;
+}
+
+.fonte-item {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    border: 1px solid #e9ecef;
+}
+
+.fonte-item:last-child {
+    margin-bottom: 0;
+}
+
+.fonte-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.fonte-link {
+    text-decoration: none;
+    color: #966C42;
+    display: block;
+}
+
+.fonte-link:hover {
+    color: #7A5734;
+}
+
+.fonte-title {
+    font-size: 18px;
+    font-weight: 500;
+    color: #2c3e50;
+    margin-bottom: 8px;
+    line-height: 1.4;
+}
+
+.fonte-url {
+    font-size: 14px;
+    color: #6c757d;
+    word-break: break-all;
+}
+
+.fonte-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 13px;
+    color: #868e96;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #e9ecef;
+}
+
+.fonte-meta svg {
+    width: 14px;
+    height: 14px;
+}
+
+.no-fonti {
+    text-align: center;
+    padding: 40px 20px;
+    color: #6c757d;
+    font-size: 16px;
+}
+
+/* Responsive pagina fonti */
+@media (max-width: 768px) {
+    .fonti-container {
+        padding: 20px 15px;
+    }
+
+    .fonti-header h1 {
+        font-size: 24px;
+    }
+
+    .article-title-ref {
+        font-size: 16px;
+    }
+
+    .fonti-section {
+        padding: 20px;
+    }
+
+    .fonte-item {
+        padding: 15px;
+    }
+
+    .fonte-title {
+        font-size: 16px;
+    }
+}

@@ -2,18 +2,38 @@ from django.contrib import admin
 from django.http import HttpResponse
 from django.urls import path
 from django.utils.html import format_html
+from django.utils.safestring import mark_safe
 from django.shortcuts import redirect
 from django.contrib import messages
+from django.contrib.admin import SimpleListFilter
 from .models import Articolo
 import threading
 import urllib.parse
 
+
+class HasWebSourcesFilter(SimpleListFilter):
+    title = 'Fonti Web'
+    parameter_name = 'has_web_sources'
+
+    def lookups(self, request, model_admin):
+        return (
+            ('yes', 'Con fonti web'),
+            ('no', 'Senza fonti web'),
+        )
+
+    def queryset(self, request, queryset):
+        if self.value() == 'yes':
+            return queryset.exclude(fonti_web__isnull=True).exclude(fonti_web__exact=[])
+        elif self.value() == 'no':
+            return queryset.filter(fonti_web__isnull=True) | queryset.filter(fonti_web__exact=[])
+        return queryset
+
 @admin.register(Articolo)
 class ArticoloAdmin(admin.ModelAdmin):
-    list_display = ("titolo", "approvato", "data_pubblicazione", "views", "condividi_social")
-    list_filter = ['approvato']
-    fields = ('titolo', 'contenuto', 'sommario', 'categoria', 'approvato', 'fonte', 'foto', 'foto_upload', 'views', 'richieste_modifica', 'rigenera_button')
-    readonly_fields = ('rigenera_button', 'views')
+    list_display = ("titolo", "approvato", "data_pubblicazione", "views", "fonti_web_count", "condividi_social")
+    list_filter = ['approvato', HasWebSourcesFilter]
+    fields = ('titolo', 'contenuto', 'sommario', 'categoria', 'approvato', 'fonte', 'foto', 'foto_upload', 'views', 'richieste_modifica', 'fonti_web_display', 'rigenera_button')
+    readonly_fields = ('rigenera_button', 'views', 'fonti_web_display')
     
     def rigenera_button(self, obj):
         if obj.pk:  # Solo per oggetti già salvati
@@ -77,13 +97,167 @@ class ArticoloAdmin(admin.ModelAdmin):
             return format_html('<span style="color: #999; font-size: 12px;">⏳ Approva per condividere</span>')
     
     condividi_social.short_description = 'Condividi sui Social'
+
+    def fonti_web_count(self, obj):
+        """Mostra il numero di fonti web utilizzate"""
+        if obj.fonti_web:
+            count = len(obj.fonti_web)
+            return format_html(
+                '<span style="background: #4CAF50; color: white; padding: 4px 8px; '
+                'border-radius: 12px; font-size: 11px; font-weight: bold;">'
+                '🔍 {} fonti</span>',
+                count
+            )
+        return format_html(
+            '<span style="color: #999; font-size: 11px;">❌ Nessuna fonte</span>'
+        )
+    fonti_web_count.short_description = 'Fonti Web'
+
+    def fonti_web_display(self, obj):
+        """Visualizza dettagliatamente le fonti web utilizzate con checkbox per nasconderle"""
+        if not obj.fonti_web:
+            return format_html(
+                '<div style="padding: 10px; background: #f5f5f5; border-radius: 4px; color: #666;">'
+                '<p><strong>🔍 Fonti Web:</strong> Nessuna fonte utilizzata</p>'
+                '<p style="font-size: 12px; margin: 5px 0 0 0;">Questo articolo non ha utilizzato ricerche web durante la generazione.</p>'
+                '</div>'
+            )
+
+        # Se l'articolo non è ancora salvato, mostra solo le fonti senza checkbox
+        if not obj.pk:
+            html_parts = [
+                '<div style="padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #4CAF50;">'
+                f'<h4 style="margin: 0 0 10px 0; color: #2c3e50;">🔍 Fonti Web Utilizzate ({len(obj.fonti_web)})</h4>'
+                '<p style="color: #666; font-size: 12px; margin-bottom: 10px;">Salva l\'articolo per gestire la visibilità delle fonti.</p>'
+            ]
+
+            for i, fonte in enumerate(obj.fonti_web, 1):
+                query = fonte.get('query_used', 'N/A')
+                title = fonte.get('title', 'N/A')
+                url = fonte.get('url', 'N/A')
+
+                html_parts.append(
+                    f'<div style="margin: 10px 0; padding: 10px; background: white; border-radius: 4px; border: 1px solid #e1e8ed;">'
+                    f'<div style="margin-bottom: 8px;"><strong>Fonte {i}:</strong></div>'
+                    f'<div style="margin-bottom: 5px;"><strong>Query utilizzata:</strong> '
+                    f'<code style="background: #f1f3f4; padding: 2px 6px; border-radius: 3px; font-size: 12px;">{query}</code></div>'
+                    f'<div style="margin-bottom: 5px;"><strong>Titolo:</strong> {title}</div>'
+                    f'<div><strong>URL:</strong> <a href="{url}" target="_blank" style="color: #1976d2; text-decoration: none;">{url}</a></div>'
+                    f'</div>'
+                )
+
+            html_parts.append('</div>')
+            return mark_safe(''.join(html_parts))
+
+        html_parts = [
+            '<div style="padding: 15px; background: #f8f9fa; border-radius: 8px; border-left: 4px solid #4CAF50;">'
+            f'<h4 style="margin: 0 0 10px 0; color: #2c3e50;">🔍 Fonti Web Utilizzate ({len(obj.fonti_web)})</h4>'
+        ]
+
+        for i, fonte in enumerate(obj.fonti_web):
+            query = fonte.get('query_used', 'N/A')
+            title = fonte.get('title', 'N/A')
+            url = fonte.get('url', 'N/A')
+            is_hidden = fonte.get('hidden', False)
+
+            opacity = '0.5' if is_hidden else '1'
+            background = '#f5f5f5' if is_hidden else 'white'
+            hidden_badge = '<span style="background: #ff5252; color: white; padding: 2px 8px; border-radius: 3px; font-size: 11px; margin-left: 8px;">🔒 Nascosta</span>' if is_hidden else ''
+
+            html_parts.append(
+                f'<div style="margin: 10px 0; padding: 10px; background: {background}; border-radius: 4px; border: 1px solid #e1e8ed; opacity: {opacity};">'
+                f'<div style="display: flex; align-items: center; margin-bottom: 8px;">'
+                f'<label style="display: flex; align-items: center; cursor: pointer; margin: 0;">'
+                f'<input type="checkbox" name="fonte_{i}" value="1" {"checked" if is_hidden else ""} '
+                f'onchange="toggleFonte{obj.pk}(this, {i})" '
+                f'style="margin-right: 8px; width: 18px; height: 18px; cursor: pointer;">'
+                f'<strong>Nascondi Fonte {i + 1}</strong>'
+                f'</label>'
+                f'{hidden_badge}'
+                f'</div>'
+                f'<div style="margin-bottom: 5px; margin-left: 26px;"><strong>Query utilizzata:</strong> '
+                f'<code style="background: #f1f3f4; padding: 2px 6px; border-radius: 3px; font-size: 12px;">{query}</code></div>'
+                f'<div style="margin-bottom: 5px; margin-left: 26px;"><strong>Titolo:</strong> {title}</div>'
+                f'<div style="margin-left: 26px;"><strong>URL:</strong> <a href="{url}" target="_blank" style="color: #1976d2; text-decoration: none;">{url}</a></div>'
+                f'</div>'
+            )
+
+        html_parts.append(
+            f'<script>'
+            f'function toggleFonte{obj.pk}(checkbox, fonteIndex) {{'
+            f'  const csrftoken = document.querySelector("[name=csrfmiddlewaretoken]").value;'
+            f'  fetch("/admin/home/articolo/{obj.pk}/toggle_fonte/", {{'
+            f'    method: "POST",'
+            f'    headers: {{'
+            f'      "Content-Type": "application/json",'
+            f'      "X-CSRFToken": csrftoken'
+            f'    }},'
+            f'    body: JSON.stringify({{fonte_index: fonteIndex, hidden: checkbox.checked}})'
+            f'  }}).then(response => response.json())'
+            f'  .then(data => {{'
+            f'    if (data.success) {{'
+            f'      location.reload();'
+            f'    }} else {{'
+            f'      alert("Errore: " + data.error);'
+            f'      checkbox.checked = !checkbox.checked;'
+            f'    }}'
+            f'  }})'
+            f'  .catch(error => {{'
+            f'    alert("Errore durante il salvataggio");'
+            f'    checkbox.checked = !checkbox.checked;'
+            f'  }});'
+            f'}}'
+            f'</script>'
+            '</div>'
+        )
+
+        return mark_safe(''.join(html_parts))
+    fonti_web_display.short_description = 'Dettaglio Fonti Web'
     
     def get_urls(self):
         urls = super().get_urls()
         custom_urls = [
             path('<int:articolo_id>/rigenera/', self.admin_site.admin_view(self.rigenera_articolo), name='rigenera_articolo'),
+            path('<int:articolo_id>/toggle_fonte/', self.admin_site.admin_view(self.toggle_fonte), name='toggle_fonte'),
         ]
         return custom_urls + urls
+
+    def toggle_fonte(self, request, articolo_id):
+        """Gestisce il toggle del campo hidden per le fonti web"""
+        if request.method != 'POST':
+            return HttpResponse('Method not allowed', status=405)
+
+        try:
+            import json
+            articolo = Articolo.objects.get(pk=articolo_id)
+
+            # Parse del body JSON
+            data = json.loads(request.body)
+            fonte_index = data.get('fonte_index')
+            hidden = data.get('hidden', False)
+
+            if articolo.fonti_web and 0 <= fonte_index < len(articolo.fonti_web):
+                # Aggiorna il campo hidden della fonte
+                articolo.fonti_web[fonte_index]['hidden'] = hidden
+                articolo.save()
+
+                return HttpResponse(
+                    json.dumps({'success': True}),
+                    content_type='application/json'
+                )
+            else:
+                return HttpResponse(
+                    json.dumps({'success': False, 'error': 'Fonte non trovata'}),
+                    content_type='application/json',
+                    status=400
+                )
+
+        except Exception as e:
+            return HttpResponse(
+                json.dumps({'success': False, 'error': str(e)}),
+                content_type='application/json',
+                status=500
+            )
     
     def rigenera_articolo(self, request, articolo_id):
         try:
