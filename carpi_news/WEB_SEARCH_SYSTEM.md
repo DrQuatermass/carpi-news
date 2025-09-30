@@ -39,8 +39,8 @@
 ```bash
 # Per produzione impostare DEBUG=False
 DEBUG=False
-GOOGLE_SEARCH_API_KEY=AIzaSyD1pGk344VPBgClMEoIv1QYhGVurMQBNNE
-GOOGLE_CUSTOM_SEARCH_ID=7262149f5391a4fa0
+GOOGLE_SEARCH_API_KEY=your_google_api_key_here
+GOOGLE_CUSTOM_SEARCH_ID=your_custom_search_id_here
 ```
 
 ## Comportamento del Sistema
