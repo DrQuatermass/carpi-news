@@ -16,7 +16,7 @@ class Articolo(models.Model):
     categoria = models.CharField(max_length=100, default='Generale')
     slug = models.SlugField(max_length=200, unique=True, blank=True)
     approvato = models.BooleanField(default=False)
-    fonte = models.URLField(blank=True, null=True)
+    fonte = models.URLField(max_length=500, blank=True, null=True)
     foto = models.TextField(blank=True, null=True)
     foto_upload = models.ImageField(upload_to='images/uploaded/', blank=True, null=True, help_text="Upload di un'immagine per l'articolo")
     richieste_modifica = models.TextField(blank=True, null=True, help_text="Richieste specifiche per la rigenerazione AI dell'articolo")

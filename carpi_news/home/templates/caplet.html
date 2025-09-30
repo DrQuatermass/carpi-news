@@ -56,7 +56,7 @@
                     </div>
                 </div>
 
-                <div class="control-buttons">
+                <div class="control-buttons" id="control-buttons">
                     <button id="reset-btn" class="btn btn-secondary">
                         Ricomincia
                     </button>
@@ -399,6 +399,10 @@ class CapletGame {
         if (violations.length === 0 && bubbleCount === this.size) {
             this.gameCompleted = true;
             this.stopTimer();
+
+            // Nascondi il pulsante "Ricomincia"
+            document.getElementById('reset-btn').style.display = 'none';
+
             setTimeout(() => {
                 this.showVictoryAnimation();
             }, 500);
