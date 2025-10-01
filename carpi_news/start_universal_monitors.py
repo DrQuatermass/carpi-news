@@ -59,6 +59,7 @@ def main():
         ('campogalliano', 900),          # 15 minuti (Comune Campogalliano)
         ('youtube_playlist', 1800),      # 30 minuti (YouTube Playlist 1)
         ('youtube_playlist_2', 1800),    # 30 minuti (YouTube Playlist 2)
+        ('questura_modena', 600),        # 10 minuti (Questura Modena - Cronaca)
         ('email_comunicati', 300),       # 5 minuti (Email comunicati stampa + IFTTT)
     ]
     

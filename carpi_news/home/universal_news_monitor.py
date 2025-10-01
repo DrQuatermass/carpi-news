@@ -166,7 +166,16 @@ class HTMLScraper(BaseScraper):
                         title = title_elem.text
                         description = description_elem.text if description_elem is not None else ''
                         pub_date = pub_date_elem.text if pub_date_elem is not None else ''
-                        
+
+                        # Applica filtro URL se configurato (prima di scaricare contenuto)
+                        url_filter_keywords = self.config.config.get('url_filter_keywords', [])
+                        if url_filter_keywords:
+                            url_and_title = f"{article_url} {title}".lower()
+                            has_url_keyword = any(keyword.lower() in url_and_title for keyword in url_filter_keywords)
+                            if not has_url_keyword:
+                                self.logger.debug(f"Skipping article (URL filter): {title[:50]}...")
+                                continue
+
                         # Scrapa il contenuto della pagina specifica PRIMA del filtro
                         full_content = self.get_full_content(article_url)
                         
@@ -180,14 +189,45 @@ class HTMLScraper(BaseScraper):
                                 continue
                         
                         # Prova a estrarre immagine dal contenuto RSS
+                        # NOTA: get_full_content restituisce solo testo, non HTML con immagini
+                        # Quindi dobbiamo scaricare la pagina HTML completa
                         image_url = None
-                        if full_content:
-                            # Cerca immagini nel contenuto completo
+                        try:
                             from bs4 import BeautifulSoup
-                            content_soup = BeautifulSoup(full_content, 'html.parser')
-                            img_elem = content_soup.find('img')
+                            article_response = requests.get(article_url, headers=self.headers, timeout=10)
+                            article_soup = BeautifulSoup(article_response.content, 'html.parser')
+
+                            # Prima cerca immagini con caratteristiche di articolo (es. Questura con ?art=)
+                            all_imgs = article_soup.find_all('img')
+                            img_elem = None
+
+                            # Priorità 1: Immagini con parametro art= (tipico delle Questure) o in /statics/
+                            for img in all_imgs:
+                                src = img.get('src', '')
+                                if 'art=' in src or '/statics/' in src and not any(term in src.lower() for term in ['banner', 'header', 'san-michele']):
+                                    img_elem = img
+                                    break
+
+                            # Priorità 2: Prima immagine che non sia icona/logo/banner
+                            if not img_elem:
+                                for img in all_imgs:
+                                    src = img.get('src', '').lower()
+                                    if not any(term in src for term in ['logo', 'icon', 'banner', 'header', 'araldo', 'scritta']):
+                                        # Verifica dimensioni minime
+                                        try:
+                                            width = int(img.get('width', '0'))
+                                            height = int(img.get('height', '0'))
+                                            if width < 80 or height < 60:
+                                                continue
+                                        except (ValueError, TypeError):
+                                            pass
+                                        img_elem = img
+                                        break
+
                             if img_elem:
                                 image_url = self._extract_image_from_html_elem(img_elem)
+                        except Exception as e:
+                            self.logger.debug(f"Errore estrazione immagine RSS: {e}")
                         
                         article = {
                             'title': title,

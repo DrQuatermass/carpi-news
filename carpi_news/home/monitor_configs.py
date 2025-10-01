@@ -708,6 +708,56 @@ GENERIC_HTML_CONFIG = SiteConfig(
     use_ai_generation=False
 )
 
+# Configurazione per Questura di Modena - Polizia di Stato
+QUESTURA_MODENA_CONFIG = SiteConfig(
+    name="Questura di Modena",
+    base_url="https://questure.poliziadistato.it/",
+    scraper_type="html",
+    category="Cronaca",
+
+    # Feed RSS nazionale con filtro su Modena
+    rss_url="https://questure.poliziadistato.it/it/archivio/rss",
+    disable_rss=False,  # Usa RSS come fonte primaria
+
+    # Filtro URL per prendere solo articoli di Modena
+    url_filter_keywords=['/Modena/'],
+
+    # Filtro sul contenuto completo per città specifiche
+    content_filter_keywords=['Carpi', 'Campogalliano', 'Soliera', 'Novi di Modena'],
+
+    # Selettori per contenuto (quando scrapa la pagina)
+    content_selectors=[
+        '.content',
+        'article',
+        'main',
+        '.article-body',
+        'p'
+    ],
+
+    # Generazione AI per cronaca
+    use_ai_generation=True,
+    enable_web_search=True,
+    ai_api_key=settings.ANTHROPIC_API_KEY,
+    ai_system_prompt="""Sei Beppe Severgnini.
+    Il tuo compito è rielaborare comunicati della Questura di Modena in articoli di cronaca per "Ombra del Portico".
+
+    Stile richiesto:
+    - Tono giornalistico di cronaca, professionale ma accessibile
+    - Linguaggio chiaro per i cittadini locali
+    - Evidenzia i fatti rilevanti per Carpi e le Terre d'Argine
+    - Mantieni obiettività e precisione delle informazioni
+    - Crea un titolo chiaro e informativo
+    - Struttura: fatto principale, dettagli, contesto locale
+
+    Se hai informazioni aggiuntive dalla ricerca web, integrale per arricchire il contesto locale.
+
+    Formattazione richiesta:
+    - Il titolo è sempre plain text, senza markup
+    - Nel contenuto usa **grassetto** per luoghi e informazioni chiave
+    - Separa i paragrafi con doppia riga vuota
+    - Mantieni un tono rispettoso e fattuale per la cronaca"""
+)
+
 # Configurazione per Email Monitor - Ombra del Portico
 EMAIL_COMUNICATI_CONFIG = SiteConfig(
     name="Email Comunicati Stampa",
@@ -790,6 +840,7 @@ MONITOR_CONFIGS = {
     'soliera': SOLIERA_CONFIG,
     'campogalliano': CAMPOGALLIANO_CONFIG,
     'generic_html': GENERIC_HTML_CONFIG,
+    'questura_modena': QUESTURA_MODENA_CONFIG,
     'email_comunicati': EMAIL_COMUNICATI_CONFIG
 }
 

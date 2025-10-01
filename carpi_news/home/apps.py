@@ -137,6 +137,7 @@ class HomeConfig(AppConfig):
                 ('novi_modena', 900),            # 15 minuti - Comune Novi di Modena
                 ('soliera', 900),                # 15 minuti - Comune Soliera
                 ('campogalliano', 900),          # 15 minuti - Comune Campogalliano
+                ('questura_modena', 600),        # 10 minuti - Questura Modena (Cronaca)
                 ('email_comunicati', 300),       # 5 minuti - Email comunicati stampa + IFTTT
             ]
             
