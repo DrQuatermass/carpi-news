@@ -18,8 +18,23 @@ def trascrivi(video_id):
     try:
         logger.info(f"Inizio trascrizione per video ID: {video_id}")
 
-        # Crea un'istanza dell'API e usa il metodo fetch
+        # Controlla prima se i sottotitoli sono disponibili
         api = YouTubeTranscriptApi()
+
+        try:
+            # Prova a ottenere la lista dei transcript disponibili
+            transcript_list = api.list_transcripts(video_id)
+            # Cerca transcript in italiano
+            transcript_list.find_transcript(['it'])
+            logger.info(f"Sottotitoli disponibili per video {video_id}")
+        except (TranscriptsDisabled, NoTranscriptFound):
+            logger.info(f"Sottotitoli non disponibili per video {video_id} - probabilmente una diretta in corso")
+            if _is_live_stream(video_id):
+                logger.info(f"Video {video_id} è una diretta - verrà riprovato più tardi")
+                _schedule_retry(video_id)
+            return None
+
+        # Se i sottotitoli sono disponibili, procedi con l'estrazione
         transcript_data = api.fetch(video_id, languages=['it'])
 
         # Concatena tutto il testo dalla trascrizione fetchata
@@ -29,14 +44,8 @@ def trascrivi(video_id):
         return text
 
     except (TranscriptsDisabled, NoTranscriptFound) as e:
-        # Verifica se è una diretta in corso
-        if _is_live_stream(video_id):
-            logger.info(f"Video {video_id} è una diretta in corso - verrà riprovato più tardi")
-            _schedule_retry(video_id)
-            return None
-        else:
-            logger.error(f"Transcript non disponibile per video {video_id}: {e}")
-            raise
+        logger.error(f"Transcript non disponibile per video {video_id}: {e}")
+        return None
 
     except Exception as e:
         logger.error(f"Errore nella trascrizione del video {video_id}: {e}")

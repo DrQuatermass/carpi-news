@@ -829,22 +829,33 @@ class YouTubeAPIScraper(BaseScraper):
                 self.logger.info(f"Applicando pausa di {delay} secondi prima della richiesta transcript")
                 time.sleep(delay)
 
-            self.logger.info(f"Estrazione transcript per video {video_id}")
+            # Controlla prima se i sottotitoli sono disponibili
+            self.logger.info(f"Verifica disponibilità sottotitoli per video {video_id}")
             api = YouTubeTranscriptApi()
+
+            try:
+                # Prova a ottenere la lista dei transcript disponibili
+                transcript_list = api.list_transcripts(video_id)
+                # Cerca transcript in italiano
+                transcript_list.find_transcript(['it'])
+                self.logger.info(f"Sottotitoli disponibili per video {video_id}")
+            except (TranscriptsDisabled, NoTranscriptFound):
+                self.logger.info(f"Sottotitoli non disponibili per video {video_id} - probabilmente una diretta in corso")
+                if self._is_live_stream(video_id):
+                    self.logger.info(f"Video {video_id} confermato come diretta - sarà riprovato più tardi")
+                    self._schedule_retry(video_id)
+                return None
+
+            # Se i sottotitoli sono disponibili, procedi con l'estrazione
+            self.logger.info(f"Estrazione transcript per video {video_id}")
             transcript_data = api.fetch(video_id, languages=['it'])
             text = " ".join([snippet.text for snippet in transcript_data])
             self.logger.info(f"Transcript estratto: {len(text)} caratteri")
             return text
 
         except (TranscriptsDisabled, NoTranscriptFound) as e:
-            # Verifica se è una diretta in corso
-            if self._is_live_stream(video_id):
-                self.logger.info(f"Video {video_id} è una diretta in corso - sarà riprovato più tardi")
-                self._schedule_retry(video_id)
-                return None
-            else:
-                self.logger.error(f"Transcript non disponibile per video {video_id}: {e}")
-                return None
+            self.logger.error(f"Transcript non disponibile per video {video_id}: {e}")
+            return None
 
         except Exception as e:
             self.logger.error(f"Errore nell'estrazione transcript per {video_id}: {e}")
