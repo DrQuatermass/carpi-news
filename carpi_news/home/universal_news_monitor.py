@@ -8,6 +8,7 @@ import platform
 import uuid
 import subprocess
 import hashlib
+import io
 from datetime import datetime
 from bs4 import BeautifulSoup
 from django.utils import timezone
@@ -15,6 +16,7 @@ from urllib.parse import urljoin, urlparse
 from abc import ABC, abstractmethod
 from typing import Dict, List, Optional, Any
 from django.conf import settings
+from PIL import Image
 
 from home.models import Articolo
 
@@ -1358,8 +1360,10 @@ class GraphQLScraper(BaseScraper):
             response = requests.get(api_image_url, headers=headers, timeout=15)
             response.raise_for_status()
 
-            # Calcola hash del contenuto
-            image_content = response.content
+            # Ridimensiona l'immagine se necessario
+            image_content = self._resize_image_if_needed(response.content)
+
+            # Calcola hash del contenuto (dopo ridimensionamento)
             image_hash = self._get_image_hash(image_content)
 
             # Directory per le immagini
@@ -1402,6 +1406,77 @@ class GraphQLScraper(BaseScraper):
         except Exception as e:
             self.logger.error(f"Errore nel download immagine: {e}")
             return None
+
+    def _resize_image_if_needed(self, image_bytes: bytes, max_width: int = 1200, max_height: int = 1200, quality: int = 85) -> bytes:
+        """
+        Ridimensiona un'immagine se supera le dimensioni massime, mantenendo aspect ratio
+
+        Args:
+            image_bytes: Immagine originale in bytes
+            max_width: Larghezza massima (default 1200px)
+            max_height: Altezza massima (default 1200px)
+            quality: Qualità JPEG/WebP per immagini ridimensionate (default 85)
+
+        Returns:
+            Immagine ridimensionata in bytes (o originale se non necessario ridimensionamento)
+        """
+        try:
+            # Apri l'immagine da bytes
+            img = Image.open(io.BytesIO(image_bytes))
+
+            # Dimensioni originali
+            original_width, original_height = img.size
+
+            # Se l'immagine è già piccola, restituisci l'originale
+            if original_width <= max_width and original_height <= max_height:
+                self.logger.debug(f"Immagine già nelle dimensioni corrette: {original_width}x{original_height}")
+                return image_bytes
+
+            # Calcola nuove dimensioni mantenendo aspect ratio
+            ratio = min(max_width / original_width, max_height / original_height)
+            new_width = int(original_width * ratio)
+            new_height = int(original_height * ratio)
+
+            self.logger.info(f"Ridimensionamento immagine da {original_width}x{original_height} a {new_width}x{new_height}")
+
+            # Ridimensiona con anti-aliasing di alta qualità
+            img_resized = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+
+            # Converti in RGB se necessario (per JPEG)
+            if img_resized.mode in ('RGBA', 'LA', 'P'):
+                # Crea sfondo bianco per trasparenze
+                background = Image.new('RGB', img_resized.size, (255, 255, 255))
+                if img_resized.mode == 'P':
+                    img_resized = img_resized.convert('RGBA')
+                background.paste(img_resized, mask=img_resized.split()[-1] if img_resized.mode == 'RGBA' else None)
+                img_resized = background
+            elif img_resized.mode != 'RGB':
+                img_resized = img_resized.convert('RGB')
+
+            # Salva in un buffer
+            output_buffer = io.BytesIO()
+
+            # Determina il formato di output (preferisci JPEG per dimensioni ridotte)
+            # WebP se l'originale era WebP, altrimenti JPEG
+            if img.format == 'WEBP':
+                img_resized.save(output_buffer, format='WEBP', quality=quality)
+            else:
+                img_resized.save(output_buffer, format='JPEG', quality=quality, optimize=True)
+
+            resized_bytes = output_buffer.getvalue()
+
+            # Log del risparmio di spazio
+            original_size_kb = len(image_bytes) / 1024
+            resized_size_kb = len(resized_bytes) / 1024
+            saving_percent = ((original_size_kb - resized_size_kb) / original_size_kb) * 100
+
+            self.logger.info(f"Ridimensionamento completato: {original_size_kb:.1f}KB → {resized_size_kb:.1f}KB (risparmio {saving_percent:.1f}%)")
+
+            return resized_bytes
+
+        except Exception as e:
+            self.logger.warning(f"Errore nel ridimensionamento immagine, uso originale: {e}")
+            return image_bytes
 
 
 class EmailScraper(BaseScraper):
