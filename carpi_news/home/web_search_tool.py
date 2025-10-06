@@ -40,18 +40,18 @@ class WebSearchTool:
 
     def search(self, query: str, max_results: int = 5) -> List[Dict[str, Any]]:
         """
-        Effettua ricerca web mirata
+        Effettua ricerca web mirata con gestione errori robusta
 
         Args:
             query: Query di ricerca
             max_results: Numero massimo di risultati
 
         Returns:
-            Lista di risultati con title, snippet, url
+            Lista di risultati con title, snippet, url (lista vuota in caso di errore)
         """
         if not self.api_key:
-            self.logger.warning("Google Search API key non configurata")
-            return []
+            self.logger.warning("Google Search API key non configurata, uso fallback")
+            return self._fallback_search(query, max_results)
 
         try:
             # Rate limiting
@@ -91,7 +91,16 @@ class WebSearchTool:
             self.logger.info(f"Status Code API: {response.status_code}")
 
             if response.status_code != 200:
-                self.logger.warning(f"Google Search API fallito con {response.status_code}: {response.text}")
+                error_text = response.text[:200] if response.text else "No error details"
+
+                # Gestione specifica per quota esaurita
+                if response.status_code == 429:
+                    self.logger.error(f"Google Search API - Quota esaurita (429). Uso fallback.")
+                elif response.status_code == 403:
+                    self.logger.error(f"Google Search API - Accesso negato (403). Verifica credenziali.")
+                else:
+                    self.logger.warning(f"Google Search API fallito con {response.status_code}: {error_text}")
+
                 return self._fallback_search(query, max_results)
 
             data = response.json()
@@ -125,8 +134,14 @@ class WebSearchTool:
             self.logger.info(f"Trovati {len(results)} risultati rilevanti da Google Custom Search")
             return results
 
+        except requests.exceptions.Timeout as e:
+            self.logger.error(f"Timeout ricerca web: {e}")
+            return self._fallback_search(query, max_results)
+        except requests.exceptions.RequestException as e:
+            self.logger.error(f"Errore connessione ricerca web: {e}")
+            return self._fallback_search(query, max_results)
         except Exception as e:
-            self.logger.error(f"Errore ricerca web: {e}")
+            self.logger.error(f"Errore generico ricerca web: {e}", exc_info=True)
             return self._fallback_search(query, max_results)
 
 
@@ -369,7 +384,7 @@ class WebSearchTool:
 
     def fetch_page_content(self, url: str) -> Optional[Dict[str, Any]]:
         """
-        Scarica il contenuto completo di una pagina web
+        Scarica il contenuto completo di una pagina web con gestione errori robusta
 
         Args:
             url: URL della pagina da scaricare
@@ -412,8 +427,14 @@ class WebSearchTool:
                 self.logger.warning(f"Nessun contenuto principale trovato in {url}")
                 return None
 
+        except requests.exceptions.Timeout as e:
+            self.logger.warning(f"Timeout scaricamento {url}: {e}")
+            return None
+        except requests.exceptions.RequestException as e:
+            self.logger.warning(f"Errore connessione a {url}: {e}")
+            return None
         except Exception as e:
-            self.logger.error(f"Errore scaricamento contenuto da {url}: {e}")
+            self.logger.error(f"Errore generico scaricamento contenuto da {url}: {e}")
             return None
 
     def _extract_main_content(self, soup: BeautifulSoup, url: str) -> Optional[Dict[str, Any]]:
@@ -572,6 +593,7 @@ class WebSearchTool:
     def search_with_content(self, query: str, max_results: int = 3, fetch_content: bool = True) -> List[Dict[str, Any]]:
         """
         Ricerca web con download opzionale del contenuto completo
+        Gestione errori robusta: non blocca mai, ritorna sempre almeno risultati base
 
         Args:
             query: Query di ricerca
@@ -579,36 +601,58 @@ class WebSearchTool:
             fetch_content: Se scaricare il contenuto completo delle pagine
 
         Returns:
-            Lista di risultati con contenuto completo se richiesto
+            Lista di risultati con contenuto completo se richiesto (lista vuota in caso di errore totale)
         """
-        # Prima fase: ricerca normale
-        search_results = self.search(query, max_results)
+        try:
+            # Prima fase: ricerca normale (già con gestione errori interna)
+            search_results = self.search(query, max_results)
 
-        if not fetch_content:
-            return search_results
+            if not search_results:
+                self.logger.warning(f"Nessun risultato di ricerca per '{query}'")
+                return []
 
-        # Seconda fase: scarica contenuto completo
-        enhanced_results = []
-        for result in search_results:
-            enhanced_result = result.copy()
+            if not fetch_content:
+                return search_results
 
-            # Scarica contenuto completo
-            content_data = self.fetch_page_content(result['url'])
-            if content_data:
-                enhanced_result.update({
-                    'full_content': content_data['content'],
-                    'page_title': content_data['title'],
-                    'content_length': content_data['length']
-                })
-            else:
-                # Fallback al snippet se il download fallisce
-                enhanced_result['full_content'] = result['snippet']
-                enhanced_result['page_title'] = result['title']
-                enhanced_result['content_length'] = len(result['snippet'])
+            # Seconda fase: scarica contenuto completo (con gestione errori per ogni URL)
+            enhanced_results = []
+            successful_downloads = 0
 
-            enhanced_results.append(enhanced_result)
+            for result in search_results:
+                enhanced_result = result.copy()
 
-        return enhanced_results
+                try:
+                    # Scarica contenuto completo (già con gestione errori interna)
+                    content_data = self.fetch_page_content(result['url'])
+                    if content_data:
+                        enhanced_result.update({
+                            'full_content': content_data['content'],
+                            'page_title': content_data['title'],
+                            'content_length': content_data['length']
+                        })
+                        successful_downloads += 1
+                    else:
+                        # Fallback al snippet se il download fallisce
+                        enhanced_result['full_content'] = result['snippet']
+                        enhanced_result['page_title'] = result['title']
+                        enhanced_result['content_length'] = len(result['snippet'])
+
+                except Exception as e:
+                    # Errore durante il download - usa il fallback
+                    self.logger.warning(f"Errore download {result['url']}, uso snippet: {e}")
+                    enhanced_result['full_content'] = result['snippet']
+                    enhanced_result['page_title'] = result['title']
+                    enhanced_result['content_length'] = len(result['snippet'])
+
+                enhanced_results.append(enhanced_result)
+
+            self.logger.info(f"Ricerca completata: {len(enhanced_results)} risultati ({successful_downloads} con contenuto completo)")
+            return enhanced_results
+
+        except Exception as e:
+            # Errore critico - non dovrebbe mai succedere ma gestiamo comunque
+            self.logger.error(f"Errore critico in search_with_content per '{query}': {e}", exc_info=True)
+            return []
 
     def format_results_with_content_for_ai(self, results: List[Dict[str, Any]]) -> str:
         """Formatta risultati con contenuto completo per essere passati ad Anthropic"""

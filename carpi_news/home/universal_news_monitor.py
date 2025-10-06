@@ -996,12 +996,14 @@ class GraphQLScraper(BaseScraper):
                 }
             else:
                 # Query predefinita per notizie (mantenuta per compatibilità)
+                # Usa variables personalizzate se fornite, altrimenti usa i default
+                default_variables = {'pageNumber': 1, 'pageSize': 12}
+                custom_variables = self.config.config.get('graphql_variables', {})
+                variables = {**default_variables, **custom_variables}
+
                 query = {
                     'operationName': 'getNotizie',
-                    'variables': {
-                        'pageNumber': 1,
-                        'pageSize': 12
-                    },
+                    'variables': variables,
                     'query': '''
                     query getNotizie($pageNumber: Int! = 1, $pageSize: Int! = 12) {
                         notizieQuery {
@@ -2368,31 +2370,87 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
 
                         self.logger.info(f"Claude richiede ricerca web: '{query}'")
 
-                        # Effettua ricerca con contenuto completo
-                        from home.web_search_tool import web_search_tool
-                        search_results = web_search_tool.search_with_content(
-                            query, max_results, fetch_content=True
-                        )
+                        # Effettua ricerca con contenuto completo con retry e gestione errori robusta
+                        search_results = []
+                        error_message = None
 
-                        # Salva le fonti utilizzate
-                        for result in search_results:
-                            if result['url'] not in [s['url'] for s in web_sources]:
-                                web_sources.append({
-                                    'url': result['url'],
-                                    'title': result.get('page_title', result['title']),
-                                    'query_used': query
-                                })
+                        try:
+                            from home.web_search_tool import web_search_tool
 
-                        # Formatta per Claude con contenuto completo
-                        formatted_results = web_search_tool.format_results_with_content_for_ai(search_results)
+                            # Retry con backoff esponenziale
+                            max_retries = 2
+                            retry_delay = 1  # secondi
 
-                        tool_results.append({
-                            "type": "tool_result",
-                            "tool_use_id": tool_use.id,
-                            "content": formatted_results
-                        })
+                            for attempt in range(max_retries):
+                                try:
+                                    search_results = web_search_tool.search_with_content(
+                                        query, max_results, fetch_content=True
+                                    )
 
-                        self.logger.info(f"Forniti {len(search_results)} risultati con contenuto completo a Claude")
+                                    # Successo - esci dal loop
+                                    if search_results:
+                                        break
+
+                                    # Nessun risultato ma nessun errore - prova ancora
+                                    if attempt < max_retries - 1:
+                                        self.logger.warning(f"Tentativo {attempt + 1}: nessun risultato, riprovo in {retry_delay}s")
+                                        time.sleep(retry_delay)
+                                        retry_delay *= 2  # Backoff esponenziale
+
+                                except Exception as search_error:
+                                    self.logger.warning(f"Tentativo {attempt + 1} web search fallito: {search_error}")
+
+                                    if attempt < max_retries - 1:
+                                        time.sleep(retry_delay)
+                                        retry_delay *= 2
+                                    else:
+                                        # Ultimo tentativo fallito
+                                        error_message = str(search_error)
+
+                        except Exception as e:
+                            self.logger.error(f"Errore critico web search per '{query}': {e}")
+                            error_message = str(e)
+
+                        # Gestione risultati o errori
+                        if search_results:
+                            # Salva le fonti utilizzate
+                            for result in search_results:
+                                if result['url'] not in [s['url'] for s in web_sources]:
+                                    web_sources.append({
+                                        'url': result['url'],
+                                        'title': result.get('page_title', result['title']),
+                                        'query_used': query
+                                    })
+
+                            # Formatta per Claude con contenuto completo
+                            formatted_results = web_search_tool.format_results_with_content_for_ai(search_results)
+
+                            tool_results.append({
+                                "type": "tool_result",
+                                "tool_use_id": tool_use.id,
+                                "content": formatted_results
+                            })
+
+                            self.logger.info(f"Forniti {len(search_results)} risultati con contenuto completo a Claude")
+                        else:
+                            # Nessun risultato o errore - comunica a Claude di continuare senza
+                            error_msg = f"Ricerca web non disponibile al momento"
+                            if error_message:
+                                if "quota" in error_message.lower() or "429" in error_message:
+                                    error_msg = "Quota API Google esaurita. Procedi con le informazioni disponibili."
+                                elif "timeout" in error_message.lower():
+                                    error_msg = "Timeout ricerca web. Procedi con le informazioni disponibili."
+                                else:
+                                    error_msg = f"Ricerca web non disponibile ({error_message[:100]}). Procedi con le informazioni disponibili."
+
+                            tool_results.append({
+                                "type": "tool_result",
+                                "tool_use_id": tool_use.id,
+                                "content": error_msg,
+                                "is_error": False  # Non è un errore bloccante
+                            })
+
+                            self.logger.warning(f"Web search fallita per '{query}', ma continuo senza bloccare: {error_msg}")
 
                 # Se abbiamo tool results, continua la conversazione
                 if tool_results:

@@ -621,6 +621,7 @@ SOLIERA_CONFIG = SiteConfig(
         'x-ref-host': 'www.comune.soliera.mo.it',
         'url-referer': 'https://www.comune.soliera.mo.it/novita/'
     },
+    graphql_variables={'pageNumber': 1, 'pageSize': 30},  # Aumentato da 12 a 30 per prendere più notizie
     fallback_to_wordpress=False,
 
     # Download delle immagini
@@ -628,7 +629,7 @@ SOLIERA_CONFIG = SiteConfig(
 
     # Generazione AI
     use_ai_generation=True,
-    enable_web_search=True,  # Abilita ricerca web per arricchire articoli
+    enable_web_search=True,  # Riabilitato con gestione errori robusta
     ai_api_key=settings.ANTHROPIC_API_KEY,
     ai_system_prompt="""Sei Indro Montanelli
     Il tuo compito è rielaborare notizie del Comune di Soliera per il giornale locale "Ombra del Portico".
