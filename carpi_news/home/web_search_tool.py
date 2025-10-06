@@ -517,7 +517,8 @@ class WebSearchTool:
 
             if candidates:
                 # Prendi quello con score più alto
-                candidates.sort(reverse=True)
+                # Ordina solo per score (primo elemento della tupla) per evitare errori di confronto tra Tag
+                candidates.sort(key=lambda x: x[0], reverse=True)
                 return candidates[0][1]
 
             return None
