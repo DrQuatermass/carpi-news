@@ -9,6 +9,7 @@ from typing import Dict, List, Any, Optional
 from urllib.parse import quote_plus, urljoin, urlparse
 from bs4 import BeautifulSoup
 import re
+import io
 from home.logger_config import get_monitor_logger
 
 
@@ -412,11 +413,16 @@ class WebSearchTool:
                 self.logger.warning(f"Status code {response.status_code} per {url}")
                 return None
 
-            # Parse HTML
-            soup = BeautifulSoup(response.text, 'html.parser')
-
-            # Estrai contenuto principale
-            content_data = self._extract_main_content(soup, url)
+            # Controlla se è un PDF
+            content_type = response.headers.get('Content-Type', '').lower()
+            if 'application/pdf' in content_type or url.lower().endswith('.pdf'):
+                self.logger.info(f"Rilevato PDF: {url}")
+                content_data = self._extract_pdf_content(response.content, url)
+            else:
+                # Parse HTML
+                soup = BeautifulSoup(response.text, 'html.parser')
+                # Estrai contenuto principale
+                content_data = self._extract_main_content(soup, url)
 
             if content_data:
                 # Cache il risultato
@@ -436,6 +442,103 @@ class WebSearchTool:
         except Exception as e:
             self.logger.error(f"Errore generico scaricamento contenuto da {url}: {e}")
             return None
+
+    def _extract_pdf_content(self, pdf_bytes: bytes, url: str) -> Optional[Dict[str, Any]]:
+        """
+        Estrae testo da un PDF
+
+        Args:
+            pdf_bytes: Contenuto del PDF in bytes
+            url: URL del PDF
+
+        Returns:
+            Dict con title, content, url o None se errore
+        """
+        try:
+            # Prova prima con pdfplumber (migliore per testo strutturato)
+            try:
+                import pdfplumber
+
+                pdf_file = io.BytesIO(pdf_bytes)
+                text_parts = []
+                title = None
+
+                with pdfplumber.open(pdf_file) as pdf:
+                    # Prendi il titolo dalla prima pagina se possibile
+                    if pdf.pages:
+                        first_page_text = pdf.pages[0].extract_text()
+                        if first_page_text:
+                            # Prima riga come titolo
+                            lines = first_page_text.split('\n')
+                            title = lines[0].strip() if lines else "PDF Document"
+
+                    # Estrai testo da tutte le pagine (max 20 per performance)
+                    for page in pdf.pages[:20]:
+                        page_text = page.extract_text()
+                        if page_text:
+                            text_parts.append(page_text)
+
+                content = '\n\n'.join(text_parts)
+
+            except ImportError:
+                # Fallback a PyPDF2 se pdfplumber non disponibile
+                self.logger.info("pdfplumber non disponibile, uso PyPDF2")
+                import PyPDF2
+
+                pdf_file = io.BytesIO(pdf_bytes)
+                reader = PyPDF2.PdfReader(pdf_file)
+
+                text_parts = []
+                title = None
+
+                # Prova a ottenere il titolo dai metadati
+                if reader.metadata and reader.metadata.get('/Title'):
+                    title = reader.metadata['/Title']
+
+                # Estrai testo dalle pagine (max 20)
+                for page_num, page in enumerate(reader.pages[:20]):
+                    page_text = page.extract_text()
+                    if page_text:
+                        text_parts.append(page_text)
+
+                        # Se non abbiamo titolo, usa prima riga della prima pagina
+                        if page_num == 0 and not title and page_text:
+                            lines = page_text.split('\n')
+                            title = lines[0].strip() if lines else "PDF Document"
+
+                content = '\n\n'.join(text_parts)
+
+            if not content or len(content) < 50:
+                self.logger.warning(f"PDF troppo breve o vuoto: {url}")
+                return None
+
+            # Pulisci il contenuto
+            content = self._clean_pdf_text(content)
+
+            return {
+                'title': title or "PDF Document",
+                'content': content,
+                'url': url,
+                'length': len(content),
+                'type': 'pdf'
+            }
+
+        except Exception as e:
+            self.logger.error(f"Errore estrazione PDF da {url}: {e}")
+            return None
+
+    def _clean_pdf_text(self, text: str) -> str:
+        """Pulisce il testo estratto da PDF"""
+        # Rimuovi caratteri strani
+        text = re.sub(r'\x00', '', text)
+
+        # Normalizza spazi
+        text = re.sub(r'\s+', ' ', text)
+
+        # Normalizza newlines (max 2 consecutivi)
+        text = re.sub(r'\n{3,}', '\n\n', text)
+
+        return text.strip()
 
     def _extract_main_content(self, soup: BeautifulSoup, url: str) -> Optional[Dict[str, Any]]:
         """Estrae il contenuto principale da una pagina HTML"""
