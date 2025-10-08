@@ -104,4 +104,75 @@ class Articolo(models.Model):
 
     def __str__(self):
         return self.titolo
+
+
+class MonitorConfig(models.Model):
+    """Configurazione per i monitor di notizie"""
+
+    SCRAPER_TYPES = [
+        ('html', 'HTML Scraping'),
+        ('wordpress_api', 'WordPress API'),
+        ('youtube_api', 'YouTube API'),
+        ('graphql', 'GraphQL API'),
+        ('email', 'Email IMAP'),
+    ]
+
+    # Campi base
+    name = models.CharField(max_length=200, unique=True, help_text="Nome identificativo del monitor")
+    base_url = models.URLField(max_length=500, blank=True, help_text="URL base del sito (opzionale per email)")
+    scraper_type = models.CharField(max_length=20, choices=SCRAPER_TYPES, help_text="Tipo di scraper da utilizzare")
+    category = models.CharField(max_length=100, default='Generale', help_text="Categoria degli articoli")
+
+    # Stato e controllo
+    is_active = models.BooleanField(default=True, help_text="Monitor attivo/disattivo")
+    auto_approve = models.BooleanField(default=False, help_text="Approva automaticamente gli articoli")
+
+    # Configurazioni specifiche (JSON)
+    config_data = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Configurazioni specifiche del monitor (selectors, API keys, etc.)"
+    )
+
+    # AI Generation
+    use_ai_generation = models.BooleanField(default=False, help_text="Usa generazione AI")
+    enable_web_search = models.BooleanField(default=False, help_text="Abilita ricerca web durante generazione AI")
+    ai_system_prompt = models.TextField(blank=True, help_text="System prompt per l'AI")
+
+    # Metadata
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    last_run = models.DateTimeField(null=True, blank=True, help_text="Ultima esecuzione del monitor")
+
+    class Meta:
+        verbose_name = "Configurazione Monitor"
+        verbose_name_plural = "Configurazioni Monitor"
+        ordering = ['name']
+
+    def __str__(self):
+        return f"{self.name} ({'Attivo' if self.is_active else 'Disattivo'})"
+
+    def to_site_config(self):
+        """Converte il modello in SiteConfig per l'uso con universal_news_monitor"""
+        from home.universal_news_monitor import SiteConfig
+        from django.conf import settings
+
+        config_dict = {
+            'name': self.name,
+            'base_url': self.base_url,
+            'scraper_type': self.scraper_type,
+            'category': self.category,
+            'auto_approve': self.auto_approve,
+            'use_ai_generation': self.use_ai_generation,
+            'enable_web_search': self.enable_web_search,
+            'ai_system_prompt': self.ai_system_prompt,
+            'ai_api_key': settings.ANTHROPIC_API_KEY if self.use_ai_generation else None,
+        }
+
+        # Aggiungi configurazioni specifiche dal JSON
+        config_dict.update(self.config_data)
+
+        return SiteConfig(**config_dict)
+
+
 # Create your models here.

@@ -38,26 +38,30 @@ class MonitorManager:
         except Exception as e:
             logger.error(f"Errore nell'aggiungere monitor personalizzato {config.name}: {e}")
             return False
+
+    def add_monitor_from_config(self, config: SiteConfig, check_interval: int = 900) -> bool:
+        """Aggiunge un monitor da un oggetto SiteConfig (per compatibilità con DB)"""
+        return self.add_custom_monitor(config, check_interval)
     
-    def start_monitor(self, config_name: str) -> bool:
+    def start_monitor(self, config_name: str, daemon: bool = False) -> bool:
         """Avvia un monitor specifico"""
         if config_name not in self.monitors:
             logger.error(f"Monitor {config_name} non trovato")
             return False
-        
+
         if config_name in self.running_monitors:
             logger.warning(f"Monitor {config_name} già in esecuzione")
             return False
-        
+
         monitor = self.monitors[config_name]
-        success = monitor.start_monitoring()
-        
+        success = monitor.start_monitoring(daemon=daemon)
+
         if success:
             self.running_monitors.append(config_name)
             logger.info(f"Monitor {config_name} avviato con successo")
         else:
             logger.error(f"Impossibile avviare monitor {config_name}")
-        
+
         return success
     
     def stop_monitor(self, config_name: str) -> bool:
@@ -76,11 +80,11 @@ class MonitorManager:
         logger.info(f"Monitor {config_name} fermato")
         return True
     
-    def start_all_monitors(self) -> Dict[str, bool]:
+    def start_all_monitors(self, daemon: bool = False) -> Dict[str, bool]:
         """Avvia tutti i monitor configurati"""
         results = {}
         for config_name in self.monitors:
-            results[config_name] = self.start_monitor(config_name)
+            results[config_name] = self.start_monitor(config_name, daemon=daemon)
         return results
     
     def stop_all_monitors(self):

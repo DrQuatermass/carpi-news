@@ -1,5 +1,4 @@
 from home.universal_news_monitor import SiteConfig
-from django.conf import settings
 import os
 
 # Configurazioni per i diversi siti monitorati
@@ -49,7 +48,7 @@ CARPI_CALCIO_CONFIG = SiteConfig(
     # Generazione AI con ricerca web
     use_ai_generation=True,
     enable_web_search=True,  # Abilita ricerca web per arricchire gli articoli di calcio
-    ai_api_key=settings.ANTHROPIC_API_KEY,
+
     ai_system_prompt="""Sei Gianni Brera.
     Il tuo compito è rielaborare notizie del Carpi Calcio per il giornale locale "Ombra del Portico".
 
@@ -87,7 +86,7 @@ COMUNE_CARPI_CONFIG = SiteConfig(
     # Generazione AI
     use_ai_generation=True,
     enable_web_search=True,  # Abilita ricerca web per arricchire articoli
-    ai_api_key=settings.ANTHROPIC_API_KEY,
+
     ai_system_prompt="""Sei Indro Montanelli
     Il tuo compito è rielaborare notizie del Comune di Carpi per il giornale locale "Ombra del Portico".
 
@@ -130,7 +129,7 @@ YOUTUBE_PLAYLIST_CONFIG = SiteConfig(
     # Generazione AI per articoli da video con ricerca web
     use_ai_generation=True,
     enable_web_search=True,  # Abilita ricerca web per arricchire articoli da YouTube
-    ai_api_key=settings.ANTHROPIC_API_KEY,
+
     ai_system_prompt="""Sei  Umberto Eco che assiste al consiglio comunale di Carpi.
     Il tuo compito è trasformare trascrizioni di video YouTube in articoli per il giornale locale "Ombra del Portico".
 
@@ -173,7 +172,7 @@ YOUTUBE_PLAYLIST_2_CONFIG = SiteConfig(
     # Generazione AI per articoli da video con ricerca web
     use_ai_generation=True,
     enable_web_search=True,  # Abilita ricerca web per arricchire articoli da YouTube
-    ai_api_key=settings.ANTHROPIC_API_KEY,
+
     ai_system_prompt="""Sei  Umberto Eco che assiste al consiglio comunale di Carpi.
     Il tuo compito è trasformare trascrizioni di video YouTube in articoli per il giornale locale "Ombra del Portico".
 
@@ -213,7 +212,7 @@ COMUNE_CARPI_GRAPHQL_CONFIG = SiteConfig(
     # Generazione AI
     use_ai_generation=True,
     enable_web_search=True,  # Abilita ricerca web per arricchire articoli
-    ai_api_key=settings.ANTHROPIC_API_KEY,
+
     ai_system_prompt="""Sei Indro Montanelli. 
     Il tuo compito è rielaborare comunicati stampa del Comune di Carpi per il giornale locale "Ombra del Portico".
     
@@ -275,7 +274,7 @@ ANSA_CONFIG = SiteConfig(
     # Generazione AI per uniformare lo stile
     use_ai_generation=True,
     enable_web_search=True,  # Abilita ricerca web per arricchire articoli
-    ai_api_key=settings.ANTHROPIC_API_KEY,
+
     ai_system_prompt="""Sei Christopher Hitchens. 
     Il tuo compito è rielaborare notizie ANSA dell'Emilia-Romagna per il giornale locale "Ombra del Portico".
     
@@ -344,7 +343,7 @@ EVENTI_CARPI_GRAPHQL_CONFIG = SiteConfig(
     # Generazione AI
     use_ai_generation=True,
     enable_web_search=True,  # Abilita ricerca web per arricchire articoli
-    ai_api_key=settings.ANTHROPIC_API_KEY,
+
     ai_system_prompt="""Sei Vincenzo Mollica. 
     Il tuo compito è rielaborare eventi del Comune di Carpi per il giornale locale "Ombra del Portico".
     
@@ -393,7 +392,7 @@ VOCE_CARPI_CONFIG = SiteConfig(
     # Generazione AI
     use_ai_generation=True,
     enable_web_search=True,  # Abilita ricerca web per arricchire articoli
-    ai_api_key=settings.ANTHROPIC_API_KEY,
+
     ai_system_prompt="""Sei Enzo Biagi.
     Il tuo compito è rielaborare notizie per il giornale locale "Ombra del Portico".
 
@@ -449,7 +448,7 @@ VOCE_CARPI_SPORT_CONFIG = SiteConfig(
     # Generazione AI
     use_ai_generation=True,
     enable_web_search=True,  # Abilita ricerca web per arricchire articoli
-    ai_api_key=settings.ANTHROPIC_API_KEY,
+
     ai_system_prompt="""Sei Gianni Brera.
     Il tuo compito è rielaborare notizie per il giornale locale "Ombra del Portico".
 
@@ -497,7 +496,7 @@ TEMPO_CARPI_CONFIG = SiteConfig(
     # Generazione AI
     use_ai_generation=True,
     enable_web_search=True,  # Abilita ricerca web per arricchire articoli
-    ai_api_key=settings.ANTHROPIC_API_KEY,
+
     ai_system_prompt="""Sei Enzo Biagi. 
     Il tuo compito è rielaborare notizie per il giornale locale "Ombra del Portico".
     
@@ -537,7 +536,7 @@ TERRE_ARGINE_CONFIG = SiteConfig(
     # Generazione AI
     use_ai_generation=True,
     enable_web_search=True,  # Abilita ricerca web per arricchire articoli
-    ai_api_key=settings.ANTHROPIC_API_KEY,
+
     ai_system_prompt="""Sei Paolo Rumiz. 
     Il tuo compito è rielaborare notizie dell'Unione Terre d'Argine per il giornale locale "Ombra del Portico".
     
@@ -584,7 +583,7 @@ NOVI_MODENA_CONFIG = SiteConfig(
     # Generazione AI
     use_ai_generation=True,
     enable_web_search=True,  # Abilita ricerca web per arricchire articoli
-    ai_api_key=settings.ANTHROPIC_API_KEY,
+
     ai_system_prompt="""Sei Indro Montanelli
     Il tuo compito è rielaborare notizie del Comune di Novi di Modena per il giornale locale "Ombra del Portico".
 
@@ -630,7 +629,7 @@ SOLIERA_CONFIG = SiteConfig(
     # Generazione AI
     use_ai_generation=True,
     enable_web_search=True,  # Riabilitato con gestione errori robusta
-    ai_api_key=settings.ANTHROPIC_API_KEY,
+
     ai_system_prompt="""Sei Indro Montanelli
     Il tuo compito è rielaborare notizie del Comune di Soliera per il giornale locale "Ombra del Portico".
 
@@ -675,7 +674,7 @@ CAMPOGALLIANO_CONFIG = SiteConfig(
     # Generazione AI
     use_ai_generation=True,
     enable_web_search=True,  # Abilita ricerca web per arricchire articoli
-    ai_api_key=settings.ANTHROPIC_API_KEY,
+
     ai_system_prompt="""Sei Indro Montanelli
     Il tuo compito è rielaborare notizie del Comune di Campogalliano per il giornale locale "Ombra del Portico".
 
@@ -738,7 +737,7 @@ QUESTURA_MODENA_CONFIG = SiteConfig(
     # Generazione AI per cronaca
     use_ai_generation=True,
     enable_web_search=True,
-    ai_api_key=settings.ANTHROPIC_API_KEY,
+
     ai_system_prompt="""Sei Beppe Severgnini.
     Il tuo compito è rielaborare comunicati della Questura di Modena in articoli di cronaca per "Ombra del Portico".
 
@@ -780,7 +779,7 @@ EMAIL_COMUNICATI_CONFIG = SiteConfig(
     # Generazione AI per comunicati stampa
     use_ai_generation=True,
     enable_web_search=True,  # Abilita ricerca web per arricchire articoli
-    ai_api_key=settings.ANTHROPIC_API_KEY,
+
 
     # Prompt principale per comunicati formali
     ai_system_prompt="""Sei Sergio Zavoli.

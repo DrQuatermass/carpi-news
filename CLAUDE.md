@@ -32,15 +32,19 @@ The `Articolo` model in `home/models.py:4` contains:
 - `data_creazione`: Creation timestamp
 - `data_pubblicazione`: Publication timestamp
 
-## Universal Monitoring System
+## Universal Monitoring System (Database-Driven)
 
-The project features a sophisticated multi-source news monitoring system:
+The project features a sophisticated multi-source news monitoring system **managed entirely through the database**:
 
 ### Core Components
-- **`universal_news_monitor.py`**: Universal scraper class supporting HTML scraping, WordPress API, and YouTube
-- **`monitor_configs.py`**: Centralized configurations for all news sources
+- **`MonitorConfig` Model** (`home/models.py:109`): Database model for monitor configurations
+- **`universal_news_monitor.py`**: Universal scraper class supporting HTML scraping, WordPress API, YouTube, GraphQL, and Email
 - **`monitor_manager.py`**: Manages multiple concurrent monitors
-- **`start_universal_monitors.py`**: Main entry point for starting all monitors
+- **Admin Interface** (`/admin/home/monitorconfig/`): Web UI for creating, editing, and controlling monitors
+- **Management Commands**: CLI tools for importing and managing monitors
+
+### System Architecture
+All monitor configurations are stored in the database (`MonitorConfig` model) and loaded dynamically at startup. The old `monitor_configs.py` is only used for initial import and can be considered deprecated.
 
 ### Supported Sources
 - **Carpi Calcio**: HTML scraping with AI content generation and enhanced image selectors
@@ -74,8 +78,15 @@ The project features a sophisticated multi-source news monitoring system:
 ## Management Commands
 
 The project includes Django management commands in `home/management/commands/`:
+
+### Monitor Management (Database-Driven System)
+- **`import_monitors.py`**: Import monitor configurations from `monitor_configs.py` to database
+- **`start_monitors.py`**: Start active monitors from database
+- **`manage_db_monitors.py`**: Manage monitor status (start/stop/status/restart)
+
+### Legacy Commands
 - `monitor_playlist.py`: Monitor specific YouTube playlists
-- `manage_monitors.py`: Manage and control universal monitors
+- `manage_monitors.py`: Manage and control universal monitors (legacy)
 - `update_editorial_images.py`: Update editorial content images
 
 ## Common Commands
@@ -86,10 +97,49 @@ cd carpi_news
 python manage.py runserver
 ```
 
-**Start Universal Monitoring System**:
+**Monitor Management (NEW - Database-Driven)**:
 ```bash
-cd carpi_news
-python start_universal_monitors.py
+# First-time setup: Import monitors from monitor_configs.py
+python manage.py import_monitors
+
+# Clean lock files (if monitors fail to start with "lock non acquisibile")
+python manage.py clean_locks --force
+
+# View monitor status
+python manage.py manage_db_monitors status
+
+# Start all active monitors
+python manage.py start_monitors
+
+# Start specific monitor
+python manage.py start_monitors --monitor "Monitor Name"
+
+# Manage monitors
+python manage.py manage_db_monitors start   # Start all active
+python manage.py manage_db_monitors stop    # Stop all
+python manage.py manage_db_monitors restart # Restart all
+```
+
+**Admin Interface**:
+- Access at `/admin/home/monitorconfig/` to manage monitors via web UI
+- Create, edit, activate/deactivate monitors
+- Control individual monitors with Start/Stop/Test/Logs buttons
+
+**Auto-Start Configuration**:
+The system can automatically start monitors when Django loads (e.g., with `runserver` or Gunicorn).
+This is controlled by the `AUTO_START_MONITORS` environment variable in `.env`:
+
+```bash
+# Development: disable auto-start to avoid lock conflicts on Django reload
+AUTO_START_MONITORS=False
+
+# Production: enable auto-start for automatic monitoring
+AUTO_START_MONITORS=True
+```
+
+When `AUTO_START_MONITORS=False`, start monitors manually with:
+```bash
+python manage.py start_monitors
 ```
 
 **Database Operations**:
@@ -97,13 +147,6 @@ python start_universal_monitors.py
 python manage.py makemigrations
 python manage.py migrate
 python manage.py createsuperuser
-```
-
-**Management Commands**:
-```bash
-python manage.py monitor_playlist
-python manage.py manage_monitors
-python manage.py update_editorial_images
 ```
 
 **Testing**:
@@ -156,7 +199,18 @@ tail -20 logs/monitors.log
 python manage.py manage_monitors status
 ```
 
-**Restart all monitors:**
+**Restart monitors (Database-Driven System):**
+```bash
+# View status
+python manage.py manage_db_monitors status
+
+# Restart all
+python manage.py manage_db_monitors restart
+
+# Or via admin interface at /admin/home/monitorconfig/
+```
+
+**Legacy method (deprecated):**
 ```bash
 # Stop all
 pkill -f "universal_news_monitor"
@@ -243,13 +297,56 @@ pip install -r requirements.txt
 - **Apache**: Reverse proxy with SSL termination (Let's Encrypt)
 - **Media Files**: Served directly by Apache for performance
 - **Static Files**: Collected via `collectstatic` and served by Apache
-- **Monitor Processes**: Run independently from web server
+- **Monitor Processes**: Auto-start on Django startup, managed via database
+- **Monitor Configuration**: All monitors configured via `/admin/home/monitorconfig/`
 - **Editorial Scheduler**: Automated daily articles at 8:00 AM
 - **Cache System**: Redis/Database caching for image validation (30min-1hour TTL)
+
+## Database-Driven Monitor System (NEW)
+
+The monitoring system is now **fully database-driven**, replacing the old `monitor_configs.py` approach:
+
+### Key Features
+- ✅ **Admin Interface**: Manage all monitors via `/admin/home/monitorconfig/`
+- ✅ **Dynamic Configuration**: Add/edit monitors without code changes
+- ✅ **Individual Control**: Start/Stop/Test each monitor independently
+- ✅ **Live Monitoring**: View logs and status in real-time
+- ✅ **Auto-Start**: Monitors auto-start when Django loads (configurable via `is_active` flag)
+
+### MonitorConfig Model
+All monitor configurations stored in `home_monitorconfig` table with fields:
+- Basic: `name`, `base_url`, `scraper_type`, `category`
+- Control: `is_active`, `auto_approve`, `last_run`
+- AI: `use_ai_generation`, `enable_web_search`, `ai_system_prompt`
+- Config: `config_data` (JSON field for type-specific settings)
+
+### Migration from Old System
+```bash
+# One-time: Import existing monitors from monitor_configs.py
+python manage.py import_monitors
+
+# Update existing monitors
+python manage.py import_monitors --update
+
+# After import, manage everything via admin interface
+```
+
+### Commands Reference
+```bash
+# Import monitors from monitor_configs.py (first time only)
+python manage.py import_monitors [--update] [--delete-existing]
+
+# Start monitors from database
+python manage.py start_monitors [--monitor "Name"] [--daemon]
+
+# Manage monitor status
+python manage.py manage_db_monitors status|start|stop|restart [--monitor "Name"]
+```
 
 ## Project Documentation
 
 Additional guides available:
-- `UNIVERSAL_MONITOR_GUIDE.md`: Comprehensive guide to the monitoring system
+- **`MONITOR_DB_SYSTEM.md`**: Complete guide to database-driven monitor system (NEW)
+- `UNIVERSAL_MONITOR_GUIDE.md`: Comprehensive guide to the monitoring system (legacy)
 - `YOUTUBE_SETUP_GUIDE.md`: YouTube integration setup
 - `POLISHING_SYSTEM_GUIDE.md`: Content polishing system documentation

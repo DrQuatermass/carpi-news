@@ -18,7 +18,7 @@ from typing import Dict, List, Optional, Any
 from django.conf import settings
 from PIL import Image
 
-from home.models import Articolo
+from home.models import Articolo, MonitorConfig
 
 # Import platform-specific locking
 if platform.system() == 'Windows':
@@ -2063,28 +2063,29 @@ class EmailScraper(BaseScraper):
 
 class UniversalNewsMonitor:
     """Monitor universale per diversi tipi di siti news"""
-    
+
     def __init__(self, site_config: SiteConfig, check_interval: int = 900):
         self.config = site_config
+        self.monitor_name = site_config.name  # Salva il nome per ricaricare config
         self.check_interval = check_interval
         self.seen_articles = {}
         self.is_running = False
         self.monitor_thread = None
         self.lock_fd = None
-        
+
         # Logger specifico per questo monitor
         self.logger = get_monitor_logger(site_config.name.lower().replace(' ', '_'))
-        
+
         # File lock - usa directory locks del progetto
         project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         locks_dir = os.path.join(project_dir, 'locks')
         os.makedirs(locks_dir, exist_ok=True)  # Crea directory se non esiste
-        
+
         self.lock_file_path = os.path.join(
             locks_dir,
             f'{site_config.name.lower().replace(" ", "_")}_monitor.lock'
         )
-        
+
         # Headers standard
         self.headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
@@ -2093,10 +2094,59 @@ class UniversalNewsMonitor:
             'Accept-Encoding': 'gzip, deflate, br',
             'Connection': 'keep-alive',
         }
-        
+
         # Crea scraper appropriato
         self.scraper = self._create_scraper()
     
+    def _reload_config_from_db(self) -> bool:
+        """Ricarica la configurazione dal database e aggiorna lo scraper se necessario"""
+        try:
+            db_monitor = MonitorConfig.objects.get(name=self.monitor_name)
+
+            # Se il monitor è stato disattivato, fermalo
+            if not db_monitor.is_active:
+                self.logger.warning(f"Monitor disattivato dal database, arresto...")
+                self.is_running = False
+                return False
+
+            # Crea nuova configurazione dal database
+            new_config = SiteConfig(
+                name=db_monitor.name,
+                base_url=db_monitor.base_url,
+                scraper_type=db_monitor.scraper_type,
+                category=db_monitor.category,
+                **db_monitor.config_data
+            )
+
+            # Controlla se la configurazione è cambiata
+            config_changed = (
+                self.config.base_url != new_config.base_url or
+                self.config.scraper_type != new_config.scraper_type or
+                self.config.config != new_config.config
+            )
+
+            if config_changed:
+                self.logger.info("Configurazione modificata, ricarico...")
+                self.config = new_config
+                self.scraper = self._create_scraper()
+                self.logger.info("Configurazione aggiornata con successo")
+
+            # Aggiorna intervallo se cambiato
+            new_interval = db_monitor.config_data.get('interval', 900)
+            if new_interval != self.check_interval:
+                self.logger.info(f"Intervallo aggiornato: {self.check_interval}s -> {new_interval}s")
+                self.check_interval = new_interval
+
+            return True
+
+        except MonitorConfig.DoesNotExist:
+            self.logger.error(f"Monitor {self.monitor_name} non trovato nel database, arresto...")
+            self.is_running = False
+            return False
+        except Exception as e:
+            self.logger.error(f"Errore nel ricaricamento configurazione: {e}")
+            return True  # Continua con la configurazione attuale
+
     def _create_scraper(self) -> BaseScraper:
         """Crea il scraper appropriato basato sulla configurazione"""
         scraper_classes = {
@@ -2106,11 +2156,11 @@ class UniversalNewsMonitor:
             'graphql': GraphQLScraper,
             'email': EmailScraper
         }
-        
+
         scraper_class = scraper_classes.get(self.config.scraper_type)
         if not scraper_class:
             raise ValueError(f"Tipo scraper non supportato: {self.config.scraper_type}")
-        
+
         return scraper_class(self.config, self.headers)
     
     def get_article_hash(self, title: str, url: str) -> str:
@@ -2140,19 +2190,20 @@ class UniversalNewsMonitor:
                         pass
             
             self.lock_fd = os.open(self.lock_file_path, os.O_CREAT | os.O_TRUNC | os.O_RDWR)
-            
+
+            # Scrivi il PID prima di acquisire il lock
+            pid_bytes = f"{os.getpid()}\n".encode()
+            os.write(self.lock_fd, pid_bytes)
+            os.fsync(self.lock_fd)
+
+            # Ora acquisisci il lock
             if platform.system() == 'Windows':
-                try:
-                    msvcrt.locking(self.lock_fd, msvcrt.LK_NBLCK, 1)
-                except OSError:
-                    os.close(self.lock_fd)
-                    self.lock_fd = None
-                    raise
+                # Su Windows, skip msvcrt.locking che causa problemi
+                # Il lock file stesso serve come indicatore
+                self.logger.info("Windows: usando lock file-based senza msvcrt.locking")
+                pass
             else:
                 fcntl.lockf(self.lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            
-            os.write(self.lock_fd, f"{os.getpid()}\n".encode())
-            os.fsync(self.lock_fd)
             
             self.logger.info(f"Lock acquisito: {self.lock_file_path}")
             return True
@@ -2188,19 +2239,17 @@ class UniversalNewsMonitor:
         if self.lock_fd is not None:
             try:
                 if platform.system() == 'Windows':
-                    try:
-                        msvcrt.locking(self.lock_fd, msvcrt.LK_UNLCK, 1)
-                    except OSError:
-                        pass
+                    # Su Windows, skip msvcrt.locking
+                    pass
                 else:
                     fcntl.lockf(self.lock_fd, fcntl.LOCK_UN)
-                
+
                 os.close(self.lock_fd)
                 self.lock_fd = None
-                
+
                 if os.path.exists(self.lock_file_path):
                     os.unlink(self.lock_file_path)
-                
+
                 self.logger.info("Lock rilasciato")
             except (OSError, IOError) as e:
                 self.logger.error(f"Errore nel rilasciare lock: {e}")
@@ -2208,26 +2257,40 @@ class UniversalNewsMonitor:
     def check_for_new_articles(self):
         """Controlla per nuovi articoli"""
         try:
+            # Aggiorna last_run nel database
+            self._update_last_run()
+
             new_articles = self.scraper.scrape_articles()
-            
+
             if new_articles:
                 self.logger.info(f"Trovati {len(new_articles)} potenziali nuovi articoli")
-                
+
                 processed_count = 0
                 for article_data in new_articles:
                     article_hash = self.get_article_hash(article_data['title'], article_data['url'])
-                    
+
                     if article_hash not in self.seen_articles:
                         self.process_new_article(article_data)
                         self.seen_articles[article_hash] = datetime.now().isoformat()
                         processed_count += 1
-                
+
                 self.logger.info(f"Processati {processed_count} nuovi articoli")
             else:
                 self.logger.debug("Nessun nuovo articolo trovato")
-                
+
         except Exception as e:
             self.logger.error(f"Errore nel controllo articoli: {e}")
+
+    def _update_last_run(self):
+        """Aggiorna il timestamp last_run nel database"""
+        try:
+            from home.models import MonitorConfig
+            monitor = MonitorConfig.objects.filter(name=self.config.name).first()
+            if monitor:
+                monitor.last_run = timezone.now()
+                monitor.save(update_fields=['last_run'])
+        except Exception as e:
+            self.logger.debug(f"Impossibile aggiornare last_run: {e}")
     
     def should_auto_approve(self, category: str) -> bool:
         """Determina se un articolo deve essere auto-approvato basandosi sulla configurazione"""
@@ -2268,10 +2331,12 @@ class UniversalNewsMonitor:
         """Genera articolo con AI con ricerca web conversazionale integrata"""
         try:
             from anthropic import Anthropic
+            from django.conf import settings
 
-            api_key = self.config.config.get('ai_api_key')
+            # Usa API key dalla config del monitor, altrimenti usa quella dalle settings Django
+            api_key = self.config.config.get('ai_api_key') or getattr(settings, 'ANTHROPIC_API_KEY', None)
             if not api_key:
-                raise ValueError("API key mancante per generazione AI")
+                raise ValueError("API key mancante per generazione AI (né in monitor config né in settings)")
 
             client = Anthropic(api_key=api_key)
 
@@ -2347,18 +2412,22 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
 {f"OBBLIGATORIO: Devi SEMPRE usare web_search almeno una volta per verificare fatti e approfondire l'articolo. Cerca informazioni specifiche sui nomi, luoghi, date, organizzazioni e eventi menzionati. Dopo aver fatto le ricerche, decidi autonomamente se i risultati sono abbastanza rilevanti e specifici da includere come fonti, oppure se è meglio non includere fonti generiche o poco pertinenti." if enable_web_search else "Lavora solo con il contenuto fornito."}"""
 
             # Tools da includere
-            tools = [web_search_tool_def] if web_search_tool_def else None
+            tools = [web_search_tool_def] if web_search_tool_def else []
 
             self.logger.info(f"Inizio generazione AI articolo: '{article_data['title']}' (web search: {enable_web_search})")
 
             # Prima chiamata ad Anthropic
-            message = client.messages.create(
-                system=system_prompt,
-                max_tokens=4096,
-                messages=[{"role": "user", "content": user_content}],
-                tools=tools,
-                model="claude-sonnet-4-20250514"
-            )
+            # Se tools è vuoto, non passarlo all'API
+            api_params = {
+                "system": system_prompt,
+                "max_tokens": 4096,
+                "messages": [{"role": "user", "content": user_content}],
+                "model": "claude-sonnet-4-20250514"
+            }
+            if tools:
+                api_params["tools"] = tools
+
+            message = client.messages.create(**api_params)
 
             # Processa risposta e gestisci tool use conversazionale
             articolo_testo, used_sources = self._process_conversational_response(
@@ -2532,13 +2601,16 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
                     conversation.append({"role": "user", "content": tool_results})
 
                     # Nuova chiamata ad Anthropic
-                    current_message = client.messages.create(
-                        system=system_prompt,
-                        max_tokens=4096,
-                        messages=conversation,
-                        tools=tools,
-                        model="claude-sonnet-4-20250514"
-                    )
+                    api_params_iter = {
+                        "system": system_prompt,
+                        "max_tokens": 4096,
+                        "messages": conversation,
+                        "model": "claude-sonnet-4-20250514"
+                    }
+                    if tools:
+                        api_params_iter["tools"] = tools
+
+                    current_message = client.messages.create(**api_params_iter)
 
                     iteration += 1
                 else:
@@ -2591,20 +2663,20 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
         articolo.save()
         self.logger.info(f"Articolo salvato direttamente con ID: {articolo.id}")
     
-    def start_monitoring(self) -> bool:
+    def start_monitoring(self, daemon: bool = False) -> bool:
         """Avvia il monitoraggio"""
         if self.is_running:
             self.logger.warning("Monitor già in esecuzione")
             return False
-        
+
         if not self.acquire_lock():
             self.logger.error("Impossibile avviare monitor: lock non acquisibile")
             return False
-        
+
         self.is_running = True
-        self.monitor_thread = threading.Thread(target=self._monitor_loop, daemon=True)
+        self.monitor_thread = threading.Thread(target=self._monitor_loop, daemon=daemon)
         self.monitor_thread.start()
-        self.logger.info(f"Monitor avviato. Controllo ogni {self.check_interval} secondi")
+        self.logger.info(f"Monitor avviato ({'daemon' if daemon else 'background'}). Controllo ogni {self.check_interval} secondi")
         return True
     
     def stop_monitoring(self):
@@ -2622,18 +2694,23 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
                 self.check_for_new_articles()
             except Exception as e:
                 self.logger.error(f"Errore nel controllo iniziale: {e}")
-            
+
             # Loop di monitoraggio
             while self.is_running:
                 try:
                     self.logger.debug(f"Controllo alle {datetime.now().strftime('%H:%M:%S')}")
                     time.sleep(self.check_interval)
+
                     if self.is_running:
+                        # Ricarica configurazione dal database prima di ogni controllo
+                        if not self._reload_config_from_db():
+                            break  # Se il reload fallisce o il monitor è disattivato, esci
+
                         self.check_for_new_articles()
                 except Exception as e:
                     self.logger.error(f"Errore nel loop: {e}")
                     time.sleep(60)
-                    
+
         finally:
             self.release_lock()
             self.logger.info("Monitor loop terminato")
