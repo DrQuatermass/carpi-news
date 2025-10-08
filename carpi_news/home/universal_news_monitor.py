@@ -2269,10 +2269,14 @@ class UniversalNewsMonitor:
                 for article_data in new_articles:
                     article_hash = self.get_article_hash(article_data['title'], article_data['url'])
 
+                    # Controllo duplicati sia in memoria che nel database
                     if article_hash not in self.seen_articles:
-                        self.process_new_article(article_data)
+                        # Controllo duplicati nel database prima di processare
+                        existing = Articolo.objects.filter(fonte=article_data['url']).exists()
+                        if not existing:
+                            self.process_new_article(article_data)
+                            processed_count += 1
                         self.seen_articles[article_hash] = datetime.now().isoformat()
-                        processed_count += 1
 
                 self.logger.info(f"Processati {processed_count} nuovi articoli")
             else:
@@ -2301,13 +2305,7 @@ class UniversalNewsMonitor:
         """Processa un nuovo articolo"""
         try:
             self.logger.info(f"Processando nuovo articolo: {article_data['title']}")
-            
-            # Controllo duplicati
-            existing = Articolo.objects.filter(fonte=article_data['url']).exists()
-            if existing:
-                # Articolo già esistente - non logga per evitare spam
-                return
-            
+
             # Ottieni contenuto completo se necessario
             if not article_data.get('full_content'):
                 full_content = self.scraper.get_full_content(article_data['url'])
