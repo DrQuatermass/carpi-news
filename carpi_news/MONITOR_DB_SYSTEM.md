@@ -117,6 +117,18 @@ Il campo `config_data` contiene tutte le configurazioni specifiche del monitor:
   "content_selectors": [".content", "article"],
   "image_selectors": ["img.featured"],
   "content_filter_keywords": ["Carpi"],
+  "exclude_patterns": ["/video/", "/gallery/"],  // Pattern URL da escludere
+
+  // JSON Parsing (per siti con dati embedded in script tag)
+  "parse_json": true,  // Attiva parsing JSON dalla pagina
+  "selectors": ["script#__NEXT_DATA__"],  // Selettore script tag JSON
+  "json_path": ["props", "pageProps", "articles"],  // Percorso nel JSON
+  "article_fields": {  // Mapping campi articolo
+    "title": "title",
+    "url": "link",
+    "preview": "excerpt",
+    "image_url": "featured_image"
+  },
 
   // WordPress API
   "api_url": "https://example.com/wp-json/wp/v2/posts",
@@ -296,6 +308,76 @@ json.dumps(config_data)  # Solleva errore se non valido
 python manage.py shell
 >>> from home.models import MonitorConfig
 >>> MonitorConfig.objects.values('name').annotate(count=Count('id')).filter(count__gt=1)
+```
+
+## 📚 Esempi Pratici
+
+### Esempio 1: Monitor con JSON Parsing (Gazzetta di Modena)
+
+Per siti che hanno dati embedded in JSON (Next.js, React, etc.):
+
+```json
+{
+  "name": "Gazzetta di Modena - Carpi",
+  "base_url": "https://www.gazzettadimodena.it/carpi",
+  "scraper_type": "html",
+  "category": "Cronaca",
+  "is_active": true,
+  "use_ai_generation": true,
+  "config_data": {
+    "interval": 600,
+    "parse_json": true,
+    "selectors": ["script#__NEXT_DATA__"],
+    "json_path": ["props", "pageProps", "initialState", "articles", "data"],
+    "article_fields": {
+      "title": "title",
+      "url": "link",
+      "preview": "text",
+      "image_url": "image"
+    },
+    "exclude_patterns": ["/video/", "/gallery/", "/foto/"]
+  }
+}
+```
+
+### Esempio 2: Monitor con Filtri URL
+
+Per escludere contenuti multimediali o sezioni non volute:
+
+```json
+{
+  "name": "La Voce di Carpi",
+  "base_url": "https://www.lavocedicarpi.it",
+  "scraper_type": "html",
+  "config_data": {
+    "interval": 600,
+    "selectors": [".entry-title a"],
+    "exclude_patterns": [
+      "/fotogallery/",
+      "/videogallery/",
+      "/pubblicita/",
+      "/sponsor/"
+    ]
+  }
+}
+```
+
+### Esempio 3: Monitor con RSS + Content Filtering
+
+Per fonti nazionali con filtro per keyword locali:
+
+```json
+{
+  "name": "ANSA Emilia-Romagna",
+  "base_url": "https://www.ansa.it",
+  "scraper_type": "html",
+  "config_data": {
+    "interval": 300,
+    "rss_url": "https://www.ansa.it/emiliaromagna/notizie/rss.xml",
+    "content_filter_keywords": ["Carpi", "carpi"],
+    "disable_rss": false
+  }
+}
 ```
 
 ## 🚀 Prossimi Passi

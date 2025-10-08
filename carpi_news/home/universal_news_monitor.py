@@ -80,15 +80,21 @@ class HTMLScraper(BaseScraper):
     """Scraper per siti HTML generici"""
     
     def scrape_articles(self) -> List[Dict[str, Any]]:
-        """Scrape articoli tramite HTML con supporto RSS discovery"""
+        """Scrape articoli tramite HTML con supporto RSS discovery e JSON parsing"""
         articles = []
 
-        # 1. Se RSS non è disabilitato, prova RSS discovery prima
+        # 1. Se la pagina usa JSON embedded, parsalo direttamente
+        if self.config.config.get('parse_json', False):
+            json_articles = self._parse_json_from_page()
+            articles.extend(json_articles)
+            return articles
+
+        # 2. Se RSS non è disabilitato, prova RSS discovery prima
         if not self.config.config.get('disable_rss', False):
             rss_articles = self._discover_articles_from_rss()
             articles.extend(rss_articles)
 
-        # 2. Poi scrapa pagine HTML normalmente
+        # 3. Poi scrapa pagine HTML normalmente
         urls_to_scrape = [self.config.config.get('news_url', self.config.base_url)]
         
         # Aggiungi URLs aggiuntivi se configurati (escludendo RSS feed)
@@ -249,9 +255,77 @@ class HTMLScraper(BaseScraper):
             
         except Exception as e:
             self.logger.warning(f"RSS discovery failed: {e}")
-        
+
         return articles
-    
+
+    def _parse_json_from_page(self) -> List[Dict[str, Any]]:
+        """Estrae articoli da JSON embedded nella pagina"""
+        import json
+
+        articles = []
+        url = self.config.base_url
+
+        try:
+            self.logger.info(f"Parsing JSON from page: {url}")
+
+            response = requests.get(url, headers=self.headers, timeout=self.timeout)
+            response.raise_for_status()
+
+            soup = BeautifulSoup(response.content, 'html.parser')
+
+            # Trova lo script tag con il JSON
+            selectors = self.config.config.get('selectors', ['script#__NEXT_DATA__'])
+            script_tag = None
+
+            for selector in selectors:
+                script_tag = soup.select_one(selector)
+                if script_tag:
+                    break
+
+            if not script_tag:
+                self.logger.warning(f"Script tag non trovato con selettori: {selectors}")
+                return articles
+
+            # Parse JSON
+            json_data = json.loads(script_tag.string)
+
+            # Naviga nel JSON usando il path configurato
+            json_path = self.config.config.get('json_path', [])
+            data = json_data
+            for key in json_path:
+                data = data.get(key, {})
+
+            if not isinstance(data, list):
+                self.logger.warning(f"JSON path non porta a una lista: {json_path}")
+                return articles
+
+            # Mappa i campi configurati
+            article_fields = self.config.config.get('article_fields', {})
+
+            for item in data:
+                try:
+                    article = {
+                        'title': item.get(article_fields.get('title', 'title'), ''),
+                        'url': item.get(article_fields.get('url', 'link'), ''),
+                        'preview': item.get(article_fields.get('preview', 'text'), ''),
+                        'image_url': item.get(article_fields.get('image_url', 'image'), ''),
+                        'full_content': None
+                    }
+
+                    # Valida che l'articolo abbia almeno titolo e URL
+                    if article['title'] and article['url']:
+                        articles.append(article)
+
+                except Exception as e:
+                    self.logger.debug(f"Errore parsing item JSON: {e}")
+
+            self.logger.info(f"Trovati {len(articles)} articoli da JSON")
+
+        except Exception as e:
+            self.logger.error(f"Errore nel parsing JSON: {e}")
+
+        return articles
+
     def _extract_articles_from_page(self, soup: BeautifulSoup, selectors: List[str], page_url: str) -> List[Dict[str, Any]]:
         """Estrae articoli da una singola pagina"""
         articles = []
@@ -317,7 +391,15 @@ class HTMLScraper(BaseScraper):
         else:
             # URL relativa (/, ../, ./), usa urljoin per risolverla
             article_url = urljoin(self.config.base_url, article_url)
-        
+
+        # Applica filtri exclude_patterns configurabili da database
+        exclude_patterns = self.config.config.get('exclude_patterns', [])
+        if exclude_patterns:
+            for pattern in exclude_patterns:
+                if pattern in article_url:
+                    self.logger.debug(f"URL escluso da pattern '{pattern}': {article_url}")
+                    return None
+
         # Titolo
         title = link_elem.get_text(strip=True) or link_elem.get('title')
         if not title:
