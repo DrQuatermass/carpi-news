@@ -57,11 +57,13 @@ class SiteConfig:
 
 class BaseScraper(ABC):
     """Classe base per tutti gli scraper"""
-    
+
     def __init__(self, config: SiteConfig, headers: Dict[str, str]):
         self.config = config
         self.headers = headers
         self.logger = get_monitor_logger(f"{config.name.lower().replace(' ', '_')}.scraper")
+        # Timeout configurabile, default 15 secondi
+        self.timeout = config.config.get('request_timeout', 15)
         
     @abstractmethod
     def scrape_articles(self) -> List[Dict[str, Any]]:
@@ -99,7 +101,7 @@ class HTMLScraper(BaseScraper):
             try:
                 self.logger.info(f"Scraping HTML: {url}")
                 
-                response = requests.get(url, headers=self.headers, timeout=15)
+                response = requests.get(url, headers=self.headers, timeout=self.timeout)
                 response.raise_for_status()
                 
                 soup = BeautifulSoup(response.content, 'html.parser')
@@ -146,7 +148,7 @@ class HTMLScraper(BaseScraper):
         try:
             self.logger.info(f"Discovering articles from RSS: {rss_url}")
             
-            response = requests.get(rss_url, headers=self.headers, timeout=15)
+            response = requests.get(rss_url, headers=self.headers, timeout=self.timeout)
             response.raise_for_status()
             
             # Parse RSS feed
@@ -196,7 +198,7 @@ class HTMLScraper(BaseScraper):
                         image_url = None
                         try:
                             from bs4 import BeautifulSoup
-                            article_response = requests.get(article_url, headers=self.headers, timeout=10)
+                            article_response = requests.get(article_url, headers=self.headers, timeout=self.timeout)
                             article_soup = BeautifulSoup(article_response.content, 'html.parser')
 
                             # Prima cerca immagini con caratteristiche di articolo (es. Questura con ?art=)
@@ -425,7 +427,7 @@ class HTMLScraper(BaseScraper):
     def get_full_content(self, article_url: str) -> Optional[str]:
         """Scarica contenuto completo da pagina HTML"""
         try:
-            response = requests.get(article_url, headers=self.headers, timeout=10)
+            response = requests.get(article_url, headers=self.headers, timeout=self.timeout)
             response.raise_for_status()
             
             soup = BeautifulSoup(response.content, 'html.parser')
@@ -1872,7 +1874,7 @@ class EmailScraper(BaseScraper):
                         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
                     }
 
-                    response = requests.get(url, headers=headers, timeout=10, allow_redirects=True)
+                    response = requests.get(url, headers=headers, timeout=self.timeout, allow_redirects=True)
                     response.raise_for_status()
 
                     # Parse HTML e estrai contenuto testuale
