@@ -498,8 +498,11 @@ class HTMLScraper(BaseScraper):
                     img_src = f"{parts[0]}//{parts[2]}/{encoded_path}"
             else:
                 img_src = quote(img_src, safe='/:?#[]@!$&\'()*+,;=')
-        
-        if img_src.startswith('/'):
+
+        # Gestione URL protocol-relative (//domain.com/path)
+        if img_src.startswith('//'):
+            return 'https:' + img_src
+        elif img_src.startswith('/'):
             return urljoin(self.config.base_url, img_src)
         elif img_src.startswith('http'):
             return img_src
@@ -754,12 +757,14 @@ class WordPressAPIScraper(BaseScraper):
         for img in images:
             img_src = (img.get('src') or img.get('data-src') or img.get('data-lazy-src'))
             
-            if (img_src and 
+            if (img_src and
                 not img_src.startswith('data:') and
                 not any(term in img_src.lower() for term in ['logo', 'icon', 'avatar', 'social']) and
                 'uploads' in img_src):
-                
-                if img_src.startswith('/'):
+
+                if img_src.startswith('//'):
+                    return 'https:' + img_src
+                elif img_src.startswith('/'):
                     return urljoin(self.config.base_url, img_src)
                 elif img_src.startswith('http'):
                     return img_src
