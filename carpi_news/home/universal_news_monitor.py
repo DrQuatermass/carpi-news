@@ -1745,10 +1745,10 @@ class EmailScraper(BaseScraper):
 
         # Pattern per link immagini Twitter diretti
         twitter_image_patterns = [
-            r'pic\.twitter\.com/\w+',
+            r'https://pbs\.twimg\.com/media/[\w-]+\.(?:jpg|jpeg|png|gif)',  # Immagini dirette pbs.twimg.com
+            r'pic\.twitter\.com/\w+',  # Shortlink pic.twitter.com (da espandere)
             r'https://pic\.twitter\.com/\w+',
-            r'http://pic\.twitter\.com/\w+',
-            r'https://pbs\.twimg\.com/media/[\w-]+\.(?:jpg|jpeg|png|gif)'
+            r'http://pic\.twitter\.com/\w+'
         ]
 
         for pattern in twitter_image_patterns:
@@ -1758,6 +1758,24 @@ class EmailScraper(BaseScraper):
                 # Assicurati che abbia https://
                 if not url.startswith('http'):
                     url = f'https://{url}'
+
+                # Se è un link pbs.twimg.com diretto, ritorna subito
+                if 'pbs.twimg.com' in url:
+                    return url
+
+                # Se è pic.twitter.com, prova a espanderlo per ottenere l'immagine reale
+                if 'pic.twitter.com' in url:
+                    try:
+                        # Cerca di estrarre l'immagine dal link del tweet che contiene il pic
+                        tweet_url = self._extract_tweet_url(content)
+                        if tweet_url:
+                            tweet_image = self._fetch_tweet_image(tweet_url)
+                            if tweet_image:
+                                return tweet_image
+                    except Exception as e:
+                        self.logger.debug(f"Errore espansione pic.twitter.com: {e}")
+
+                # Fallback: ritorna il link pic.twitter.com anche se non espanso
                 return url
 
         # Se non trova immagini dirette, cerca link t.co e prova a espanderli
@@ -1843,9 +1861,47 @@ class EmailScraper(BaseScraper):
             return None
 
     def _fetch_tweet_image(self, tweet_url: str) -> Optional[str]:
-        """Estrae l'immagine da un tweet usando web scraping semplice"""
+        """Estrae l'immagine da un tweet usando vxtwitter.com API"""
         try:
-            # Headers per sembrare un browser normale
+            # Usa vxtwitter.com che fornisce metadata JSON accessibile
+            # Converti x.com o twitter.com in vxtwitter.com
+            vx_url = tweet_url.replace('x.com', 'vxtwitter.com').replace('twitter.com', 'vxtwitter.com')
+
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (compatible; OmbraBot/1.0; +https://ombradelportico.it)'
+            }
+
+            response = requests.get(vx_url, headers=headers, timeout=10, allow_redirects=True)
+            if response.status_code != 200:
+                # Fallback: prova con x.com diretto
+                return self._fetch_tweet_image_fallback(tweet_url)
+
+            soup = BeautifulSoup(response.content, 'html.parser')
+
+            # vxtwitter fornisce Open Graph meta tags affidabili
+            og_image = soup.find('meta', property='og:image')
+            if og_image and og_image.get('content'):
+                image_url = og_image['content']
+                if 'twimg.com' in image_url or 'pbs.twimg.com' in image_url:
+                    return image_url
+
+            # Cerca anche twitter:image
+            twitter_image = soup.find('meta', attrs={'name': 'twitter:image'})
+            if twitter_image and twitter_image.get('content'):
+                image_url = twitter_image['content']
+                if 'twimg.com' in image_url or 'pbs.twimg.com' in image_url:
+                    return image_url
+
+            # Fallback
+            return self._fetch_tweet_image_fallback(tweet_url)
+
+        except Exception as e:
+            self.logger.debug(f"Errore fetch immagine tweet {tweet_url}: {e}")
+            return None
+
+    def _fetch_tweet_image_fallback(self, tweet_url: str) -> Optional[str]:
+        """Metodo fallback per estrarre immagini da tweet"""
+        try:
             headers = {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
             }
