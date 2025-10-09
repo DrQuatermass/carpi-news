@@ -1647,8 +1647,19 @@ class EmailScraper(BaseScraper):
             # Parse email
             email_message = self.email_lib.message_from_bytes(msg_data[0][1])
 
-            # Estrai informazioni base
-            subject = email_message.get('Subject', '')
+            # Estrai informazioni base con decodifica header RFC 2047
+            from email.header import decode_header
+
+            # Decodifica subject (può essere in formato =?utf-8?b?...?=)
+            subject_raw = email_message.get('Subject', '')
+            subject_parts = decode_header(subject_raw)
+            subject = ''
+            for content, encoding in subject_parts:
+                if isinstance(content, bytes):
+                    subject += content.decode(encoding or 'utf-8', errors='replace')
+                else:
+                    subject += content
+
             sender = email_message.get('From', '')
             date_received = email_message.get('Date', '')
 
@@ -2063,9 +2074,11 @@ class EmailScraper(BaseScraper):
             for part in email_message.walk():
                 if part.get_content_type() == "text/html":
                     try:
-                        content = part.get_payload(decode=True).decode('utf-8', errors='replace')
+                        raw_html = part.get_payload(decode=True).decode('utf-8', errors='replace')
+                        self.logger.debug(f"HTML estratto, lunghezza: {len(raw_html)} caratteri")
                         # Converti HTML in testo leggibile, preservando il contenuto HTML per estrazione immagini
-                        content = self._html_to_text(content)
+                        content = self._html_to_text(raw_html)
+                        self.logger.debug(f"Testo estratto da HTML, lunghezza: {len(content)} caratteri")
                         break
                     except (UnicodeDecodeError, AttributeError):
                         # Fallback con encoding più permissivo
@@ -2081,8 +2094,10 @@ class EmailScraper(BaseScraper):
             content_type = email_message.get_content_type()
             if content_type == "text/html":
                 try:
-                    content = email_message.get_payload(decode=True).decode('utf-8', errors='replace')
-                    content = self._html_to_text(content)
+                    raw_html = email_message.get_payload(decode=True).decode('utf-8', errors='replace')
+                    self.logger.debug(f"HTML estratto (non-multipart), lunghezza: {len(raw_html)} caratteri")
+                    content = self._html_to_text(raw_html)
+                    self.logger.debug(f"Testo estratto (non-multipart), lunghezza: {len(content)} caratteri")
                 except (UnicodeDecodeError, AttributeError):
                     content = str(email_message.get_payload(decode=True), errors='replace')
                     content = self._html_to_text(content)
@@ -2092,6 +2107,7 @@ class EmailScraper(BaseScraper):
                 except (UnicodeDecodeError, AttributeError):
                     content = str(email_message.get_payload(decode=True), errors='replace')
 
+        self.logger.info(f"Contenuto email estratto, lunghezza finale: {len(content)} caratteri")
         return content.strip()
 
     def _html_to_text(self, html_content: str) -> str:
@@ -2457,7 +2473,8 @@ class UniversalNewsMonitor:
                 if full_content:
                     article_data['full_content'] = full_content
                 else:
-                    article_data['full_content'] = article_data['preview']
+                    # Per email usa 'content' (completo), per altri scrapers usa 'preview'
+                    article_data['full_content'] = article_data.get('content') or article_data['preview']
             
             # Genera articolo con AI se configurato
             if self.config.config.get('use_ai_generation', False):
