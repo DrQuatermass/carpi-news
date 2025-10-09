@@ -170,6 +170,11 @@ class MonitorConfig(models.Model):
         # Prima aggiungi configurazioni specifiche dal JSON
         config_dict = self.config_data.copy() if self.config_data else {}
 
+        # Rimuovi use_ai_generation e enable_web_search dal JSON se presenti
+        # (saranno sovrascritti dai campi del modello che hanno precedenza)
+        config_dict.pop('use_ai_generation', None)
+        config_dict.pop('enable_web_search', None)
+
         # Poi sovrascrivi con i valori dei campi del modello (hanno precedenza)
         config_dict.update({
             'name': self.name,
