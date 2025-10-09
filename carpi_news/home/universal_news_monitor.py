@@ -2477,10 +2477,15 @@ class UniversalNewsMonitor:
                     article_data['full_content'] = article_data.get('content') or article_data['preview']
             
             # Genera articolo con AI se configurato
-            if self.config.config.get('use_ai_generation', False):
+            use_ai = self.config.config.get('use_ai_generation', False)
+            self.logger.info(f"Controllo AI generation: use_ai={use_ai}, config keys={list(self.config.config.keys())[:10]}")
+
+            if use_ai:
+                self.logger.info("Chiamata generate_ai_article()...")
                 result = self.generate_ai_article(article_data)
                 self.logger.info(f"Articolo AI generato: {result}")
             else:
+                self.logger.info("AI disabilitata, salvataggio diretto")
                 # Salva direttamente senza AI
                 self.save_article_directly(article_data)
             
