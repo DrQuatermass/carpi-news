@@ -69,13 +69,24 @@ def home(request):
     
     # Se è una richiesta AJAX, restituisci solo i dati JSON
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        # Mesi italiani abbreviati
+        ITALIAN_MONTHS_SHORT = {
+            1: 'gen', 2: 'feb', 3: 'mar', 4: 'apr',
+            5: 'mag', 6: 'giu', 7: 'lug', 8: 'ago',
+            9: 'set', 10: 'ott', 11: 'nov', 12: 'dic'
+        }
+
         articoli_data = []
         for articolo in page_obj:
+            # Formatta data in italiano
+            data_pub = articolo.data_pubblicazione
+            data_italiana = f"{data_pub.day} {ITALIAN_MONTHS_SHORT[data_pub.month]} {data_pub.year}"
+
             articoli_data.append({
                 'titolo': articolo.titolo,
                 'sommario': articolo.sommario,
                 'categoria': articolo.categoria,
-                'data_pubblicazione': articolo.data_pubblicazione.strftime('%d %b %Y'),
+                'data_pubblicazione': data_italiana,
                 'slug': articolo.slug,
                 'foto': articolo.get_image_url(),
             })
