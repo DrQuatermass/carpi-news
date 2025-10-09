@@ -157,7 +157,11 @@ class MonitorConfig(models.Model):
         from home.universal_news_monitor import SiteConfig
         from django.conf import settings
 
-        config_dict = {
+        # Prima aggiungi configurazioni specifiche dal JSON
+        config_dict = self.config_data.copy() if self.config_data else {}
+
+        # Poi sovrascrivi con i valori dei campi del modello (hanno precedenza)
+        config_dict.update({
             'name': self.name,
             'base_url': self.base_url,
             'scraper_type': self.scraper_type,
@@ -167,10 +171,7 @@ class MonitorConfig(models.Model):
             'enable_web_search': self.enable_web_search,
             'ai_system_prompt': self.ai_system_prompt,
             'ai_api_key': settings.ANTHROPIC_API_KEY if self.use_ai_generation else None,
-        }
-
-        # Aggiungi configurazioni specifiche dal JSON
-        config_dict.update(self.config_data)
+        })
 
         return SiteConfig(**config_dict)
 
