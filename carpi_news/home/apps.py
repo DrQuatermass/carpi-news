@@ -16,9 +16,11 @@ logger = logging.getLogger(__name__)
 class HomeConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'home'
-    
+
     # Variabili di classe per prevenire avvii multipli
     _universal_monitors_started = False
+    _monitor_manager = None  # Riferimento al manager per il watchdog
+    _watchdog_thread = None
     
     def ready(self):
         """Chiamato quando l'app è pronta - avvia il monitor playlist e registra segnali"""
@@ -156,6 +158,13 @@ class HomeConfig(AppConfig):
 
                     # Marca come avviato solo se almeno un monitor è partito
                     HomeConfig._universal_monitors_started = True
+
+                    # Salva riferimento al manager per il watchdog
+                    HomeConfig._monitor_manager = manager
+
+                    # Avvia il watchdog thread per monitorare i cambi da admin
+                    self._start_monitor_watchdog()
+
                     logger.info("Sistema monitor universali basato su DB avviato con successo!")
 
                 else:
@@ -170,6 +179,80 @@ class HomeConfig(AppConfig):
             logger.error(f"Errore critico nell'avvio monitor universali: {e}")
             import traceback
             logger.error(f"Traceback: {traceback.format_exc()}")
+
+    def _start_monitor_watchdog(self):
+        """Avvia un thread watchdog che monitora i cambi is_active dal pannello admin"""
+        if HomeConfig._watchdog_thread is not None:
+            logger.info("Watchdog già avviato, skip")
+            return
+
+        def watchdog_loop():
+            """Loop del watchdog che controlla il DB ogni 30 secondi"""
+            import time
+            from home.models import MonitorConfig
+            from django.utils import timezone
+
+            logger.info("Watchdog monitor avviato - controlla DB ogni 30 secondi")
+
+            while True:
+                try:
+                    time.sleep(30)  # Controlla ogni 30 secondi
+
+                    manager = HomeConfig._monitor_manager
+                    if manager is None:
+                        continue
+
+                    # Ottieni monitor attivi dal DB
+                    active_monitors_db = MonitorConfig.objects.filter(is_active=True)
+
+                    for monitor_config in active_monitors_db:
+                        # Crea nome monitor normalizzato
+                        monitor_name = monitor_config.name.lower().replace(' ', '_')
+
+                        # Controlla se è in esecuzione nel manager
+                        if monitor_name not in manager.running_monitors:
+                            logger.info(f"Watchdog: Monitor '{monitor_config.name}' è active nel DB ma non in esecuzione - riavvio...")
+
+                            try:
+                                # Aggiungi al manager se non esiste
+                                if monitor_name not in manager.monitors:
+                                    site_config = monitor_config.to_site_config()
+                                    interval = monitor_config.config_data.get('interval', 600)
+                                    manager.add_monitor_from_config(site_config, interval)
+
+                                # Avvia il monitor
+                                success = manager.start_monitor(monitor_name)
+                                if success:
+                                    logger.info(f"Watchdog: Monitor '{monitor_config.name}' riavviato con successo")
+                                    monitor_config.last_run = timezone.now()
+                                    monitor_config.save(update_fields=['last_run'])
+                                else:
+                                    logger.error(f"Watchdog: Impossibile riavviare '{monitor_config.name}'")
+
+                            except Exception as e:
+                                logger.error(f"Watchdog: Errore riavvio '{monitor_config.name}': {e}")
+
+                    # Controlla monitor da fermare (is_active=False nel DB ma running nel manager)
+                    inactive_monitors_db = MonitorConfig.objects.filter(is_active=False)
+                    for monitor_config in inactive_monitors_db:
+                        monitor_name = monitor_config.name.lower().replace(' ', '_')
+
+                        if monitor_name in manager.running_monitors:
+                            logger.info(f"Watchdog: Monitor '{monitor_config.name}' è inactive nel DB ma in esecuzione - fermo...")
+                            try:
+                                manager.stop_monitor(monitor_name)
+                                logger.info(f"Watchdog: Monitor '{monitor_config.name}' fermato con successo")
+                            except Exception as e:
+                                logger.error(f"Watchdog: Errore fermata '{monitor_config.name}': {e}")
+
+                except Exception as e:
+                    logger.error(f"Watchdog: Errore nel ciclo di controllo: {e}")
+
+        # Avvia thread watchdog
+        watchdog_thread = threading.Thread(target=watchdog_loop, daemon=True, name="MonitorWatchdog")
+        watchdog_thread.start()
+        HomeConfig._watchdog_thread = watchdog_thread
+        logger.info("Thread watchdog monitor avviato")
 
     def _clean_stale_locks(self):
         """Pulisce i lock files più vecchi di 1 ora"""
