@@ -2270,14 +2270,9 @@ class UniversalNewsMonitor:
                 self.is_running = False
                 return False
 
-            # Crea nuova configurazione dal database
-            new_config = SiteConfig(
-                name=db_monitor.name,
-                base_url=db_monitor.base_url,
-                scraper_type=db_monitor.scraper_type,
-                category=db_monitor.category,
-                **db_monitor.config_data
-            )
+            # Crea nuova configurazione dal database usando to_site_config()
+            # che garantisce la precedenza corretta dei campi del modello
+            new_config = db_monitor.to_site_config()
 
             # Controlla se la configurazione è cambiata
             config_changed = (
