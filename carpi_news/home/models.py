@@ -27,7 +27,17 @@ class Articolo(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            self.slug = slugify(self.titolo)
+            base_slug = slugify(self.titolo)
+            slug = base_slug
+            counter = 1
+
+            # Se lo slug esiste già, aggiungi un suffisso numerico
+            while Articolo.objects.filter(slug=slug).exclude(pk=self.pk).exists():
+                slug = f"{base_slug}-{counter}"
+                counter += 1
+
+            self.slug = slug
+
         if not self.sommario:
             # Rimuovi tag HTML dal contenuto per il sommario
             contenuto_pulito = re.sub(r'<[^>]+>', '', self.contenuto)
