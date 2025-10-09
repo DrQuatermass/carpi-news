@@ -80,10 +80,32 @@ class HomeConfig(AppConfig):
     def start_universal_monitors_improved(self):
         """Versione migliorata per avviare i monitor universali dal database"""
         try:
-            # Previeni avvii multipli
+            # Previeni avvii multipli nello stesso processo
             if HomeConfig._universal_monitors_started:
-                logger.info("Monitor universali già avviati, skip")
+                logger.info("Monitor universali già avviati in questo worker, skip")
                 return
+
+            # Previeni avvii multipli tra worker diversi usando un lock file globale
+            from pathlib import Path
+            import time
+
+            master_lock_file = Path('locks/.master_startup.lock')
+            master_lock_file.parent.mkdir(exist_ok=True)
+
+            # Se il lock esiste ed è più recente di 60 secondi, skip
+            if master_lock_file.exists():
+                lock_age = time.time() - master_lock_file.stat().st_mtime
+                if lock_age < 60:  # Lock valido per 60 secondi
+                    logger.info(f"Monitor universali già avviati da altro worker (lock età: {lock_age:.1f}s), skip")
+                    return
+                else:
+                    # Lock vecchio, rimuovilo
+                    logger.info(f"Rimozione lock master vecchio ({lock_age:.1f}s)")
+                    master_lock_file.unlink()
+
+            # Crea il master lock
+            master_lock_file.write_text(str(os.getpid()))
+            logger.info(f"Master lock acquisito (PID {os.getpid()})")
 
             # Controlla se i monitor universali sono abilitati
             universal_config = getattr(settings, 'UNIVERSAL_MONITORS', {})
