@@ -10,6 +10,10 @@ body {
     background: linear-gradient(135deg, #FAF7F0 0%, #F4F0E8 50%, #E8E2D5 100%);
     min-height: 100vh;
     color: #2C2C2C;
+    /* Assicura il rendering corretto dei caratteri accentati */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
 }
 
 .container {
