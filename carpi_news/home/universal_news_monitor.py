@@ -304,11 +304,17 @@ class HTMLScraper(BaseScraper):
 
             for item in data:
                 try:
+                    image_url = item.get(article_fields.get('image_url', 'image'), '')
+
+                    # Rimuovi parametri query se configurato (problema Gazzetta di Modena)
+                    if self.config.config.get('strip_image_params', False) and image_url and '?' in image_url:
+                        image_url = image_url.split('?')[0]
+
                     article = {
                         'title': item.get(article_fields.get('title', 'title'), ''),
                         'url': item.get(article_fields.get('url', 'link'), ''),
                         'preview': item.get(article_fields.get('preview', 'text'), ''),
-                        'image_url': item.get(article_fields.get('image_url', 'image'), ''),
+                        'image_url': image_url,
                         'full_content': None
                     }
 
@@ -466,13 +472,13 @@ class HTMLScraper(BaseScraper):
     
     def _extract_image_from_html_elem(self, img_elem) -> Optional[str]:
         """Estrae URL immagine da un elemento img specifico"""
-        img_src = (img_elem.get('data-src') or 
-                  img_elem.get('data-lazy-src') or 
+        img_src = (img_elem.get('data-src') or
+                  img_elem.get('data-lazy-src') or
                   img_elem.get('src'))
-        
+
         if not img_src or img_src.startswith('data:'):
             return None
-        
+
         # Filtra immagini piccole
         try:
             width = int(img_elem.get('width', '0'))
@@ -481,11 +487,15 @@ class HTMLScraper(BaseScraper):
                 return None
         except (ValueError, TypeError):
             pass
-        
+
         # Filtra loghi e icone
         if any(term in img_src.lower() for term in ['logo', 'icon', 'avatar', 'social', 'placeholder']):
             return None
-        
+
+        # Rimuovi parametri query se configurato (problema Gazzetta di Modena)
+        if self.config.config.get('strip_image_params', False) and '?' in img_src:
+            img_src = img_src.split('?')[0]
+
         # Fix per URL con spazi (problema Voce di Carpi)
         if ' ' in img_src:
             from urllib.parse import quote
@@ -506,7 +516,7 @@ class HTMLScraper(BaseScraper):
             return urljoin(self.config.base_url, img_src)
         elif img_src.startswith('http'):
             return img_src
-        
+
         return None
     
     def get_full_content(self, article_url: str) -> Optional[str]:
