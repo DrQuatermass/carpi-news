@@ -77,8 +77,26 @@ def start_scheduler():
         logger.error(f"Errore nello scheduler editoriale: {e}")
 
 def start_scheduler_daemon():
-    """Avvia lo scheduler in un thread daemon"""
+    """Avvia lo scheduler in un thread daemon con controllo per prevenire duplicati"""
+    from pathlib import Path
+    import time
+
     try:
+        # Lock file per prevenire avvii multipli tra worker Gunicorn
+        locks_dir = Path('locks')
+        locks_dir.mkdir(exist_ok=True)
+        lock_file = locks_dir / 'editorial_scheduler.lock'
+
+        # Se il lock esiste ed è recente, skip
+        if lock_file.exists():
+            lock_age = time.time() - lock_file.stat().st_mtime
+            if lock_age < 3600:  # Lock valido per 1 ora
+                logger.info(f"Scheduler editoriale già avviato (lock età: {lock_age:.1f}s), skip")
+                return False
+
+        # Crea il lock
+        lock_file.write_text(str(os.getpid()))
+
         thread = threading.Thread(target=start_scheduler, daemon=True)
         thread.start()
         logger.info("🔄 Scheduler editoriale avviato in background")
