@@ -21,6 +21,7 @@ class HomeConfig(AppConfig):
     _universal_monitors_started = False
     _monitor_manager = None  # Riferimento al manager per il watchdog
     _watchdog_thread = None
+    _editorial_scheduler_started = False
     
     def ready(self):
         """Chiamato quando l'app è pronta - avvia il monitor playlist e registra segnali"""
@@ -57,6 +58,7 @@ class HomeConfig(AppConfig):
                 time.sleep(5)  # Aspetta 5 secondi per evitare conflitti
                 try:
                     self.start_universal_monitors_improved()
+                    self.start_editorial_scheduler()
                 except Exception as e:
                     logger.error(f"Errore nell'avvio ritardato dei monitor: {e}")
 
@@ -306,4 +308,31 @@ class HomeConfig(AppConfig):
 
         except Exception as e:
             logger.warning(f"Errore pulizia lock files: {e}")
+
+    def start_editorial_scheduler(self):
+        """Avvia lo scheduler per l'editoriale quotidiano"""
+        try:
+            # Previeni avvii multipli
+            if HomeConfig._editorial_scheduler_started:
+                logger.info("Scheduler editoriale già avviato, skip")
+                return
+
+            import sys
+            sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+            from editoriale_scheduler import start_scheduler_daemon
+
+            success = start_scheduler_daemon()
+            if success:
+                HomeConfig._editorial_scheduler_started = True
+                logger.info("✅ Scheduler editoriale avviato - articolo alle 8:00 ogni giorno")
+            else:
+                logger.error("❌ Impossibile avviare scheduler editoriale")
+
+        except ImportError as e:
+            logger.error(f"Modulo 'schedule' non trovato - installa con: pip install schedule")
+        except Exception as e:
+            logger.error(f"Errore nell'avvio scheduler editoriale: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
 
