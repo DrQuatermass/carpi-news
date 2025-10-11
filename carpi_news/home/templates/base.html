@@ -33,10 +33,10 @@
 <body>
     <header>
         <nav class="container">
-            <div class="logo">
+            <a href="{% url 'about' %}" class="logo">
                 <img src="{% static 'home/images/portico_logo_nopayoff.png' %}" alt="Ombra del Portico" class="logo-img">
                 <span class="logo-text">Ombra del Portico</span>
-            </div>
+            </a>
             
             <!-- Menu desktop -->
             <ul class="nav-links desktop-nav">
@@ -160,6 +160,11 @@
             <div class="footer-bottom">
                 <p>&copy; {{ current_year }} Ombra del Portico. Tutti i diritti riservati.</p>
                 <p class="footer-tagline">Informazione locale di qualità per Carpi e dintorni</p>
+                <div class="footer-links">
+                    <a href="{% url 'privacy-policy' %}">Privacy Policy</a>
+                    <span class="separator">|</span>
+                    <a href="{% url 'about' %}">Chi siamo</a>
+                </div>
             </div>
         </div>
     </footer>

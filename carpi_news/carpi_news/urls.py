@@ -27,6 +27,7 @@ urlpatterns = [
     path('articolo/<slug:slug>/', views.dettaglio_articolo, name='dettaglio_articolo'),
     path('articolo/<slug:slug>/fonti/', views.fonti_articolo, name='fonti_articolo'),
     path('privacy-policy/', views.privacy_policy, name='privacy-policy'),
+    path('about/', views.about, name='about'),
     path('caplet/', views.caplet, name='caplet'),
 
     # RSS Feeds per IFTTT e social sharing
