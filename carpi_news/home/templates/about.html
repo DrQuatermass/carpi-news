@@ -1,0 +1,319 @@
+{% extends "base.html" %}
+
+{% block title %}About - Ombra del Portico{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="about-content">
+        <h1>Cos'è Ombra del Portico?</h1>
+        <p class="subtitle">Il portale di informazione locale per la città di Carpi</p>
+
+        <section class="intro-section">
+            <p><strong>Ombra del Portico</strong> è un portale di informazione automatizzato che raccoglie e pubblica notizie di interesse pubblico per la comunità carpigiana. Il nostro obiettivo è testare le potenzialità degli strumenti AI nell'ambito dell'informazione locale, esplorando come l'intelligenza artificiale possa aggregare e presentare notizie per i cittadini di Carpi.</p>
+        </section>
+
+        <section>
+            <h2>Come funziona?</h2>
+            <p>Il nostro sistema è interamente automatizzato e si basa su tecnologie avanzate di aggregazione e intelligenza artificiale:</p>
+
+            <div class="feature-card">
+                <h3>1. Monitoraggio Multi-Fonte</h3>
+                <p>Il sistema monitora continuamente diverse fonti di informazione locali:</p>
+                <ul>
+                    <li><strong>Siti istituzionali:</strong> Comune delle Terre d'Argine, enti pubblici</li>
+                    <li><strong>Media locali:</strong> Testate giornalistiche del territorio</li>
+                    <li><strong>Sport:</strong> Carpi Calcio e altre società sportive</li>
+                    <li><strong>Eventi:</strong> Calendario eventi culturali e sociali</li>
+                    <li><strong>News nazionali:</strong> Articoli da ANSA</li>
+                </ul>
+            </div>
+
+            <div class="feature-card">
+                <h3>2. Estrazione Intelligente</h3>
+                <p>Un sistema di scraping avanzato estrae automaticamente le notizie utilizzando diverse tecniche:</p>
+                <ul>
+                    <li>Parsing HTML per siti web tradizionali</li>
+                    <li>API WordPress e GraphQL per fonti strutturate</li>
+                    <li>Trascrizioni YouTube per contenuti video</li>
+                    <li>Filtri intelligenti per selezionare solo contenuti rilevanti</li>
+                </ul>
+            </div>
+
+            <div class="feature-card">
+                <h3>3. Elaborazione con AI</h3>
+                <p>Il contenuto viene processato attraverso intelligenza artificiale per:</p>
+                <ul>
+                    <li>Uniformare lo stile e migliorare la leggibilità</li>
+                    <li>Generare sommari automatici degli articoli</li>
+                    <li>Verificare i contenuti e arricchirli con ricerche web</li>
+                    <li>Mantenere un tono professionale e obiettivo</li>
+                </ul>
+            </div>
+
+            <div class="feature-card">
+                <h3>4. Sistema di Approvazione</h3>
+                <p>Prima della pubblicazione, ogni articolo viene revisionato per garantire:</p>
+                <ul>
+                    <li>Qualità e accuratezza del contenuto</li>
+                    <li>Rispetto delle fonti originali</li>
+                    <li>Assenza di errori o imprecisioni</li>
+                    <li>Appropriatezza per il pubblico locale</li>
+                </ul>
+            </div>
+
+            <div class="feature-card">
+                <h3>5. Condivisione Automatica sui Social</h3>
+                <p>Una volta approvati e pubblicati, gli articoli vengono automaticamente condivisi su:</p>
+                <ul>
+                    <li><strong>Telegram:</strong> Canale dedicato con notifiche istantanee</li>
+                    <li><strong>Facebook:</strong> Pagina ufficiale per raggiungere la comunità</li>
+                    <li><strong>X (Twitter):</strong> Aggiornamenti rapidi e concisi</li>
+                </ul>
+                <p>Questo garantisce una diffusione capillare delle notizie locali attraverso tutti i canali social più utilizzati dalla comunità.</p>
+            </div>
+        </section>
+
+        <section>
+            <h2>Tecnologie Utilizzate</h2>
+            <p>Il progetto è costruito con tecnologie moderne e affidabili:</p>
+            <ul class="tech-list">
+                <li><strong>Django 5.2.5:</strong> Framework web Python per il backend</li>
+                <li><strong>Anthropic Claude:</strong> AI avanzata per elaborazione testi</li>
+                <li><strong>BeautifulSoup:</strong> Parsing HTML per web scraping</li>
+                <li><strong>SQLite/PostgreSQL:</strong> Database per gestione contenuti</li>
+                <li><strong>Apache + Gunicorn:</strong> Server di produzione</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Gestione delle Immagini</h2>
+            <p>Il sistema include funzionalità avanzate per la gestione delle immagini:</p>
+            <ul>
+                <li>Download automatico da fonti ufficiali (es. Comune di Carpi)</li>
+                <li>Validazione intelligente degli URL con cache efficiente</li>
+                <li>Correzione automatica di URL malformati</li>
+                <li>Storage locale per garantire disponibilità nel tempo</li>
+            </ul>
+        </section>
+
+        <section>
+            <h2>Trasparenza e Privacy</h2>
+            <p>Crediamo nella trasparenza e nel rispetto della privacy:</p>
+            <ul>
+                <li><strong>Fonti visibili:</strong> Ogni articolo indica chiaramente la fonte originale con link diretto</li>
+                <li><strong>Supporto alle fonti:</strong> Indichiamo sempre le fonti originali aiutandone la visibilità e il ranking su Google</li>
+                <li><strong>Dati minimi:</strong> Raccogliamo solo dati tecnici essenziali</li>
+                <li><strong>Nessuna profilazione:</strong> Non tracciamo comportamenti individuali</li>
+                <li><strong>GDPR compliant:</strong> Piena conformità alle normative europee</li>
+            </ul>
+            <p>Per maggiori dettagli, consulta la nostra <a href="{% url 'privacy-policy' %}">Privacy Policy</a>.</p>
+        </section>
+
+        <section>
+            <h2>Contatti</h2>
+            <p>Per segnalazioni, suggerimenti o richieste di informazioni:</p>
+            <ul class="contact-list">
+                <li><strong>Email:</strong> <a href="mailto:redazione@ombradelportico.it">redazione@ombradelportico.it</a></li>
+                <li><strong>Telefono:</strong> <a href="tel:+393463332864">346 333 28 64</a></li>
+            </ul>
+        </section>
+
+        <section class="mission-section">
+            <h2>La Nostra Missione</h2>
+            <p>Il nostro obiettivo è testare le potenzialità degli strumenti AI nel contesto dell'informazione locale, esplorando come l'intelligenza artificiale possa migliorare l'accessibilità e l'aggregazione delle notizie per i cittadini di Carpi.</p>
+        </section>
+
+        <div class="back-home">
+            <a href="{% url 'home' %}" class="btn-back">Torna alla Home</a>
+        </div>
+    </div>
+</div>
+
+<style>
+.about-content {
+    max-width: 900px;
+    margin: 2rem auto;
+    padding: 2rem;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    line-height: 1.6;
+}
+
+.about-content h1 {
+    color: #2c3e50;
+    margin-bottom: 0.5rem;
+    text-align: center;
+}
+
+.subtitle {
+    text-align: center;
+    color: #666;
+    font-size: 1.1rem;
+    font-style: italic;
+    margin-bottom: 2rem;
+}
+
+.intro-section {
+    background: linear-gradient(135deg, #966C42 0%, #B8956A 100%);
+    color: white;
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 15px rgba(150, 108, 66, 0.3);
+}
+
+.intro-section p {
+    margin: 0;
+    font-size: 1.05rem;
+}
+
+.about-content h2 {
+    color: #5A5A5A;
+    margin: 2.5rem 0 1rem 0;
+    padding-bottom: 0.5rem;
+    border-bottom: 3px solid #966C42;
+}
+
+.about-content h3 {
+    color: #2c3e50;
+    margin: 1rem 0 0.5rem 0;
+}
+
+.about-content section {
+    margin-bottom: 2rem;
+}
+
+.feature-card {
+    background: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    border-left: 4px solid #966C42;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.feature-card:hover {
+    transform: translateX(5px);
+    box-shadow: 0 4px 15px rgba(150, 108, 66, 0.2);
+}
+
+.feature-card h3 {
+    margin-top: 0;
+    color: #966C42;
+}
+
+.about-content ul {
+    margin: 1rem 0;
+    padding-left: 1.5rem;
+}
+
+.about-content li {
+    margin-bottom: 0.5rem;
+}
+
+.tech-list {
+    list-style-type: none;
+    padding-left: 0;
+}
+
+.tech-list li {
+    background: #f8f9fa;
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.5rem;
+    border-radius: 5px;
+    border-left: 3px solid #966C42;
+}
+
+.contact-list {
+    list-style-type: none;
+    padding-left: 0;
+}
+
+.contact-list li {
+    background: #f8f9fa;
+    padding: 1rem;
+    margin-bottom: 0.5rem;
+    border-radius: 5px;
+}
+
+.mission-section {
+    background: linear-gradient(135deg, #B8956A 0%, #D4C4A0 100%);
+    color: white;
+    padding: 2rem;
+    border-radius: 8px;
+    margin: 2rem 0;
+    text-align: center;
+    box-shadow: 0 4px 15px rgba(150, 108, 66, 0.3);
+}
+
+.mission-section h2 {
+    color: white;
+    border: none;
+    margin-top: 0;
+}
+
+.mission-section p {
+    font-size: 1.15rem;
+    margin: 1rem 0 0 0;
+}
+
+.about-content a {
+    color: #966C42;
+    text-decoration: none;
+}
+
+.about-content a:hover {
+    color: #B8956A;
+    text-decoration: underline;
+}
+
+.back-home {
+    text-align: center;
+    margin-top: 3rem;
+}
+
+.btn-back {
+    display: inline-block;
+    background: linear-gradient(135deg, #966C42, #B8956A);
+    color: white !important;
+    padding: 12px 24px;
+    text-decoration: none;
+    border-radius: 25px;
+    transition: all 0.3s ease;
+    font-weight: bold;
+    box-shadow: 0 4px 15px rgba(150, 108, 66, 0.3);
+}
+
+.btn-back:hover {
+    background: linear-gradient(135deg, #B8956A, #D4C4A0);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(150, 108, 66, 0.4);
+    text-decoration: none;
+}
+
+@media (max-width: 768px) {
+    .about-content {
+        margin: 1rem;
+        padding: 1.5rem;
+    }
+
+    .about-content h1 {
+        font-size: 1.8rem;
+    }
+
+    .about-content h2 {
+        font-size: 1.3rem;
+    }
+
+    .feature-card {
+        padding: 1rem;
+    }
+
+    .intro-section,
+    .mission-section {
+        padding: 1rem;
+    }
+}
+</style>
+{% endblock %}

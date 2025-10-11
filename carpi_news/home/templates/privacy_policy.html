@@ -166,10 +166,10 @@
 }
 
 .privacy-policy-content h2 {
-    color: #34495e;
+    color: #5A5A5A;
     margin: 2rem 0 1rem 0;
     padding-bottom: 0.5rem;
-    border-bottom: 2px solid #3498db;
+    border-bottom: 2px solid #966C42;
 }
 
 .privacy-policy-content section {
@@ -186,11 +186,12 @@
 }
 
 .privacy-policy-content a {
-    color: #3498db;
+    color: #966C42;
     text-decoration: none;
 }
 
 .privacy-policy-content a:hover {
+    color: #B8956A;
     text-decoration: underline;
 }
 
@@ -201,16 +202,22 @@
 
 .btn-back {
     display: inline-block;
-    background: #3498db;
-    color: white;
+    background: linear-gradient(135deg, #966C42, #B8956A);
+    color: white !important;
     padding: 12px 24px;
-    text-decoration: none;
-    border-radius: 5px;
-    transition: background-color 0.3s ease;
+    text-decoration: none !important;
+    border-radius: 25px;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(150, 108, 66, 0.3);
+    font-weight: 600;
 }
 
 .btn-back:hover {
-    background: #2980b9;
+    background: linear-gradient(135deg, #7A5734, #966C42);
+    color: white !important;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(150, 108, 66, 0.5);
+    text-decoration: none !important;
 }
 
 @media (max-width: 768px) {
