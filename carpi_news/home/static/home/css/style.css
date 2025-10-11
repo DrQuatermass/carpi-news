@@ -48,6 +48,14 @@ nav {
     align-items: center;
     gap: 0.5rem;
     animation: logoGlow 2s ease-in-out infinite alternate;
+    text-decoration: none !important;
+    cursor: pointer;
+    transition: opacity 0.3s ease;
+}
+
+.logo:hover {
+    opacity: 0.8;
+    text-decoration: none !important;
 }
 
 .logo-img {
@@ -906,6 +914,32 @@ footer {
 .footer-tagline {
     font-style: italic;
     font-size: 0.9rem;
+}
+
+.footer-links {
+    margin-top: 1rem;
+    font-size: 0.9rem;
+}
+
+.footer-links a {
+    color: rgba(255, 255, 255, 0.9);
+    text-decoration: none;
+    transition: all 0.3s ease;
+    padding: 0.3rem 0.5rem;
+    border-radius: 4px;
+    display: inline-block;
+}
+
+.footer-links a:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+    text-decoration: none;
+    transform: translateY(-2px);
+}
+
+.footer-links .separator {
+    margin: 0 0.5rem;
+    color: rgba(255, 255, 255, 0.5);
 }
 
 /* Mobile Menu Styles */
