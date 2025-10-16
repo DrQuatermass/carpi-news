@@ -153,13 +153,26 @@ class HTMLScraper(BaseScraper):
         
         try:
             self.logger.info(f"Discovering articles from RSS: {rss_url}")
-            
+
             response = requests.get(rss_url, headers=self.headers, timeout=self.timeout)
             response.raise_for_status()
-            
-            # Parse RSS feed
+
+            # Parse RSS feed con gestione encoding migliorata
             import xml.etree.ElementTree as ET
-            root = ET.fromstring(response.content)
+
+            # Prova prima con encoding UTF-8, poi con ISO-8859-1 se fallisce
+            try:
+                # Decodifica esplicita in UTF-8
+                content_text = response.content.decode('utf-8', errors='replace')
+                root = ET.fromstring(content_text.encode('utf-8'))
+            except (ET.ParseError, UnicodeDecodeError):
+                try:
+                    # Fallback: prova ISO-8859-1 (Latin-1)
+                    content_text = response.content.decode('iso-8859-1', errors='replace')
+                    root = ET.fromstring(content_text.encode('utf-8'))
+                except ET.ParseError:
+                    # Ultimo tentativo: usa response.text che requests gestisce automaticamente
+                    root = ET.fromstring(response.text.encode('utf-8'))
             
             rss_items = root.findall('.//item')
             self.logger.info(f"Found {len(rss_items)} items in RSS feed")
