@@ -26,15 +26,18 @@ class HomeConfig(AppConfig):
     def ready(self):
         """Chiamato quando l'app è pronta - avvia il monitor playlist e registra segnali"""
         print("🔵 HomeConfig.ready() chiamato", flush=True)
-        logger.info("🔵 HomeConfig.ready() chiamato")
+        logger.info("�� HomeConfig.ready() chiamato")
 
+        print("🔵 Importo home.signals", flush=True)
         # Registra i segnali
         import home.signals
+        print("🔵 home.signals importato", flush=True)
 
         # Evita di avviare durante le migrazioni o in altri contesti non appropriati
         import sys
         import os
 
+        print("🔵 Controllo condizioni avvio", flush=True)
         # Avvia i monitor in produzione (Gunicorn) o sviluppo (runserver)
         # Evita solo durante migrazioni, makemigrations, test, e altri comandi Django
         skip_commands = ['migrate', 'makemigrations', 'test', 'shell', 'createsuperuser', 'collectstatic']
@@ -52,6 +55,7 @@ class HomeConfig(AppConfig):
         is_production = is_gunicorn or 'gunicorn' in os.environ.get('SERVER_SOFTWARE', '')
         is_dev = 'runserver' in sys.argv
 
+        print(f"🔵 Debug: auto_start={auto_start_enabled}, is_prod={is_production}, is_dev={is_dev}, should_skip={should_skip}", flush=True)
         logger.info(f"🔵 Debug: auto_start={auto_start_enabled}, is_prod={is_production}, is_dev={is_dev}, should_skip={should_skip}")
 
         if auto_start_enabled and (is_production or is_dev) and not should_skip:
