@@ -25,6 +25,7 @@ class HomeConfig(AppConfig):
     
     def ready(self):
         """Chiamato quando l'app è pronta - avvia il monitor playlist e registra segnali"""
+        print("🔵 HomeConfig.ready() chiamato", flush=True)
         logger.info("🔵 HomeConfig.ready() chiamato")
 
         # Registra i segnali
