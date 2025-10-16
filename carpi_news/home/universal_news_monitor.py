@@ -83,28 +83,19 @@ class HTMLScraper(BaseScraper):
         """Scrape articoli tramite HTML con supporto RSS discovery e JSON parsing"""
         articles = []
 
-        self.logger.debug(f"[SCRAPE_START] base_url={self.config.base_url}, scraper_type={self.config.scraper_type}")
-        self.logger.debug(f"[SCRAPE_START] config keys={list(self.config.config.keys())}")
-
         # 1. Se la pagina usa JSON embedded, parsalo direttamente
         if self.config.config.get('parse_json', False):
-            self.logger.debug("[SCRAPE] Using JSON parsing")
             json_articles = self._parse_json_from_page()
             articles.extend(json_articles)
             return articles
 
         # 2. Se RSS non è disabilitato, prova RSS discovery prima
         if not self.config.config.get('disable_rss', False):
-            self.logger.debug("[SCRAPE] Trying RSS discovery")
             rss_articles = self._discover_articles_from_rss()
             articles.extend(rss_articles)
-            self.logger.debug(f"[SCRAPE] RSS found {len(rss_articles)} articles")
-        else:
-            self.logger.debug("[SCRAPE] RSS disabled, skipping")
 
         # 3. Poi scrapa pagine HTML normalmente
         urls_to_scrape = [self.config.config.get('news_url', self.config.base_url)]
-        self.logger.debug(f"[SCRAPE] URLs to scrape: {urls_to_scrape}")
         
         # Aggiungi URLs aggiuntivi se configurati (escludendo RSS feed)
         additional_urls = self.config.config.get('additional_urls', [])
@@ -118,7 +109,7 @@ class HTMLScraper(BaseScraper):
                 
                 response = requests.get(url, headers=self.headers, timeout=self.timeout)
                 response.raise_for_status()
-                
+
                 soup = BeautifulSoup(response.content, 'html.parser')
                 
                 # Usa selettori configurabili
@@ -135,20 +126,16 @@ class HTMLScraper(BaseScraper):
                 continue
         
         # Rimuovi duplicati basati sull'URL, dando priorità agli articoli con immagini
-        self.logger.debug(f"Deduplicazione: {len(articles)} articoli prima della rimozione duplicati")
         url_to_article = {}
         for article in articles:
-            try:
-                url = article['url']
-                if url not in url_to_article:
+            url = article['url']
+            if url not in url_to_article:
+                url_to_article[url] = article
+            else:
+                # Se l'articolo esistente non ha immagine ma questo sì, sostituiscilo
+                existing = url_to_article[url]
+                if not existing.get('image_url') and article.get('image_url'):
                     url_to_article[url] = article
-                else:
-                    # Se l'articolo esistente non ha immagine ma questo sì, sostituiscilo
-                    existing = url_to_article[url]
-                    if not existing.get('image_url') and article.get('image_url'):
-                        url_to_article[url] = article
-            except KeyError as e:
-                self.logger.error(f"Articolo senza chiave 'url': {article.keys()}")
         
         unique_articles = list(url_to_article.values())
         
@@ -508,12 +495,26 @@ class HTMLScraper(BaseScraper):
     
     def _extract_image_from_html_elem(self, img_elem) -> Optional[str]:
         """Estrae URL immagine da un elemento img specifico"""
+        # Prova prima attributi data-* per lazy loading
         img_src = (img_elem.get('data-src') or
                   img_elem.get('data-lazy-src') or
                   img_elem.get('src'))
 
+        # Se src è base64 o vuoto, prova srcset/ta-srcset
         if not img_src or img_src.startswith('data:'):
-            return None
+            # Controlla ta-srcset (usato da notiziecarpi.it) e srcset standard
+            srcset = img_elem.get('ta-srcset') or img_elem.get('srcset') or img_elem.get('data-srcset')
+            if srcset:
+                # Formato: "url1 width1, url2 width2, ..."
+                # Prendiamo l'ultima (immagine più grande), filtrando parti vuote
+                parts = [p.strip() for p in srcset.split(',') if p.strip()]
+                if parts:
+                    # Prendi l'URL dalla parte (es. "url 300w" -> "url")
+                    last_part = parts[-1]
+                    img_src = last_part.split()[0] if ' ' in last_part else last_part
+
+            if not img_src or img_src.startswith('data:'):
+                return None
 
         # Filtra immagini piccole
         try:
@@ -2293,12 +2294,11 @@ class UniversalNewsMonitor:
             f'{site_config.name.lower().replace(" ", "_")}_monitor.lock'
         )
 
-        # Headers standard
+        # Headers standard (Accept-Encoding rimosso per evitare problemi di decompressione)
         self.headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
             'Accept-Language': 'it-IT,it;q=0.8,en-US;q=0.5,en;q=0.3',
-            'Accept-Encoding': 'gzip, deflate, br',
             'Connection': 'keep-alive',
         }
 
