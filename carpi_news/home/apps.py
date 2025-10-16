@@ -25,19 +25,19 @@ class HomeConfig(AppConfig):
     
     def ready(self):
         """Chiamato quando l'app è pronta - avvia il monitor playlist e registra segnali"""
-        print("🔵 HomeConfig.ready() chiamato", flush=True)
+        print("[DEBUG] HomeConfig.ready() chiamato", flush=True)
         logger.info("�� HomeConfig.ready() chiamato")
 
-        print("🔵 Importo home.signals", flush=True)
+        print("[DEBUG] Importo home.signals", flush=True)
         # Registra i segnali
         import home.signals
-        print("🔵 home.signals importato", flush=True)
+        print("[DEBUG] home.signals importato", flush=True)
 
         # Evita di avviare durante le migrazioni o in altri contesti non appropriati
         import sys
         import os
 
-        print("🔵 Controllo condizioni avvio", flush=True)
+        print("[DEBUG] Controllo condizioni avvio", flush=True)
         # Avvia i monitor in produzione (Gunicorn) o sviluppo (runserver)
         # Evita solo durante migrazioni, makemigrations, test, e altri comandi Django
         skip_commands = ['migrate', 'makemigrations', 'test', 'shell', 'createsuperuser', 'collectstatic']
@@ -55,45 +55,45 @@ class HomeConfig(AppConfig):
         is_production = is_gunicorn or 'gunicorn' in os.environ.get('SERVER_SOFTWARE', '')
         is_dev = 'runserver' in sys.argv
 
-        print(f"🔵 Debug: auto_start={auto_start_enabled}, is_prod={is_production}, is_dev={is_dev}, should_skip={should_skip}", flush=True)
-        logger.info(f"🔵 Debug: auto_start={auto_start_enabled}, is_prod={is_production}, is_dev={is_dev}, should_skip={should_skip}")
+        print(f"[DEBUG] Debug: auto_start={auto_start_enabled}, is_prod={is_production}, is_dev={is_dev}, should_skip={should_skip}", flush=True)
+        logger.info(f"[DEBUG] Debug: auto_start={auto_start_enabled}, is_prod={is_production}, is_dev={is_dev}, should_skip={should_skip}")
 
         if auto_start_enabled and (is_production or is_dev) and not should_skip:
-            print("🔵 Entro nel blocco auto_start", flush=True)
+            print("[DEBUG] Entro nel blocco auto_start", flush=True)
             # Avvia i monitor automaticamente con un piccolo ritardo per evitare conflitti
             import threading
             import time
 
-            print("🔵 Definisco delayed_start", flush=True)
+            print("[DEBUG] Definisco delayed_start", flush=True)
             def delayed_start():
-                print("🔵 delayed_start() thread avviato", flush=True)
-                logger.info("🔵 delayed_start() thread avviato")
+                print("[DEBUG] delayed_start() thread avviato", flush=True)
+                logger.info("[DEBUG] delayed_start() thread avviato")
                 time.sleep(5)  # Aspetta 5 secondi per evitare conflitti
                 try:
-                    print("🔵 Avvio start_universal_monitors_improved()", flush=True)
-                    logger.info("🔵 Avvio start_universal_monitors_improved()")
+                    print("[DEBUG] Avvio start_universal_monitors_improved()", flush=True)
+                    logger.info("[DEBUG] Avvio start_universal_monitors_improved()")
                     self.start_universal_monitors_improved()
-                    print("🔵 Avvio start_editorial_scheduler()", flush=True)
-                    logger.info("🔵 Avvio start_editorial_scheduler()")
+                    print("[DEBUG] Avvio start_editorial_scheduler()", flush=True)
+                    logger.info("[DEBUG] Avvio start_editorial_scheduler()")
                     self.start_editorial_scheduler()
-                    print("🔵 delayed_start() completato", flush=True)
-                    logger.info("🔵 delayed_start() completato")
+                    print("[DEBUG] delayed_start() completato", flush=True)
+                    logger.info("[DEBUG] delayed_start() completato")
                 except Exception as e:
-                    print(f"🔵 Errore delayed_start: {e}", flush=True)
+                    print(f"[DEBUG] Errore delayed_start: {e}", flush=True)
                     logger.error(f"Errore nell'avvio ritardato dei monitor: {e}")
 
             # Solo se non sono già stati programmati
-            print(f"🔵 Controllo _delayed_start_scheduled: {hasattr(HomeConfig, '_delayed_start_scheduled')}", flush=True)
+            print(f"[DEBUG] Controllo _delayed_start_scheduled: {hasattr(HomeConfig, '_delayed_start_scheduled')}", flush=True)
             if not hasattr(HomeConfig, '_delayed_start_scheduled'):
-                print("🔵 Creo thread delayed_start", flush=True)
+                print("[DEBUG] Creo thread delayed_start", flush=True)
                 thread = threading.Thread(target=delayed_start, daemon=True)
-                print("🔵 Avvio thread", flush=True)
+                print("[DEBUG] Avvio thread", flush=True)
                 thread.start()
                 HomeConfig._delayed_start_scheduled = True
-                print("🔵 Thread avviato", flush=True)
+                print("[DEBUG] Thread avviato", flush=True)
                 logger.info("Monitor automatici programmati per l'avvio con ritardo di 5 secondi")
             else:
-                print("🔵 Skip: delayed_start già programmato", flush=True)
+                print("[DEBUG] Skip: delayed_start già programmato", flush=True)
                 logger.info("Monitor automatici già programmati, skip")
         elif (is_production or is_dev) and not should_skip and not auto_start_enabled:
             logger.info("Auto-start monitor disabilitato (AUTO_START_MONITORS=False). Usa 'python manage.py start_monitors' per avviarli manualmente.")
@@ -336,37 +336,37 @@ class HomeConfig(AppConfig):
 
     def start_editorial_scheduler(self):
         """Avvia lo scheduler per l'editoriale quotidiano"""
-        print("🔵 start_editorial_scheduler() chiamato", flush=True)
+        print("[DEBUG] start_editorial_scheduler() chiamato", flush=True)
         try:
             # Previeni avvii multipli
             if HomeConfig._editorial_scheduler_started:
-                print("🔵 Scheduler già avviato in questo worker", flush=True)
+                print("[DEBUG] Scheduler già avviato in questo worker", flush=True)
                 logger.info("Scheduler editoriale già avviato, skip")
                 return
 
             import sys
             sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-            print("🔵 Importo editoriale_scheduler", flush=True)
+            print("[DEBUG] Importo editoriale_scheduler", flush=True)
             from editoriale_scheduler import start_scheduler_daemon
 
-            print("🔵 Chiamo start_scheduler_daemon()", flush=True)
+            print("[DEBUG] Chiamo start_scheduler_daemon()", flush=True)
             success = start_scheduler_daemon()
-            print(f"🔵 start_scheduler_daemon() ritorna: {success}", flush=True)
+            print(f"[DEBUG] start_scheduler_daemon() ritorna: {success}", flush=True)
             if success:
                 HomeConfig._editorial_scheduler_started = True
-                print("🔵 SUCCESS: Scheduler avviato!", flush=True)
-                logger.info("✅ Scheduler editoriale avviato - articolo alle 8:00 ogni giorno")
+                print("[DEBUG] SUCCESS: Scheduler avviato!", flush=True)
+                logger.info("[OK] Scheduler editoriale avviato - articolo alle 8:00 ogni giorno")
             else:
                 # False significa che un altro worker ha già il lock (comportamento normale)
-                print("🔵 FALSE: Lock già acquisito da altro worker", flush=True)
-                logger.info("ℹ️ Scheduler editoriale già gestito da altro worker")
+                print("[DEBUG] FALSE: Lock già acquisito da altro worker", flush=True)
+                logger.info("[INFO] Scheduler editoriale già gestito da altro worker")
 
         except ImportError as e:
-            print(f"🔵 ImportError: {e}", flush=True)
+            print(f"[DEBUG] ImportError: {e}", flush=True)
             logger.error(f"Modulo 'schedule' non trovato - installa con: pip install schedule")
         except Exception as e:
-            print(f"🔵 Exception: {e}", flush=True)
+            print(f"[DEBUG] Exception: {e}", flush=True)
             logger.error(f"Errore nell'avvio scheduler editoriale: {e}")
             import traceback
             logger.error(f"Traceback: {traceback.format_exc()}")

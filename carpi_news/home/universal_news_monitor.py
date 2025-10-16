@@ -83,19 +83,28 @@ class HTMLScraper(BaseScraper):
         """Scrape articoli tramite HTML con supporto RSS discovery e JSON parsing"""
         articles = []
 
+        self.logger.debug(f"[SCRAPE_START] base_url={self.config.base_url}, scraper_type={self.config.scraper_type}")
+        self.logger.debug(f"[SCRAPE_START] config keys={list(self.config.config.keys())}")
+
         # 1. Se la pagina usa JSON embedded, parsalo direttamente
         if self.config.config.get('parse_json', False):
+            self.logger.debug("[SCRAPE] Using JSON parsing")
             json_articles = self._parse_json_from_page()
             articles.extend(json_articles)
             return articles
 
         # 2. Se RSS non è disabilitato, prova RSS discovery prima
         if not self.config.config.get('disable_rss', False):
+            self.logger.debug("[SCRAPE] Trying RSS discovery")
             rss_articles = self._discover_articles_from_rss()
             articles.extend(rss_articles)
+            self.logger.debug(f"[SCRAPE] RSS found {len(rss_articles)} articles")
+        else:
+            self.logger.debug("[SCRAPE] RSS disabled, skipping")
 
         # 3. Poi scrapa pagine HTML normalmente
         urls_to_scrape = [self.config.config.get('news_url', self.config.base_url)]
+        self.logger.debug(f"[SCRAPE] URLs to scrape: {urls_to_scrape}")
         
         # Aggiungi URLs aggiuntivi se configurati (escludendo RSS feed)
         additional_urls = self.config.config.get('additional_urls', [])
@@ -126,16 +135,20 @@ class HTMLScraper(BaseScraper):
                 continue
         
         # Rimuovi duplicati basati sull'URL, dando priorità agli articoli con immagini
+        self.logger.debug(f"Deduplicazione: {len(articles)} articoli prima della rimozione duplicati")
         url_to_article = {}
         for article in articles:
-            url = article['url']
-            if url not in url_to_article:
-                url_to_article[url] = article
-            else:
-                # Se l'articolo esistente non ha immagine ma questo sì, sostituiscilo
-                existing = url_to_article[url]
-                if not existing.get('image_url') and article.get('image_url'):
+            try:
+                url = article['url']
+                if url not in url_to_article:
                     url_to_article[url] = article
+                else:
+                    # Se l'articolo esistente non ha immagine ma questo sì, sostituiscilo
+                    existing = url_to_article[url]
+                    if not existing.get('image_url') and article.get('image_url'):
+                        url_to_article[url] = article
+            except KeyError as e:
+                self.logger.error(f"Articolo senza chiave 'url': {article.keys()}")
         
         unique_articles = list(url_to_article.values())
         
@@ -354,6 +367,7 @@ class HTMLScraper(BaseScraper):
         for selector in selectors:
             items = soup.select(selector)
             if items:
+                self.logger.debug(f"Selettore '{selector}' ha trovato {len(items)} elementi")
                 news_items.extend(items)
         
         # Rimuovi duplicati mantenendo l'ordine

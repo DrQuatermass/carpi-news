@@ -162,6 +162,11 @@ class MonitorConfig(models.Model):
     def __str__(self):
         return f"{self.name} ({'Attivo' if self.is_active else 'Disattivo'})"
 
+    @property
+    def config(self):
+        """Alias per config_data per compatibilità con universal_news_monitor"""
+        return self.config_data
+
     def to_site_config(self):
         """Converte il modello in SiteConfig per l'uso con universal_news_monitor"""
         from home.universal_news_monitor import SiteConfig
@@ -175,12 +180,8 @@ class MonitorConfig(models.Model):
         config_dict.pop('use_ai_generation', None)
         config_dict.pop('enable_web_search', None)
 
-        # Poi sovrascrivi con i valori dei campi del modello (hanno precedenza)
+        # Poi aggiungi i valori specifici AI/auto-approve nel config_dict
         config_dict.update({
-            'name': self.name,
-            'base_url': self.base_url,
-            'scraper_type': self.scraper_type,
-            'category': self.category,
             'auto_approve': self.auto_approve,
             'use_ai_generation': self.use_ai_generation,
             'enable_web_search': self.enable_web_search,
@@ -188,7 +189,14 @@ class MonitorConfig(models.Model):
             'ai_api_key': settings.ANTHROPIC_API_KEY if self.use_ai_generation else None,
         })
 
-        return SiteConfig(**config_dict)
+        # Crea SiteConfig con parametri posizionali corretti
+        return SiteConfig(
+            name=self.name,
+            base_url=self.base_url,
+            scraper_type=self.scraper_type,
+            category=self.category,
+            **config_dict  # Resto della config va in kwargs
+        )
 
 
 # Create your models here.
