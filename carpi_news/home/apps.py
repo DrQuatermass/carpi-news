@@ -25,6 +25,8 @@ class HomeConfig(AppConfig):
     
     def ready(self):
         """Chiamato quando l'app è pronta - avvia il monitor playlist e registra segnali"""
+        logger.info("🔵 HomeConfig.ready() chiamato")
+
         # Registra i segnali
         import home.signals
 
@@ -49,16 +51,22 @@ class HomeConfig(AppConfig):
         is_production = is_gunicorn or 'gunicorn' in os.environ.get('SERVER_SOFTWARE', '')
         is_dev = 'runserver' in sys.argv
 
+        logger.info(f"🔵 Debug: auto_start={auto_start_enabled}, is_prod={is_production}, is_dev={is_dev}, should_skip={should_skip}")
+
         if auto_start_enabled and (is_production or is_dev) and not should_skip:
             # Avvia i monitor automaticamente con un piccolo ritardo per evitare conflitti
             import threading
             import time
 
             def delayed_start():
+                logger.info("🔵 delayed_start() thread avviato")
                 time.sleep(5)  # Aspetta 5 secondi per evitare conflitti
                 try:
+                    logger.info("🔵 Avvio start_universal_monitors_improved()")
                     self.start_universal_monitors_improved()
+                    logger.info("🔵 Avvio start_editorial_scheduler()")
                     self.start_editorial_scheduler()
+                    logger.info("🔵 delayed_start() completato")
                 except Exception as e:
                     logger.error(f"Errore nell'avvio ritardato dei monitor: {e}")
 
