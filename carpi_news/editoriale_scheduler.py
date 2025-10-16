@@ -99,12 +99,41 @@ def start_scheduler_daemon():
         locks_dir.mkdir(exist_ok=True)
         lock_file = locks_dir / 'editorial_scheduler.lock'
 
-        # Se il lock esiste ed è recente (meno di 2 minuti), skip
+        # Se il lock esiste ed è recente (meno di 2 minuti), verifica se il processo è vivo
         if lock_file.exists():
             lock_age = time.time() - lock_file.stat().st_mtime
             if lock_age < 120:  # Lock valido per 2 minuti (aggiornato ogni minuto)
-                logger.info(f"Scheduler editoriale già avviato (lock età: {lock_age:.1f}s), skip")
-                return False
+                # Leggi il PID e controlla se il processo è ancora vivo
+                try:
+                    pid_str = lock_file.read_text().strip()
+                    if pid_str and pid_str.isdigit():
+                        pid = int(pid_str)
+                        # Controlla se il processo esiste (cross-platform)
+                        process_exists = False
+                        try:
+                            if os.name == 'nt':  # Windows
+                                import psutil
+                                process_exists = psutil.pid_exists(pid)
+                            else:  # Unix/Linux
+                                os.kill(pid, 0)  # Signal 0 non uccide, solo verifica esistenza
+                                process_exists = True
+                        except (OSError, ProcessLookupError, ImportError):
+                            process_exists = False
+
+                        if process_exists:
+                            logger.info(f"Scheduler editoriale già avviato dal processo {pid} (lock età: {lock_age:.1f}s), skip")
+                            return False
+                        else:
+                            # Processo morto, lock stantio
+                            logger.info(f"Lock da processo morto {pid}, rimuovo")
+                            lock_file.unlink()
+                    else:
+                        # Lock corrotto, rimuovilo
+                        logger.warning(f"Lock corrotto (PID non valido: '{pid_str}'), rimuovo")
+                        lock_file.unlink()
+                except Exception as e:
+                    logger.warning(f"Errore lettura lock: {e}, rimuovo")
+                    lock_file.unlink()
             else:
                 # Lock vecchio (processo morto), rimuovilo
                 logger.info(f"Rimozione lock editoriale vecchio ({lock_age:.1f}s)")
