@@ -398,9 +398,16 @@ class HTMLScraper(BaseScraper):
             link_elem = item
         else:
             # Caso normale: cerca link dentro l'elemento
-            link_elem = item.find('a', href=True)
-            
+            # Supporto per link_selector configurabile (risolve casi come Diocesi)
+            link_selector = self.config.config.get("link_selector")
+            if link_selector:
+                link_elem = item.select_one(link_selector)
+                self.logger.debug(f"Uso link_selector personalizzato: '{link_selector}' -> trovato: {link_elem is not None}")
+            else:
+                link_elem = item.find('a', href=True)
+
         if not link_elem:
+            self.logger.debug(f"Nessun link trovato in elemento: {item.name if hasattr(item, 'name') else item}")
             return None
             
         article_url = link_elem.get('href')
@@ -440,8 +447,9 @@ class HTMLScraper(BaseScraper):
         # Per elementi <a> semplici (caso Comune), crea preview artificiale
         if item.name == 'a' and len(content_preview) < 30:
             content_preview = f"Notizia dal {self.config.name}: {title}. Clicca per leggere il contenuto completo."
-        
+
         if len(content_preview) < 30:
+            self.logger.debug(f"Articolo scartato: preview troppo corta ({len(content_preview)} < 30): '{content_preview[:50]}'")
             return None
         
         # Applica filtro keywords anche per HTML scraping (controllo su contenuto completo)
@@ -452,6 +460,7 @@ class HTMLScraper(BaseScraper):
             content_to_check = f"{title} {content_preview} {full_content or ''}".lower()
             has_keyword = any(keyword.lower() in content_to_check for keyword in filter_keywords)
             if not has_keyword:
+                self.logger.debug(f"Articolo scartato: nessuna keyword trovata. Keywords: {filter_keywords}, URL: {article_url}")
                 return None
         
         # Immagine
