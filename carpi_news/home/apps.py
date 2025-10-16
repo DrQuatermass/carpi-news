@@ -336,28 +336,37 @@ class HomeConfig(AppConfig):
 
     def start_editorial_scheduler(self):
         """Avvia lo scheduler per l'editoriale quotidiano"""
+        print("🔵 start_editorial_scheduler() chiamato", flush=True)
         try:
             # Previeni avvii multipli
             if HomeConfig._editorial_scheduler_started:
+                print("🔵 Scheduler già avviato in questo worker", flush=True)
                 logger.info("Scheduler editoriale già avviato, skip")
                 return
 
             import sys
             sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+            print("🔵 Importo editoriale_scheduler", flush=True)
             from editoriale_scheduler import start_scheduler_daemon
 
+            print("🔵 Chiamo start_scheduler_daemon()", flush=True)
             success = start_scheduler_daemon()
+            print(f"🔵 start_scheduler_daemon() ritorna: {success}", flush=True)
             if success:
                 HomeConfig._editorial_scheduler_started = True
+                print("🔵 SUCCESS: Scheduler avviato!", flush=True)
                 logger.info("✅ Scheduler editoriale avviato - articolo alle 8:00 ogni giorno")
             else:
                 # False significa che un altro worker ha già il lock (comportamento normale)
+                print("🔵 FALSE: Lock già acquisito da altro worker", flush=True)
                 logger.info("ℹ️ Scheduler editoriale già gestito da altro worker")
 
         except ImportError as e:
+            print(f"🔵 ImportError: {e}", flush=True)
             logger.error(f"Modulo 'schedule' non trovato - installa con: pip install schedule")
         except Exception as e:
+            print(f"🔵 Exception: {e}", flush=True)
             logger.error(f"Errore nell'avvio scheduler editoriale: {e}")
             import traceback
             logger.error(f"Traceback: {traceback.format_exc()}")
