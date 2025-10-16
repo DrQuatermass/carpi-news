@@ -327,7 +327,8 @@ class HomeConfig(AppConfig):
                 HomeConfig._editorial_scheduler_started = True
                 logger.info("✅ Scheduler editoriale avviato - articolo alle 8:00 ogni giorno")
             else:
-                logger.error("❌ Impossibile avviare scheduler editoriale")
+                # False significa che un altro worker ha già il lock (comportamento normale)
+                logger.info("ℹ️ Scheduler editoriale già gestito da altro worker")
 
         except ImportError as e:
             logger.error(f"Modulo 'schedule' non trovato - installa con: pip install schedule")
