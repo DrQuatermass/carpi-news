@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <!-- Homepage -->
+  <url>
+    <loc>{{ request.scheme }}://{{ request.get_host }}/</loc>
+    <changefreq>hourly</changefreq>
+    <priority>1.0</priority>
+    <lastmod>{{ last_update|date:"c" }}</lastmod>
+  </url>
+
+  <!-- Pagine categorie -->
+  {% for categoria in categorie %}
+  <url>
+    <loc>{{ request.scheme }}://{{ request.get_host }}/categoria/{{ categoria|slugify }}/</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+  {% endfor %}
+
+  <!-- Articoli -->
+  {% for article in articles %}
+  <url>
+    <loc>{{ request.scheme }}://{{ request.get_host }}{% url 'dettaglio_articolo' article.slug %}</loc>
+    <lastmod>{{ article.data_pubblicazione|date:"c" }}</lastmod>
+    <changefreq>{% if article.days_old < 7 %}daily{% elif article.days_old < 30 %}weekly{% else %}monthly{% endif %}</changefreq>
+    <priority>{% if article.days_old < 1 %}0.9{% elif article.days_old < 7 %}0.7{% elif article.days_old < 30 %}0.5{% else %}0.3{% endif %}</priority>
+  </url>
+  {% endfor %}
+</urlset>

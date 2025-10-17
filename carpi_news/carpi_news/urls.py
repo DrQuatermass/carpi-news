@@ -38,6 +38,11 @@ urlpatterns = [
     # SEO e bot management
     path('robots.txt', TemplateView.as_view(template_name='robots.txt', content_type='text/plain'), name='robots'),
     path('ads.txt', TemplateView.as_view(template_name='ads.txt', content_type='text/plain'), name='ads'),
+
+    # Sitemap URLs (SEO ottimizzato)
+    path('sitemap_index.xml', views.sitemap_index, name='sitemap_index'),
+    path('sitemap.xml', views.sitemap, name='sitemap'),
+    path('sitemap-archive.xml', views.sitemap_archive, name='sitemap_archive'),
     path('sitemap-news.xml', views.news_sitemap, name='news_sitemap'),
 
     path('admin/', admin.site.urls),

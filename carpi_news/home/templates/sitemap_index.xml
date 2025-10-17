@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <!-- Sitemap principale con articoli recenti (ultimi 30 giorni) -->
+  <sitemap>
+    <loc>{{ request.scheme }}://{{ request.get_host }}/sitemap.xml</loc>
+    <lastmod>{{ now|date:"c" }}</lastmod>
+  </sitemap>
+
+  <!-- Sitemap Google News (ultimi 2 giorni) -->
+  <sitemap>
+    <loc>{{ request.scheme }}://{{ request.get_host }}/sitemap-news.xml</loc>
+    <lastmod>{{ now|date:"c" }}</lastmod>
+  </sitemap>
+
+  <!-- Sitemap archivio per articoli più vecchi (se necessario) -->
+  {% if has_archive %}
+  <sitemap>
+    <loc>{{ request.scheme }}://{{ request.get_host }}/sitemap-archive.xml</loc>
+    <lastmod>{{ archive_lastmod|date:"c" }}</lastmod>
+  </sitemap>
+  {% endif %}
+</sitemapindex>

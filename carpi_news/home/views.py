@@ -7,6 +7,7 @@ from django.core.paginator import Paginator
 from django.http import JsonResponse, HttpResponse
 from django.template import loader
 from django.conf import settings
+from django.utils import timezone
 from datetime import datetime, timedelta
 from .models import Articolo
 
@@ -158,10 +159,86 @@ def privacy_policy(request):
     
     return render(request, "privacy_policy.html", context)
 
+def sitemap_index(request):
+    """Vista per il sitemap index"""
+    now = timezone.now()
+
+    # Controlla se ci sono articoli in archivio (più vecchi di 30 giorni)
+    archive_cutoff = now - timedelta(days=30)
+    has_archive = Articolo.objects.filter(
+        approvato=True,
+        data_pubblicazione__lt=archive_cutoff
+    ).exists()
+
+    # Data ultimo aggiornamento archivio
+    archive_lastmod = None
+    if has_archive:
+        latest_archive = Articolo.objects.filter(
+            approvato=True,
+            data_pubblicazione__lt=archive_cutoff
+        ).order_by('-data_pubblicazione').first()
+        if latest_archive:
+            archive_lastmod = latest_archive.data_pubblicazione
+
+    template = loader.get_template('sitemap_index.xml')
+    context = {
+        'now': now,
+        'has_archive': has_archive,
+        'archive_lastmod': archive_lastmod
+    }
+    return HttpResponse(template.render(context, request), content_type='application/xml')
+
+def sitemap(request):
+    """Vista per la sitemap principale (ultimi 30 giorni)"""
+    now = timezone.now()
+    cutoff_date = now - timedelta(days=30)
+
+    # Articoli ultimi 30 giorni
+    articles = Articolo.objects.filter(
+        approvato=True,
+        data_pubblicazione__gte=cutoff_date
+    ).order_by('-data_pubblicazione')
+
+    # Aggiungi campo days_old per priorità dinamiche
+    for article in articles:
+        article.days_old = (now - article.data_pubblicazione).days
+
+    # Categorie disponibili
+    categorie = Articolo.objects.filter(approvato=True).values_list('categoria', flat=True).distinct()
+
+    # Data ultimo aggiornamento
+    last_update = articles.first().data_pubblicazione if articles else now
+
+    logger.info(f"Generata sitemap principale con {len(articles)} articoli (ultimi 30 giorni)")
+
+    template = loader.get_template('sitemap.xml')
+    context = {
+        'articles': articles,
+        'categorie': categorie,
+        'last_update': last_update
+    }
+    return HttpResponse(template.render(context, request), content_type='application/xml')
+
+def sitemap_archive(request):
+    """Vista per la sitemap archivio (articoli più vecchi di 30 giorni)"""
+    cutoff_date = timezone.now() - timedelta(days=30)
+
+    # Articoli più vecchi di 30 giorni, limitati a 10.000 per performance
+    articles = Articolo.objects.filter(
+        approvato=True,
+        data_pubblicazione__lt=cutoff_date
+    ).order_by('-data_pubblicazione')[:10000]
+
+    logger.info(f"Generata sitemap archivio con {len(articles)} articoli")
+
+    template = loader.get_template('sitemap_archive.xml')
+    context = {'articles': articles}
+    return HttpResponse(template.render(context, request), content_type='application/xml')
+
 def news_sitemap(request):
-    """Vista per la sitemap Google News"""
+    """Vista per la sitemap Google News (ultimi 2 giorni)"""
     # Solo articoli approvati degli ultimi 2 giorni
-    cutoff_date = datetime.now() - timedelta(days=2)
+    cutoff_date = timezone.now() - timedelta(days=2)
     articles = Articolo.objects.filter(
         approvato=True,
         data_pubblicazione__gte=cutoff_date

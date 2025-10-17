@@ -21,8 +21,10 @@ Disallow: /*.log$
 Disallow: /test/
 Disallow: /debug/
 
-# Incoraggia indicizzazione dei feed per news aggregators
-# Sitemap: https://ombradelportico.it/sitemap.xml
+# Sitemap per indicizzazione completa
+Sitemap: https://ombradelportico.it/sitemap_index.xml
+Sitemap: https://ombradelportico.it/sitemap.xml
+Sitemap: https://ombradelportico.it/sitemap-news.xml
 
 # Per bot social media e news aggregators
 User-agent: facebookexternalhit
