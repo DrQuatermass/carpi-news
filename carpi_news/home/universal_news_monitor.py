@@ -328,7 +328,8 @@ class HTMLScraper(BaseScraper):
                         'url': item.get(article_fields.get('url', 'link'), ''),
                         'preview': item.get(article_fields.get('preview', 'text'), ''),
                         'image_url': image_url,
-                        'full_content': None
+                        'full_content': None,
+                        '_fetch_image_from_article': self.config.config.get('fetch_image_from_article', False)  # Flag per fetch successivo
                     }
 
                     # Valida che l'articolo abbia almeno titolo e URL
@@ -480,15 +481,24 @@ class HTMLScraper(BaseScraper):
         # Usa selettori immagine personalizzati se configurati
         image_selectors = self.config.config.get('image_selectors', ['img'])
 
-        for selector in image_selectors:
-            img_elem = item.select_one(selector)
-            if img_elem:
-                image_url = self._extract_image_from_html_elem(img_elem)
-                if image_url:
-                    return image_url
+        # Se item è un link, cerca anche nel parent (caso ModenaToday Eventi)
+        elements_to_search = [item]
+        if item.name == 'a' and item.parent:
+            elements_to_search.append(item.parent)
+
+        for search_elem in elements_to_search:
+            for selector in image_selectors:
+                img_elem = search_elem.select_one(selector)
+                if img_elem:
+                    image_url = self._extract_image_from_html_elem(img_elem)
+                    if image_url:
+                        return image_url
 
         # Fallback al metodo standard
         img_elem = item.find('img')
+        if not img_elem and item.parent:
+            img_elem = item.parent.find('img')
+
         if not img_elem:
             return None
         return self._extract_image_from_html_elem(img_elem)
@@ -559,36 +569,42 @@ class HTMLScraper(BaseScraper):
     def get_full_content(self, article_url: str) -> Optional[str]:
         """Scarica contenuto completo da pagina HTML"""
         try:
+            self.logger.debug(f"[DEBUG get_full_content] Downloading: {article_url}")
             response = requests.get(article_url, headers=self.headers, timeout=self.timeout)
             response.raise_for_status()
-            
+
+            # Log encoding info
+            self.logger.debug(f"[DEBUG get_full_content] Response encoding: {response.encoding}, Content-Type: {response.headers.get('Content-Type')}")
+
             soup = BeautifulSoup(response.content, 'html.parser')
-            
+
             # Rimuovi elementi non necessari
             for tag in soup(['script', 'style', 'nav', 'header', 'footer', 'aside', 'menu']):
                 tag.decompose()
-            
+
             # Cerca contenuto principale
             content_selectors = self.config.config.get('content_selectors', [
                 '.article-content', '.post-content', '.content', '.entry-content',
                 'main', 'article', '.news-body'
             ])
-            
+
             content = ""
             for selector in content_selectors:
                 content_elem = soup.select_one(selector)
                 if content_elem:
                     content = content_elem.get_text(strip=True)
+                    self.logger.debug(f"[DEBUG get_full_content] Found content with selector '{selector}': {len(content)} chars, preview: {content[:200]}")
                     break
-            
+
             # Fallback
             if not content or len(content) < 100:
                 body = soup.find('body')
                 if body:
                     content = body.get_text(strip=True)
-            
+                    self.logger.debug(f"[DEBUG get_full_content] Fallback to body: {len(content)} chars")
+
             return content if len(content) > 100 else None
-            
+
         except Exception as e:
             self.logger.error(f"Errore nel recuperare contenuto da {article_url}: {e}")
             return None
@@ -2507,15 +2523,39 @@ class UniversalNewsMonitor:
         """Processa un nuovo articolo"""
         try:
             self.logger.info(f"Processando nuovo articolo: {article_data['title']}")
+            self.logger.debug(f"[DEBUG process_new_article] URL: {article_data['url']}")
+
+            # Se necessario, scarica immagine dall'articolo invece che dal JSON
+            if article_data.get('_fetch_image_from_article', False):
+                self.logger.debug(f"[DEBUG] fetch_image_from_article attivo, scarico immagine da articolo")
+                try:
+                    response = requests.get(article_data['url'], headers=self.headers, timeout=15)
+                    soup = BeautifulSoup(response.content, 'html.parser')
+
+                    # Cerca og:image
+                    og_image = soup.select_one('meta[property="og:image"]')
+                    if og_image:
+                        new_image_url = og_image.get('content')
+                        if new_image_url:
+                            self.logger.debug(f"[DEBUG] Trovato og:image: {new_image_url}")
+                            article_data['image_url'] = new_image_url
+                except Exception as e:
+                    self.logger.warning(f"[DEBUG] Errore scaricando immagine da articolo: {e}")
 
             # Ottieni contenuto completo se necessario
             if not article_data.get('full_content'):
+                self.logger.debug(f"[DEBUG process_new_article] Scarico contenuto completo da: {article_data['url']}")
                 full_content = self.scraper.get_full_content(article_data['url'])
                 if full_content:
+                    self.logger.debug(f"[DEBUG process_new_article] Contenuto ottenuto: {len(full_content)} chars, preview: {full_content[:150]}")
                     article_data['full_content'] = full_content
                 else:
                     # Per email usa 'content' (completo), per altri scrapers usa 'preview'
-                    article_data['full_content'] = article_data.get('content') or article_data['preview']
+                    fallback_content = article_data.get('content') or article_data['preview']
+                    self.logger.warning(f"[DEBUG process_new_article] get_full_content() ha fallito! Uso fallback: {len(fallback_content)} chars, preview: {fallback_content[:150]}")
+                    article_data['full_content'] = fallback_content
+            else:
+                self.logger.debug(f"[DEBUG process_new_article] full_content già presente: {len(article_data['full_content'])} chars")
             
             # Genera articolo con AI se configurato
             use_ai = self.config.config.get('use_ai_generation', False)
