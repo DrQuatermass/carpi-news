@@ -473,7 +473,8 @@ class HTMLScraper(BaseScraper):
             'url': article_url,
             'preview': content_preview,
             'image_url': image_url,
-            'full_content': None  # Sarà caricato se necessario
+            'full_content': None,  # Sarà caricato se necessario
+            '_fetch_image_from_article': self.config.config.get('fetch_image_from_article', False)
         }
     
     def _extract_image_from_html(self, item) -> Optional[str]:
