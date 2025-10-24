@@ -295,7 +295,180 @@ class ContentPolisher:
             result.append('</ul>')
         
         return '\n\n'.join(result)
-    
+
+    def add_internal_links(self, content: str, article_title: str = "") -> str:
+        """
+        Aggiunge link interni al contenuto usando AI per trovare entità correlate
+
+        Args:
+            content: Contenuto HTML dell'articolo
+            article_title: Titolo dell'articolo (per context)
+
+        Returns:
+            Contenuto con link interni inseriti
+        """
+        try:
+            from anthropic import Anthropic
+            from django.conf import settings
+            import json
+            import os
+
+            # Get API key
+            api_key = settings.ANTHROPIC_API_KEY if hasattr(settings, 'ANTHROPIC_API_KEY') else None
+            if not api_key:
+                api_key = os.getenv('ANTHROPIC_API_KEY')
+
+            if not api_key:
+                return content  # Nessun link se non c'è API key
+
+            # Import qui per evitare circular imports
+            from home.models import Articolo
+
+            # Prendi ultimi 400 articoli come candidati (circa 1-2 mesi di pubblicazioni)
+            # Questo garantisce overlap con entità ricorrenti anche per articoli non recentissimi
+            candidati = Articolo.objects.filter(approvato=True).order_by('-data_pubblicazione')[:400]
+
+            if candidati.count() < 3:
+                return content  # Non abbastanza articoli
+
+            # Prepara lista candidati per AI
+            candidati_list = []
+            for idx, art in enumerate(candidati, 1):
+                candidati_list.append({
+                    "id": idx,
+                    "slug": art.slug,
+                    "titolo": art.titolo,
+                    "categoria": art.categoria
+                })
+
+            # Estrai testo plain dal contenuto HTML per l'analisi
+            import re
+            plain_content = re.sub(r'<[^>]+>', '', content)
+            plain_content = plain_content[:3000]  # Prime 3000 caratteri per più contesto
+
+            # Prompt per Claude
+            prompt = f"""Sei un esperto SEO per un giornale locale di Carpi (Emilia-Romagna).
+Il tuo compito è trovare entità SPECIFICHE da linkare ad articoli correlati per migliorare SEO e user experience.
+
+ARTICOLO DA ANALIZZARE:
+Titolo: {article_title}
+Contenuto (estratto): {plain_content}
+
+ARTICOLI DISPONIBILI PER LINK:
+{json.dumps(candidati_list, ensure_ascii=False, indent=2)}
+
+TASK:
+Identifica 3-5 entità SPECIFICHE menzionate nel testo che hanno articoli correlati nella lista.
+
+PRIORITÀ (in ordine):
+1. **NOMI PROPRI DI PERSONE** - consiglieri, assessori, sindaco, personaggi pubblici locali
+   Esempi: "Alberto Bellelli", "Riccardo Righi", "Giulia Pigoni", "Marco Arletti"
+
+2. **ORGANIZZAZIONI/AZIENDE LOCALI** - enti, società, associazioni
+   Esempi: "AIMAG", "Carpi FC", "Avis Carpi", "Comune di Carpi"
+
+3. **LUOGHI SPECIFICI** - edifici, vie, piazze (NON solo "Carpi")
+   Esempi: "Ospedale Ramazzini", "Piazza Martiri", "Teatro Comunale"
+
+4. **ARGOMENTI/PROGETTI RICORRENTI** - temi che si sviluppano nel tempo
+   Esempi: "bilancio comunale", "Consiglio comunale", "piano urbanistico"
+
+5. **EVENTI SPECIFICI** - manifestazioni, iniziative
+   Esempi: "Festa di San Bernardino", "Fiera del Volontariato"
+
+6. **PARTITI POLITICI/SINDACATI/ASSOCIAZIONI** - 
+   Esempi: "Cgil", "PD", "Partito Democratico", "Fratelli d'Italia", "Rotari Club"
+
+EVITA ASSOLUTAMENTE:
+- Parole generiche: "sindaco", "ospedale", "città" (a meno che non siano parte di nome proprio)
+- Solo "Carpi" come entità (troppo generico)
+- Pronomi o articoli
+
+CRITERI LINKABILITÀ:
+- L'entità deve apparire testualmente nell'articolo
+- Deve esistere almeno UN articolo molto correlato nella lista
+- Privilegia nomi completi rispetto a nomi parziali
+
+FORMATO OUTPUT (solo JSON valido):
+{{
+  "links": [
+    {{
+      "entity": "testo esatto da linkare (come appare nell'articolo)",
+      "article_id": 5,
+      "reasoning": "Nome consigliere comunale citato in altro articolo politico"
+    }}
+  ]
+}}
+
+IMPORTANTE: Se trovi solo "Carpi" come entità, restituisci {{"links": []}} - cerchiamo collegamenti più specifici!
+"""
+
+            # Chiama Claude
+            client = Anthropic(api_key=api_key)
+            response = client.messages.create(
+                model="claude-sonnet-4-20250514",
+                max_tokens=1500,
+                temperature=0.3,
+                messages=[{"role": "user", "content": prompt}]
+            )
+
+            # Parse risposta
+            response_text = response.content[0].text.strip()
+
+            # Log AI response per debug
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.info(f"Internal Linking AI Response for '{article_title[:50]}...': {response_text}")
+
+            if response_text.startswith("```"):
+                response_text = re.sub(r'^```json?\s*', '', response_text)
+                response_text = re.sub(r'\s*```$', '', response_text)
+
+            result = json.loads(response_text)
+            links = result.get("links", [])
+
+            if not links:
+                return content
+
+            # Applica i link al contenuto
+            modified_content = content
+            links_applied = 0
+
+            for link_data in links:
+                entity = link_data.get("entity", "")
+                article_id = link_data.get("article_id")
+
+                if not entity or not article_id or article_id < 1 or article_id > len(candidati_list):
+                    continue
+
+                # Ottieni slug dall'articolo
+                candidato = candidati_list[article_id - 1]
+                article_slug = candidato["slug"]
+                article_title_target = candidato["titolo"]
+
+                # Cerca l'entità nel contenuto (case-insensitive, non dentro link esistenti)
+                escaped_entity = re.escape(entity)
+                pattern = re.compile(
+                    r'(?<![">])(' + escaped_entity + r')(?![^<]*</a>)',
+                    re.IGNORECASE
+                )
+
+                match = pattern.search(modified_content)
+                if match:
+                    matched_text = match.group(1)
+                    replacement = f'<a href="/articolo/{article_slug}/" class="internal-link" title="{article_title_target}">{matched_text}</a>'
+                    modified_content = pattern.sub(replacement, modified_content, count=1)
+                    links_applied += 1
+
+            return modified_content
+
+        except Exception as e:
+            # In caso di errore, restituisci contenuto originale
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Errore add_internal_links: {e}")
+            return content
+
     def polish_article(self, article_data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Applica polishing completo a un articolo
@@ -317,15 +490,23 @@ class ContentPolisher:
         
         # Pulisci contenuto (CON formattazione HTML)
         if 'content' in polished:
-            polished['content'] = self.format_article_structure(
-                self.clean_content(polished['content'])
+            cleaned = self.clean_content(polished['content'])
+            formatted = self.format_article_structure(cleaned)
+            # Aggiungi link interni
+            polished['content'] = self.add_internal_links(
+                formatted,
+                article_title=polished.get('title', polished.get('titolo', ''))
             )
-        
+
         if 'contenuto' in polished:
-            polished['contenuto'] = self.format_article_structure(
-                self.clean_content(polished['contenuto'])
+            cleaned = self.clean_content(polished['contenuto'])
+            formatted = self.format_article_structure(cleaned)
+            # Aggiungi link interni
+            polished['contenuto'] = self.add_internal_links(
+                formatted,
+                article_title=polished.get('titolo', polished.get('title', ''))
             )
-        
+
         # Pulisci preview/sommario (SOLO pulizia, NO formattazione HTML)
         if 'preview' in polished:
             polished['preview'] = self.clean_content_plain(polished['preview'])
