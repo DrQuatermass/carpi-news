@@ -405,23 +405,32 @@ IMPORTANTE: Se trovi solo "Carpi" come entità, restituisci {{"links": []}} - ce
 
             # Chiama Claude
             client = Anthropic(api_key=api_key)
-            response = client.messages.create(
-                model="claude-sonnet-4-20250514",
-                max_tokens=1500,
-                temperature=0.3,
-                messages=[{"role": "user", "content": prompt}]
-            )
-
-            # Parse risposta
-            response_text = response.content[0].text.strip()
 
             # Log AI response per debug
             import logging
             logger = logging.getLogger(__name__)
 
+            try:
+                response = client.messages.create(
+                    model="claude-sonnet-4-20250514",
+                    max_tokens=1500,
+                    temperature=0.3,
+                    messages=[{"role": "user", "content": prompt}]
+                )
+            except Exception as e:
+                logger.error(f"Internal Linking: errore API per '{article_title[:50]}...': {e}")
+                return content
+
+            # Parse risposta
+            if not response.content or len(response.content) == 0:
+                logger.warning(f"Internal Linking: response.content vuoto per '{article_title[:50]}...'")
+                return content
+
+            response_text = response.content[0].text.strip()
+
             # Se risposta vuota, ritorna contenuto originale
             if not response_text:
-                logger.warning(f"Internal Linking: risposta vuota per '{article_title[:50]}...'")
+                logger.warning(f"Internal Linking: response_text vuoto per '{article_title[:50]}...'")
                 return content
 
             logger.info(f"Internal Linking AI Response for '{article_title[:50]}...': {response_text[:200]}...")
