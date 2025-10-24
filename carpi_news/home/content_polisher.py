@@ -418,13 +418,25 @@ IMPORTANTE: Se trovi solo "Carpi" come entità, restituisci {{"links": []}} - ce
             # Log AI response per debug
             import logging
             logger = logging.getLogger(__name__)
-            logger.info(f"Internal Linking AI Response for '{article_title[:50]}...': {response_text}")
+
+            # Se risposta vuota, ritorna contenuto originale
+            if not response_text:
+                logger.warning(f"Internal Linking: risposta vuota per '{article_title[:50]}...'")
+                return content
+
+            logger.info(f"Internal Linking AI Response for '{article_title[:50]}...': {response_text[:200]}...")
 
             if response_text.startswith("```"):
                 response_text = re.sub(r'^```json?\s*', '', response_text)
                 response_text = re.sub(r'\s*```$', '', response_text)
 
-            result = json.loads(response_text)
+            # Gestisci JSON invalido
+            try:
+                result = json.loads(response_text)
+            except json.JSONDecodeError as e:
+                logger.error(f"Internal Linking: JSON invalido per '{article_title[:50]}...': {e}")
+                return content
+
             links = result.get("links", [])
 
             if not links:
