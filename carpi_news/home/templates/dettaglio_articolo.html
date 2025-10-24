@@ -27,6 +27,14 @@
 <!-- Meta description generale -->
 <meta name="description" content="{{ articolo.sommario|truncatechars:160|striptags }}">
 
+<!-- Meta keywords e geolocalizzazione -->
+<meta name="keywords" content="Carpi, notizie Carpi, {{ articolo.categoria }}, Emilia-Romagna, cronaca locale, news Carpi">
+<meta name="author" content="Redazione Ombra del Portico">
+<meta name="geo.region" content="IT-ER">
+<meta name="geo.placename" content="Carpi">
+<meta name="geo.position" content="44.7829;10.8857">
+<meta name="ICBM" content="44.7829, 10.8857">
+
 <!-- Schema.org JSON-LD per Google News -->
 <script type="application/ld+json">
 {
@@ -63,6 +71,34 @@
     "name": "Ombra del Portico",
     "productID": "CAowo7qiDA:openaccess"
   }
+}
+</script>
+
+<!-- Breadcrumb Schema -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  "itemListElement": [
+    {
+      "@type": "ListItem",
+      "position": 1,
+      "name": "Home",
+      "item": "https://ombradelportico.it/"
+    },
+    {
+      "@type": "ListItem",
+      "position": 2,
+      "name": "{{ articolo.categoria }}",
+      "item": "https://ombradelportico.it/?categoria={{ articolo.categoria|urlencode }}"
+    },
+    {
+      "@type": "ListItem",
+      "position": 3,
+      "name": "{{ articolo.titolo|truncatechars:50 }}",
+      "item": "{{ request.build_absolute_uri }}"
+    }
+  ]
 }
 </script>
 {% endblock %}
