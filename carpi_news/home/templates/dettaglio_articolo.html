@@ -23,6 +23,42 @@
 
 <!-- Meta description generale -->
 <meta name="description" content="{{ articolo.sommario|truncatechars:160|striptags }}">
+
+<!-- Schema.org JSON-LD per Google News -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "NewsArticle",
+  "headline": "{{ articolo.titolo|escapejs }}",
+  "image": ["{{ articolo.get_image_url }}"],
+  "datePublished": "{{ articolo.data_pubblicazione|date:'c' }}",
+  "dateModified": "{{ articolo.data_creazione|date:'c' }}",
+  "author": {
+    "@type": "Organization",
+    "name": "Ombra del Portico",
+    "url": "https://ombradelportico.it"
+  },
+  "publisher": {
+    "@type": "Organization",
+    "name": "Ombra del Portico",
+    "url": "https://ombradelportico.it",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://ombradelportico.it/static/home/images/portico_logo_nopayoff.png"
+    }
+  },
+  "description": "{{ articolo.sommario|striptags|truncatechars:200|escapejs }}",
+  "articleSection": "{{ articolo.categoria|escapejs }}",
+  "url": "{{ request.build_absolute_uri }}",
+  "mainEntityOfPage": {
+    "@type": "WebPage",
+    "@id": "{{ request.build_absolute_uri }}"
+  },
+  "isAccessibleForFree": "True",
+  "isPartOfType": ["Product"],
+  "isPartOfProductId": "CAowo7qiDA:openaccess"
+}
+</script>
 {% endblock %}
 
 {% block content %}
