@@ -4,6 +4,9 @@
 {% block title %}{{ articolo.titolo }} - Ombra del Portico{% endblock %}
 
 {% block extra_css %}
+<!-- Canonical URL -->
+<link rel="canonical" href="{{ request.build_absolute_uri }}">
+
 <!-- Open Graph meta tags per condivisione social -->
 <meta property="og:title" content="{{ articolo.titolo }}">
 <meta property="og:description" content="{{ articolo.sommario|truncatechars:300|striptags }}">
