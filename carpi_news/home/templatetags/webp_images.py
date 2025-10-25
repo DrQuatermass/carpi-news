@@ -73,4 +73,19 @@ def get_webp_url(image_url):
     import re
     webp_url = re.sub(r'\.(png|jpg|jpeg|PNG|JPG|JPEG)$', '.webp', image_url)
 
+    # Per immagini locali (/media/ o /static/), controlla se il file WebP esiste
+    if webp_url.startswith('/media/') or webp_url.startswith('/static/'):
+        from django.conf import settings
+        from pathlib import Path
+
+        # Converti URL in path assoluto
+        if webp_url.startswith('/media/'):
+            webp_path = Path(settings.MEDIA_ROOT) / webp_url.replace('/media/', '')
+        else:  # /static/
+            webp_path = Path(settings.BASE_DIR) / 'home' / 'static' / webp_url.replace('/static/', '')
+
+        # Se il file WebP non esiste, ritorna l'originale
+        if not webp_path.exists():
+            return image_url  # Fallback to original PNG/JPG
+
     return webp_url
