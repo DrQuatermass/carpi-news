@@ -2820,25 +2820,29 @@ footer {
 }
 
 
-/* Internal Links - SEO Enhancement */
+/* Internal Links - Unified style with editorial links */
 .article-content .internal-link {
-    color: #966C42;
+    color: #D2691E;
     text-decoration: none;
-    border-bottom: 1px dotted #966C42;
+    font-weight: 700;
+    background: linear-gradient(120deg, rgba(210, 105, 30, 0.08) 0%, rgba(210, 105, 30, 0.12) 50%, rgba(210, 105, 30, 0.08) 100%);
+    border-bottom: 2px solid rgba(210, 105, 30, 0.4);
+    border-radius: 4px;
+    padding: 3px 6px;
+    box-shadow: 0 1px 3px rgba(210, 105, 30, 0.15);
     transition: all 0.3s ease;
-    font-weight: 500;
 }
 
 .article-content .internal-link:hover {
-    color: #7A5535;
-    border-bottom: 1px solid #7A5535;
-    background: rgba(150, 108, 66, 0.05);
-    padding: 2px 4px;
-    margin: -2px -4px;
-    border-radius: 3px;
+    color: #FF7F50;
+    background: linear-gradient(120deg, rgba(255, 127, 80, 0.15) 0%, rgba(255, 127, 80, 0.25) 50%, rgba(255, 127, 80, 0.15) 100%);
+    border-bottom-color: #FF7F50;
+    box-shadow: 0 3px 6px rgba(255, 127, 80, 0.25);
+    transform: translateY(-1px);
 }
 
 .article-content .internal-link:visited {
-    color: #8B5A3C;
+    color: #CD5C5C;
+    opacity: 0.9;
 }
 
