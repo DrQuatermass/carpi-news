@@ -47,6 +47,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'home.middleware.SecurityHeadersMiddleware',  # CSP e security headers
     'django.middleware.gzip.GZipMiddleware',  # Compressione GZIP per performance
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
