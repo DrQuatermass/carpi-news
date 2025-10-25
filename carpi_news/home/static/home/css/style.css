@@ -310,7 +310,6 @@ main {
     transition: all 0.3s ease;
 }
 
-
 .hero h1 {
     font-size: 3.5rem;
     margin-bottom: 1rem;
@@ -354,29 +353,6 @@ main {
         opacity: 1;
         transform: translateY(-50%) translateX(0);
     }
-}
-
-
-.cta-button {
-    display: inline-block;
-    padding: 1rem 2rem;
-    background: rgba(255, 255, 255, 0.25);
-    color: white;
-    text-decoration: none;
-    border-radius: 50px;
-    border: 2px solid rgba(255, 255, 255, 0.4);
-    backdrop-filter: blur(15px);
-    transition: all 0.3s ease;
-    animation: slideInUp 1s ease 0.4s both;
-    font-weight: 600;
-    box-shadow: 0 4px 15px rgba(150, 108, 66, 0.3);
-}
-
-.cta-button:hover {
-    background: rgba(255, 255, 255, 0.35);
-    transform: translateY(-3px);
-    box-shadow: 0 8px 25px rgba(150, 108, 66, 0.4);
-    border-color: rgba(255, 255, 255, 0.6);
 }
 
 /* News Section with Navigation */
@@ -746,45 +722,6 @@ main {
 .read-more:hover {
     color: #B8956A;
     transform: translateX(5px);
-}
-
-/* Local News Section */
-.local-section {
-    background: rgba(255, 255, 255, 0.9);
-    border-radius: 20px;
-    padding: 3rem;
-    margin-bottom: 3rem;
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.section-title {
-    font-size: 2.5rem;
-    text-align: center;
-    margin-bottom: 2rem;
-    background: linear-gradient(45deg, #5A5A5A, #966C42);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-}
-
-.local-news-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: 1.5rem;
-}
-
-.local-news-item {
-    padding: 1.5rem;
-    border-left: 4px solid #966C42;
-    background: rgba(255, 255, 255, 0.7);
-    border-radius: 0 10px 10px 0;
-    transition: all 0.3s ease;
-}
-
-.local-news-item:hover {
-    transform: translateX(10px);
-    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
 }
 
 /* Footer */
@@ -1872,7 +1809,6 @@ footer {
     margin-bottom: 1.5rem;
 }
 
-
 .game-status {
     text-align: center;
     padding: 1rem;
@@ -2073,100 +2009,6 @@ footer {
     box-shadow: 0 6px 20px rgba(255, 140, 0, 0.5);
 }
 
-/* Victory Plate Animation */
-.victory-plate {
-    width: 100%;
-    height: 100%;
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.broth-bowl {
-    width: 280px;
-    height: 280px;
-    background: linear-gradient(135deg, #FFD700 0%, #FFC107 50%, #FFB300 100%);
-    border-radius: 50%;
-    position: relative;
-    overflow: hidden;
-    border: 4px solid #FF8F00;
-    box-shadow:
-        inset 0 10px 20px rgba(255, 255, 255, 0.3),
-        inset 0 -10px 20px rgba(0, 0, 0, 0.2),
-        0 0 30px rgba(255, 215, 0, 0.6);
-}
-
-.broth-surface {
-    width: 100%;
-    height: 100%;
-    position: relative;
-    background: radial-gradient(circle at center, rgba(255, 215, 0, 0.9) 0%, rgba(255, 193, 7, 0.7) 100%);
-}
-
-.floating-cappelletto {
-    position: absolute;
-    font-size: 1.8rem;
-    animation: floatInBroth 3s ease-in-out infinite;
-    z-index: 2;
-}
-
-.floating-cappelletto.symbol.hat {
-    width: 36px;
-    height: 36px;
-    background: url('../images/cappelletto.svg') no-repeat center;
-    background-size: contain;
-    font-size: 0;
-}
-
-.rising-bubble {
-    position: absolute;
-    bottom: -20px;
-    font-size: 1.2rem;
-    animation: bubbleRise 4s linear infinite;
-    z-index: 3;
-}
-
-.floating-bubble {
-    position: absolute;
-    font-size: 1.8rem;
-    animation: floatInBroth 2s ease-in-out infinite;
-    z-index: 3;
-}
-
-.floating-bubble.symbol.bubble {
-    font-size: 1.8rem;
-}
-
-.rising-bubble.symbol.bubble {
-    font-size: 1.8rem;
-}
-
-@keyframes floatInBroth {
-    0%, 100% {
-        transform: translate(0, 0) rotate(0deg);
-        opacity: 1;
-    }
-    25% {
-        transform: translate(3px, -2px) rotate(3deg);
-        opacity: 0.95;
-    }
-    50% {
-        transform: translate(-2px, 3px) rotate(-2deg);
-        opacity: 0.9;
-    }
-    75% {
-        transform: translate(2px, -1px) rotate(1deg);
-        opacity: 0.95;
-    }
-}
-
-@keyframes bubbleRise {
-    0% {
-        bottom: -20px;
-        opacity: 0;
-        transform: translateX(0) scale(0.5);
-    }
     10% {
         opacity: 1;
         transform: translateX(0) scale(1);
@@ -2818,7 +2660,6 @@ footer {
         padding: 25px;
     }
 }
-
 
 /* Internal Links - Unified style with editorial links */
 .article-content .internal-link {

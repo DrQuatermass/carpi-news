@@ -16,12 +16,12 @@ class SecurityHeadersMiddleware:
         # Content Security Policy (CSP) per prevenire XSS
         csp_directives = [
             "default-src 'self'",
-            "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com https://pagead2.googlesyndication.com",
-            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://ssl.google-analytics.com https://pagead2.googlesyndication.com https://adservice.google.com https://news.google.com https://tpc.googlesyndication.com https://googleads.g.doubleclick.net",
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://adservice.google.com",
             "img-src 'self' data: https: http:",  # Permetti immagini da qualsiasi fonte HTTPS
             "font-src 'self' https://fonts.gstatic.com",
-            "connect-src 'self' https://www.google-analytics.com",
-            "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com",
+            "connect-src 'self' https://www.google-analytics.com https://analytics.google.com https://stats.g.doubleclick.net https://region1.google-analytics.com https://region1.analytics.google.com https://pagead2.googlesyndication.com",
+            "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://tpc.googlesyndication.com https://googleads.g.doubleclick.net https://td.doubleclick.net",
             "object-src 'none'",
             "base-uri 'self'",
             "form-action 'self'",
