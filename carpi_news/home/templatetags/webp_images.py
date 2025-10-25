@@ -63,11 +63,9 @@ def get_webp_url(image_url):
     if image_url.endswith('.webp'):
         return image_url
 
-    # Sostituisci estensione con .webp
-    path = Path(image_url)
-    webp_url = str(path.with_suffix('.webp'))
-
-    # Converti backslash Windows in forward slash per URL web
-    webp_url = webp_url.replace('\\', '/')
+    # Sostituisci estensione con .webp usando string replace (non Path!)
+    # Path() non funziona con URL (rompe https://)
+    import re
+    webp_url = re.sub(r'\.(png|jpg|jpeg|PNG|JPG|JPEG)$', '.webp', image_url)
 
     return webp_url
