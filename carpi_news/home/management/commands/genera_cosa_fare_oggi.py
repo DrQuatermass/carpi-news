@@ -1,8 +1,8 @@
 """
-Comando per generare automaticamente l'articolo giornaliero "Cosa fare oggi?"
+Comando per generare automaticamente l'articolo giornaliero "Cosa fare oggi"
 
 Raccoglie tutti gli eventi del giorno dalle categorie Cultura ed Eventi
-e li aggrega in un unico articolo con link ai dettagli.
+e genera un articolo narrativo con AI che li presenta in modo coinvolgente.
 """
 from django.core.management.base import BaseCommand
 from django.utils import timezone
@@ -10,6 +10,9 @@ from django.db import models
 from home.models import Articolo
 from datetime import date
 import logging
+import anthropic
+import os
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -87,12 +90,13 @@ class Command(BaseCommand):
             self.stdout.write(self.style.WARNING('\nEsegui senza --dry-run per salvare l\'articolo'))
             return
 
-        # Crea l'articolo
+        # Crea l'articolo con immagine di default per SEO
         articolo = Articolo.objects.create(
             titolo=titolo,
             contenuto=contenuto,
             sommario=sommario,
-            categoria='Cosa fare oggi?',
+            categoria='Cosa fare oggi',
+            foto='/static/home/images/Oggi.png',
             approvato=True,
             data_pubblicazione=timezone.now()
         )
@@ -115,20 +119,10 @@ class Command(BaseCommand):
         giorno = data.day
         mese = mesi[data.month - 1]
 
-        return f"Cosa fare oggi? {giorno_settimana} {giorno} {mese}"
+        return f"Cosa fare oggi: {giorno_settimana} {giorno} {mese}"
 
     def genera_sommario(self, eventi, data):
-        """Genera il sommario dell'articolo"""
-        num_eventi = len(eventi)
-        if num_eventi == 1:
-            return f"Oggi a Carpi e dintorni: {eventi[0].titolo}. Scopri tutti i dettagli!"
-        else:
-            return f"Oggi a Carpi e dintorni ci sono {num_eventi} eventi da non perdere: " + \
-                   ", ".join([e.titolo for e in eventi[:3]]) + \
-                   (f" e altri {num_eventi - 3} eventi!" if num_eventi > 3 else "!")
-
-    def genera_contenuto(self, eventi, data):
-        """Genera il contenuto HTML dell'articolo con link agli eventi"""
+        """Genera il sommario dell'articolo ottimizzato per SEO"""
         giorni_settimana = ['lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato', 'domenica']
         mesi = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno',
                 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre']
@@ -137,6 +131,126 @@ class Command(BaseCommand):
         giorno = data.day
         mese = mesi[data.month - 1]
 
+        num_eventi = len(eventi)
+        if num_eventi == 1:
+            return f"Eventi oggi {giorno} {mese} a Carpi e Modena: {eventi[0].titolo}. Scopri cosa fare oggi in provincia!"
+        else:
+            return f"Cosa fare oggi {giorno_settimana} {giorno} {mese} a Carpi? Ecco {num_eventi} eventi da non perdere tra cultura, spettacoli e iniziative in città e provincia di Modena."
+
+    def genera_contenuto(self, eventi, data):
+        """Genera il contenuto HTML dell'articolo usando AI per creare un testo narrativo"""
+        giorni_settimana = ['lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato', 'domenica']
+        mesi = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno',
+                'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre']
+
+        giorno_settimana = giorni_settimana[data.weekday()]
+        giorno = data.day
+        mese = mesi[data.month - 1]
+
+        # Prepara dati eventi per AI
+        eventi_info = []
+        for i, evento in enumerate(eventi, 1):
+            eventi_info.append({
+                'numero': i,
+                'titolo': evento.titolo,
+                'sommario': evento.sommario,
+                'slug': evento.slug,
+                'categoria': evento.categoria
+            })
+
+        # Genera contenuto con AI
+        try:
+            contenuto_ai = self._genera_con_ai(eventi_info, giorno_settimana, giorno, mese)
+
+            # Inserisci i link agli eventi nel testo generato
+            contenuto_finale = self._inserisci_link_eventi(contenuto_ai, eventi)
+
+            return contenuto_finale
+
+        except Exception as e:
+            logger.error(f"Errore generazione AI: {e}")
+            # Fallback al formato semplice
+            return self._genera_contenuto_fallback(eventi, giorno_settimana, giorno, mese)
+
+    def _genera_con_ai(self, eventi_info, giorno_settimana, giorno, mese):
+        """Usa Claude per generare un articolo narrativo"""
+        client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+
+        # Prepara lista eventi per il prompt
+        lista_eventi = "\n".join([
+            f"{e['numero']}. {e['titolo']}\n   Categoria: {e['categoria']}\n   Descrizione: {e['sommario'][:200]}..."
+            for e in eventi_info
+        ])
+
+        prompt = f"""Scrivi un articolo per la rubrica "Cosa fare oggi" del giornale locale di Carpi, nello stile ironico e colto di Umberto Eco.
+
+DATA: {giorno_settimana} {giorno} {mese}
+EVENTI DISPONIBILI ({len(eventi_info)} totali):
+
+{lista_eventi}
+
+ISTRUZIONI:
+- Scrivi un articolo narrativo e intelligente, con ironia sottile e riferimenti colti (stile Umberto Eco)
+- Puoi selezionare gli eventi più interessanti (non sei obbligato a includerli tutti)
+- PRIVILEGIA gli eventi che si svolgono a Carpi rispetto a quelli della provincia
+- Inizia con un'introduzione brillante che contestualizza la giornata
+- Per ogni evento che scegli di includere:
+  * Usa un H3 con un titolo riformulato in modo creativo (NON copiare il titolo originale)
+  * Inserisci tra i tag H3 questa stringa esatta: ||EVENTO_N|| dove N è il numero dell'evento nell'elenco sopra
+  * Esempio: <h3>Il teatro che si fa metafora dell'anima ||EVENTO_4||</h3>
+  * Poi scrivi 2-4 frasi descrittive con il tuo stile ironico
+- NON usare frasi promozionali tipo "Vi ricordiamo che..." o "Buona domenica a tutti!"
+- Concludi in modo naturale, magari con una riflessione ironica sulla cultura locale
+- Usa tag HTML: <p>, <h3>, <strong>, <em>
+- Lunghezza: 500-700 parole
+
+STILE: Umberto Eco - ironico, colto, intelligente, mai banale, con digressioni brillanti.
+
+IMPORTANTE: Ogni H3 deve contenere ||EVENTO_numero|| per il collegamento automatico!"""
+
+        message = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=4000,
+            temperature=0.7,
+            messages=[{
+                "role": "user",
+                "content": prompt
+            }]
+        )
+
+        return message.content[0].text
+
+    def _inserisci_link_eventi(self, contenuto_ai, eventi):
+        """Inserisce automaticamente i link agli eventi usando i marker ||EVENTO_n||"""
+        contenuto_finale = contenuto_ai
+
+        # Pattern per trovare i marker ||EVENTO_numero|| dentro gli H3
+        # Esempio: <h3>Titolo evento ||EVENTO_4||</h3>
+        pattern = r'<h3>(.*?)\|\|EVENTO_(\d+)\|\|(.*?)</h3>'
+
+        def replace_marker(match):
+            titolo_prima = match.group(1).strip()
+            numero_evento = int(match.group(2))
+            titolo_dopo = match.group(3).strip()
+
+            # Ricostruisci il titolo completo
+            titolo_completo = titolo_prima + titolo_dopo
+            titolo_completo = titolo_completo.strip()
+
+            # Trova l'evento corrispondente (numero_evento è 1-indexed)
+            if 1 <= numero_evento <= len(eventi):
+                evento = eventi[numero_evento - 1]
+                return f'<h3><a href="/articolo/{evento.slug}/" class="internal-link">{titolo_completo}</a></h3>'
+            else:
+                # Se il numero non è valido, rimuovi solo il marker
+                return f'<h3>{titolo_completo}</h3>'
+
+        contenuto_finale = re.sub(pattern, replace_marker, contenuto_finale)
+
+        return contenuto_finale
+
+    def _genera_contenuto_fallback(self, eventi, giorno_settimana, giorno, mese):
+        """Fallback senza AI in caso di errore"""
         contenuto = f'<p>Buongiorno! Ecco cosa succede oggi, <strong>{giorno_settimana} {giorno} {mese}</strong>, '
         contenuto += 'a Carpi e nei dintorni.</p>\n\n'
 
@@ -146,7 +260,6 @@ class Command(BaseCommand):
             contenuto += f'<p>Abbiamo selezionato per voi <strong>{len(eventi)} eventi</strong> '
             contenuto += 'interessanti da non perdere:</p>\n\n'
 
-        # Aggiungi ogni evento con link
         for i, evento in enumerate(eventi, 1):
             contenuto += f'<h3>{i}. <a href="/articolo/{evento.slug}/" class="internal-link">{evento.titolo}</a></h3>\n'
             contenuto += f'<p>{evento.sommario}</p>\n'

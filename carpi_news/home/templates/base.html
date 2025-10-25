@@ -78,6 +78,7 @@
                 <li class="dropdown">
                     <a href="#" class="dropdown-toggle" aria-expanded="false" aria-haspopup="true">Rubriche</a>
                     <ul class="dropdown-menu" role="menu">
+                        <li role="none"><a href="{% url 'home' %}?categoria=Cosa fare oggi" role="menuitem">Cosa fare oggi</a></li>
                         <li role="none"><a href="{% url 'home' %}?categoria=L'Eco del Consiglio" role="menuitem">L'Eco del consiglio</a></li>
                         <li role="none"><a href="{% url 'home' %}?categoria=Editoriale" role="menuitem">Editoriale</a></li>
                         <li role="none"><a href="/caplet/" role="menuitem">Caplet</a></li>
@@ -108,6 +109,7 @@
                         <li class="mobile-dropdown-item">
                             <span class="mobile-dropdown-header">Rubriche</span>
                             <ul class="mobile-submenu">
+                                <li><a href="{% url 'home' %}?categoria=Cosa fare oggi">Cosa fare oggi</a></li>
                                 <li><a href="{% url 'home' %}?categoria=L'Eco del Consiglio">L'Eco del consiglio</a></li>
                                 <li><a href="{% url 'home' %}?categoria=Editoriale">Editoriale</a></li>
                                 <li><a href="/caplet/">Caplet</a></li>
