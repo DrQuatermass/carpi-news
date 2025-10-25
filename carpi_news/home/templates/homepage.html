@@ -133,6 +133,13 @@
         let totalPages = parseInt('{{ total_pages|default:1 }}');
         let isTransitioning = false;
 
+        // Helper function per calcolo parallasse
+        function updateParallax(hero) {
+            if (!hero || isTransitioning) return;
+            const scrolled = window.pageYOffset;
+            hero.style.transform = `translateY(${scrolled * -0.5}px)`;
+        }
+
         // Inizializzazione specifica della homepage
         function initPageSpecific() {
             // Animazione al caricamento
@@ -144,17 +151,8 @@
             });
 
             // Animazione parallasse per hero
-            window.addEventListener('scroll', function() {
-                // Disabilita parallasse durante le transizioni per evitare conflitti
-                if (isTransitioning) return;
-
-                const hero = document.querySelector('.hero');
-                if (hero) {
-                    const scrolled = window.pageYOffset;
-                    const rate = scrolled * -0.5;
-                    hero.style.transform = 'translateY(' + rate + 'px)';
-                }
-            });
+            const hero = document.querySelector('.hero');
+            window.addEventListener('scroll', () => updateParallax(hero));
 
             // Event listeners per i pulsanti di navigazione
             const prevBtn = document.getElementById('prev-btn');
@@ -210,11 +208,9 @@
                 const currentHeight = newsNav.offsetHeight;
                 newsNav.style.minHeight = currentHeight + 'px';
                 
-                // Blocca temporaneamente l'effetto parallasse resettando il transform
+                // Blocca temporaneamente l'effetto parallasse
                 const hero = document.querySelector('.hero');
-                if (hero) {
-                    hero.style.transform = 'translateY(0px)';
-                }
+                if (hero) hero.style.transform = 'translateY(0px)';
                 
                 // Mostra loading spinner
                 const loadingSpinner = document.getElementById('loading-spinner');
@@ -228,33 +224,26 @@
         // Funzione per caricare il contenuto della pagina via AJAX
         function loadPageContent(pageNumber, slideInClass, slideOutClass) {
             // Costruisci URL mantenendo la categoria attiva
-            let url = `?page=${pageNumber}`;
             const urlParams = new URLSearchParams(window.location.search);
             const categoria = urlParams.get('categoria');
-            if (categoria) {
-                url += `&categoria=${encodeURIComponent(categoria)}`;
-            }
-            
+            const url = `?page=${pageNumber}${categoria ? '&categoria=' + encodeURIComponent(categoria) : ''}`;
+
             const xhr = new XMLHttpRequest();
             xhr.open('GET', url, true);
             xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-            
+
             xhr.onreadystatechange = function() {
-                if (xhr.readyState === 4 && xhr.status === 200) {
-                    const data = JSON.parse(xhr.responseText);
-                    updatePageContent(data, slideInClass, slideOutClass);
-                } else if (xhr.readyState === 4 && xhr.status !== 200) {
-                    // In caso di errore, ricarica la pagina normalmente mantenendo la categoria
-                    let errorUrl = `?page=${pageNumber}`;
-                    const urlParams = new URLSearchParams(window.location.search);
-                    const categoria = urlParams.get('categoria');
-                    if (categoria) {
-                        errorUrl += `&categoria=${encodeURIComponent(categoria)}`;
+                if (xhr.readyState === 4) {
+                    if (xhr.status === 200) {
+                        const data = JSON.parse(xhr.responseText);
+                        updatePageContent(data, slideInClass, slideOutClass);
+                    } else {
+                        // In caso di errore, ricarica la pagina normalmente
+                        window.location.href = url;
                     }
-                    window.location.href = errorUrl;
                 }
             };
-            
+
             xhr.send();
         }
         
@@ -329,14 +318,10 @@
                     // Ripristina l'altezza naturale della griglia
                     const newsNav = document.querySelector('.news-nav');
                     newsNav.style.minHeight = '';
-                    
-                    // Ricalcola e ripristina l'effetto parallasse basato sulla posizione di scroll corrente
+
+                    // Ripristina l'effetto parallasse
                     const hero = document.querySelector('.hero');
-                    if (hero) {
-                        const scrolled = window.pageYOffset;
-                        const rate = scrolled * -0.5;
-                        hero.style.transform = 'translateY(' + rate + 'px)';
-                    }
+                    updateParallax(hero);
                     
                     // Riabilita le transizioni
                     setTimeout(() => {
@@ -347,20 +332,13 @@
         }
         
         // Funzione per costruire URL immagine
+        const DEFAULT_IMAGE = '{% static "home/images/portico_logo_nopayoff.png" %}';
+        const SITE_URL = '{{ SITE_URL }}';
+
         function buildImageUrl(foto) {
-            if (!foto) return '{% load static %}{% static "home/images/portico_logo_nopayoff.png" %}';
-            
-            // Se inizia con http/https è una URL esterna
-            if (foto.startsWith('http://') || foto.startsWith('https://')) {
-                return foto;
-            }
-            
-            // Se inizia con /media è un file locale
-            if (foto.startsWith('/media/')) {
-                return '{{ SITE_URL }}' + foto;
-            }
-            
-            // Default per altri casi
+            if (!foto) return DEFAULT_IMAGE;
+            if (foto.startsWith('http://') || foto.startsWith('https://')) return foto;
+            if (foto.startsWith('/media/')) return SITE_URL + foto;
             return foto;
         }
 
@@ -405,14 +383,5 @@
             nextBtn.disabled = !hasNext;
         }
 
-        // Stile per animazioni di paginazione
-        const paginationStyle = document.createElement('style');
-        paginationStyle.textContent = `
-            @keyframes slideDown {
-                from { transform: translateY(0); }
-                to { transform: translateY(100%); }
-            }
-        `;
-        document.head.appendChild(paginationStyle);
 </script>
 {% endblock %}
