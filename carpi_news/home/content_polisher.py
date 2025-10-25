@@ -372,7 +372,7 @@ REGOLE:
 - Usa il nome esatto come appare nel testo
 - NO termini generici ("sindaco", "ospedale", "città")
 - NO "Carpi" da solo (troppo generico)
-- Massimo 10 entità, priorità alle più rilevanti
+- Estrai TUTTE le entità rilevanti (senza limite)
 
 FORMATO OUTPUT (solo JSON valido):
 {{
@@ -387,12 +387,12 @@ FORMATO OUTPUT (solo JSON valido):
 Se non trovi entità specifiche, restituisci {{"entities": []}}
 """
 
-            # Chiama Claude
-            client = Anthropic(api_key=api_key)
-
             # Log AI response per debug
             import logging
             logger = logging.getLogger(__name__)
+
+            # Chiama Claude
+            client = Anthropic(api_key=api_key)
 
             try:
                 response = client.messages.create(
@@ -490,8 +490,6 @@ Se non trovi entità specifiche, restituisci {{"entities": []}}
 
         except Exception as e:
             # In caso di errore, restituisci contenuto originale
-            import logging
-            logger = logging.getLogger(__name__)
             logger.error(f"Errore add_internal_links: {e}")
             return content
 
