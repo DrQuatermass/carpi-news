@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    help = 'Applica internal links a tutti gli articoli approvati (dal più vecchio al più recente)'
+    help = 'Applica internal links a tutti gli articoli approvati (dal più recente al più vecchio)'
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -43,8 +43,9 @@ class Command(BaseCommand):
         dry_run = options.get('dry_run', False)
         delay = options.get('delay', 2.0)
 
-        # Query articoli approvati dal più vecchio al più recente
-        articoli = Articolo.objects.filter(approvato=True).order_by('data_pubblicazione')
+        # Query articoli approvati dal più recente al più vecchio
+        # In questo modo gli articoli recenti linkano a quelli precedenti creando una catena cronologica
+        articoli = Articolo.objects.filter(approvato=True).order_by('-data_pubblicazione')
 
         if skip > 0:
             articoli = articoli[skip:]

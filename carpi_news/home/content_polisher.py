@@ -298,12 +298,13 @@ class ContentPolisher:
 
     def add_internal_links(self, content: str, article_title: str = "") -> str:
         """
-        Aggiunge link interni al contenuto estraendo entità e cercandole negli articoli precedenti
+        Aggiunge link interni usando i tag <strong> per identificare entità rilevanti
 
-        Strategia efficiente:
-        1. AI estrae entità specifiche dall'articolo corrente (nomi, luoghi, enti, eventi)
-        2. Per ogni entità, cerca nel DB il primo articolo approvato che la contiene
-        3. Linka alla prima occorrenza trovata, creando una catena cronologica inversa
+        Strategia semplice (senza AI):
+        1. Estrae tutte le parole/frasi in grassetto (<strong>) dal contenuto
+        2. Esclude titoli di sezioni (h1-h6)
+        3. Per ogni entità, cerca nel DB il primo articolo approvato che la contiene
+        4. Linka alla prima occorrenza trovata, creando una catena cronologica inversa
 
         Args:
             content: Contenuto HTML dell'articolo
@@ -313,143 +314,53 @@ class ContentPolisher:
             Contenuto con link interni inseriti
         """
         try:
-            from anthropic import Anthropic
-            from django.conf import settings
-            import json
-            import os
             import re
-
-            # Get API key
-            api_key = settings.ANTHROPIC_API_KEY if hasattr(settings, 'ANTHROPIC_API_KEY') else None
-            if not api_key:
-                api_key = os.getenv('ANTHROPIC_API_KEY')
-
-            if not api_key:
-                return content  # Nessun link se non c'è API key
-
-            # Import qui per evitare circular imports
+            import logging
             from home.models import Articolo
+
+            logger = logging.getLogger(__name__)
 
             # Verifica che ci siano articoli approvati
             if Articolo.objects.filter(approvato=True).count() < 3:
                 return content  # Non abbastanza articoli
 
-            # Estrai testo plain dal contenuto HTML per l'analisi
-            plain_content = re.sub(r'<[^>]+>', '', content)
-            plain_content = plain_content[:3000]  # Prime 3000 caratteri
+            # Estrai tutte le entità in grassetto (tag <strong>)
+            # Escludi quelle dentro heading (h1-h6)
+            entities = set()
 
-            # Prompt semplificato: chiediamo solo di estrarre entità
-            prompt = f"""Sei un esperto di analisi testuale per un giornale locale di Carpi (Emilia-Romagna).
+            # Prima rimuoviamo tutti gli heading dal contenuto temporaneamente
+            content_without_headings = re.sub(r'<h[1-6][^>]*>.*?</h[1-6]>', '', content, flags=re.DOTALL | re.IGNORECASE)
 
-ARTICOLO DA ANALIZZARE:
-Titolo: {article_title}
-Contenuto: {plain_content}
+            # Ora estraiamo i <strong>
+            strong_pattern = re.compile(r'<strong[^>]*>(.*?)</strong>', re.IGNORECASE | re.DOTALL)
+            for match in strong_pattern.finditer(content_without_headings):
+                entity_text = match.group(1).strip()
 
-TASK:
-Estrai dall'articolo TUTTE le entità specifiche che potrebbero essere menzionate in altri articoli del giornale.
+                # Rimuovi eventuali tag HTML interni
+                entity_text = re.sub(r'<[^>]+>', '', entity_text).strip()
 
-CATEGORIE DA ESTRARRE:
-1. **NOMI DI PERSONE** - nome e cognome completi
-   Esempi: "Riccardo Righi", "Alberto Bellelli", "Giulia Pigoni"
+                # Filtri: escludi entità troppo corte, generiche o che sono solo numeri
+                if len(entity_text) < 3:
+                    continue
+                if entity_text.lower() in ['carpi', 'oggi', 'ieri', 'domani', 'qui', 'ora']:
+                    continue
+                if entity_text.isdigit():
+                    continue
 
-2. **ORGANIZZAZIONI/ENTI/AZIENDE** - nomi ufficiali completi
-   Esempi: "AIMAG", "Carpi FC", "Comune di Carpi", "ASL", "Confindustria"
-
-3. **LUOGHI SPECIFICI** - edifici, piazze, vie (NON solo "Carpi")
-   Esempi: "Teatro Comunale", "Piazza Martiri", "Ospedale Ramazzini", "Palazzo dei Pio"
-
-4. **ISTITUZIONI LOCALI**
-   Esempi: "Consiglio comunale", "Giunta comunale", "Provincia di Modena"
-
-5. **ASSOCIAZIONI/SINDACATI/PARTITI**
-   Esempi: "Avis Carpi", "Cgil", "Partito Democratico", "Fratelli d'Italia"
-
-6. **EVENTI SPECIFICI** - manifestazioni con nome proprio
-   Esempi: "Festa di San Bernardino", "Carpi Fashion System", "Notte Bianca"
-
-REGOLE:
-- Estrai SOLO entità che appaiono testualmente nell'articolo
-- Usa il nome esatto come appare nel testo
-- NO termini generici ("sindaco", "ospedale", "città")
-- NO "Carpi" da solo (troppo generico)
-- Estrai TUTTE le entità rilevanti (senza limite)
-
-FORMATO OUTPUT (solo JSON valido):
-{{
-  "entities": [
-    {{
-      "text": "testo esatto come appare nell'articolo",
-      "type": "persona|organizzazione|luogo|istituzione|associazione|evento"
-    }}
-  ]
-}}
-
-Se non trovi entità specifiche, restituisci {{"entities": []}}
-"""
-
-            # Log AI response per debug
-            import logging
-            logger = logging.getLogger(__name__)
-
-            # Chiama Claude
-            client = Anthropic(api_key=api_key)
-
-            try:
-                response = client.messages.create(
-                    model="claude-sonnet-4-20250514",
-                    max_tokens=1500,
-                    temperature=0.3,
-                    messages=[{"role": "user", "content": prompt}]
-                )
-            except Exception as e:
-                logger.error(f"Internal Linking: errore API per '{article_title[:50]}...': {e}")
-                return content
-
-            # Parse risposta
-            if not response.content or len(response.content) == 0:
-                logger.warning(f"Internal Linking: response.content vuoto per '{article_title[:50]}...'")
-                return content
-
-            response_text = response.content[0].text.strip()
-
-            # Se risposta vuota, ritorna contenuto originale
-            if not response_text:
-                logger.warning(f"Internal Linking: response_text vuoto per '{article_title[:50]}...'")
-                return content
-
-            logger.info(f"Internal Linking AI Response for '{article_title[:50]}...': {response_text[:200]}...")
-
-            if response_text.startswith("```"):
-                response_text = re.sub(r'^```json?\s*', '', response_text)
-                response_text = re.sub(r'\s*```$', '', response_text)
-
-            # Gestisci JSON invalido
-            try:
-                result = json.loads(response_text)
-            except json.JSONDecodeError as e:
-                logger.error(f"Internal Linking: JSON invalido per '{article_title[:50]}...': {e}")
-                return content
-
-            entities = result.get("entities", [])
+                entities.add(entity_text)
 
             if not entities:
-                logger.info(f"Internal Linking: nessuna entità trovata per '{article_title[:50]}...'")
+                logger.info(f"Internal Linking: nessuna entità in grassetto trovata per '{article_title[:50]}...'")
                 return content
 
-            logger.info(f"Internal Linking: trovate {len(entities)} entità per '{article_title[:50]}...'")
+            logger.info(f"Internal Linking: trovate {len(entities)} entità in grassetto per '{article_title[:50]}...'")
 
             # Per ogni entità, cerca il primo articolo approvato che la contiene
             modified_content = content
             links_applied = 0
             linked_entities = set()  # Traccia entità già linkate per evitare duplicati
 
-            for entity_data in entities:
-                entity_text = entity_data.get("text", "")
-                entity_type = entity_data.get("type", "")
-
-                if not entity_text:
-                    continue
-
+            for entity_text in entities:
                 # Salta se questa entità è già stata linkata
                 entity_lower = entity_text.lower()
                 if entity_lower in linked_entities:
@@ -466,22 +377,22 @@ Se non trovi entità specifiche, restituisci {{"entities": []}}
                     logger.debug(f"Internal Linking: entità '{entity_text}' non trovata in altri articoli")
                     continue
 
-                # Applica il link alla prima occorrenza dell'entità nel contenuto
+                # Applica il link alla prima occorrenza dell'entità in grassetto nel contenuto
+                # Pattern: cerca <strong>entità</strong> ma non dentro link esistenti
                 escaped_entity = re.escape(entity_text)
-                # Pattern: cerca l'entità ma non dentro tag HTML o link esistenti
                 pattern = re.compile(
-                    r'(?<![">])(' + escaped_entity + r')(?![^<]*</a>)',
+                    r'<strong[^>]*>(' + escaped_entity + r')</strong>(?![^<]*</a>)',
                     re.IGNORECASE
                 )
 
                 match = pattern.search(modified_content)
                 if match:
-                    matched_text = match.group(1)
-                    replacement = f'<a href="/articolo/{matching_article.slug}/" class="internal-link" title="{matching_article.titolo}">{matched_text}</a>'
+                    # Sostituisci mantenendo il grassetto dentro il link
+                    replacement = f'<a href="/articolo/{matching_article.slug}/" class="internal-link" title="{matching_article.titolo}"><strong>{match.group(1)}</strong></a>'
                     modified_content = pattern.sub(replacement, modified_content, count=1)
                     links_applied += 1
                     linked_entities.add(entity_lower)  # Marca come linkata
-                    logger.debug(f"Internal Linking: linkato '{entity_text}' ({entity_type}) -> {matching_article.slug}")
+                    logger.debug(f"Internal Linking: linkato '{entity_text}' -> {matching_article.slug}")
 
             if links_applied > 0:
                 logger.info(f"Internal Linking: applicati {links_applied} link per '{article_title[:50]}...'")
