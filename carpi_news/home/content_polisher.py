@@ -298,7 +298,12 @@ class ContentPolisher:
 
     def add_internal_links(self, content: str, article_title: str = "") -> str:
         """
-        Aggiunge link interni al contenuto usando AI per trovare entità correlate
+        Aggiunge link interni al contenuto estraendo entità e cercandole negli articoli precedenti
+
+        Strategia efficiente:
+        1. AI estrae entità specifiche dall'articolo corrente (nomi, luoghi, enti, eventi)
+        2. Per ogni entità, cerca nel DB il primo articolo approvato che la contiene
+        3. Linka alla prima occorrenza trovata, creando una catena cronologica inversa
 
         Args:
             content: Contenuto HTML dell'articolo
@@ -312,6 +317,7 @@ class ContentPolisher:
             from django.conf import settings
             import json
             import os
+            import re
 
             # Get API key
             api_key = settings.ANTHROPIC_API_KEY if hasattr(settings, 'ANTHROPIC_API_KEY') else None
@@ -324,83 +330,61 @@ class ContentPolisher:
             # Import qui per evitare circular imports
             from home.models import Articolo
 
-            # Prendi ultimi 400 articoli come candidati (circa 1-2 mesi di pubblicazioni)
-            # Questo garantisce overlap con entità ricorrenti anche per articoli non recentissimi
-            candidati = Articolo.objects.filter(approvato=True).order_by('-data_pubblicazione')[:400]
-
-            if candidati.count() < 3:
+            # Verifica che ci siano articoli approvati
+            if Articolo.objects.filter(approvato=True).count() < 3:
                 return content  # Non abbastanza articoli
 
-            # Prepara lista candidati per AI
-            candidati_list = []
-            for idx, art in enumerate(candidati, 1):
-                candidati_list.append({
-                    "id": idx,
-                    "slug": art.slug,
-                    "titolo": art.titolo,
-                    "categoria": art.categoria
-                })
-
             # Estrai testo plain dal contenuto HTML per l'analisi
-            import re
             plain_content = re.sub(r'<[^>]+>', '', content)
-            plain_content = plain_content[:3000]  # Prime 3000 caratteri per più contesto
+            plain_content = plain_content[:3000]  # Prime 3000 caratteri
 
-            # Prompt per Claude
-            prompt = f"""Sei un esperto SEO per un giornale locale di Carpi (Emilia-Romagna).
-Il tuo compito è trovare entità SPECIFICHE da linkare ad articoli correlati per migliorare SEO e user experience.
+            # Prompt semplificato: chiediamo solo di estrarre entità
+            prompt = f"""Sei un esperto di analisi testuale per un giornale locale di Carpi (Emilia-Romagna).
 
 ARTICOLO DA ANALIZZARE:
 Titolo: {article_title}
-Contenuto (estratto): {plain_content}
-
-ARTICOLI DISPONIBILI PER LINK:
-{json.dumps(candidati_list, ensure_ascii=False, indent=2)}
+Contenuto: {plain_content}
 
 TASK:
-Identifica 3-5 entità SPECIFICHE menzionate nel testo che hanno articoli correlati nella lista.
+Estrai dall'articolo TUTTE le entità specifiche che potrebbero essere menzionate in altri articoli del giornale.
 
-PRIORITÀ (in ordine):
-1. **NOMI PROPRI DI PERSONE** - consiglieri, assessori, sindaco, personaggi pubblici locali
-   Esempi: "Alberto Bellelli", "Riccardo Righi", "Giulia Pigoni", "Marco Arletti"
+CATEGORIE DA ESTRARRE:
+1. **NOMI DI PERSONE** - nome e cognome completi
+   Esempi: "Riccardo Righi", "Alberto Bellelli", "Giulia Pigoni"
 
-2. **ORGANIZZAZIONI/AZIENDE LOCALI** - enti, società, associazioni
-   Esempi: "AIMAG", "Carpi FC", "Avis Carpi", "Comune di Carpi"
+2. **ORGANIZZAZIONI/ENTI/AZIENDE** - nomi ufficiali completi
+   Esempi: "AIMAG", "Carpi FC", "Comune di Carpi", "ASL", "Confindustria"
 
-3. **LUOGHI SPECIFICI** - edifici, vie, piazze (NON solo "Carpi")
-   Esempi: "Ospedale Ramazzini", "Piazza Martiri", "Teatro Comunale"
+3. **LUOGHI SPECIFICI** - edifici, piazze, vie (NON solo "Carpi")
+   Esempi: "Teatro Comunale", "Piazza Martiri", "Ospedale Ramazzini", "Palazzo dei Pio"
 
-4. **ARGOMENTI/PROGETTI RICORRENTI** - temi che si sviluppano nel tempo
-   Esempi: "bilancio comunale", "Consiglio comunale", "piano urbanistico"
+4. **ISTITUZIONI LOCALI**
+   Esempi: "Consiglio comunale", "Giunta comunale", "Provincia di Modena"
 
-5. **EVENTI SPECIFICI** - manifestazioni, iniziative
-   Esempi: "Festa di San Bernardino", "Fiera del Volontariato"
+5. **ASSOCIAZIONI/SINDACATI/PARTITI**
+   Esempi: "Avis Carpi", "Cgil", "Partito Democratico", "Fratelli d'Italia"
 
-6. **PARTITI POLITICI/SINDACATI/ASSOCIAZIONI** - 
-   Esempi: "Cgil", "PD", "Partito Democratico", "Fratelli d'Italia", "Rotari Club"
+6. **EVENTI SPECIFICI** - manifestazioni con nome proprio
+   Esempi: "Festa di San Bernardino", "Carpi Fashion System", "Notte Bianca"
 
-EVITA ASSOLUTAMENTE:
-- Parole generiche: "sindaco", "ospedale", "città" (a meno che non siano parte di nome proprio)
-- Solo "Carpi" come entità (troppo generico)
-- Pronomi o articoli
-
-CRITERI LINKABILITÀ:
-- L'entità deve apparire testualmente nell'articolo
-- Deve esistere almeno UN articolo molto correlato nella lista
-- Privilegia nomi completi rispetto a nomi parziali
+REGOLE:
+- Estrai SOLO entità che appaiono testualmente nell'articolo
+- Usa il nome esatto come appare nel testo
+- NO termini generici ("sindaco", "ospedale", "città")
+- NO "Carpi" da solo (troppo generico)
+- Massimo 10 entità, priorità alle più rilevanti
 
 FORMATO OUTPUT (solo JSON valido):
 {{
-  "links": [
+  "entities": [
     {{
-      "entity": "testo esatto da linkare (come appare nell'articolo)",
-      "article_id": 5,
-      "reasoning": "Nome consigliere comunale citato in altro articolo politico"
+      "text": "testo esatto come appare nell'articolo",
+      "type": "persona|organizzazione|luogo|istituzione|associazione|evento"
     }}
   ]
 }}
 
-IMPORTANTE: Se trovi solo "Carpi" come entità, restituisci {{"links": []}} - cerchiamo collegamenti più specifici!
+Se non trovi entità specifiche, restituisci {{"entities": []}}
 """
 
             # Chiama Claude
@@ -446,29 +430,45 @@ IMPORTANTE: Se trovi solo "Carpi" come entità, restituisci {{"links": []}} - ce
                 logger.error(f"Internal Linking: JSON invalido per '{article_title[:50]}...': {e}")
                 return content
 
-            links = result.get("links", [])
+            entities = result.get("entities", [])
 
-            if not links:
+            if not entities:
+                logger.info(f"Internal Linking: nessuna entità trovata per '{article_title[:50]}...'")
                 return content
 
-            # Applica i link al contenuto
+            logger.info(f"Internal Linking: trovate {len(entities)} entità per '{article_title[:50]}...'")
+
+            # Per ogni entità, cerca il primo articolo approvato che la contiene
             modified_content = content
             links_applied = 0
+            linked_entities = set()  # Traccia entità già linkate per evitare duplicati
 
-            for link_data in links:
-                entity = link_data.get("entity", "")
-                article_id = link_data.get("article_id")
+            for entity_data in entities:
+                entity_text = entity_data.get("text", "")
+                entity_type = entity_data.get("type", "")
 
-                if not entity or not article_id or article_id < 1 or article_id > len(candidati_list):
+                if not entity_text:
                     continue
 
-                # Ottieni slug dall'articolo
-                candidato = candidati_list[article_id - 1]
-                article_slug = candidato["slug"]
-                article_title_target = candidato["titolo"]
+                # Salta se questa entità è già stata linkata
+                entity_lower = entity_text.lower()
+                if entity_lower in linked_entities:
+                    continue
 
-                # Cerca l'entità nel contenuto (case-insensitive, non dentro link esistenti)
-                escaped_entity = re.escape(entity)
+                # Cerca nel DB il primo articolo approvato (più vecchio) che contiene questa entità
+                # Ordina per data pubblicazione ASC per trovare il primo cronologicamente
+                matching_article = Articolo.objects.filter(
+                    approvato=True,
+                    contenuto__icontains=entity_text
+                ).order_by('data_pubblicazione').first()
+
+                if not matching_article:
+                    logger.debug(f"Internal Linking: entità '{entity_text}' non trovata in altri articoli")
+                    continue
+
+                # Applica il link alla prima occorrenza dell'entità nel contenuto
+                escaped_entity = re.escape(entity_text)
+                # Pattern: cerca l'entità ma non dentro tag HTML o link esistenti
                 pattern = re.compile(
                     r'(?<![">])(' + escaped_entity + r')(?![^<]*</a>)',
                     re.IGNORECASE
@@ -477,9 +477,14 @@ IMPORTANTE: Se trovi solo "Carpi" come entità, restituisci {{"links": []}} - ce
                 match = pattern.search(modified_content)
                 if match:
                     matched_text = match.group(1)
-                    replacement = f'<a href="/articolo/{article_slug}/" class="internal-link" title="{article_title_target}">{matched_text}</a>'
+                    replacement = f'<a href="/articolo/{matching_article.slug}/" class="internal-link" title="{matching_article.titolo}">{matched_text}</a>'
                     modified_content = pattern.sub(replacement, modified_content, count=1)
                     links_applied += 1
+                    linked_entities.add(entity_lower)  # Marca come linkata
+                    logger.debug(f"Internal Linking: linkato '{entity_text}' ({entity_type}) -> {matching_article.slug}")
+
+            if links_applied > 0:
+                logger.info(f"Internal Linking: applicati {links_applied} link per '{article_title[:50]}...'")
 
             return modified_content
 
