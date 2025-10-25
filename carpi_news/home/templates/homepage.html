@@ -136,12 +136,21 @@
         // Helper function per calcolo parallasse
         function updateParallax(hero) {
             if (!hero || isTransitioning) return;
-            const scrolled = window.pageYOffset;
+            const scrolled = window.scrollY;
             hero.style.transform = `translateY(${scrolled * -0.5}px)`;
         }
 
+        // Handlers registrati una sola volta
+        let parallaxHandler = null;
+        let keyboardHandler = null;
+        let isInitialized = false;
+
         // Inizializzazione specifica della homepage
         function initPageSpecific() {
+            // Evita inizializzazioni multiple
+            if (isInitialized) return;
+            isInitialized = true;
+
             // Animazione al caricamento
             const loadingElements = document.querySelectorAll('.loading');
             loadingElements.forEach((element, index) => {
@@ -152,7 +161,8 @@
 
             // Animazione parallasse per hero
             const hero = document.querySelector('.hero');
-            window.addEventListener('scroll', () => updateParallax(hero));
+            parallaxHandler = () => updateParallax(hero);
+            window.addEventListener('scroll', parallaxHandler, { passive: true });
 
             // Event listeners per i pulsanti di navigazione
             const prevBtn = document.getElementById('prev-btn');
@@ -160,28 +170,27 @@
 
             if (prevBtn) {
                 prevBtn.addEventListener('click', function() {
-                    if (!this.disabled) {
-                        changePage(-1);
-                    }
+                    if (!this.disabled) changePage(-1);
                 });
             }
 
             if (nextBtn) {
                 nextBtn.addEventListener('click', function() {
-                    if (!this.disabled) {
-                        changePage(1);
-                    }
+                    if (!this.disabled) changePage(1);
                 });
             }
 
             // Keyboard navigation
-            document.addEventListener('keydown', function(e) {
+            keyboardHandler = function(e) {
+                const prevBtn = document.getElementById('prev-btn');
+                const nextBtn = document.getElementById('next-btn');
                 if (e.key === 'ArrowLeft' && prevBtn && !prevBtn.disabled) {
                     changePage(-1);
                 } else if (e.key === 'ArrowRight' && nextBtn && !nextBtn.disabled) {
                     changePage(1);
                 }
-            });
+            };
+            document.addEventListener('keydown', keyboardHandler);
         }
 
         // Funzione per cambiare pagina con transizioni
