@@ -16,12 +16,13 @@ class SecurityHeadersMiddleware:
         # Content Security Policy (CSP) per prevenire XSS
         csp_directives = [
             "default-src 'self'",
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://ssl.google-analytics.com https://pagead2.googlesyndication.com https://adservice.google.com https://news.google.com https://tpc.googlesyndication.com https://googleads.g.doubleclick.net",
-            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://adservice.google.com",
+            "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com https://ssl.google-analytics.com https://pagead2.googlesyndication.com https://adservice.google.com https://news.google.com https://tpc.googlesyndication.com https://googleads.g.doubleclick.net https://www.gstatic.com https://partner.googleadservices.com https://fundingchoicesmessages.google.com https://cse.google.com",
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://adservice.google.com https://www.gstatic.com",
             "img-src 'self' data: https: http:",  # Permetti immagini da qualsiasi fonte HTTPS
-            "font-src 'self' https://fonts.gstatic.com",
-            "connect-src 'self' https://www.google-analytics.com https://analytics.google.com https://stats.g.doubleclick.net https://region1.google-analytics.com https://region1.analytics.google.com https://pagead2.googlesyndication.com",
-            "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://tpc.googlesyndication.com https://googleads.g.doubleclick.net https://td.doubleclick.net",
+            "font-src 'self' https://fonts.gstatic.com https://www.gstatic.com",
+            "connect-src 'self' https://www.google-analytics.com https://analytics.google.com https://stats.g.doubleclick.net https://region1.google-analytics.com https://region1.analytics.google.com https://pagead2.googlesyndication.com https://googleads.g.doubleclick.net https://adservice.google.com",
+            "frame-src 'self' https://www.youtube.com https://www.youtube-nocookie.com https://tpc.googlesyndication.com https://googleads.g.doubleclick.net https://td.doubleclick.net https://www.google.com https://cse.google.com https://fundingchoicesmessages.google.com",
+            "child-src 'self' https://www.youtube.com https://googleads.g.doubleclick.net",
             "object-src 'none'",
             "base-uri 'self'",
             "form-action 'self'",
