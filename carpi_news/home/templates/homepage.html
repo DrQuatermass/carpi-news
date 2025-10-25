@@ -191,7 +191,15 @@
                 const loadingSpinner = document.getElementById('loading-spinner');
                 loadingSpinner.classList.add('active');
                 
-                // Prima carica i nuovi dati, poi anima
+                // OPTIMIZATION: Start exit animation IMMEDIATELY for instant feedback
+                const existingCards = newsGrid.querySelectorAll('.news-card');
+                existingCards.forEach((card, index) => {
+                    setTimeout(() => {
+                        card.classList.add(slideOutClass);
+                    }, index * 30);
+                });
+                
+                // Load data in parallel while animation plays
                 loadPageContent(newPage, slideInClass, slideOutClass);
             }
         }
@@ -233,14 +241,8 @@
             const loadingSpinner = document.getElementById('loading-spinner');
             loadingSpinner.classList.remove('active');
             
-            // Anima le card esistenti in uscita
-            existingCards.forEach((card, index) => {
-                setTimeout(() => {
-                    card.classList.add(slideOutClass);
-                }, index * 30);
-            });
-            
-            // Dopo l'animazione di uscita, sostituisci con le nuove card
+            // Exit animation already started in changePage() for instant feedback
+            // Just wait for it to finish before replacing content
             setTimeout(() => {
                 // Rimuovi SOLO le card, mantieni lo spinner
                 const existingCardLinks = newsGrid.querySelectorAll('.news-card-link');
