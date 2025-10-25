@@ -69,7 +69,7 @@
                 <li><a href="{% url 'home' %}?categoria=tutti" {% if not categoria_attiva or categoria_attiva == 'Home' %}class="active"{% endif %}>Home</a></li>
 
                 {% for categoria in categorie_disponibili %}
-                    {% if categoria != 'Rubriche' %}
+                    {% if categoria != 'Rubriche' and categoria != 'Cosa fare oggi' %}
                     <li><a href="{% url 'home' %}?categoria={{ categoria|urlencode }}" {% if categoria_attiva == categoria %}class="active"{% endif %}>{{ categoria }}</a></li>
                     {% endif %}
                 {% endfor %}
@@ -100,7 +100,7 @@
                         <li><a href="{% url 'home' %}?categoria=tutti" {% if not categoria_attiva or categoria_attiva == 'Home' %}class="active"{% endif %}>Home</a></li>
 
                         {% for categoria in categorie_disponibili %}
-                            {% if categoria != 'Rubriche' %}
+                            {% if categoria != 'Rubriche' and categoria != 'Cosa fare oggi' %}
                             <li><a href="{% url 'home' %}?categoria={{ categoria|urlencode }}" {% if categoria_attiva == categoria %}class="active"{% endif %}>{{ categoria }}</a></li>
                             {% endif %}
                         {% endfor %}
