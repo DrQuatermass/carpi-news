@@ -50,7 +50,7 @@
                         <a href="{% url 'dettaglio_articolo' articolo.slug %}" class="news-card-link">
                             <article class="news-card loading">
                                 <div class="news-image">
-                                    <img src="{{ articolo.get_image_url }}" alt="{{ articolo.titolo }}" class="card-img" loading="lazy">
+                                    <img src="{{ articolo.get_image_url }}" alt="{{ articolo.titolo }}" class="card-img" {% if forloop.first %}fetchpriority="high" loading="eager"{% else %}loading="lazy"{% endif %}>
                                 </div>
                                 <div class="news-content">
                                     <div class="news-meta">
