@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% load static %}
 {% load italian_dates %}
+{% load webp_images %}
 
 {% block title %}Ombra del Portico - Le notizie della tua città{% endblock %}
 
@@ -50,7 +51,10 @@
                         <a href="{% url 'dettaglio_articolo' articolo.slug %}" class="news-card-link">
                             <article class="news-card loading">
                                 <div class="news-image">
-                                    <img src="{{ articolo.get_image_url }}" alt="{{ articolo.titolo }}" class="card-img" {% if forloop.first %}fetchpriority="high" loading="eager"{% else %}loading="lazy"{% endif %}>
+                                    <picture>
+                                        <source srcset="{{ articolo.get_image_url|to_webp }}" type="image/webp">
+                                        <img src="{{ articolo.get_image_url }}" alt="{{ articolo.titolo }}" class="card-img" {% if forloop.first %}fetchpriority="high" loading="eager"{% else %}loading="lazy"{% endif %}>
+                                    </picture>
                                 </div>
                                 <div class="news-content">
                                     <div class="news-meta">
@@ -351,6 +355,11 @@
             return foto;
         }
 
+        function toWebP(imageUrl) {
+            if (!imageUrl || imageUrl.endsWith('.webp')) return imageUrl;
+            return imageUrl.replace(/\.(png|jpg|jpeg)$/i, '.webp');
+        }
+
         // Funzione per creare una card di notizia
         function createNewsCard(articolo) {
             const cardLink = document.createElement('a');
@@ -360,9 +369,14 @@
             const card = document.createElement('article');
             card.className = 'news-card';
             
+            const imageUrl = buildImageUrl(articolo.foto);
+            const webpUrl = toWebP(imageUrl);
             const imageHtml = `
                 <div class="news-image">
-                    <img src="${buildImageUrl(articolo.foto)}" alt="${articolo.titolo}" class="card-img" loading="lazy">
+                    <picture>
+                        <source srcset="${webpUrl}" type="image/webp">
+                        <img src="${imageUrl}" alt="${articolo.titolo}" class="card-img" loading="lazy">
+                    </picture>
                 </div>
             `;
             
