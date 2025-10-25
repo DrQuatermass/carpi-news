@@ -355,8 +355,15 @@
             return foto;
         }
 
+
         function toWebP(imageUrl) {
             if (!imageUrl || imageUrl.endsWith('.webp')) return imageUrl;
+
+            // SOLO per immagini locali (non esterne!)
+            if (imageUrl.startsWith('http') && !imageUrl.includes('ombradelportico.it')) {
+                return imageUrl;  // Ritorna originale per immagini esterne
+            }
+
             return imageUrl.replace(/\.(png|jpg|jpeg)$/i, '.webp');
         }
 
