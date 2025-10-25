@@ -118,23 +118,8 @@ def handle_article_approval(sender, instance, created, **kwargs):
     if (not was_approved and is_approved) or (created and is_approved):
         logger.info(f"Articolo '{instance.titolo}' appena approvato, aggiorno feed RSS e avvio condivisione automatica")
 
-        # Aggiungi link interni all'articolo appena approvato
-        try:
-            from .content_polisher import ContentPolisher
-            polisher = ContentPolisher()
-            contenuto_con_link = polisher.add_internal_links(
-                instance.contenuto,
-                article_title=instance.titolo
-            )
-
-            # Salva solo se sono stati aggiunti link
-            if contenuto_con_link != instance.contenuto:
-                instance.contenuto = contenuto_con_link
-                # Usa update per evitare di retriggare il signal
-                Articolo.objects.filter(pk=instance.pk).update(contenuto=contenuto_con_link)
-                logger.info(f"Link interni aggiunti all'articolo '{instance.titolo}'")
-        except Exception as e:
-            logger.error(f"Errore aggiunta link interni per '{instance.titolo}': {e}")
+        # I link interni sono già stati aggiunti durante la generazione (polish_article)
+        # Non è necessario riaggiungerli qui
 
         # Invalida immediatamente la cache RSS per IFTTT
         invalidate_rss_feeds()
