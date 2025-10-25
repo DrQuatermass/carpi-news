@@ -344,7 +344,7 @@ class ContentPolisher:
                 # Filtri: escludi entità troppo corte, generiche o che sono solo numeri
                 if len(entity_text) < 3:
                     continue
-                if entity_text.lower() in ['carpi', 'oggi', 'ieri', 'domani', 'qui', 'ora', 'data', 'orari', 'organizzazione', 'info', 'prezzi']:
+                if entity_text.lower() in ['carpi', 'oggi', 'ieri', 'domani', 'qui', 'ora', 'data', 'orari', 'organizzazione', 'info', 'prezzi', 'luogo']:
                     continue
                 if entity_text.isdigit():
                     continue

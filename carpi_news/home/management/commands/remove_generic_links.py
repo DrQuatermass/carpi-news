@@ -1,7 +1,7 @@
 """
 Comando per rimuovere link interni a termini generici dagli articoli esistenti
 
-Rimuove i link a: Data, Orari, Organizzazione, Info, Prezzi
+Rimuove i link a: Data, Orari, Organizzazione, Info, Prezzi, Luogo
 mantenendo il testo in grassetto (<strong>).
 """
 from django.core.management.base import BaseCommand
@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    help = 'Rimuove link interni a termini generici (Data, Orari, Organizzazione, Info, Prezzi) dagli articoli esistenti'
+    help = 'Rimuove link interni a termini generici (Data, Orari, Organizzazione, Info, Prezzi, Luogo) dagli articoli esistenti'
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -26,7 +26,7 @@ class Command(BaseCommand):
         dry_run = options['dry_run']
 
         # Lista dei termini generici da de-linkare
-        generic_terms = ['data', 'orari', 'organizzazione', 'info', 'prezzi']
+        generic_terms = ['data', 'orari', 'organizzazione', 'info', 'prezzi', 'luogo']
 
         if dry_run:
             self.stdout.write(self.style.WARNING('=== MODALITÀ DRY-RUN: Nessuna modifica verrà applicata ==='))
