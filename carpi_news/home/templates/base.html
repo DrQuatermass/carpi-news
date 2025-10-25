@@ -13,31 +13,51 @@
     <link rel="preconnect" href="https://pagead2.googlesyndication.com">
     <link rel="dns-prefetch" href="https://news.google.com">
 
+    <!-- Critical CSS inline per rendering immediato -->
+    <style>
+        /* Critical CSS - Above the fold */
+        body{margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;background:#f5f5f5;color:#333}
+        header{background:#fff;box-shadow:0 2px 4px rgba(0,0,0,.1);position:sticky;top:0;z-index:1000}
+        .container{max-width:1200px;margin:0 auto;padding:0 20px}
+        nav{display:flex;justify-content:space-between;align-items:center;padding:15px 0}
+        .logo{display:flex;align-items:center;text-decoration:none;color:#966C42}
+        .logo-img{height:50px;margin-right:10px}
+        .logo-text{font-size:24px;font-weight:700}
+        .nav-menu{display:flex;gap:20px;list-style:none;margin:0;padding:0}
+        .nav-menu a{color:#333;text-decoration:none;padding:8px 15px;transition:background .3s}
+        .nav-menu a:hover{background:#f0f0f0;border-radius:4px}
+        h1,h2{color:#222;margin:20px 0}
+        .article-card{background:#fff;border-radius:8px;overflow:hidden;margin-bottom:20px;box-shadow:0 2px 8px rgba(0,0,0,.1)}
+    </style>
+
     <!-- Fonts con display=swap per rendering veloce -->
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{% static 'home/css/style.css' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet"></noscript>
+
+    <!-- CSS principale caricato in modo asincrono -->
+    <link rel="stylesheet" href="{% static 'home/css/style.css' %}" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="{% static 'home/css/style.css' %}"></noscript>
     
     <!-- Favicon -->
     <link rel="icon" type="image/png" sizes="32x32" href="{% static 'home/images/portico_logo_nopayoff.png' %}">
     <link rel="icon" type="image/png" sizes="16x16" href="{% static 'home/images/portico_logo_nopayoff.png' %}">
     <link rel="apple-touch-icon" href="{% static 'home/images/portico_logo_nopayoff.png' %}">
     
-    <!-- Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-MSCYFFSNGD"></script>
-    <script>
+    <!-- Google Analytics - defer per non bloccare rendering -->
+    <script defer src="https://www.googletagmanager.com/gtag/js?id=G-MSCYFFSNGD"></script>
+    <script defer>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
-
       gtag('config', 'G-MSCYFFSNGD');
     </script>
 
-    <!-- Google AdSense -->
+    <!-- Google AdSense - async mantiene compatibilità -->
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3345905614586761" crossorigin="anonymous"></script>
 
-    <!-- Subscribe with Google (SWG) Basic - Google News Publisher -->
-    <script async type="application/javascript" src="https://news.google.com/swg/js/v1/swg-basic.js"></script>
-    <script>
+    <!-- Subscribe with Google (SWG) Basic - async -->
+    <script async src="https://news.google.com/swg/js/v1/swg-basic.js"></script>
+    <script defer>
       (self.SWG_BASIC = self.SWG_BASIC || []).push( basicSubscriptions => {
         basicSubscriptions.init({
           type: "NewsArticle",
