@@ -24,6 +24,7 @@ class Articolo(models.Model):
     views = models.PositiveIntegerField(default=0, help_text="Numero di visualizzazioni dell'articolo")
     data_creazione = models.DateTimeField(auto_now_add=True)
     data_pubblicazione = models.DateTimeField(blank=True, null=True,default=timezone.now)
+    data_evento = models.DateField(blank=True, null=True, help_text="Data dell'evento per articoli di categoria Cultura ed Eventi")
 
     def save(self, *args, **kwargs):
         if not self.slug:

@@ -22,6 +22,7 @@ class HomeConfig(AppConfig):
     _monitor_manager = None  # Riferimento al manager per il watchdog
     _watchdog_thread = None
     _editorial_scheduler_started = False
+    _cosa_fare_oggi_scheduler_started = False
     
     def ready(self):
         """Chiamato quando l'app è pronta - avvia il monitor playlist e registra segnali"""
@@ -76,6 +77,9 @@ class HomeConfig(AppConfig):
                     print("[DEBUG] Avvio start_editorial_scheduler()", flush=True)
                     logger.info("[DEBUG] Avvio start_editorial_scheduler()")
                     self.start_editorial_scheduler()
+                    print("[DEBUG] Avvio start_cosa_fare_oggi_scheduler()", flush=True)
+                    logger.info("[DEBUG] Avvio start_cosa_fare_oggi_scheduler()")
+                    self.start_cosa_fare_oggi_scheduler()
                     print("[DEBUG] delayed_start() completato", flush=True)
                     logger.info("[DEBUG] delayed_start() completato")
                 except Exception as e:
@@ -368,6 +372,43 @@ class HomeConfig(AppConfig):
         except Exception as e:
             print(f"[DEBUG] Exception: {e}", flush=True)
             logger.error(f"Errore nell'avvio scheduler editoriale: {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+
+    def start_cosa_fare_oggi_scheduler(self):
+        """Avvia lo scheduler per 'Cosa fare oggi?' """
+        print("[DEBUG] start_cosa_fare_oggi_scheduler() chiamato", flush=True)
+        try:
+            # Previeni avvii multipli
+            if HomeConfig._cosa_fare_oggi_scheduler_started:
+                print("[DEBUG] Scheduler 'Cosa fare oggi?' già avviato in questo worker", flush=True)
+                logger.info("Scheduler 'Cosa fare oggi?' già avviato, skip")
+                return
+
+            import sys
+            sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+            print("[DEBUG] Importo cosa_fare_oggi_scheduler", flush=True)
+            from cosa_fare_oggi_scheduler import start_scheduler_daemon
+
+            print("[DEBUG] Chiamo start_scheduler_daemon() per 'Cosa fare oggi?'", flush=True)
+            success = start_scheduler_daemon()
+            print(f"[DEBUG] start_scheduler_daemon() ritorna: {success}", flush=True)
+            if success:
+                HomeConfig._cosa_fare_oggi_scheduler_started = True
+                print("[DEBUG] SUCCESS: Scheduler 'Cosa fare oggi?' avviato!", flush=True)
+                logger.info("[OK] Scheduler 'Cosa fare oggi?' avviato - articolo alle 8:05 ogni giorno")
+            else:
+                # False significa che un altro worker ha già il lock (comportamento normale)
+                print("[DEBUG] FALSE: Lock già acquisito da altro worker", flush=True)
+                logger.info("[INFO] Scheduler 'Cosa fare oggi?' già gestito da altro worker")
+
+        except ImportError as e:
+            print(f"[DEBUG] ImportError: {e}", flush=True)
+            logger.error(f"Modulo 'schedule' non trovato - installa con: pip install schedule")
+        except Exception as e:
+            print(f"[DEBUG] Exception: {e}", flush=True)
+            logger.error(f"Errore nell'avvio scheduler 'Cosa fare oggi?': {e}")
             import traceback
             logger.error(f"Traceback: {traceback.format_exc()}")
 

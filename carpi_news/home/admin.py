@@ -193,9 +193,9 @@ class MonitorConfigForm(forms.ModelForm):
 
 @admin.register(Articolo)
 class ArticoloAdmin(admin.ModelAdmin):
-    list_display = ("titolo", "approvato", "data_pubblicazione", "views", "fonti_web_count")
-    list_filter = ['approvato', HasWebSourcesFilter]
-    fields = ('titolo', 'contenuto', 'sommario', 'categoria', 'approvato', 'fonte', 'foto', 'foto_upload', 'views', 'richieste_modifica', 'fonti_web_display', 'rigenera_button')
+    list_display = ("titolo", "categoria", "approvato", "data_pubblicazione", "data_evento", "views", "fonti_web_count")
+    list_filter = ['approvato', 'categoria', HasWebSourcesFilter]
+    fields = ('titolo', 'contenuto', 'sommario', 'categoria', 'data_evento', 'approvato', 'fonte', 'foto', 'foto_upload', 'views', 'richieste_modifica', 'fonti_web_display', 'rigenera_button')
     readonly_fields = ('rigenera_button', 'views', 'fonti_web_display')
     
     def rigenera_button(self, obj):
