@@ -47,7 +47,6 @@ nav {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    animation: logoGlow 2s ease-in-out infinite alternate;
     text-decoration: none !important;
     cursor: pointer;
     transition: opacity 0.3s ease;
@@ -82,11 +81,6 @@ nav {
     .logo-text {
         font-size: clamp(1.4rem, 3vw, 1.4rem);
     }
-}
-
-@keyframes logoGlow {
-    from { filter: brightness(1); }
-    to { filter: brightness(1.2); }
 }
 
 .nav-links {
