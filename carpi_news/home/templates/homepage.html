@@ -237,7 +237,7 @@
             existingCards.forEach((card, index) => {
                 setTimeout(() => {
                     card.classList.add(slideOutClass);
-                }, index * 50);
+                }, index * 30);
             });
             
             // Dopo l'animazione di uscita, sostituisci con le nuove card
@@ -284,7 +284,7 @@
                     newCards.forEach((card, index) => {
                         setTimeout(() => {
                             card.classList.add(slideInClass);
-                        }, index * 50);
+                        }, index * 30);
                     });
                     
                     // Rimuovi classe di transizione
@@ -301,9 +301,9 @@
                     // Riabilita le transizioni
                     setTimeout(() => {
                         isTransitioning = false;
-                    }, 300);
+                    }, 100);
                 }, 50);
-            }, 400);
+            }, 250);
         }
         
         // Funzione per costruire URL immagine
