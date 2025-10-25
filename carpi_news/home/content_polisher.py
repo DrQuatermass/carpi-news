@@ -296,7 +296,7 @@ class ContentPolisher:
         
         return '\n\n'.join(result)
 
-    def add_internal_links(self, content: str, article_title: str = "") -> str:
+    def add_internal_links(self, content: str, article_title: str = "", current_article_slug: str = None) -> str:
         """
         Aggiunge link interni usando i tag <strong> per identificare entità rilevanti
 
@@ -305,10 +305,12 @@ class ContentPolisher:
         2. Esclude titoli di sezioni (h1-h6)
         3. Per ogni entità, cerca nel DB il primo articolo approvato che la contiene
         4. Linka alla prima occorrenza trovata, creando una catena cronologica inversa
+        5. NON linka mai all'articolo corrente (evita auto-riferimenti)
 
         Args:
             content: Contenuto HTML dell'articolo
             article_title: Titolo dell'articolo (per context)
+            current_article_slug: Slug dell'articolo corrente da escludere (opzionale)
 
         Returns:
             Contenuto con link interni inseriti
@@ -367,11 +369,18 @@ class ContentPolisher:
                     continue
 
                 # Cerca nel DB il primo articolo approvato (più vecchio) che contiene questa entità
+                # Esclude l'articolo corrente se lo slug è fornito
                 # Ordina per data pubblicazione ASC per trovare il primo cronologicamente
-                matching_article = Articolo.objects.filter(
+                query = Articolo.objects.filter(
                     approvato=True,
                     contenuto__icontains=entity_text
-                ).order_by('data_pubblicazione').first()
+                )
+
+                # Esclude l'articolo corrente se lo slug è fornito
+                if current_article_slug:
+                    query = query.exclude(slug=current_article_slug)
+
+                matching_article = query.order_by('data_pubblicazione').first()
 
                 if not matching_article:
                     logger.debug(f"Internal Linking: entità '{entity_text}' non trovata in altri articoli")

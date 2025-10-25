@@ -50,7 +50,8 @@ class Command(BaseCommand):
         try:
             contenuto_con_link = polisher.add_internal_links(
                 articolo.contenuto,
-                article_title=articolo.titolo
+                article_title=articolo.titolo,
+                current_article_slug=articolo.slug
             )
 
             # Conta i link aggiunti
