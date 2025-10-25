@@ -6,6 +6,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Ombra del Portico - Notizie di Carpi{% endblock %}</title>
 
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="{% block meta_description %}Ombra del Portico: il tuo giornale online per le notizie di Carpi. Cronaca, cultura, eventi e sport della città.{% endblock %}">
+    <meta name="keywords" content="{% block meta_keywords %}Carpi, notizie Carpi, cronaca Carpi, eventi Carpi, giornale Carpi, Ombra del Portico{% endblock %}">
+    <meta name="author" content="Ombra del Portico">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="{% block og_type %}website{% endblock %}">
+    <meta property="og:url" content="{% block og_url %}https://ombradelportico.it{{ request.path }}{% endblock %}">
+    <meta property="og:title" content="{% block og_title %}{% block title_for_og %}Ombra del Portico - Notizie di Carpi{% endblock %}{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}{% block meta_description_for_og %}Ombra del Portico: il tuo giornale online per le notizie di Carpi. Cronaca, cultura, eventi e sport della città.{% endblock %}{% endblock %}">
+    <meta property="og:image" content="{% block og_image %}{% static 'home/images/portico_logo.svg' %}{% endblock %}">
+    <meta property="og:locale" content="it_IT">
+    <meta property="og:site_name" content="Ombra del Portico">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="{% block twitter_card %}summary_large_image{% endblock %}">
+    <meta name="twitter:url" content="{% block twitter_url %}https://ombradelportico.it{{ request.path }}{% endblock %}">
+    <meta name="twitter:title" content="{% block twitter_title %}{% block title_for_twitter %}Ombra del Portico - Notizie di Carpi{% endblock %}{% endblock %}">
+    <meta name="twitter:description" content="{% block twitter_description %}{% block meta_description_for_twitter %}Ombra del Portico: il tuo giornale online per le notizie di Carpi. Cronaca, cultura, eventi e sport della città.{% endblock %}{% endblock %}">
+    <meta name="twitter:image" content="{% block twitter_image %}{% static 'home/images/portico_logo.svg' %}{% endblock %}">
+
     <!-- Preload risorse critiche -->
     <link rel="preload" href="{% static 'home/css/style.css' %}" as="style">
     <link rel="preload" href="{% static 'home/images/portico_logo_nopayoff.svg' %}" as="image">
