@@ -67,4 +67,7 @@ def get_webp_url(image_url):
     path = Path(image_url)
     webp_url = str(path.with_suffix('.webp'))
 
+    # Converti backslash Windows in forward slash per URL web
+    webp_url = webp_url.replace('\\', '/')
+
     return webp_url
