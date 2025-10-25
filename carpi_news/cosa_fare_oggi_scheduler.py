@@ -58,7 +58,7 @@ def start_scheduler():
 
             today = timezone.now().date()
             today_cosa_fare = Articolo.objects.filter(
-                categoria='Cosa fare oggi?',
+                categoria='Cosa fare oggi',
                 data_pubblicazione__date=today
             ).exists()
 
