@@ -69,13 +69,13 @@
                     </div>
 
                     <div class="nav-controls-bottom">
-                        <button id="prev-btn" class="nav-arrow nav-arrow-centered" {% if not has_prev %}disabled{% endif %}>
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <button id="prev-btn" class="nav-arrow nav-arrow-centered" aria-label="Pagina precedente" {% if not has_prev %}disabled{% endif %}>
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                                 <path d="M15 18L9 12L15 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                             </svg>
                         </button>
-                        <button id="next-btn" class="nav-arrow nav-arrow-centered" {% if not has_next %}disabled{% endif %}>
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <button id="next-btn" class="nav-arrow nav-arrow-centered" aria-label="Pagina successiva" {% if not has_next %}disabled{% endif %}>
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
                                 <path d="M9 18L15 12L9 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                             </svg>
                         </button>
@@ -135,9 +135,6 @@
 
         // Inizializzazione specifica della homepage
         function initPageSpecific() {
-            console.log('initPageSpecific called');
-            console.log('currentPage:', currentPage, 'totalPages:', totalPages);
-            
             // Animazione al caricamento
             const loadingElements = document.querySelectorAll('.loading');
             loadingElements.forEach((element, index) => {
@@ -150,7 +147,7 @@
             window.addEventListener('scroll', function() {
                 // Disabilita parallasse durante le transizioni per evitare conflitti
                 if (isTransitioning) return;
-                
+
                 const hero = document.querySelector('.hero');
                 if (hero) {
                     const scrolled = window.pageYOffset;
@@ -162,23 +159,17 @@
             // Event listeners per i pulsanti di navigazione
             const prevBtn = document.getElementById('prev-btn');
             const nextBtn = document.getElementById('next-btn');
-            
-            console.log('prevBtn:', prevBtn, 'nextBtn:', nextBtn);
-            
+
             if (prevBtn) {
-                console.log('Adding event listener to prevBtn');
                 prevBtn.addEventListener('click', function() {
-                    console.log('prevBtn clicked, disabled:', this.disabled);
                     if (!this.disabled) {
                         changePage(-1);
                     }
                 });
             }
-            
+
             if (nextBtn) {
-                console.log('Adding event listener to nextBtn');
                 nextBtn.addEventListener('click', function() {
-                    console.log('nextBtn clicked, disabled:', this.disabled);
                     if (!this.disabled) {
                         changePage(1);
                     }
@@ -194,22 +185,16 @@
                 }
             });
         }
-        
+
         // Funzione per cambiare pagina con transizioni
         function changePage(direction) {
-            console.log('changePage called with direction:', direction);
-            console.log('currentPage:', currentPage, 'totalPages:', totalPages);
-            
             if (isTransitioning) {
-                console.log('Already transitioning, returning');
                 return;
             }
-            
+
             const newPage = currentPage + direction;
-            console.log('newPage:', newPage);
-            
+
             if (newPage >= 1 && newPage <= totalPages) {
-                console.log('Valid page, starting transition');
                 isTransitioning = true;
                 
                 // Determina la direzione dell'animazione

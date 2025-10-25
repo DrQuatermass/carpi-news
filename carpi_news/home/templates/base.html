@@ -76,11 +76,11 @@
 
                 <!-- Dropdown Rubriche -->
                 <li class="dropdown">
-                    <a href="#" class="dropdown-toggle">Rubriche</a>
-                    <ul class="dropdown-menu">
-                        <li><a href="{% url 'home' %}?categoria=L'Eco del Consiglio">L'Eco del consiglio</a></li>
-                        <li><a href="{% url 'home' %}?categoria=Editoriale">Editoriale</a></li>
-                        <li><a href="/caplet/">Caplet</a></li>
+                    <a href="#" class="dropdown-toggle" aria-expanded="false" aria-haspopup="true">Rubriche</a>
+                    <ul class="dropdown-menu" role="menu">
+                        <li role="none"><a href="{% url 'home' %}?categoria=L'Eco del Consiglio" role="menuitem">L'Eco del consiglio</a></li>
+                        <li role="none"><a href="{% url 'home' %}?categoria=Editoriale" role="menuitem">Editoriale</a></li>
+                        <li role="none"><a href="/caplet/" role="menuitem">Caplet</a></li>
                     </ul>
                 </li>
             </ul>
@@ -241,12 +241,10 @@
             // Cookie banner listeners
             document.getElementById('cookie-accept')?.addEventListener('click', () => {
                 setCookieConsent('all');
-                console.log('Cookie analytics abilitati');
             });
 
             document.getElementById('cookie-essential')?.addEventListener('click', () => {
                 setCookieConsent('essential');
-                console.log('Solo cookie essenziali');
             });
 
             // Controlla consenso cookie
@@ -284,13 +282,15 @@
 
                 toggle.addEventListener('click', function(e) {
                     e.preventDefault();
-                    dropdown.classList.toggle('active');
+                    const isActive = dropdown.classList.toggle('active');
+                    toggle.setAttribute('aria-expanded', isActive);
                 });
 
                 // Close when clicking outside
                 document.addEventListener('click', function(e) {
                     if (!dropdown.contains(e.target)) {
                         dropdown.classList.remove('active');
+                        toggle.setAttribute('aria-expanded', 'false');
                     }
                 });
             });
