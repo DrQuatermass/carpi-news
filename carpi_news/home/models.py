@@ -8,6 +8,9 @@ from urllib.parse import quote
 import re
 import requests
 import json
+import logging
+logger = logging.getLogger(__name__)
+
 
 class Articolo(models.Model):
     titolo = models.CharField(max_length=200)
@@ -62,7 +65,22 @@ class Articolo(models.Model):
         
         # Se l'immagine è locale (inizia con /media/ o /static/), aggiungi il dominio
         if self.foto.startswith('/media/') or self.foto.startswith('/static/'):
-            # Usa SITE_URL dal .env, fallback a https://ombradelportico.it
+            # Controlla se il file esiste fisicamente prima di restituirlo
+            import os
+            from pathlib import Path
+
+            # Converti path relativo in assoluto
+            if self.foto.startswith('/media/'):
+                file_path = Path(settings.MEDIA_ROOT) / self.foto.replace('/media/', '')
+            else:  # /static/
+                file_path = Path(settings.BASE_DIR) / 'home' / 'static' / self.foto.replace('/static/', '')
+
+            # Se il file non esiste, usa fallback
+            if not file_path.exists():
+                logger.warning(f"Immagine locale non trovata: {self.foto} (articolo: {self.titolo})")
+                return fallback_image
+
+            # File esiste, restituisci URL completo
             site_url = getattr(settings, 'SITE_URL', 'https://ombradelportico.it')
             return f"{site_url}{self.foto}"
         
