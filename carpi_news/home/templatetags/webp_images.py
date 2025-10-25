@@ -55,13 +55,18 @@ def to_webp(image_url):
 
 
 def get_webp_url(image_url):
-    """Helper per convertire URL in WebP"""
+    """Helper per convertire URL in WebP solo per immagini locali"""
     if not image_url:
         return ""
 
     # Se è già WebP, ritorna com'è
     if image_url.endswith('.webp'):
         return image_url
+
+    # SOLO per immagini locali (non esterne!)
+    # Non convertire immagini di Twitter, ModenaToday, ecc.
+    if image_url.startswith('http') and not 'ombradelportico.it' in image_url:
+        return image_url  # Ritorna originale per immagini esterne
 
     # Sostituisci estensione con .webp usando string replace (non Path!)
     # Path() non funziona con URL (rompe https://)
