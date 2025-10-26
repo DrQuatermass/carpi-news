@@ -378,6 +378,8 @@ class ContentPolisher:
                 query = Articolo.objects.filter(
                     approvato=True,
                     contenuto__icontains=entity_text
+                ).exclude(
+                    categoria__in=['Editoriale', 'Cosa fare oggi']
                 )
 
                 # Esclude l'articolo corrente se lo slug è fornito
