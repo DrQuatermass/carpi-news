@@ -296,21 +296,22 @@ class ContentPolisher:
         
         return '\n\n'.join(result)
 
-    def add_internal_links(self, content: str, article_title: str = "", current_article_slug: str = None) -> str:
+    def add_internal_links(self, content: str, article_title: str = "", current_article_slug: str = None, current_article_date=None) -> str:
         """
         Aggiunge link interni usando i tag <strong> per identificare entità rilevanti
 
         Strategia semplice (senza AI):
         1. Estrae tutte le parole/frasi in grassetto (<strong>) dal contenuto
         2. Esclude titoli di sezioni (h1-h6)
-        3. Per ogni entità, cerca nel DB il primo articolo approvato che la contiene
-        4. Linka alla prima occorrenza trovata, creando una catena cronologica inversa
+        3. Per ogni entità, cerca nel DB l'articolo più recente PRECEDENTE all'articolo corrente
+        4. Linka alla prima occorrenza trovata, creando una catena cronologica a ritroso
         5. NON linka mai all'articolo corrente (evita auto-riferimenti)
 
         Args:
             content: Contenuto HTML dell'articolo
             article_title: Titolo dell'articolo (per context)
             current_article_slug: Slug dell'articolo corrente da escludere (opzionale)
+            current_article_date: Data pubblicazione dell'articolo corrente (opzionale)
 
         Returns:
             Contenuto con link interni inseriti
@@ -319,6 +320,7 @@ class ContentPolisher:
             import re
             import logging
             from home.models import Articolo
+            from django.utils import timezone
 
             logger = logging.getLogger(__name__)
 
@@ -368,9 +370,8 @@ class ContentPolisher:
                 if entity_lower in linked_entities:
                     continue
 
-                # Cerca nel DB il più recente articolo approvato che contiene questa entità
-                # Esclude l'articolo corrente se lo slug è fornito
-                # Ordina per data pubblicazione DESC per trovare il più recente
+                # Cerca nel DB l'articolo più recente PRECEDENTE all'articolo corrente
+                # Questo crea una catena a ritroso: nuovo -> meno nuovo -> vecchio
                 query = Articolo.objects.filter(
                     approvato=True,
                     contenuto__icontains=entity_text
@@ -380,6 +381,11 @@ class ContentPolisher:
                 if current_article_slug:
                     query = query.exclude(slug=current_article_slug)
 
+                # Se abbiamo la data dell'articolo corrente, cerca solo articoli precedenti
+                if current_article_date:
+                    query = query.filter(data_pubblicazione__lt=current_article_date)
+
+                # Ordina per data DESC per trovare il più recente tra i precedenti
                 matching_article = query.order_by('-data_pubblicazione').first()
 
                 if not matching_article:

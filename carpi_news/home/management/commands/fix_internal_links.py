@@ -1,8 +1,10 @@
 """
 Management command per correggere i link interni negli articoli esistenti
 Applica le nuove logiche:
-1. Link puntano agli articoli più recenti (non più vecchi)
+1. Catena a ritroso: ogni articolo linka al più recente PRECEDENTE che contiene l'entità
+   (es: articolo del 26/10 linka a quello del 25/10, non al 27/10)
 2. Rimuove link su parole generiche (quando, dove, info, etc.)
+3. Conta e mostra il totale dei link creati
 """
 from django.core.management.base import BaseCommand
 from home.models import Articolo
@@ -48,6 +50,7 @@ class Command(BaseCommand):
 
         updated = 0
         errors = 0
+        total_links = 0
 
         for i, articolo in enumerate(articoli, 1):
             try:
@@ -66,12 +69,17 @@ class Command(BaseCommand):
                     flags=re.DOTALL | re.IGNORECASE
                 )
 
-                # Step 2: Rigenera i link con le nuove logiche
+                # Step 2: Rigenera i link con le nuove logiche (catena a ritroso)
                 new_content = content_polisher.add_internal_links(
                     content_no_links,
                     article_title=articolo.titolo,
-                    current_article_slug=articolo.slug
+                    current_article_slug=articolo.slug,
+                    current_article_date=articolo.data_pubblicazione  # Passa la data per catena a ritroso
                 )
+
+                # Conta i link aggiunti
+                links_in_article = len(re.findall(r'class="internal-link"', new_content))
+                total_links += links_in_article
 
                 # Verifica se ci sono state modifiche
                 if new_content != original_content:
@@ -80,7 +88,7 @@ class Command(BaseCommand):
                         articolo.save(update_fields=['contenuto'])
 
                     updated += 1
-                    self.stdout.write(self.style.SUCCESS(f'  ✓ Aggiornato'))
+                    self.stdout.write(self.style.SUCCESS(f'  ✓ Aggiornato ({links_in_article} link)'))
                 else:
                     self.stdout.write(self.style.WARNING(f'  - Nessuna modifica necessaria'))
 
@@ -94,6 +102,7 @@ class Command(BaseCommand):
         if dry_run:
             self.stdout.write(self.style.WARNING('MODALITÀ DRY-RUN - Nessuna modifica salvata'))
         self.stdout.write(self.style.SUCCESS(f'✓ Articoli aggiornati: {updated}'))
+        self.stdout.write(self.style.SUCCESS(f'🔗 Totale link creati: {total_links}'))
         if errors > 0:
             self.stdout.write(self.style.ERROR(f'✗ Errori: {errors}'))
         self.stdout.write(f'Total processati: {total}')
