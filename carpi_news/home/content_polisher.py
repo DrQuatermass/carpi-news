@@ -343,6 +343,9 @@ class ContentPolisher:
                 # Rimuovi eventuali tag HTML interni
                 entity_text = re.sub(r'<[^>]+>', '', entity_text).strip()
 
+                # Rimuovi i due punti finali (es: "Info:" -> "Info")
+                entity_text = entity_text.rstrip(':')
+
                 # Filtri: escludi entità troppo corte, generiche o che sono solo numeri
                 if len(entity_text) < 3:
                     continue
