@@ -344,7 +344,7 @@ class ContentPolisher:
                 # Filtri: escludi entità troppo corte, generiche o che sono solo numeri
                 if len(entity_text) < 3:
                     continue
-                if entity_text.lower() in ['carpi', 'oggi', 'ieri', 'domani', 'qui', 'ora', 'data', 'orari', 'organizzazione', 'info', 'prezzi', 'luogo']:
+                if entity_text.lower() in ['carpi', 'oggi', 'ieri', 'domani', 'qui', 'ora', 'data', 'orari', 'organizzazione', 'info', 'prezzi', 'luogo', 'quando', 'dove', 'cosa', 'come', 'chi', 'perché', 'ingresso', 'costo', 'contatti']:
                     continue
                 if entity_text.isdigit():
                     continue
@@ -368,9 +368,9 @@ class ContentPolisher:
                 if entity_lower in linked_entities:
                     continue
 
-                # Cerca nel DB il primo articolo approvato (più vecchio) che contiene questa entità
+                # Cerca nel DB il più recente articolo approvato che contiene questa entità
                 # Esclude l'articolo corrente se lo slug è fornito
-                # Ordina per data pubblicazione ASC per trovare il primo cronologicamente
+                # Ordina per data pubblicazione DESC per trovare il più recente
                 query = Articolo.objects.filter(
                     approvato=True,
                     contenuto__icontains=entity_text
@@ -380,7 +380,7 @@ class ContentPolisher:
                 if current_article_slug:
                     query = query.exclude(slug=current_article_slug)
 
-                matching_article = query.order_by('data_pubblicazione').first()
+                matching_article = query.order_by('-data_pubblicazione').first()
 
                 if not matching_article:
                     logger.debug(f"Internal Linking: entità '{entity_text}' non trovata in altri articoli")
