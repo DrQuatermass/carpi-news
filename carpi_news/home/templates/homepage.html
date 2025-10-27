@@ -266,6 +266,11 @@
                     // Ora crea le card con immagini già in cache
                     const newCards = [];
                     data.articoli.forEach((articolo, index) => {
+                        // Debug: log dell'URL foto raw dal backend
+                        console.log(`[Articolo ${index}] ${articolo.titolo}`);
+                        console.log(`  foto raw:`, articolo.foto);
+                        console.log(`  buildImageUrl:`, buildImageUrl(articolo.foto));
+
                         const cardLink = createNewsCard(articolo);
                         const card = cardLink.querySelector('.news-card');
                         card.style.opacity = '0';
@@ -340,13 +345,14 @@
         function buildImageUrl(foto) {
             if (!foto) return DEFAULT_IMAGE;
 
-            // Se è già un URL completo, ritornalo
+            // Se è già un URL completo, ritornalo (può venire dal backend già completo)
             if (foto.startsWith('http://') || foto.startsWith('https://')) return foto;
 
             // Se inizia con /media/, /static/, etc., aggiungi il dominio
             if (foto.startsWith('/')) return SITE_URL + foto;
 
-            // Altrimenti ritorna così com'è
+            // Se non inizia con / e non è http, probabilmente è un path relativo
+            // In produzione questo non dovrebbe succedere, ma per sicurezza
             return foto;
         }
 
