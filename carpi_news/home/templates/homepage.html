@@ -248,38 +248,48 @@
                 const existingCardLinks = newsGrid.querySelectorAll('.news-card-link');
                 existingCardLinks.forEach(link => link.remove());
 
-                // Pre-carica tutte le immagini PRIMA di creare le card
-                const imagePromises = data.articoli.map(articolo => {
-                    return new Promise((resolve) => {
-                        const img = new Image();
-                        const imageUrl = buildImageUrl(articolo.foto);
-                        img.onload = () => resolve(articolo);
-                        img.onerror = () => resolve(articolo); // Resolve anche in caso di errore
-                        img.src = imageUrl;
-                        // Timeout di sicurezza: risolvi dopo 2 secondi anche se non caricata
-                        setTimeout(() => resolve(articolo), 2000);
-                    });
+                // Crea le card IMMEDIATAMENTE e VISIBILI per permettere al browser di caricare le immagini
+                const newCards = [];
+                const imageLoadPromises = [];
+
+                data.articoli.forEach((articolo, index) => {
+                    const cardLink = createNewsCard(articolo);
+                    const card = cardLink.querySelector('.news-card');
+
+                    // NON nascondere ancora - lascia visibili per triggerare il caricamento
+                    card.style.opacity = '1';
+                    card.style.transform = 'none';
+                    newsGrid.appendChild(cardLink);
+                    newCards.push(card);
+
+                    // Trova l'immagine nella card e attendi che carichi
+                    const img = card.querySelector('img');
+                    if (img) {
+                        const imagePromise = new Promise((resolve) => {
+                            if (img.complete) {
+                                resolve(); // Già caricata
+                            } else {
+                                img.onload = () => resolve();
+                                img.onerror = () => resolve(); // Resolve anche su errore
+                                // Timeout di sicurezza
+                                setTimeout(() => resolve(), 2000);
+                            }
+                        });
+                        imageLoadPromises.push(imagePromise);
+                    }
                 });
 
-                // Aspetta che tutte le immagini siano caricate (o timeout)
-                Promise.all(imagePromises).then(() => {
-                    // Ora crea le card con immagini già in cache
-                    const newCards = [];
-                    data.articoli.forEach((articolo, index) => {
-                        // Debug: log dell'URL foto raw dal backend
-                        console.log(`[Articolo ${index}] ${articolo.titolo}`);
-                        console.log(`  foto raw:`, articolo.foto);
-                        console.log(`  buildImageUrl:`, buildImageUrl(articolo.foto));
+                // Aspetta che tutte le immagini siano caricate, POI nascondi per animare
+                Promise.all(imageLoadPromises).then(() => {
+                    console.log('Tutte le immagini caricate, ora nascondo per animazione');
 
-                        const cardLink = createNewsCard(articolo);
-                        const card = cardLink.querySelector('.news-card');
+                    // Ora nascondi le card per prepararle all'animazione di entrata
+                    newCards.forEach(card => {
                         card.style.opacity = '0';
                         card.style.transform = slideInClass.includes('left') ? 'translateX(-100%)' : 'translateX(100%)';
-                        newsGrid.appendChild(cardLink);
-                        newCards.push(card);
                     });
 
-                    // Forza un reflow per assicurare che il browser processi le immagini
+                    // Forza reflow
                     void newsGrid.offsetHeight;
 
                     continuePageTransition();
