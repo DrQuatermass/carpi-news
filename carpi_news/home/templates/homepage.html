@@ -191,21 +191,21 @@
                 const loadingSpinner = document.getElementById('loading-spinner');
                 loadingSpinner.classList.add('active');
                 
-                // OPTIMIZATION: Start exit animation IMMEDIATELY for instant feedback
+                // Avvia animazione di uscita
                 const existingCards = newsGrid.querySelectorAll('.news-card');
                 existingCards.forEach((card, index) => {
                     setTimeout(() => {
                         card.classList.add(slideOutClass);
                     }, index * 30);
                 });
-                
-                // Load data in parallel while animation plays
-                loadPageContent(newPage, slideInClass, slideOutClass);
+
+                // Carica nuovi dati
+                loadPageContent(newPage);
             }
         }
         
         // Funzione per caricare il contenuto della pagina via AJAX
-        function loadPageContent(pageNumber, slideInClass, slideOutClass) {
+        function loadPageContent(pageNumber) {
             // Costruisci URL mantenendo la categoria attiva
             const urlParams = new URLSearchParams(window.location.search);
             const categoria = urlParams.get('categoria');
@@ -219,9 +219,8 @@
                 if (xhr.readyState === 4) {
                     if (xhr.status === 200) {
                         const data = JSON.parse(xhr.responseText);
-                        updatePageContent(data, slideInClass, slideOutClass);
+                        updatePageContent(data);
                     } else {
-                        // In caso di errore, ricarica la pagina normalmente
                         window.location.href = url;
                     }
                 }
@@ -231,72 +230,48 @@
         }
         
         // Funzione per aggiornare il contenuto della pagina
-        function updatePageContent(data, slideInClass, slideOutClass) {
+        function updatePageContent(data) {
             const newsGrid = document.getElementById('news-grid');
-            
-            // Ottieni le card esistenti
-            const existingCards = newsGrid.querySelectorAll('.news-card');
-            
-            // Nascondi loading spinner
             const loadingSpinner = document.getElementById('loading-spinner');
+
             loadingSpinner.classList.remove('active');
-            
-            // Exit animation already started in changePage() for instant feedback
-            // Just wait for it to finish before replacing content
+
+            // Attendi la fine dell'animazione di uscita
             setTimeout(() => {
-                // Rimuovi SOLO le card, mantieni lo spinner
+                // Rimuovi le card esistenti
                 const existingCardLinks = newsGrid.querySelectorAll('.news-card-link');
                 existingCardLinks.forEach(link => link.remove());
 
-                // TEST: Mostra card semplicemente senza animazioni o Promise
-                data.articoli.forEach((articolo, index) => {
+                // Aggiungi le nuove card
+                data.articoli.forEach((articolo) => {
                     const cardLink = createNewsCard(articolo);
                     newsGrid.appendChild(cardLink);
                 });
 
-                // Aggiorna immediatamente senza animazioni
+                // Aggiorna stato della paginazione
                 currentPage = data.current_page;
                 totalPages = data.total_pages;
                 updateNavigationButtons(data.has_prev, data.has_next);
 
+                // Aggiorna URL
                 const url = new URL(window.location);
                 url.searchParams.set('page', currentPage);
                 window.history.pushState({}, '', url);
 
                 newsGrid.classList.remove('transitioning');
-                loadingSpinner.classList.remove('active');
                 isTransitioning = false;
             }, 250);
         }
         
         // Funzione per costruire URL immagine
         const DEFAULT_IMAGE = '{% static "home/images/portico_logo_nopayoff.png" %}';
-        const SITE_URL = window.location.origin; // Usa l'origin del browser invece di variabile template
+        const SITE_URL = window.location.origin;
 
         function buildImageUrl(foto) {
             if (!foto) return DEFAULT_IMAGE;
-
-            // Se è già un URL completo, ritornalo (può venire dal backend già completo)
             if (foto.startsWith('http://') || foto.startsWith('https://')) return foto;
-
-            // Se inizia con /media/, /static/, etc., aggiungi il dominio
             if (foto.startsWith('/')) return SITE_URL + foto;
-
-            // Se non inizia con / e non è http, probabilmente è un path relativo
-            // In produzione questo non dovrebbe succedere, ma per sicurezza
             return foto;
-        }
-
-
-        function toWebP(imageUrl) {
-            if (!imageUrl || imageUrl.endsWith('.webp')) return imageUrl;
-
-            // SOLO per immagini locali (non esterne!)
-            if (imageUrl.startsWith('http') && !imageUrl.includes('ombradelportico.it')) {
-                return imageUrl;  // Ritorna originale per immagini esterne
-            }
-
-            return imageUrl.replace(/\.(png|jpg|jpeg)$/i, '.webp');
         }
 
         // Funzione per creare una card di notizia
@@ -310,8 +285,6 @@
             
             const imageUrl = buildImageUrl(articolo.foto);
 
-            // SOLUZIONE STABILE: solo <img> via innerHTML (funziona sempre)
-            // WebP sarà gestito lato server in futuro
             card.innerHTML = `
                 <div class="news-image">
                     <img src="${imageUrl}"
