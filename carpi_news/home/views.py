@@ -242,6 +242,10 @@ def news_sitemap(request):
     articles = Articolo.objects.filter(
         approvato=True,
         data_pubblicazione__gte=cutoff_date
+    ).exclude(
+        titolo__istartswith='test'  # Escludi articoli di test
+    ).exclude(
+        categoria__in=['Editoriale', 'Cosa fare oggi']  # Google News preferisce notizie, non editoriali o agende
     ).order_by('-data_pubblicazione')
 
     logger.info(f"Generata sitemap news con {len(articles)} articoli")
