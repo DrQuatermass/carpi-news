@@ -257,6 +257,13 @@
                     card.style.transform = slideInClass.includes('left') ? 'translateX(-100%)' : 'translateX(100%)';
                     newsGrid.appendChild(cardLink);
                     newCards.push(card);
+
+                    // Forza il caricamento immediato dell'immagine
+                    const img = card.querySelector('img');
+                    if (img && img.complete === false) {
+                        // Trigger il download forzato se non ancora caricata
+                        img.decode().catch(() => {});
+                    }
                 });
                 
                 // Aggiorna i dati di paginazione
@@ -346,7 +353,7 @@
                 <div class="news-image">
                     <picture>
                         <source srcset="${webpUrl}" type="image/webp">
-                        <img src="${imageUrl}" alt="${articolo.titolo}" class="card-img" loading="lazy">
+                        <img src="${imageUrl}" alt="${articolo.titolo}" class="card-img" loading="eager">
                     </picture>
                 </div>
             `;
