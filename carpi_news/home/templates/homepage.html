@@ -309,11 +309,18 @@
             card.className = 'news-card';
             
             const imageUrl = buildImageUrl(articolo.foto);
-            const webpUrl = toWebP(imageUrl);
 
-            // Crea prima il contenuto HTML senza l'immagine
+            // SOLUZIONE STABILE: solo <img> via innerHTML (funziona sempre)
+            // WebP sarà gestito lato server in futuro
             card.innerHTML = `
-                <div class="news-image"></div>
+                <div class="news-image">
+                    <img src="${imageUrl}"
+                         alt="${articolo.titolo}"
+                         class="card-img"
+                         loading="eager"
+                         fetchpriority="high"
+                         onerror="this.onerror=null; this.src='${DEFAULT_IMAGE}';">
+                </div>
                 <div class="news-content">
                     <div class="news-meta">
                         <span class="category-tag">${articolo.categoria}</span>
@@ -324,31 +331,6 @@
                     <span class="read-more">Leggi tutto →</span>
                 </div>
             `;
-
-            // Crea il <picture> via DOM API invece di innerHTML per WebP funzionante
-            const newsImageDiv = card.querySelector('.news-image');
-            const picture = document.createElement('picture');
-
-            // Source WebP
-            const sourceWebp = document.createElement('source');
-            sourceWebp.srcset = webpUrl;
-            sourceWebp.type = 'image/webp';
-            picture.appendChild(sourceWebp);
-
-            // Img fallback
-            const img = document.createElement('img');
-            img.src = imageUrl;
-            img.alt = articolo.titolo;
-            img.className = 'card-img';
-            img.loading = 'eager';
-            img.fetchPriority = 'high';
-            img.onerror = function() {
-                this.onerror = null;
-                this.src = DEFAULT_IMAGE;
-            };
-            picture.appendChild(img);
-
-            newsImageDiv.appendChild(picture);
 
             cardLink.appendChild(card);
             return cardLink;
