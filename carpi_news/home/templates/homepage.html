@@ -274,6 +274,9 @@
                         newCards.push(card);
                     });
 
+                    // Forza un reflow per assicurare che il browser processi le immagini
+                    void newsGrid.offsetHeight;
+
                     continuePageTransition();
                 });
 
@@ -368,7 +371,13 @@
                 <div class="news-image">
                     <picture>
                         <source srcset="${webpUrl}" type="image/webp">
-                        <img src="${imageUrl}" alt="${articolo.titolo}" class="card-img" loading="eager">
+                        <img src="${imageUrl}"
+                             alt="${articolo.titolo}"
+                             class="card-img"
+                             loading="eager"
+                             decoding="async"
+                             width="400"
+                             height="200">
                     </picture>
                 </div>
             `;
