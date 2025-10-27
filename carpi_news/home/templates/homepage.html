@@ -169,11 +169,14 @@
 
             if (newPage >= 1 && newPage <= totalPages) {
                 isTransitioning = true;
-                
+
+                // Scroll smooth in alto
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+
                 // Determina la direzione dell'animazione
                 const slideOutClass = direction > 0 ? 'slide-out-left' : 'slide-out-right';
                 const slideInClass = direction > 0 ? 'slide-in-right' : 'slide-in-left';
-                
+
                 // Aggiungi classe di transizione al grid
                 const newsGrid = document.getElementById('news-grid');
                 newsGrid.classList.add('transitioning');
