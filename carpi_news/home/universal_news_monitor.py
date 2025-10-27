@@ -1550,7 +1550,7 @@ class GraphQLScraper(BaseScraper):
             self.logger.error(f"Errore nel download immagine: {e}")
             return None
 
-    def _resize_image_if_needed(self, image_bytes: bytes, max_width: int = 1200, max_height: int = 1200, quality: int = 85) -> tuple[bytes, str]:
+    def _resize_image_if_needed(self, image_bytes: bytes, max_width: int = 1200, max_height: int = 1200, quality: int = 75) -> tuple[bytes, str]:
         """
         Ridimensiona e converte un'immagine in WebP, mantenendo aspect ratio
 
@@ -1558,7 +1558,7 @@ class GraphQLScraper(BaseScraper):
             image_bytes: Immagine originale in bytes
             max_width: Larghezza massima (default 1200px)
             max_height: Altezza massima (default 1200px)
-            quality: Qualità WebP (default 85)
+            quality: Qualità WebP (default 75)
 
         Returns:
             Tuple (immagine_bytes, estensione) - sempre WebP
