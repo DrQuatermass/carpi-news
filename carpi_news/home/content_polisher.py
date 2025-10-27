@@ -349,7 +349,20 @@ class ContentPolisher:
                 # Filtri: escludi entità troppo corte, generiche o che sono solo numeri
                 if len(entity_text) < 3:
                     continue
-                if entity_text.lower() in ['carpi', 'oggi', 'ieri', 'domani', 'qui', 'ora', 'data', 'orari', 'organizzazione', 'info', 'prezzi', 'luogo', 'quando', 'dove', 'cosa', 'come', 'chi', 'perché', 'ingresso', 'costo', 'contatti', 'informazioni pratiche']:
+
+                # Lista completa di parole generiche da escludere (case-insensitive)
+                generic_words = {
+                    'carpi', 'oggi', 'ieri', 'domani', 'qui', 'ora',
+                    'data', 'orari', 'orario', 'organizzazione', 'organizzazioni',
+                    'info', 'prezzi', 'prezzo', 'luogo', 'luoghi',
+                    'quando', 'dove', 'cosa', 'come', 'chi', 'perché',
+                    'ingresso', 'costo', 'costi', 'contatti', 'contatto',
+                    'informazioni pratiche', 'informazioni', 'informazione',
+                    'dettagli', 'dettaglio', 'note', 'nota',
+                    'maggiori informazioni', 'per informazioni'
+                }
+
+                if entity_text.lower() in generic_words:
                     continue
                 if entity_text.isdigit():
                     continue
