@@ -335,12 +335,18 @@
         
         // Funzione per costruire URL immagine
         const DEFAULT_IMAGE = '{% static "home/images/portico_logo_nopayoff.png" %}';
-        const SITE_URL = '{{ SITE_URL }}';
+        const SITE_URL = window.location.origin; // Usa l'origin del browser invece di variabile template
 
         function buildImageUrl(foto) {
             if (!foto) return DEFAULT_IMAGE;
+
+            // Se è già un URL completo, ritornalo
             if (foto.startsWith('http://') || foto.startsWith('https://')) return foto;
-            if (foto.startsWith('/media/')) return SITE_URL + foto;
+
+            // Se inizia con /media/, /static/, etc., aggiungi il dominio
+            if (foto.startsWith('/')) return SITE_URL + foto;
+
+            // Altrimenti ritorna così com'è
             return foto;
         }
 
@@ -377,11 +383,12 @@
                              loading="eager"
                              decoding="async"
                              width="400"
-                             height="200">
+                             height="200"
+                             onerror="this.onerror=null; this.src='${DEFAULT_IMAGE}';">
                     </picture>
                 </div>
             `;
-            
+
             card.innerHTML = `
                 ${imageHtml}
                 <div class="news-content">
@@ -394,7 +401,7 @@
                     <span class="read-more">Leggi tutto →</span>
                 </div>
             `;
-            
+
             cardLink.appendChild(card);
             return cardLink;
         }
