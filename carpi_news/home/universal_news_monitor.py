@@ -1513,8 +1513,8 @@ class GraphQLScraper(BaseScraper):
             response = requests.get(api_image_url, headers=headers, timeout=15)
             response.raise_for_status()
 
-            # Ridimensiona l'immagine se necessario
-            image_content = self._resize_image_if_needed(response.content)
+            # Ridimensiona e converte in WebP
+            image_content, ext = self._resize_image_if_needed(response.content)
 
             # Calcola hash del contenuto (dopo ridimensionamento)
             image_hash = self._get_image_hash(image_content)
@@ -1530,17 +1530,7 @@ class GraphQLScraper(BaseScraper):
                 self.logger.info(f"Immagine già esistente riutilizzata: {existing_filename} (hash: {image_hash[:12]}...)")
                 return media_url
 
-            # Determina l'estensione dal content-type
-            content_type = response.headers.get('content-type', '').lower()
-            if 'jpeg' in content_type or 'jpg' in content_type:
-                ext = '.jpg'
-            elif 'png' in content_type:
-                ext = '.png'
-            elif 'webp' in content_type:
-                ext = '.webp'
-            else:
-                ext = '.jpg'  # Default
-
+            # L'estensione ora viene restituita dalla funzione resize (sempre .webp)
             # Genera nome file con prefisso configurabile
             prefix = getattr(self.config, 'local_image_prefix', 'comune_carpi')
             filename = f"{prefix}_{unique_id}_{image_hash[:12]}{ext}"
@@ -1560,18 +1550,18 @@ class GraphQLScraper(BaseScraper):
             self.logger.error(f"Errore nel download immagine: {e}")
             return None
 
-    def _resize_image_if_needed(self, image_bytes: bytes, max_width: int = 1200, max_height: int = 1200, quality: int = 85) -> bytes:
+    def _resize_image_if_needed(self, image_bytes: bytes, max_width: int = 1200, max_height: int = 1200, quality: int = 85) -> tuple[bytes, str]:
         """
-        Ridimensiona un'immagine se supera le dimensioni massime, mantenendo aspect ratio
+        Ridimensiona e converte un'immagine in WebP, mantenendo aspect ratio
 
         Args:
             image_bytes: Immagine originale in bytes
             max_width: Larghezza massima (default 1200px)
             max_height: Altezza massima (default 1200px)
-            quality: Qualità JPEG/WebP per immagini ridimensionate (default 85)
+            quality: Qualità WebP (default 85)
 
         Returns:
-            Immagine ridimensionata in bytes (o originale se non necessario ridimensionamento)
+            Tuple (immagine_bytes, estensione) - sempre WebP
         """
         try:
             # Apri l'immagine da bytes
@@ -1595,26 +1585,18 @@ class GraphQLScraper(BaseScraper):
             # Ridimensiona con anti-aliasing di alta qualità
             img_resized = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
 
-            # Converti in RGB se necessario (per JPEG)
-            if img_resized.mode in ('RGBA', 'LA', 'P'):
-                # Crea sfondo bianco per trasparenze
-                background = Image.new('RGB', img_resized.size, (255, 255, 255))
-                if img_resized.mode == 'P':
-                    img_resized = img_resized.convert('RGBA')
-                background.paste(img_resized, mask=img_resized.split()[-1] if img_resized.mode == 'RGBA' else None)
-                img_resized = background
+            # Converti in RGB se necessario (WebP supporta RGBA per trasparenze)
+            if img_resized.mode in ('RGBA', 'LA'):
+                # Mantieni RGBA per WebP con trasparenza
+                pass
+            elif img_resized.mode == 'P':
+                img_resized = img_resized.convert('RGBA')
             elif img_resized.mode != 'RGB':
                 img_resized = img_resized.convert('RGB')
 
-            # Salva in un buffer
+            # Salva in un buffer come WebP
             output_buffer = io.BytesIO()
-
-            # Determina il formato di output (preferisci JPEG per dimensioni ridotte)
-            # WebP se l'originale era WebP, altrimenti JPEG
-            if img.format == 'WEBP':
-                img_resized.save(output_buffer, format='WEBP', quality=quality)
-            else:
-                img_resized.save(output_buffer, format='JPEG', quality=quality, optimize=True)
+            img_resized.save(output_buffer, format='WEBP', quality=quality, method=6)
 
             resized_bytes = output_buffer.getvalue()
 
@@ -1623,13 +1605,19 @@ class GraphQLScraper(BaseScraper):
             resized_size_kb = len(resized_bytes) / 1024
             saving_percent = ((original_size_kb - resized_size_kb) / original_size_kb) * 100
 
-            self.logger.info(f"Ridimensionamento completato: {original_size_kb:.1f}KB → {resized_size_kb:.1f}KB (risparmio {saving_percent:.1f}%)")
+            self.logger.info(f"Conversione WebP completata: {original_size_kb:.1f}KB → {resized_size_kb:.1f}KB (risparmio {saving_percent:.1f}%)")
 
-            return resized_bytes
+            return resized_bytes, '.webp'
 
         except Exception as e:
             self.logger.warning(f"Errore nel ridimensionamento immagine, uso originale: {e}")
-            return image_bytes
+            # Prova a determinare estensione originale
+            try:
+                img = Image.open(io.BytesIO(image_bytes))
+                ext = '.' + img.format.lower() if img.format else '.jpg'
+            except:
+                ext = '.jpg'
+            return image_bytes, ext
 
 
 class EmailScraper(BaseScraper):
