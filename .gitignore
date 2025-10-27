@@ -52,3 +52,13 @@ Thumbs.db
 # Locks
 *.lock
 locks/
+
+# Backup files
+*.bak
+*.backup
+
+# Test and temporary scripts
+test_*.py
+check_*.py
+download_*.py
+optimize_*.py
