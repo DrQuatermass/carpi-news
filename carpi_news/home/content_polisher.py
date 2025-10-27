@@ -411,21 +411,41 @@ class ContentPolisher:
                     continue
 
                 # Applica il link alla prima occorrenza dell'entità in grassetto nel contenuto
-                # Pattern: cerca <strong>entità</strong> ma non dentro link esistenti
+                # Pattern: cerca <strong>entità</strong> ma NON dentro link esistenti
                 escaped_entity = re.escape(entity_text)
-                pattern = re.compile(
-                    r'<strong[^>]*>(' + escaped_entity + r')</strong>(?![^<]*</a>)',
+
+                # Trova tutte le occorrenze di <strong>entity</strong>
+                strong_pattern = re.compile(
+                    r'<strong[^>]*>(' + escaped_entity + r')</strong>',
                     re.IGNORECASE
                 )
 
-                match = pattern.search(modified_content)
-                if match:
-                    # Sostituisci mantenendo il grassetto dentro il link
-                    replacement = f'<a href="/articolo/{matching_article.slug}/" class="internal-link" title="{matching_article.titolo}"><strong>{match.group(1)}</strong></a>'
-                    modified_content = pattern.sub(replacement, modified_content, count=1)
+                # Per ogni match, verifica che NON sia dentro un tag <a>
+                for match in strong_pattern.finditer(modified_content):
+                    match_start = match.start()
+                    match_end = match.end()
+
+                    # Cerca l'ultimo <a> prima del match e il prossimo </a> dopo il match
+                    before_content = modified_content[:match_start]
+                    after_content = modified_content[match_end:]
+
+                    # Conta i tag <a> e </a> prima del match
+                    open_tags = before_content.count('<a ') + before_content.count('<a>')
+                    close_tags = before_content.count('</a>')
+
+                    # Se ci sono più <a> aperti che chiusi, siamo DENTRO un link
+                    if open_tags > close_tags:
+                        logger.debug(f"Internal Linking: SKIP '{entity_text}' (dentro link esistente)")
+                        continue
+
+                    # OK, non siamo dentro un link - possiamo linkare
+                    matched_text = match.group(1)
+                    replacement = f'<a href="/articolo/{matching_article.slug}/" class="internal-link" title="{matching_article.titolo}"><strong>{matched_text}</strong></a>'
+                    modified_content = modified_content[:match_start] + replacement + modified_content[match_end:]
                     links_applied += 1
                     linked_entities.add(entity_lower)  # Marca come linkata
                     logger.debug(f"Internal Linking: linkato '{entity_text}' -> {matching_article.slug}")
+                    break  # Solo prima occorrenza
 
             if links_applied > 0:
                 logger.info(f"Internal Linking: applicati {links_applied} link per '{article_title[:50]}...'")

@@ -12,22 +12,35 @@ def send_article_approval_notification(articolo):
     Invia email di notifica quando un nuovo articolo richiede approvazione
     """
     try:
+        from django.utils.html import escape
+
         # Email amministratore (configurabile in settings)
         admin_email = getattr(settings, 'ADMIN_EMAIL', 'redazione@ombradelportico.it')
-        
+
         # Dominio del sito (usa il primo ALLOWED_HOSTS in produzione)
         if hasattr(settings, 'ALLOWED_HOSTS') and settings.ALLOWED_HOSTS:
             # Prendi il primo dominio che non sia localhost/127.0.0.1
-            domain = next((host for host in settings.ALLOWED_HOSTS 
-                          if not host.startswith(('localhost', '127.0.0.1'))), 
+            domain = next((host for host in settings.ALLOWED_HOSTS
+                          if not host.startswith(('localhost', '127.0.0.1'))),
                          'ombradelportico.it')
         else:
             domain = 'ombradelportico.it'
-        
+
         # Usa HTTPS in produzione, HTTP in development
         protocol = 'https' if not getattr(settings, 'DEBUG', False) else 'http'
         base_url = f"{protocol}://{domain}"
-        
+
+        # Prepara fonte per HTML (escaped)
+        fonte_html = ''
+        if articolo.fonte:
+            fonte_escaped = escape(articolo.fonte)
+            fonte_display = fonte_escaped[:60] + ('...' if len(fonte_escaped) > 60 else '')
+            fonte_html = f'''
+                    <tr>
+                        <td style="padding: 8px 0;"><strong>Fonte:</strong></td>
+                        <td style="padding: 8px 0;"><a href="{fonte_escaped}" target="_blank" style="color: #007cba; word-break: break-all;">{fonte_display}</a></td>
+                    </tr>'''
+
         # Oggetto email
         subject = f'[Ombra del Portico] Nuovo articolo da approvare: {articolo.titolo[:50]}...'
         
@@ -54,7 +67,7 @@ def send_article_approval_notification(articolo):
                         <td style="padding: 8px 0;"><strong>ID Articolo:</strong></td>
                         <td style="padding: 8px 0;">{articolo.id}</td>
                     </tr>
-                    {'<tr><td style="padding: 8px 0;"><strong>Fonte:</strong></td><td style="padding: 8px 0;"><a href="' + articolo.fonte + '" target="_blank">' + articolo.fonte[:60] + ('...' if len(articolo.fonte) > 60 else '') + '</a></td></tr>' if articolo.fonte else ''}
+                    {fonte_html}
                 </table>
 
                 <div style="margin: 20px 0;">
