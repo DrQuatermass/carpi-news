@@ -33,30 +33,60 @@ def send_article_approval_notification(articolo):
         
         # Contenuto email HTML
         html_message = f"""
-        <h2>Nuovo Articolo da Approvare</h2>
-        
-        <h3>Dettagli Articolo:</h3>
-        <ul>
-            <li><strong>Titolo:</strong> {articolo.titolo}</li>
-            <li><strong>Categoria:</strong> {articolo.categoria}</li>
-            <li><strong>Data creazione:</strong> {articolo.data_creazione.strftime('%d/%m/%Y alle %H:%M')}</li>
-            <li><strong>ID Articolo:</strong> {articolo.id}</li>
-        </ul>
-        
-        <h3>Contenuto:</h3>
-        <div style="border-left: 3px solid #ccc; padding-left: 10px; margin: 10px 0;">
-            {articolo.contenuto[:200]}{"..." if len(articolo.contenuto) > 200 else ""}
+        <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto;">
+            <h2 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px;">
+                Nuovo Articolo da Approvare
+            </h2>
+
+            <div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                <h3 style="margin-top: 0; color: #495057;">📰 {articolo.titolo}</h3>
+
+                <table style="width: 100%; border-collapse: collapse; margin: 15px 0;">
+                    <tr>
+                        <td style="padding: 8px 0;"><strong>Categoria:</strong></td>
+                        <td style="padding: 8px 0;">{articolo.categoria}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px 0;"><strong>Data creazione:</strong></td>
+                        <td style="padding: 8px 0;">{articolo.data_creazione.strftime('%d/%m/%Y alle %H:%M')}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 8px 0;"><strong>ID Articolo:</strong></td>
+                        <td style="padding: 8px 0;">{articolo.id}</td>
+                    </tr>
+                    {'<tr><td style="padding: 8px 0;"><strong>Fonte:</strong></td><td style="padding: 8px 0;"><a href="' + articolo.fonte + '" target="_blank">' + articolo.fonte[:60] + ('...' if len(articolo.fonte) > 60 else '') + '</a></td></tr>' if articolo.fonte else ''}
+                </table>
+
+                <div style="margin: 20px 0;">
+                    <strong style="color: #495057;">Sommario:</strong>
+                    <p style="color: #6c757d; line-height: 1.6; margin: 10px 0;">
+                        {articolo.sommario if articolo.sommario else articolo.contenuto[:300] + '...'}
+                    </p>
+                </div>
+
+                <div style="margin: 20px 0;">
+                    <strong style="color: #495057;">Contenuto completo:</strong>
+                    <div style="border-left: 3px solid #3498db; padding-left: 15px; margin: 10px 0; color: #495057; line-height: 1.6; max-height: 400px; overflow-y: auto;">
+                        {articolo.contenuto}
+                    </div>
+                </div>
+            </div>
+
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="{base_url}/admin/home/articolo/{articolo.id}/change/"
+                   style="display: inline-block; background: #28a745; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 16px;">
+                   ✓ Approva Articolo
+                </a>
+                <p style="margin-top: 10px; color: #6c757d; font-size: 14px;">
+                    oppure apri: <a href="{base_url}/admin/home/articolo/{articolo.id}/change/" style="color: #007cba;">{base_url}/admin/home/articolo/{articolo.id}/change/</a>
+                </p>
+            </div>
+
+            <hr style="border: none; border-top: 1px solid #dee2e6; margin: 20px 0;">
+            <p style="text-align: center; color: #6c757d; font-size: 12px;">
+                Generato automaticamente dal sistema Ombra del Portico
+            </p>
         </div>
-        
-        <h3>Azioni:</h3>
-        <p>Per approvare l'articolo, accedi all'admin Django:</p>
-        <p><a href="{base_url}/admin/home/articolo/{articolo.id}/change/" 
-           style="background: #007cba; color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px;">
-           Approva Articolo
-        </a></p>
-        
-        <hr>
-        <p><small>Generato automaticamente dal sistema Ombra del Portico</small></p>
         """
         
         # Versione testo semplice
@@ -67,11 +97,18 @@ Titolo: {articolo.titolo}
 Categoria: {articolo.categoria}
 Data: {articolo.data_creazione.strftime('%d/%m/%Y alle %H:%M')}
 ID: {articolo.id}
+{"Fonte: " + articolo.fonte if articolo.fonte else ""}
 
-Contenuto:
-{articolo.contenuto[:300]}{"..." if len(articolo.contenuto) > 300 else ""}
+Sommario:
+{articolo.sommario if articolo.sommario else articolo.contenuto[:300] + '...'}
 
-Per approvare, vai su: {base_url}/admin/home/articolo/{articolo.id}/change/
+Contenuto completo:
+{articolo.contenuto}
+
+========================================
+APPROVA ARTICOLO:
+{base_url}/admin/home/articolo/{articolo.id}/change/
+========================================
 
 ---
 Generato automaticamente dal sistema Ombra del Portico
