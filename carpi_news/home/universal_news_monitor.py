@@ -2694,6 +2694,20 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
             # Determina se deve essere auto-approvato
             auto_approve = self.should_auto_approve(category)
 
+            # Estrai data evento se presente (per Eventi Carpi GraphQL)
+            data_evento = None
+            if article_data.get('event_start'):
+                try:
+                    from datetime import datetime
+                    # Formato: "2025-10-28T10:00:00" o "2025-10-28"
+                    event_start_str = article_data['event_start']
+                    if 'T' in event_start_str:
+                        data_evento = datetime.fromisoformat(event_start_str).date()
+                    else:
+                        data_evento = datetime.strptime(event_start_str, '%Y-%m-%d').date()
+                except Exception as e:
+                    self.logger.warning(f"Errore parsing data evento: {e}")
+
             articolo = Articolo(
                 titolo=polished_data['titolo'],
                 contenuto=polished_data['contenuto'],
@@ -2701,6 +2715,7 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
                 fonte=article_data['url'],
                 foto=article_data.get('image_url'),
                 fonti_web=used_sources if used_sources else None,  # Salva fonti web utilizzate
+                data_evento=data_evento,  # Imposta data evento se disponibile
                 approvato=auto_approve,  # Auto-approva se configurato
                 data_pubblicazione=timezone.now()
             )
@@ -2882,16 +2897,31 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
             'titolo': article_data['title'],
             'contenuto': article_data['full_content']
         })
-        
+
         # Determina se deve essere auto-approvato
         auto_approve = self.should_auto_approve(self.config.category)
-        
+
+        # Estrai data evento se presente (per Eventi Carpi GraphQL)
+        data_evento = None
+        if article_data.get('event_start'):
+            try:
+                from datetime import datetime
+                # Formato: "2025-10-28T10:00:00" o "2025-10-28"
+                event_start_str = article_data['event_start']
+                if 'T' in event_start_str:
+                    data_evento = datetime.fromisoformat(event_start_str).date()
+                else:
+                    data_evento = datetime.strptime(event_start_str, '%Y-%m-%d').date()
+            except Exception as e:
+                self.logger.warning(f"Errore parsing data evento: {e}")
+
         articolo = Articolo(
             titolo=polished_data['titolo'],
             contenuto=polished_data['contenuto'],
             categoria=self.config.category,
             fonte=article_data['url'],
             foto=article_data.get('image_url'),
+            data_evento=data_evento,  # Imposta data evento se disponibile
             approvato=auto_approve,  # Auto-approva se configurato
             data_pubblicazione=timezone.now()
         )
