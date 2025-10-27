@@ -247,71 +247,86 @@
                 // Rimuovi SOLO le card, mantieni lo spinner
                 const existingCardLinks = newsGrid.querySelectorAll('.news-card-link');
                 existingCardLinks.forEach(link => link.remove());
-                
-                // Crea le nuove card ma non le mostrare ancora
-                const newCards = [];
-                data.articoli.forEach((articolo, index) => {
-                    const cardLink = createNewsCard(articolo);
-                    const card = cardLink.querySelector('.news-card');
-                    card.style.opacity = '0';
-                    card.style.transform = slideInClass.includes('left') ? 'translateX(-100%)' : 'translateX(100%)';
-                    newsGrid.appendChild(cardLink);
-                    newCards.push(card);
 
-                    // Forza il caricamento immediato dell'immagine
-                    const img = card.querySelector('img');
-                    if (img && img.complete === false) {
-                        // Trigger il download forzato se non ancora caricata
-                        img.decode().catch(() => {});
-                    }
+                // Pre-carica tutte le immagini PRIMA di creare le card
+                const imagePromises = data.articoli.map(articolo => {
+                    return new Promise((resolve) => {
+                        const img = new Image();
+                        const imageUrl = buildImageUrl(articolo.foto);
+                        img.onload = () => resolve(articolo);
+                        img.onerror = () => resolve(articolo); // Resolve anche in caso di errore
+                        img.src = imageUrl;
+                        // Timeout di sicurezza: risolvi dopo 2 secondi anche se non caricata
+                        setTimeout(() => resolve(articolo), 2000);
+                    });
                 });
-                
-                // Aggiorna i dati di paginazione
-                currentPage = data.current_page;
-                totalPages = data.total_pages;
-                
-                // Aggiorna i pulsanti di navigazione
-                updateNavigationButtons(data.has_prev, data.has_next);
-                
-                // Aggiorna l'URL senza ricaricare la pagina
-                const url = new URL(window.location);
-                url.searchParams.set('page', currentPage);
-                window.history.pushState({}, '', url);
-                
-                // Scroll automatico all'inizio delle card per mostrare il nuovo contenuto
-                const newsSection = document.querySelector('.news-section');
-                if (newsSection) {
-                    const offsetTop = newsSection.offsetTop - 100; // 100px di margine dall'header fisso
-                    window.scrollTo({
-                        top: offsetTop,
-                        behavior: 'smooth'
-                    });
-                }
-                
-                // Ora anima le nuove card in entrata
-                setTimeout(() => {
-                    newCards.forEach((card, index) => {
-                        setTimeout(() => {
-                            card.classList.add(slideInClass);
-                        }, index * 30);
-                    });
-                    
-                    // Rimuovi classe di transizione
-                    newsGrid.classList.remove('transitioning');
-                    
-                    // Ripristina l'altezza naturale della griglia
-                    const newsNav = document.querySelector('.news-nav');
-                    newsNav.style.minHeight = '';
 
-                    // Ripristina l'effetto parallasse
-                    const hero = document.querySelector('.hero');
-                    updateParallax(hero);
-                    
-                    // Riabilita le transizioni
+                // Aspetta che tutte le immagini siano caricate (o timeout)
+                Promise.all(imagePromises).then(() => {
+                    // Ora crea le card con immagini già in cache
+                    const newCards = [];
+                    data.articoli.forEach((articolo, index) => {
+                        const cardLink = createNewsCard(articolo);
+                        const card = cardLink.querySelector('.news-card');
+                        card.style.opacity = '0';
+                        card.style.transform = slideInClass.includes('left') ? 'translateX(-100%)' : 'translateX(100%)';
+                        newsGrid.appendChild(cardLink);
+                        newCards.push(card);
+                    });
+
+                    continuePageTransition();
+                });
+
+                function continuePageTransition() {
+                    const newCards = Array.from(newsGrid.querySelectorAll('.news-card'));
+
+                    // Aggiorna i dati di paginazione
+                    currentPage = data.current_page;
+                    totalPages = data.total_pages;
+
+                    // Aggiorna i pulsanti di navigazione
+                    updateNavigationButtons(data.has_prev, data.has_next);
+
+                    // Aggiorna l'URL senza ricaricare la pagina
+                    const url = new URL(window.location);
+                    url.searchParams.set('page', currentPage);
+                    window.history.pushState({}, '', url);
+
+                    // Scroll automatico all'inizio delle card per mostrare il nuovo contenuto
+                    const newsSection = document.querySelector('.news-section');
+                    if (newsSection) {
+                        const offsetTop = newsSection.offsetTop - 100; // 100px di margine dall'header fisso
+                        window.scrollTo({
+                            top: offsetTop,
+                            behavior: 'smooth'
+                        });
+                    }
+
+                    // Ora anima le nuove card in entrata
                     setTimeout(() => {
-                        isTransitioning = false;
-                    }, 100);
-                }, 50);
+                        newCards.forEach((card, index) => {
+                            setTimeout(() => {
+                                card.classList.add(slideInClass);
+                            }, index * 30);
+                        });
+
+                        // Rimuovi classe di transizione
+                        newsGrid.classList.remove('transitioning');
+
+                        // Ripristina l'altezza naturale della griglia
+                        const newsNav = document.querySelector('.news-nav');
+                        newsNav.style.minHeight = '';
+
+                        // Ripristina l'effetto parallasse
+                        const hero = document.querySelector('.hero');
+                        updateParallax(hero);
+
+                        // Riabilita le transizioni
+                        setTimeout(() => {
+                            isTransitioning = false;
+                        }, 100);
+                    }, 50);
+                }
             }, 250);
         }
         
