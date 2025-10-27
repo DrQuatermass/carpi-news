@@ -4,7 +4,10 @@
       "Bash(python manage.py runserver:*)",
       "WebFetch(domain:www.comune.carpi.mo.it)",
       "Bash(python:*)",
-      "Bash(dir logs)"
+      "Bash(dir logs)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []

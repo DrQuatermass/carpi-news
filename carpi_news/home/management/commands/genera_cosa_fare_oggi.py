@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    help = 'Genera l\'articolo giornaliero "Cosa fare oggi?" con gli eventi del giorno'
+    help = 'Genera l\'articolo giornaliero "Cosa fare oggi?" con gli eventi del giorno nello stile di Umberto Eco. Usa ironia.'
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -182,35 +182,29 @@ class Command(BaseCommand):
             for e in eventi_info
         ])
 
-        prompt = f"""Scrivi un articolo per la rubrica "Cosa fare oggi" del giornale locale di Carpi, nello stile ironico e colto di Umberto Eco.
+        prompt = f"""Scrivi un articolo coinvolgente per la rubrica "Cosa fare oggi" del giornale locale di Carpi.
 
 DATA: {giorno_settimana} {giorno} {mese}
-EVENTI DISPONIBILI ({len(eventi_info)} totali):
+EVENTI DEL GIORNO ({len(eventi_info)} eventi):
 
 {lista_eventi}
 
 ISTRUZIONI:
-- Scrivi un articolo narrativo e intelligente, con ironia sottile e riferimenti colti (stile Umberto Eco)
-- Puoi selezionare gli eventi più interessanti (non sei obbligato a includerli tutti)
-- PRIVILEGIA gli eventi che si svolgono a Carpi rispetto a quelli della provincia
-- Inizia con un'introduzione brillante che contestualizza la giornata
-- Per ogni evento che scegli di includere:
-  * Usa un H3 con un titolo riformulato in modo creativo (NON copiare il titolo originale)
-  * Inserisci tra i tag H3 questa stringa esatta: ||EVENTO_N|| dove N è il numero dell'evento nell'elenco sopra
-  * Esempio: <h3>Il teatro che si fa metafora dell'anima ||EVENTO_4||</h3>
-  * Poi scrivi 2-4 frasi descrittive con il tuo stile ironico
-- NON usare frasi promozionali tipo "Vi ricordiamo che..." o "Buona domenica a tutti!"
-- Concludi in modo naturale, magari con una riflessione ironica sulla cultura locale
+- Scrivi un articolo narrativo e coinvolgente (NON un semplice elenco)
+- Inizia con un'introduzione accattivante che presenta la giornata
+- Presenta gli eventi in modo fluido e narrativo, evidenziando varietà e ricchezza dell'offerta culturale
+- Per ogni evento usa il formato: <h3>TITOLO_EVENTO</h3> seguito da un paragrafo descrittivo
+- Usa un tono caldo, locale, che parla ai lettori di Carpi
+- Concludi invitando a partecipare e menziona che la rubrica si aggiorna quotidianamente alle 8:05
 - Usa tag HTML: <p>, <h3>, <strong>, <em>
-- Lunghezza: 500-700 parole
+- NON inserire link (verranno aggiunti automaticamente)
+- Lunghezza: circa 400-600 parole
 
-STILE: Umberto Eco - ironico, colto, intelligente, mai banale, con digressioni brillanti.
-
-IMPORTANTE: Ogni H3 deve contenere ||EVENTO_numero|| per il collegamento automatico!"""
+STILE: Giornalistico locale, caldo, coinvolgente, che valorizza il territorio."""
 
         message = client.messages.create(
             model="claude-sonnet-4-20250514",
-            max_tokens=4000,
+            max_tokens=2000,
             temperature=0.7,
             messages=[{
                 "role": "user",
@@ -221,31 +215,16 @@ IMPORTANTE: Ogni H3 deve contenere ||EVENTO_numero|| per il collegamento automat
         return message.content[0].text
 
     def _inserisci_link_eventi(self, contenuto_ai, eventi):
-        """Inserisce automaticamente i link agli eventi usando i marker ||EVENTO_n||"""
+        """Inserisce automaticamente i link agli eventi nel testo generato dall'AI"""
         contenuto_finale = contenuto_ai
 
-        # Pattern per trovare i marker ||EVENTO_numero|| dentro gli H3
-        # Esempio: <h3>Titolo evento ||EVENTO_4||</h3>
-        pattern = r'<h3>(.*?)\|\|EVENTO_(\d+)\|\|(.*?)</h3>'
-
-        def replace_marker(match):
-            titolo_prima = match.group(1).strip()
-            numero_evento = int(match.group(2))
-            titolo_dopo = match.group(3).strip()
-
-            # Ricostruisci il titolo completo
-            titolo_completo = titolo_prima + titolo_dopo
-            titolo_completo = titolo_completo.strip()
-
-            # Trova l'evento corrispondente (numero_evento è 1-indexed)
-            if 1 <= numero_evento <= len(eventi):
-                evento = eventi[numero_evento - 1]
-                return f'<h3><a href="/articolo/{evento.slug}/" class="internal-link">{titolo_completo}</a></h3>'
-            else:
-                # Se il numero non è valido, rimuovi solo il marker
-                return f'<h3>{titolo_completo}</h3>'
-
-        contenuto_finale = re.sub(pattern, replace_marker, contenuto_finale)
+        for evento in eventi:
+            # Cerca il titolo dell'evento nel testo e lo trasforma in link
+            titolo_escaped = re.escape(evento.titolo)
+            # Pattern per trovare il titolo dentro un tag h3
+            pattern = f'(<h3>)({titolo_escaped})(</h3>)'
+            replacement = f'\\1<a href="/articolo/{evento.slug}/" class="internal-link">\\2</a>\\3'
+            contenuto_finale = re.sub(pattern, replacement, contenuto_finale, flags=re.IGNORECASE)
 
         return contenuto_finale
 

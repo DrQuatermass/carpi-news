@@ -62,3 +62,4 @@ test_*.py
 check_*.py
 download_*.py
 optimize_*.py
+archive/
