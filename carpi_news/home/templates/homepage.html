@@ -248,103 +248,24 @@
                 const existingCardLinks = newsGrid.querySelectorAll('.news-card-link');
                 existingCardLinks.forEach(link => link.remove());
 
-                // Crea le card IMMEDIATAMENTE e VISIBILI per permettere al browser di caricare le immagini
-                const newCards = [];
-                const imageLoadPromises = [];
-
+                // TEST: Mostra card semplicemente senza animazioni o Promise
                 data.articoli.forEach((articolo, index) => {
                     const cardLink = createNewsCard(articolo);
-                    const card = cardLink.querySelector('.news-card');
-
-                    // NON nascondere ancora - lascia visibili per triggerare il caricamento
-                    card.style.opacity = '1';
-                    card.style.transform = 'none';
                     newsGrid.appendChild(cardLink);
-                    newCards.push(card);
-
-                    // Trova l'immagine nella card e attendi che carichi
-                    const img = card.querySelector('img');
-                    if (img) {
-                        const imagePromise = new Promise((resolve) => {
-                            if (img.complete) {
-                                resolve(); // Già caricata
-                            } else {
-                                img.onload = () => resolve();
-                                img.onerror = () => resolve(); // Resolve anche su errore
-                                // Timeout di sicurezza
-                                setTimeout(() => resolve(), 2000);
-                            }
-                        });
-                        imageLoadPromises.push(imagePromise);
-                    }
                 });
 
-                // Aspetta che tutte le immagini siano caricate, POI nascondi per animare
-                Promise.all(imageLoadPromises).then(() => {
-                    console.log('Tutte le immagini caricate, ora nascondo per animazione');
+                // Aggiorna immediatamente senza animazioni
+                currentPage = data.current_page;
+                totalPages = data.total_pages;
+                updateNavigationButtons(data.has_prev, data.has_next);
 
-                    // Ora nascondi le card per prepararle all'animazione di entrata
-                    newCards.forEach(card => {
-                        card.style.opacity = '0';
-                        card.style.transform = slideInClass.includes('left') ? 'translateX(-100%)' : 'translateX(100%)';
-                    });
+                const url = new URL(window.location);
+                url.searchParams.set('page', currentPage);
+                window.history.pushState({}, '', url);
 
-                    // Forza reflow
-                    void newsGrid.offsetHeight;
-
-                    continuePageTransition();
-                });
-
-                function continuePageTransition() {
-                    const newCards = Array.from(newsGrid.querySelectorAll('.news-card'));
-
-                    // Aggiorna i dati di paginazione
-                    currentPage = data.current_page;
-                    totalPages = data.total_pages;
-
-                    // Aggiorna i pulsanti di navigazione
-                    updateNavigationButtons(data.has_prev, data.has_next);
-
-                    // Aggiorna l'URL senza ricaricare la pagina
-                    const url = new URL(window.location);
-                    url.searchParams.set('page', currentPage);
-                    window.history.pushState({}, '', url);
-
-                    // Scroll automatico all'inizio delle card per mostrare il nuovo contenuto
-                    const newsSection = document.querySelector('.news-section');
-                    if (newsSection) {
-                        const offsetTop = newsSection.offsetTop - 100; // 100px di margine dall'header fisso
-                        window.scrollTo({
-                            top: offsetTop,
-                            behavior: 'smooth'
-                        });
-                    }
-
-                    // Ora anima le nuove card in entrata
-                    setTimeout(() => {
-                        newCards.forEach((card, index) => {
-                            setTimeout(() => {
-                                card.classList.add(slideInClass);
-                            }, index * 30);
-                        });
-
-                        // Rimuovi classe di transizione
-                        newsGrid.classList.remove('transitioning');
-
-                        // Ripristina l'altezza naturale della griglia
-                        const newsNav = document.querySelector('.news-nav');
-                        newsNav.style.minHeight = '';
-
-                        // Ripristina l'effetto parallasse
-                        const hero = document.querySelector('.hero');
-                        updateParallax(hero);
-
-                        // Riabilita le transizioni
-                        setTimeout(() => {
-                            isTransitioning = false;
-                        }, 100);
-                    }, 50);
-                }
+                newsGrid.classList.remove('transitioning');
+                loadingSpinner.classList.remove('active');
+                isTransitioning = false;
             }, 250);
         }
         
