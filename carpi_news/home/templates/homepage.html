@@ -309,20 +309,16 @@
             card.className = 'news-card';
             
             const imageUrl = buildImageUrl(articolo.foto);
-            const webpUrl = toWebP(imageUrl);
+
+            // Semplificato: solo <img> senza <picture> per test
             const imageHtml = `
                 <div class="news-image">
-                    <picture>
-                        <source srcset="${webpUrl}" type="image/webp">
-                        <img src="${imageUrl}"
-                             alt="${articolo.titolo}"
-                             class="card-img"
-                             loading="eager"
-                             decoding="async"
-                             width="400"
-                             height="200"
-                             onerror="this.onerror=null; this.src='${DEFAULT_IMAGE}';">
-                    </picture>
+                    <img src="${imageUrl}"
+                         alt="${articolo.titolo}"
+                         class="card-img"
+                         loading="eager"
+                         fetchpriority="high"
+                         onerror="this.onerror=null; this.src='${DEFAULT_IMAGE}';">
                 </div>
             `;
 
