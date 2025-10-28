@@ -49,23 +49,6 @@ def start_scheduler():
 
         logger.info("[OK] Scheduler 'Cosa fare oggi?' avviato - esecuzione alle 8:05 ogni giorno")
 
-        # Esegui un test immediato (se è dopo le 8:05 e non c'è già l'articolo di oggi)
-        now = datetime.now()
-        if now.hour >= 8 and now.minute >= 5:
-            # Controlla se esiste già l'articolo di oggi
-            from home.models import Articolo
-            from django.utils import timezone
-
-            today = timezone.now().date()
-            today_cosa_fare = Articolo.objects.filter(
-                categoria='Cosa fare oggi',
-                data_pubblicazione__date=today
-            ).exists()
-
-            if not today_cosa_fare:
-                logger.info("[OK] Esecuzione test immediata di 'Cosa fare oggi?'")
-                run_cosa_fare_oggi()
-
         # Lock file per aggiornamento periodico
         lock_file = Path('locks') / 'cosa_fare_oggi_scheduler.lock'
 

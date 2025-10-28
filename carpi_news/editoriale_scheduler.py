@@ -53,23 +53,6 @@ def start_scheduler():
 
         logger.info("📅 Scheduler editoriale avviato - esecuzione alle 8:00 ogni giorno")
 
-        # Esegui un test immediato (se è dopo le 8:00 e non c'è già l'editoriale di oggi)
-        now = datetime.now()
-        if now.hour >= 8:
-            # Controlla se esiste già l'editoriale di oggi
-            from home.models import Articolo
-            from django.utils import timezone
-
-            today = timezone.now().date()
-            today_editorial = Articolo.objects.filter(
-                categoria='Editoriale',
-                data_pubblicazione__date=today
-            ).exists()
-
-            if not today_editorial:
-                logger.info("🚀 Esecuzione test immediata dell'editoriale")
-                run_editoriale()
-
         # Lock file per aggiornamento periodico
         lock_file = Path('locks') / 'editorial_scheduler.lock'
 
