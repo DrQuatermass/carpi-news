@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load italian_dates %}
+{% load static %}
 
 {% block title %}{{ articolo.titolo }} - Ombra del Portico{% endblock %}
 
@@ -53,7 +54,9 @@
     "url": "https://ombradelportico.it",
     "logo": {
       "@type": "ImageObject",
-      "url": "https://ombradelportico.it/static/home/images/portico_logo_nopayoff.png"
+      "url": "https://ombradelportico.it{% static 'home/images/portico_logo_news.webp' %}",
+      "width": 112,
+      "height": 112
     }
   },
   "description": "{{ articolo.sommario|striptags|truncatechars:200|escapejs }}",
