@@ -13,6 +13,15 @@ class SecurityHeadersMiddleware:
     def __call__(self, request):
         response = self.get_response(request)
 
+        # Cache headers per file statici
+        if request.path.startswith('/static/'):
+            # File statici: cache per 1 anno
+            if any(request.path.endswith(ext) for ext in ['.css', '.js', '.svg', '.png', '.jpg', '.jpeg', '.webp', '.gif', '.ico', '.woff', '.woff2', '.ttf', '.eot']):
+                response['Cache-Control'] = 'public, max-age=31536000, immutable'
+        elif request.path.startswith('/media/'):
+            # Media files: cache per 1 settimana
+            response['Cache-Control'] = 'public, max-age=604800'
+
         # Content Security Policy (CSP) per prevenire XSS
         csp_directives = [
             "default-src 'self'",
