@@ -4,11 +4,122 @@ from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 from django.core.cache import cache
 from django.core.cache.utils import make_template_fragment_key
+from django.core.files.base import ContentFile
 from .models import Articolo
 from .email_notifications import send_article_approval_notification
 from .social_sharing import social_manager
+from PIL import Image
+import io
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
+
+
+def convert_uploaded_image_to_webp(image_field, quality=75, max_width=1200):
+    """
+    Converte un'immagine caricata in WebP ottimizzato
+
+    Args:
+        image_field: Campo ImageField di Django
+        quality: Qualità WebP (0-100, default 75 per bilanciare qualità/dimensione)
+        max_width: Larghezza massima per ridimensionamento (default 1200px)
+
+    Returns:
+        ContentFile con l'immagine WebP convertita, o None se errore
+    """
+    try:
+        # Apri l'immagine dal campo
+        image_field.seek(0)
+        img = Image.open(image_field)
+
+        # Log dimensioni originali
+        original_format = img.format
+        width, height = img.size
+        logger.info(f"Conversione immagine: {width}x{height} {original_format} -> WebP")
+
+        # Ridimensiona se troppo grande (ottimizzazione performance web)
+        if width > max_width:
+            ratio = max_width / width
+            new_height = int(height * ratio)
+            img = img.resize((max_width, new_height), Image.Resampling.LANCZOS)
+            logger.info(f"Immagine ridimensionata: {width}x{height} -> {max_width}x{new_height}")
+
+        # Converti in RGB se necessario (per PNG con trasparenza)
+        if img.mode in ('RGBA', 'LA', 'P'):
+            background = Image.new('RGB', img.size, (255, 255, 255))
+            if img.mode == 'P':
+                img = img.convert('RGBA')
+            background.paste(img, mask=img.split()[-1] if img.mode == 'RGBA' else None)
+            img = background
+            logger.debug("Immagine convertita in RGB (rimozione trasparenza)")
+
+        # Salva come WebP in memoria
+        webp_io = io.BytesIO()
+        img.save(webp_io, 'WebP', quality=quality, method=6)
+        webp_io.seek(0)
+
+        # Calcola risparmio
+        image_field.seek(0)
+        original_size = len(image_field.read())
+        webp_size = len(webp_io.getvalue())
+        savings = original_size - webp_size
+        savings_percent = (savings / original_size) * 100 if original_size > 0 else 0
+
+        logger.info(f"Conversione WebP completata: {original_size/1024:.1f}KB -> {webp_size/1024:.1f}KB (risparmio: {savings_percent:.1f}%)")
+
+        # Ritorna il ContentFile con i dati WebP
+        return ContentFile(webp_io.getvalue())
+
+    except Exception as e:
+        logger.error(f"Errore durante conversione WebP: {e}")
+        return None
+
+
+@receiver(pre_save, sender=Articolo)
+def convert_foto_upload_to_webp(sender, instance, **kwargs):
+    """
+    Converte automaticamente le immagini caricate in WebP prima del salvataggio
+    """
+    # Verifica se c'è un'immagine caricata
+    if not instance.foto_upload:
+        return
+
+    # Controlla se è un nuovo upload o se l'immagine è cambiata
+    if instance.pk:
+        try:
+            old_instance = Articolo.objects.get(pk=instance.pk)
+            # Se l'immagine non è cambiata, salta la conversione
+            if old_instance.foto_upload == instance.foto_upload:
+                return
+        except Articolo.DoesNotExist:
+            pass
+
+    # Verifica se è già WebP
+    if instance.foto_upload.name.lower().endswith('.webp'):
+        logger.debug(f"Immagine già in formato WebP: {instance.foto_upload.name}")
+        return
+
+    # Converti solo PNG, JPG, JPEG
+    file_ext = Path(instance.foto_upload.name).suffix.lower()
+    if file_ext not in ['.png', '.jpg', '.jpeg']:
+        logger.debug(f"Formato non supportato per conversione WebP: {file_ext}")
+        return
+
+    logger.info(f"Conversione immagine caricata in WebP: {instance.foto_upload.name}")
+
+    # Converti l'immagine
+    webp_content = convert_uploaded_image_to_webp(instance.foto_upload)
+
+    if webp_content:
+        # Genera nuovo nome file con estensione .webp
+        original_name = Path(instance.foto_upload.name).stem
+        webp_name = f"{original_name}.webp"
+
+        # Sostituisci il file con la versione WebP
+        instance.foto_upload.save(webp_name, webp_content, save=False)
+        logger.info(f"Immagine convertita e salvata come: {webp_name}")
+    else:
+        logger.warning(f"Impossibile convertire {instance.foto_upload.name} in WebP, mantengo originale")
 
 
 def invalidate_rss_feeds():

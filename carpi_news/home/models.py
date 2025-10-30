@@ -62,7 +62,7 @@ class Articolo(models.Model):
 
         if not self.foto:
             return fallback_image
-        
+
         # Se l'immagine è locale (inizia con /media/ o /static/), aggiungi il dominio
         if self.foto.startswith('/media/') or self.foto.startswith('/static/'):
             # Controlla se il file esiste fisicamente prima di restituirlo
@@ -83,7 +83,7 @@ class Articolo(models.Model):
             # File esiste, restituisci URL completo
             site_url = getattr(settings, 'SITE_URL', 'https://ombradelportico.it')
             return f"{site_url}{self.foto}"
-        
+
         # Fix per URL con spazi e doppi slash prima della validazione
         validated_url = self.foto
 
@@ -104,31 +104,147 @@ class Articolo(models.Model):
                     validated_url = f"{parts[0]}//{parts[2]}/{encoded_path}"
             else:
                 validated_url = quote(validated_url, safe='/:?#[]@!$&\'()*+,;=')
-        
+
         # Per alcuni domini noti che hanno problemi di connessione, salta la validazione
         trusted_domains = ['voce.it', 'ombradelportico.it']
         if any(domain in validated_url for domain in trusted_domains):
             return validated_url
-        
+
         # Per URL esterni, mantieni la validazione con cache
         cache_key = f"image_valid_{hash(validated_url)}"
         cached_result = cache.get(cache_key)
-        
+
         if cached_result is not None:
             return validated_url if cached_result else fallback_image
-        
+
         try:
             # Controlla se l'URL è raggiungibile
             response = requests.head(validated_url, timeout=3, allow_redirects=True)
             is_valid = response.status_code == 200
-            
+
             # Cache il risultato per 1 ora
             cache.set(cache_key, is_valid, 3600)
-            
+
             return validated_url if is_valid else fallback_image
         except:
             # Se c'è qualsiasi errore, cache fallimento e usa il fallback
             cache.set(cache_key, False, 1800)  # Cache errori per 30 min
+            return fallback_image
+
+    def get_social_image_url(self):
+        """
+        Restituisce l'URL dell'immagine ottimizzato per la condivisione sui social.
+        - Usa sempre PNG/JPG (no WebP) per massima compatibilità
+        - Restituisce sempre URL assoluti con dominio completo
+        - Fallback intelligente se l'immagine WebP non ha equivalente PNG/JPG
+        """
+        from pathlib import Path
+
+        site_url = getattr(settings, 'SITE_URL', 'https://ombradelportico.it')
+        fallback_image = f"{site_url}{static('home/images/portico_logo_nopayoff.png')}"
+
+        # Priorità: foto_upload prima di foto URL
+        if self.foto_upload:
+            return f"{site_url}{self.foto_upload.url}"
+
+        if not self.foto:
+            return fallback_image
+
+        image_url = self.foto
+
+        # Se l'immagine è SVG, usa la versione PNG (i social non supportano SVG)
+        if image_url.endswith('.svg'):
+            # Sostituisci .svg con .png
+            png_url = image_url[:-4] + '.png'
+
+            # Verifica che esista la versione PNG
+            if png_url.startswith('/media/') or png_url.startswith('/static/'):
+                if png_url.startswith('/media/'):
+                    file_path = Path(settings.MEDIA_ROOT) / png_url.replace('/media/', '')
+                else:
+                    file_path = Path(settings.BASE_DIR) / 'home' / 'static' / png_url.replace('/static/', '')
+
+                if file_path.exists():
+                    logger.info(f"SVG convertito in PNG per social: {image_url} -> {png_url}")
+                    image_url = png_url
+                else:
+                    logger.warning(f"Versione PNG non trovata per SVG: {image_url}, uso fallback")
+                    return fallback_image
+            else:
+                # SVG esterno, usa fallback
+                logger.warning(f"SVG esterno non supportato per social: {image_url}")
+                return fallback_image
+
+        # Se l'immagine è WebP, prova a trovare l'originale PNG/JPG
+        if image_url.endswith('.webp'):
+            # Prova tutti i possibili formati originali
+            for ext in ['.png', '.jpg', '.jpeg', '.PNG', '.JPG', '.JPEG']:
+                original_url = image_url[:-5] + ext  # Rimuovi .webp e aggiungi estensione
+
+                # Se è locale, controlla che esista
+                if original_url.startswith('/media/') or original_url.startswith('/static/'):
+                    if original_url.startswith('/media/'):
+                        file_path = Path(settings.MEDIA_ROOT) / original_url.replace('/media/', '')
+                    else:
+                        file_path = Path(settings.BASE_DIR) / 'home' / 'static' / original_url.replace('/static/', '')
+
+                    if file_path.exists():
+                        image_url = original_url
+                        break
+            else:
+                # Nessun originale trovato, usa l'immagine WebP comunque (alcuni social la supportano)
+                logger.warning(f"Immagine originale non trovata per WebP: {self.foto} (articolo: {self.titolo})")
+
+        # Gestisci URL locali
+        if image_url.startswith('/media/') or image_url.startswith('/static/'):
+            # Verifica che il file esista
+            if image_url.startswith('/media/'):
+                file_path = Path(settings.MEDIA_ROOT) / image_url.replace('/media/', '')
+            else:
+                file_path = Path(settings.BASE_DIR) / 'home' / 'static' / image_url.replace('/static/', '')
+
+            if not file_path.exists():
+                logger.warning(f"Immagine social non trovata: {image_url} (articolo: {self.titolo})")
+                return fallback_image
+
+            return f"{site_url}{image_url}"
+
+        # Per URL esterni, assicurati che siano validi
+        # Fix per URL con spazi e doppi slash
+        validated_url = image_url
+
+        if '://' in validated_url:
+            protocol, rest = validated_url.split('://', 1)
+            rest = re.sub(r'/+', '/', rest)
+            validated_url = f"{protocol}://{rest}"
+
+        if ' ' in validated_url:
+            if validated_url.startswith('http'):
+                parts = validated_url.split('/', 3)
+                if len(parts) > 3:
+                    encoded_path = quote(parts[3], safe='/')
+                    validated_url = f"{parts[0]}//{parts[2]}/{encoded_path}"
+            else:
+                validated_url = quote(validated_url, safe='/:?#[]@!$&\'()*+,;=')
+
+        # Per URL esterni, usa validazione con cache (come get_image_url)
+        trusted_domains = ['voce.it', 'ombradelportico.it']
+        if any(domain in validated_url for domain in trusted_domains):
+            return validated_url
+
+        cache_key = f"social_image_valid_{hash(validated_url)}"
+        cached_result = cache.get(cache_key)
+
+        if cached_result is not None:
+            return validated_url if cached_result else fallback_image
+
+        try:
+            response = requests.head(validated_url, timeout=3, allow_redirects=True)
+            is_valid = response.status_code == 200
+            cache.set(cache_key, is_valid, 3600)
+            return validated_url if is_valid else fallback_image
+        except:
+            cache.set(cache_key, False, 1800)
             return fallback_image
 
     def __str__(self):
