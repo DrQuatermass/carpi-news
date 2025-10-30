@@ -15,7 +15,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 
-def convert_uploaded_image_to_webp(image_field, quality=75, max_width=1200):
+def convert_uploaded_image_to_webp(image_field, quality=65, max_width=800):
     """
     Converte un'immagine caricata in WebP ottimizzato
 
