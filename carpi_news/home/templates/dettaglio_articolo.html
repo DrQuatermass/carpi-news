@@ -3,31 +3,27 @@
 
 {% block title %}{{ articolo.titolo }} - Ombra del Portico{% endblock %}
 
+{% block og_type %}article{% endblock %}
+{% block og_url %}{{ request.build_absolute_uri }}{% endblock %}
+{% block og_title %}{{ articolo.titolo }}{% endblock %}
+{% block og_description %}{{ articolo.sommario|truncatechars:300|striptags }}{% endblock %}
+{% block og_image %}{{ articolo.get_social_image_url }}{% endblock %}
+
+{% block twitter_card %}summary_large_image{% endblock %}
+{% block twitter_url %}{{ request.build_absolute_uri }}{% endblock %}
+{% block twitter_title %}{{ articolo.titolo }}{% endblock %}
+{% block twitter_description %}{{ articolo.sommario|truncatechars:200|striptags }}{% endblock %}
+{% block twitter_image %}{{ articolo.get_social_image_url }}{% endblock %}
+
+{% block meta_description %}{{ articolo.sommario|truncatechars:160|striptags }}{% endblock %}
+
 {% block extra_css %}
 <!-- Canonical URL -->
 <link rel="canonical" href="{{ request.build_absolute_uri }}">
 
-<!-- Open Graph meta tags per condivisione social -->
-<meta property="og:title" content="{{ articolo.titolo }}">
-<meta property="og:description" content="{{ articolo.sommario|truncatechars:300|striptags }}">
-<meta property="og:image" content="{{ articolo.get_social_image_url }}">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
-<meta property="og:url" content="{{ request.build_absolute_uri }}">
-<meta property="og:type" content="article">
-<meta property="og:site_name" content="Ombra del Portico">
+<!-- Open Graph article meta tags -->
 <meta property="article:published_time" content="{{ articolo.data_pubblicazione|date:'c' }}">
 <meta property="article:section" content="{{ articolo.categoria }}">
-
-<!-- Twitter Card meta tags -->
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="{{ articolo.titolo }}">
-<meta name="twitter:description" content="{{ articolo.sommario|truncatechars:200|striptags }}">
-<meta name="twitter:image" content="{{ articolo.get_social_image_url }}">
-<meta name="twitter:site" content="@ombradelportico">
-
-<!-- Meta description generale -->
-<meta name="description" content="{{ articolo.sommario|truncatechars:160|striptags }}">
 
 <!-- Meta keywords e geolocalizzazione -->
 <meta name="keywords" content="Carpi, notizie Carpi, {{ articolo.categoria }}, Emilia-Romagna, cronaca locale, news Carpi">
