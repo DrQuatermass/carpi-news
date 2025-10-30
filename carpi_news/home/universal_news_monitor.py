@@ -2539,7 +2539,12 @@ class UniversalNewsMonitor:
                     self.logger.debug(f"[DEBUG process_new_article] Contenuto ottenuto: {len(full_content)} chars, preview: {full_content[:150]}")
                     article_data['full_content'] = full_content
                 else:
-                    # Per email usa 'content' (completo), per altri scrapers usa 'preview'
+                    # Per YouTube, NON creare articolo se transcript mancante (sarà ritentato)
+                    if isinstance(self.scraper, YouTubeScraper):
+                        self.logger.warning(f"[YOUTUBE] Transcript non disponibile per {article_data['url']} - articolo NON creato, sarà ritentato")
+                        return  # Skip creazione articolo
+
+                    # Per altri tipi (email, HTML), usa fallback con preview
                     fallback_content = article_data.get('content') or article_data['preview']
                     self.logger.warning(f"[DEBUG process_new_article] get_full_content() ha fallito! Uso fallback: {len(fallback_content)} chars, preview: {fallback_content[:150]}")
                     article_data['full_content'] = fallback_content
