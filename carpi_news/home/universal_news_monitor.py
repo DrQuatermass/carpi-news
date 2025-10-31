@@ -990,7 +990,7 @@ class YouTubeAPIScraper(BaseScraper):
 
             try:
                 # Prova a ottenere la lista dei transcript disponibili
-                transcript_list = api.list_transcripts(video_id)
+                transcript_list = api.list(video_id)
                 # Cerca transcript in italiano
                 transcript_list.find_transcript(['it'])
                 self.logger.info(f"Sottotitoli disponibili per video {video_id}")
@@ -2540,7 +2540,7 @@ class UniversalNewsMonitor:
                     article_data['full_content'] = full_content
                 else:
                     # Per YouTube, NON creare articolo se transcript mancante (sarà ritentato)
-                    if isinstance(self.scraper, YouTubeScraper):
+                    if isinstance(self.scraper, YouTubeAPIScraper):
                         self.logger.warning(f"[YOUTUBE] Transcript non disponibile per {article_data['url']} - articolo NON creato, sarà ritentato")
                         return  # Skip creazione articolo
 
