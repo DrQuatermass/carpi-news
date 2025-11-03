@@ -1,0 +1,63 @@
+{% extends "admin/change_list.html" %}
+
+{% block content %}
+<!-- Statistiche in alto -->
+<div style="background: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h2 style="margin: 0; color: #333;">📊 Statistiche Costi API</h2>
+        <a href="{% url 'admin:apiusage_dashboard' %}" style="background: #417690; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; font-weight: 500;">
+            📈 Dashboard Dettagliata
+        </a>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
+        <!-- Oggi -->
+        <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; border-left: 4px solid #4CAF50;">
+            <div style="font-size: 12px; color: #666; margin-bottom: 8px; font-weight: 600;">📅 OGGI</div>
+            <div style="font-size: 24px; font-weight: bold; color: #4CAF50; margin-bottom: 4px;">
+                €{{ today_stats.total_cost|floatformat:6|default:"0.000000" }}
+            </div>
+            <div style="font-size: 11px; color: #999;">
+                {{ today_stats.total_calls|default:0 }} chiamate
+                (🤖 {{ today_stats.anthropic_calls|default:0 }} | 🔍 {{ today_stats.google_calls|default:0 }})
+            </div>
+        </div>
+
+        <!-- Ultimi 7 giorni -->
+        <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; border-left: 4px solid #2196F3;">
+            <div style="font-size: 12px; color: #666; margin-bottom: 8px; font-weight: 600;">📊 ULTIMI 7 GIORNI</div>
+            <div style="font-size: 24px; font-weight: bold; color: #2196F3; margin-bottom: 4px;">
+                €{{ week_stats.total_cost|floatformat:6|default:"0.000000" }}
+            </div>
+            <div style="font-size: 11px; color: #999;">
+                {{ week_stats.total_calls|default:0 }} chiamate totali
+            </div>
+        </div>
+
+        <!-- Ultimi 30 giorni -->
+        <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; border-left: 4px solid #FF9800;">
+            <div style="font-size: 12px; color: #666; margin-bottom: 8px; font-weight: 600;">📈 ULTIMI 30 GIORNI</div>
+            <div style="font-size: 24px; font-weight: bold; color: #FF9800; margin-bottom: 4px;">
+                €{{ month_stats.total_cost|floatformat:6|default:"0.000000" }}
+            </div>
+            <div style="font-size: 11px; color: #999;">
+                {{ month_stats.total_calls|default:0 }} chiamate totali
+            </div>
+        </div>
+
+        <!-- Media giornaliera (ultimi 30 gg) -->
+        <div style="background: #f8f9fa; padding: 15px; border-radius: 6px; border-left: 4px solid #9C27B0;">
+            <div style="font-size: 12px; color: #666; margin-bottom: 8px; font-weight: 600;">📉 MEDIA GIORNALIERA</div>
+            <div style="font-size: 24px; font-weight: bold; color: #9C27B0; margin-bottom: 4px;">
+                {% widthratio month_stats.total_cost 30 1 as daily_avg %}
+                €{{ daily_avg|floatformat:6|default:"0.000000" }}
+            </div>
+            <div style="font-size: 11px; color: #999;">
+                (ultimi 30 giorni)
+            </div>
+        </div>
+    </div>
+</div>
+
+{{ block.super }}
+{% endblock %}

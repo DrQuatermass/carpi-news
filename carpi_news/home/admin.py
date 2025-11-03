@@ -3,17 +3,20 @@ from django.http import HttpResponse, JsonResponse
 from django.urls import path
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
-from django.shortcuts import redirect
+from django.shortcuts import redirect, render
 from django.contrib import messages
 from django.contrib.admin import SimpleListFilter
 from django import forms
-from .models import Articolo, MonitorConfig
+from .models import Articolo, MonitorConfig, APIUsage
 import threading
 import urllib.parse
 import subprocess
 import os
 import json
 from pathlib import Path
+from django.db.models import Sum, Count, Avg, Q, F
+from django.utils import timezone
+from datetime import timedelta
 
 
 class HasWebSourcesFilter(SimpleListFilter):
@@ -432,8 +435,9 @@ ISTRUZIONI:
             prompt_base += "\n\nFornisci SOLO il contenuto dell'articolo riscritto, senza commenti aggiuntivi:"
             
             # Chiamata all'API Anthropic
+            model_name = "claude-sonnet-4-20250514"
             response = client.messages.create(
-                model="claude-sonnet-4-20250514",
+                model=model_name,
                 max_tokens=4000,
                 temperature=0.3,
                 messages=[{
@@ -441,8 +445,22 @@ ISTRUZIONI:
                     "content": prompt_base
                 }]
             )
-            
+
             contenuto_rigenerato = response.content[0].text.strip()
+
+            # Traccia utilizzo API
+            try:
+                from home.api_usage_tracker import APIUsageTracker
+                APIUsageTracker.track_anthropic(
+                    operation='rigenera_articolo',
+                    model=model_name,
+                    input_tokens=response.usage.input_tokens,
+                    output_tokens=response.usage.output_tokens,
+                    related_article=articolo,
+                    success=True
+                )
+            except Exception as e:
+                logger.warning(f"Errore nel tracciare utilizzo API: {e}")
             
             if contenuto_rigenerato and contenuto_rigenerato != articolo.contenuto:
                 # Salva il contenuto rigenerato
@@ -906,4 +924,207 @@ class MonitorConfigAdmin(admin.ModelAdmin):
             logger.info(f"Test completato per monitor: {monitor.name}")
 
         except Exception as e:
-            logger.error(f"Errore nel test del monitor {monitor.name}: {str(e)}") 
+            logger.error(f"Errore nel test del monitor {monitor.name}: {str(e)}")
+
+
+@admin.register(APIUsage)
+class APIUsageAdmin(admin.ModelAdmin):
+    list_display = ('timestamp', 'api_type', 'operation', 'model', 'tokens_display', 'cost_display', 'success')
+    list_filter = ('api_type', 'success', 'operation')
+    search_fields = ('operation', 'model', 'error_message')
+    readonly_fields = ('timestamp', 'api_type', 'operation', 'model', 'input_tokens', 'output_tokens',
+                      'search_queries', 'input_cost', 'output_cost', 'cost_total', 'success',
+                      'error_message', 'related_article')
+    date_hierarchy = 'timestamp'
+
+    fieldsets = (
+        ('Informazioni Base', {
+            'fields': ('timestamp', 'api_type', 'operation', 'model', 'success')
+        }),
+        ('Utilizzo Tokens (Anthropic)', {
+            'fields': ('input_tokens', 'output_tokens'),
+            'classes': ('collapse',)
+        }),
+        ('Utilizzo Search (Google)', {
+            'fields': ('search_queries',),
+            'classes': ('collapse',)
+        }),
+        ('Costi (EUR)', {
+            'fields': ('input_cost', 'output_cost', 'cost_total')
+        }),
+        ('Dettagli', {
+            'fields': ('related_article', 'error_message'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def tokens_display(self, obj):
+        """Mostra i token per le API Anthropic"""
+        if obj.api_type == 'anthropic':
+            return format_html(
+                '<span style="color: #2196F3;">📥 {} in</span> | '
+                '<span style="color: #4CAF50;">📤 {} out</span>',
+                f"{obj.input_tokens:,}", f"{obj.output_tokens:,}"
+            )
+        elif obj.api_type == 'google_search':
+            return format_html(
+                '<span style="color: #FF9800;">🔍 {} queries</span>',
+                obj.search_queries
+            )
+        return '-'
+    tokens_display.short_description = 'Utilizzo'
+
+    def cost_display(self, obj):
+        """Mostra il costo formattato"""
+        # Usa __dict__ per accedere al valore grezzo del campo
+        cost_value = obj.__dict__.get('cost_total', 0)
+        return format_html(
+            '<span style="background: #4CAF50; color: white; padding: 4px 8px; '
+            'border-radius: 12px; font-size: 12px; font-weight: bold;">€{}</span>',
+            f"{float(cost_value):.6f}"
+        )
+    cost_display.short_description = 'Costo'
+
+    def has_add_permission(self, request):
+        """Impedisci la creazione manuale di record"""
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        """Permetti solo agli admin di eliminare"""
+        return request.user.is_superuser
+
+    def changelist_view(self, request, extra_context=None):
+        """Aggiungi statistiche nella vista elenco"""
+        extra_context = extra_context or {}
+
+        # Calcola statistiche
+        today = timezone.now().date()
+        last_7_days = today - timedelta(days=7)
+        last_30_days = today - timedelta(days=30)
+
+        # Stats oggi
+        today_start = timezone.make_aware(timezone.datetime.combine(today, timezone.datetime.min.time()))
+        today_stats = APIUsage.objects.filter(timestamp__gte=today_start).aggregate(
+            total_cost=Sum(F('cost_total')),
+            total_calls=Count('id'),
+            anthropic_calls=Count('id', filter=Q(api_type='anthropic')),
+            google_calls=Count('id', filter=Q(api_type='google_search'))
+        )
+
+        # Stats ultimi 7 giorni
+        week_start = timezone.make_aware(timezone.datetime.combine(last_7_days, timezone.datetime.min.time()))
+        week_stats = APIUsage.objects.filter(timestamp__gte=week_start).aggregate(
+            total_cost=Sum(F('cost_total')),
+            total_calls=Count('id')
+        )
+
+        # Stats ultimi 30 giorni
+        month_start = timezone.make_aware(timezone.datetime.combine(last_30_days, timezone.datetime.min.time()))
+        month_stats = APIUsage.objects.filter(timestamp__gte=month_start).aggregate(
+            total_cost=Sum(F('cost_total')),
+            total_calls=Count('id')
+        )
+
+        extra_context['today_stats'] = today_stats
+        extra_context['week_stats'] = week_stats
+        extra_context['month_stats'] = month_stats
+
+        # Link alla dashboard dettagliata
+        extra_context['show_dashboard_link'] = True
+
+        return super().changelist_view(request, extra_context=extra_context)
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path('dashboard/', self.admin_site.admin_view(self.dashboard_view), name='apiusage_dashboard'),
+        ]
+        return custom_urls + urls
+
+    def dashboard_view(self, request):
+        """Dashboard dettagliata dei costi API"""
+        from django.db.models.functions import TruncDate
+
+        # Periodo selezionato (default: ultimi 30 giorni)
+        days = int(request.GET.get('days', 30))
+        start_date = timezone.now() - timedelta(days=days)
+
+        # Stats totali per periodo
+        # Usa F() per riferirsi ai campi del database ed evitare conflitti di nomi
+        total_stats = APIUsage.objects.filter(timestamp__gte=start_date).aggregate(
+            total_cost=Sum(F('cost_total')),
+            total_calls=Count('id'),
+            anthropic_cost=Sum(F('cost_total'), filter=Q(api_type='anthropic')),
+            google_cost=Sum(F('cost_total'), filter=Q(api_type='google_search')),
+            anthropic_calls=Count('id', filter=Q(api_type='anthropic')),
+            google_calls=Count('id', filter=Q(api_type='google_search')),
+            total_input_tokens=Sum('input_tokens'),
+            total_output_tokens=Sum('output_tokens'),
+            total_searches=Sum('search_queries')
+        )
+
+        # Costi giornalieri
+        daily_costs = APIUsage.objects.filter(
+            timestamp__gte=start_date
+        ).annotate(
+            date=TruncDate('timestamp')
+        ).values('date', 'api_type').annotate(
+            daily_cost=Sum(F('cost_total')),
+            daily_calls=Count('id')
+        ).order_by('date', 'api_type')
+
+        # Raggruppa per data
+        daily_data = {}
+        for item in daily_costs:
+            date_str = item['date'].strftime('%Y-%m-%d')
+            if date_str not in daily_data:
+                daily_data[date_str] = {
+                    'date': date_str,
+                    'anthropic_cost': 0,
+                    'google_cost': 0,
+                    'total_cost': 0,
+                    'anthropic_calls': 0,
+                    'google_calls': 0,
+                    'total_calls': 0
+                }
+
+            api_type = item['api_type']
+            daily_data[date_str][f'{api_type}_cost'] = float(item['daily_cost'] or 0)
+            daily_data[date_str][f'{api_type}_calls'] = item['daily_calls']
+            daily_data[date_str]['total_cost'] += float(item['daily_cost'] or 0)
+            daily_data[date_str]['total_calls'] += item['daily_calls']
+
+        # Converti in lista ordinata
+        daily_data_list = sorted(daily_data.values(), key=lambda x: x['date'])
+
+        # Top operazioni per costo
+        top_operations = APIUsage.objects.filter(
+            timestamp__gte=start_date
+        ).values('operation', 'api_type').annotate(
+            operation_total_cost=Sum(F('cost_total')),
+            total_calls=Count('id')
+        ).order_by('-operation_total_cost')[:10]
+
+        # Calcola costo medio per ogni operazione
+        top_operations_list = list(top_operations)
+        for op in top_operations_list:
+            if op['total_calls'] > 0:
+                op['avg_cost'] = float(op['operation_total_cost']) / op['total_calls']
+            else:
+                op['avg_cost'] = 0
+
+        context = {
+            'title': 'Dashboard Costi API',
+            'days': days,
+            'total_stats': total_stats,
+            'daily_data': daily_data_list,
+            'top_operations': top_operations_list,
+            'opts': self.model._meta,
+            'has_view_permission': True,
+        }
+
+        return render(request, 'admin/home/apiusage_dashboard.html', context)
+
+
+# Aggiungi link alla dashboard nella lista APIUsage
+admin.site.add_action(APIUsageAdmin.dashboard_view, 'Visualizza Dashboard Costi') 

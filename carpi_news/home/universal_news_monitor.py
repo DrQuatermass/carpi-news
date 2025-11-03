@@ -2669,6 +2669,20 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
 
             message = client.messages.create(**api_params)
 
+            # Traccia utilizzo API (prima chiamata)
+            try:
+                from home.api_usage_tracker import APIUsageTracker
+                APIUsageTracker.track_anthropic(
+                    operation='generate_article',
+                    model=api_params["model"],
+                    input_tokens=message.usage.input_tokens,
+                    output_tokens=message.usage.output_tokens,
+                    related_article=None,  # Articolo non ancora creato
+                    success=True
+                )
+            except Exception as e:
+                self.logger.warning(f"Errore nel tracciare utilizzo API: {e}")
+
             # Processa risposta e gestisci tool use conversazionale
             articolo_testo, used_sources = self._process_conversational_response(
                 client, message, system_prompt, user_content, tools, web_sources
@@ -2812,6 +2826,18 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
 
                         # Gestione risultati o errori
                         if search_results:
+                            # Traccia utilizzo Google Search API
+                            try:
+                                from home.api_usage_tracker import APIUsageTracker
+                                APIUsageTracker.track_google_search(
+                                    operation='web_search_for_article',
+                                    num_queries=1,  # Una query per tool_use
+                                    related_article=None,
+                                    success=True
+                                )
+                            except Exception as e:
+                                self.logger.warning(f"Errore nel tracciare utilizzo Google Search: {e}")
+
                             # Salva le fonti utilizzate
                             for result in search_results:
                                 if result['url'] not in [s['url'] for s in web_sources]:
@@ -2866,6 +2892,20 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
                         api_params_iter["tools"] = tools
 
                     current_message = client.messages.create(**api_params_iter)
+
+                    # Traccia utilizzo API (chiamate successive conversazionali)
+                    try:
+                        from home.api_usage_tracker import APIUsageTracker
+                        APIUsageTracker.track_anthropic(
+                            operation='generate_article_conversational',
+                            model=api_params_iter["model"],
+                            input_tokens=current_message.usage.input_tokens,
+                            output_tokens=current_message.usage.output_tokens,
+                            related_article=None,
+                            success=True
+                        )
+                    except Exception as e:
+                        self.logger.warning(f"Errore nel tracciare utilizzo API conversazionale: {e}")
 
                     iteration += 1
                 else:

@@ -1,0 +1,310 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block extrastyle %}
+<style>
+    .dashboard-container {
+        padding: 20px;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .stat-card {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        border-left: 4px solid #417690;
+    }
+
+    .stat-card.anthropic {
+        border-left-color: #2196F3;
+    }
+
+    .stat-card.google {
+        border-left-color: #FF9800;
+    }
+
+    .stat-card.total {
+        border-left-color: #4CAF50;
+    }
+
+    .stat-label {
+        font-size: 14px;
+        color: #666;
+        margin-bottom: 8px;
+        font-weight: 500;
+    }
+
+    .stat-value {
+        font-size: 32px;
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 4px;
+    }
+
+    .stat-detail {
+        font-size: 12px;
+        color: #999;
+    }
+
+    .period-selector {
+        background: white;
+        border-radius: 8px;
+        padding: 15px 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .period-selector label {
+        font-weight: 600;
+        color: #333;
+    }
+
+    .period-selector select {
+        padding: 8px 12px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+
+    .period-selector button {
+        padding: 8px 20px;
+        background: #417690;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: 500;
+    }
+
+    .period-selector button:hover {
+        background: #345a75;
+    }
+
+    .table-container {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        margin-bottom: 30px;
+    }
+
+    .table-container h2 {
+        margin: 0 0 20px 0;
+        font-size: 20px;
+        color: #333;
+    }
+
+    .data-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .data-table th {
+        background: #f5f5f5;
+        padding: 12px;
+        text-align: left;
+        font-weight: 600;
+        color: #333;
+        border-bottom: 2px solid #ddd;
+    }
+
+    .data-table td {
+        padding: 12px;
+        border-bottom: 1px solid #eee;
+    }
+
+    .data-table tr:hover {
+        background: #f9f9f9;
+    }
+
+    .cost-badge {
+        background: #4CAF50;
+        color: white;
+        padding: 4px 8px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: bold;
+    }
+
+    .api-badge {
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .api-badge.anthropic {
+        background: #E3F2FD;
+        color: #1976D2;
+    }
+
+    .api-badge.google_search {
+        background: #FFF3E0;
+        color: #F57C00;
+    }
+
+    .chart-placeholder {
+        height: 300px;
+        background: #f5f5f5;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #999;
+        font-style: italic;
+    }
+
+    .back-link {
+        display: inline-block;
+        margin-bottom: 20px;
+        color: #417690;
+        text-decoration: none;
+        font-weight: 500;
+    }
+
+    .back-link:hover {
+        text-decoration: underline;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <a href="{% url 'admin:home_apiusage_changelist' %}" class="back-link">← Torna all'elenco</a>
+
+    <h1>📊 Dashboard Costi API</h1>
+
+    <!-- Selettore periodo -->
+    <div class="period-selector">
+        <label for="period">Periodo:</label>
+        <form method="get" style="display: flex; gap: 10px; align-items: center; margin: 0;">
+            <select name="days" id="period" onchange="this.form.submit()">
+                <option value="7" {% if days == 7 %}selected{% endif %}>Ultimi 7 giorni</option>
+                <option value="30" {% if days == 30 %}selected{% endif %}>Ultimi 30 giorni</option>
+                <option value="90" {% if days == 90 %}selected{% endif %}>Ultimi 90 giorni</option>
+                <option value="365" {% if days == 365 %}selected{% endif %}>Ultimo anno</option>
+            </select>
+            <noscript><button type="submit">Aggiorna</button></noscript>
+        </form>
+    </div>
+
+    <!-- Statistiche totali -->
+    <div class="stats-grid">
+        <div class="stat-card total">
+            <div class="stat-label">💰 Costo Totale</div>
+            <div class="stat-value">€{{ total_stats.total_cost|floatformat:6|default:"0.000000" }}</div>
+            <div class="stat-detail">{{ total_stats.total_calls|default:0 }} chiamate API</div>
+        </div>
+
+        <div class="stat-card anthropic">
+            <div class="stat-label">🤖 Anthropic Claude</div>
+            <div class="stat-value">€{{ total_stats.anthropic_cost|floatformat:6|default:"0.000000" }}</div>
+            <div class="stat-detail">
+                {{ total_stats.anthropic_calls|default:0 }} chiamate<br>
+                📥 {{ total_stats.total_input_tokens|default:0|floatformat:0 }} input tokens<br>
+                📤 {{ total_stats.total_output_tokens|default:0|floatformat:0 }} output tokens
+            </div>
+        </div>
+
+        <div class="stat-card google">
+            <div class="stat-label">🔍 Google Search</div>
+            <div class="stat-value">€{{ total_stats.google_cost|floatformat:6|default:"0.000000" }}</div>
+            <div class="stat-detail">
+                {{ total_stats.google_calls|default:0 }} chiamate<br>
+                {{ total_stats.total_searches|default:0 }} query di ricerca (prime 100/giorno gratis)
+            </div>
+        </div>
+    </div>
+
+    <!-- Costi giornalieri -->
+    <div class="table-container">
+        <h2>📅 Costi Giornalieri</h2>
+        {% if daily_data %}
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Anthropic</th>
+                    <th>Google Search</th>
+                    <th>Totale Giorno</th>
+                    <th>Chiamate</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for day in daily_data %}
+                <tr>
+                    <td><strong>{{ day.date }}</strong></td>
+                    <td>€{{ day.anthropic_cost|floatformat:6 }} <span style="color: #999; font-size: 11px;">({{ day.anthropic_calls }} chiamate)</span></td>
+                    <td>€{{ day.google_cost|floatformat:6 }} <span style="color: #999; font-size: 11px;">({{ day.google_calls }} chiamate)</span></td>
+                    <td><span class="cost-badge">€{{ day.total_cost|floatformat:6 }}</span></td>
+                    <td>{{ day.total_calls }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p style="text-align: center; color: #999; padding: 40px;">Nessun dato disponibile per questo periodo</p>
+        {% endif %}
+    </div>
+
+    <!-- Top operazioni -->
+    <div class="table-container">
+        <h2>🏆 Top 10 Operazioni per Costo</h2>
+        {% if top_operations %}
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Operazione</th>
+                    <th>API</th>
+                    <th>Costo Totale</th>
+                    <th>Chiamate</th>
+                    <th>Costo Medio</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for op in top_operations %}
+                <tr>
+                    <td><strong>{{ op.operation }}</strong></td>
+                    <td><span class="api-badge {{ op.api_type }}">{{ op.api_type }}</span></td>
+                    <td><span class="cost-badge">€{{ op.operation_total_cost|floatformat:6 }}</span></td>
+                    <td>{{ op.total_calls }}</td>
+                    <td>€{{ op.avg_cost|floatformat:6 }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p style="text-align: center; color: #999; padding: 40px;">Nessuna operazione registrata per questo periodo</p>
+        {% endif %}
+    </div>
+
+    <!-- Info e legenda -->
+    <div class="table-container" style="background: #f8f9fa; border-left: 4px solid #2196F3;">
+        <h2>ℹ️ Informazioni</h2>
+        <ul style="margin: 0; padding-left: 20px;">
+            <li><strong>Anthropic Claude:</strong> Costi basati sul numero di token (input + output)
+                <ul style="margin-top: 5px;">
+                    <li>Claude 3.5 Sonnet: €2.76/MTok input, €13.80/MTok output</li>
+                    <li>Claude 3.5 Haiku: €0.92/MTok input, €4.60/MTok output</li>
+                </ul>
+            </li>
+            <li><strong>Google Search:</strong> Prime 100 query/giorno gratuite, poi €0.0046 per query (~€4.60 per 1000 query)</li>
+            <li>I costi sono calcolati in tempo reale in base ai listini pubblici Anthropic/Google</li>
+            <li>Tutti gli importi sono convertiti in <strong>EUR</strong> (tasso USD→EUR: 0.92)</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}

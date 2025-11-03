@@ -334,4 +334,56 @@ class MonitorConfig(models.Model):
         )
 
 
+class APIUsage(models.Model):
+    """Traccia l'utilizzo e i costi delle API esterne (Anthropic, Google Search)"""
+
+    API_TYPES = [
+        ('anthropic', 'Anthropic Claude'),
+        ('google_search', 'Google Search'),
+    ]
+
+    # Identificazione
+    api_type = models.CharField(max_length=20, choices=API_TYPES, help_text="Tipo di API utilizzata")
+    timestamp = models.DateTimeField(auto_now_add=True, db_index=True, help_text="Data e ora della chiamata")
+
+    # Dettagli chiamata
+    operation = models.CharField(max_length=100, help_text="Operazione eseguita (es. 'generate_article', 'polish_content')")
+    model = models.CharField(max_length=100, blank=True, help_text="Modello utilizzato (es. 'claude-3-5-sonnet-20241022')")
+
+    # Token usage (per Anthropic)
+    input_tokens = models.IntegerField(default=0, help_text="Token di input (prompt)")
+    output_tokens = models.IntegerField(default=0, help_text="Token di output (risposta)")
+
+    # Search usage (per Google)
+    search_queries = models.IntegerField(default=0, help_text="Numero di query di ricerca")
+
+    # Costi (in EUR)
+    input_cost = models.DecimalField(max_digits=10, decimal_places=6, default=0, help_text="Costo input in EUR")
+    output_cost = models.DecimalField(max_digits=10, decimal_places=6, default=0, help_text="Costo output in EUR")
+    cost_total = models.DecimalField(max_digits=10, decimal_places=6, default=0, help_text="Costo totale in EUR", db_column='total_cost')
+
+    # Metadata
+    success = models.BooleanField(default=True, help_text="Chiamata riuscita")
+    error_message = models.TextField(blank=True, help_text="Messaggio di errore se fallita")
+    related_article = models.ForeignKey(Articolo, null=True, blank=True, on_delete=models.SET_NULL, help_text="Articolo correlato")
+
+    class Meta:
+        verbose_name = "Utilizzo API"
+        verbose_name_plural = "Utilizzo API"
+        ordering = ['-timestamp']
+        indexes = [
+            models.Index(fields=['-timestamp', 'api_type']),
+            models.Index(fields=['api_type', '-timestamp']),
+        ]
+
+    def __str__(self):
+        return f"{self.get_api_type_display()} - {self.operation} - {self.timestamp.strftime('%Y-%m-%d %H:%M')} - €{self.cost_total}"
+
+    def save(self, *args, **kwargs):
+        """Calcola automaticamente il costo totale se non specificato"""
+        if self.cost_total == 0:
+            self.cost_total = self.input_cost + self.output_cost
+        super().save(*args, **kwargs)
+
+
 # Create your models here.
