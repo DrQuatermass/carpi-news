@@ -205,13 +205,13 @@
     <div class="stats-grid">
         <div class="stat-card total">
             <div class="stat-label">💰 Costo Totale</div>
-            <div class="stat-value">€{{ total_stats.total_cost|floatformat:6|default:"0.000000" }}</div>
+            <div class="stat-value">${{ total_stats.total_cost|floatformat:6|default:"0.000000" }}</div>
             <div class="stat-detail">{{ total_stats.total_calls|default:0 }} chiamate API</div>
         </div>
 
         <div class="stat-card anthropic">
             <div class="stat-label">🤖 Anthropic Claude</div>
-            <div class="stat-value">€{{ total_stats.anthropic_cost|floatformat:6|default:"0.000000" }}</div>
+            <div class="stat-value">${{ total_stats.anthropic_cost|floatformat:6|default:"0.000000" }}</div>
             <div class="stat-detail">
                 {{ total_stats.anthropic_calls|default:0 }} chiamate<br>
                 📥 {{ total_stats.total_input_tokens|default:0|floatformat:0 }} input tokens<br>
@@ -221,7 +221,7 @@
 
         <div class="stat-card google">
             <div class="stat-label">🔍 Google Search</div>
-            <div class="stat-value">€{{ total_stats.google_cost|floatformat:6|default:"0.000000" }}</div>
+            <div class="stat-value">${{ total_stats.google_cost|floatformat:6|default:"0.000000" }}</div>
             <div class="stat-detail">
                 {{ total_stats.google_calls|default:0 }} chiamate<br>
                 {{ total_stats.total_searches|default:0 }} query di ricerca (prime 100/giorno gratis)
@@ -247,9 +247,9 @@
                 {% for day in daily_data %}
                 <tr>
                     <td><strong>{{ day.date }}</strong></td>
-                    <td>€{{ day.anthropic_cost|floatformat:6 }} <span style="color: #999; font-size: 11px;">({{ day.anthropic_calls }} chiamate)</span></td>
-                    <td>€{{ day.google_cost|floatformat:6 }} <span style="color: #999; font-size: 11px;">({{ day.google_calls }} chiamate)</span></td>
-                    <td><span class="cost-badge">€{{ day.total_cost|floatformat:6 }}</span></td>
+                    <td>${{ day.anthropic_cost|floatformat:6 }} <span style="color: #999; font-size: 11px;">({{ day.anthropic_calls }} chiamate)</span></td>
+                    <td>${{ day.google_cost|floatformat:6 }} <span style="color: #999; font-size: 11px;">({{ day.google_calls }} chiamate)</span></td>
+                    <td><span class="cost-badge">${{ day.total_cost|floatformat:6 }}</span></td>
                     <td>{{ day.total_calls }}</td>
                 </tr>
                 {% endfor %}
@@ -279,9 +279,9 @@
                 <tr>
                     <td><strong>{{ op.operation }}</strong></td>
                     <td><span class="api-badge {{ op.api_type }}">{{ op.api_type }}</span></td>
-                    <td><span class="cost-badge">€{{ op.operation_total_cost|floatformat:6 }}</span></td>
+                    <td><span class="cost-badge">${{ op.operation_total_cost|floatformat:6 }}</span></td>
                     <td>{{ op.total_calls }}</td>
-                    <td>€{{ op.avg_cost|floatformat:6 }}</td>
+                    <td>${{ op.avg_cost|floatformat:6 }}</td>
                 </tr>
                 {% endfor %}
             </tbody>
@@ -297,13 +297,14 @@
         <ul style="margin: 0; padding-left: 20px;">
             <li><strong>Anthropic Claude:</strong> Costi basati sul numero di token (input + output)
                 <ul style="margin-top: 5px;">
-                    <li>Claude 3.5 Sonnet: €2.76/MTok input, €13.80/MTok output</li>
-                    <li>Claude 3.5 Haiku: €0.92/MTok input, €4.60/MTok output</li>
+                    <li>Claude Sonnet 4: $3/MTok input, $15/MTok output</li>
+                    <li>Claude 3.5 Sonnet: $3/MTok input, $15/MTok output</li>
+                    <li>Claude 3.5 Haiku: $1/MTok input, $5/MTok output</li>
                 </ul>
             </li>
-            <li><strong>Google Search:</strong> Prime 100 query/giorno gratuite, poi €0.0046 per query (~€4.60 per 1000 query)</li>
+            <li><strong>Google Search:</strong> Prime 100 query/giorno gratuite, poi $0.005 per query ($5 per 1000 query)</li>
             <li>I costi sono calcolati in tempo reale in base ai listini pubblici Anthropic/Google</li>
-            <li>Tutti gli importi sono convertiti in <strong>EUR</strong> (tasso USD→EUR: 0.92)</li>
+            <li>Tutti gli importi sono in <strong>USD</strong></li>
         </ul>
     </div>
 </div>

@@ -357,10 +357,10 @@ class APIUsage(models.Model):
     # Search usage (per Google)
     search_queries = models.IntegerField(default=0, help_text="Numero di query di ricerca")
 
-    # Costi (in EUR)
-    input_cost = models.DecimalField(max_digits=10, decimal_places=6, default=0, help_text="Costo input in EUR")
-    output_cost = models.DecimalField(max_digits=10, decimal_places=6, default=0, help_text="Costo output in EUR")
-    cost_total = models.DecimalField(max_digits=10, decimal_places=6, default=0, help_text="Costo totale in EUR", db_column='total_cost')
+    # Costi (in USD)
+    input_cost = models.DecimalField(max_digits=10, decimal_places=6, default=0, help_text="Costo input in USD")
+    output_cost = models.DecimalField(max_digits=10, decimal_places=6, default=0, help_text="Costo output in USD")
+    cost_total = models.DecimalField(max_digits=10, decimal_places=6, default=0, help_text="Costo totale in USD", db_column='total_cost')
 
     # Metadata
     success = models.BooleanField(default=True, help_text="Chiamata riuscita")
@@ -377,7 +377,7 @@ class APIUsage(models.Model):
         ]
 
     def __str__(self):
-        return f"{self.get_api_type_display()} - {self.operation} - {self.timestamp.strftime('%Y-%m-%d %H:%M')} - €{self.cost_total}"
+        return f"{self.get_api_type_display()} - {self.operation} - {self.timestamp.strftime('%Y-%m-%d %H:%M')} - ${self.cost_total}"
 
     def save(self, *args, **kwargs):
         """Calcola automaticamente il costo totale se non specificato"""

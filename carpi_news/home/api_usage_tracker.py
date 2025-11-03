@@ -8,14 +8,11 @@ logger = logging.getLogger(__name__)
 
 
 class APIUsageTracker:
-    """Traccia automaticamente l'utilizzo delle API e calcola i costi in EUR"""
+    """Traccia automaticamente l'utilizzo delle API e calcola i costi in USD"""
 
-    # Tasso di cambio USD -> EUR (approssimativo, aggiornare periodicamente)
-    USD_TO_EUR = 0.92
-
-    # Prezzi Anthropic (USD per million tokens, convertiti in EUR)
+    # Prezzi Anthropic (USD per million tokens)
     # https://www.anthropic.com/pricing#anthropic-api
-    ANTHROPIC_PRICING_USD = {
+    ANTHROPIC_PRICING = {
         'claude-sonnet-4-20250514': {
             'input': 3.00,   # $3 per MTok
             'output': 15.00  # $15 per MTok
@@ -46,21 +43,12 @@ class APIUsageTracker:
         },
     }
 
-    # Converti prezzi in EUR
-    ANTHROPIC_PRICING = {
-        model: {
-            'input': price['input'] * USD_TO_EUR,
-            'output': price['output'] * USD_TO_EUR
-        }
-        for model, price in ANTHROPIC_PRICING_USD.items()
-    }
-
     # Prezzo Google Custom Search API
     # https://developers.google.com/custom-search/v1/overview
-    # 100 query gratuite al giorno, poi $5 per 1000 queries (€4.60 per 1000)
+    # 100 query gratuite al giorno, poi $5 per 1000 queries
     GOOGLE_SEARCH_PRICING = {
         'free_daily_queries': 100,
-        'per_query': 0.005 * USD_TO_EUR  # €0.0046 per query dopo le 100 gratuite
+        'per_query': 0.005  # $0.005 per query dopo le 100 gratuite
     }
 
     @classmethod
@@ -111,9 +99,9 @@ class APIUsageTracker:
             )
 
             logger.info(f"API Anthropic tracciata: {operation} - {model} - "
-                       f"Input: {input_tokens} tok (€{input_cost}) - "
-                       f"Output: {output_tokens} tok (€{output_cost}) - "
-                       f"Totale: €{usage.cost_total}")
+                       f"Input: {input_tokens} tok (${input_cost}) - "
+                       f"Output: {output_tokens} tok (${output_cost}) - "
+                       f"Totale: ${usage.cost_total}")
 
             return usage
 

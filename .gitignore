@@ -63,3 +63,6 @@ check_*.py
 download_*.py
 optimize_*.py
 archive/
+
+# Facebook credentials (sensitive)
+get_facebook_*.py

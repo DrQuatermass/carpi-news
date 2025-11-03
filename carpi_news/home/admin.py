@@ -980,7 +980,7 @@ class APIUsageAdmin(admin.ModelAdmin):
         cost_value = obj.__dict__.get('cost_total', 0)
         return format_html(
             '<span style="background: #4CAF50; color: white; padding: 4px 8px; '
-            'border-radius: 12px; font-size: 12px; font-weight: bold;">€{}</span>',
+            'border-radius: 12px; font-size: 12px; font-weight: bold;">${}</span>',
             f"{float(cost_value):.6f}"
         )
     cost_display.short_description = 'Costo'
