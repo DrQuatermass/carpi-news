@@ -30,6 +30,10 @@ urlpatterns = [
     path('about/', views.about, name='about'),
     path('caplet/', views.caplet, name='caplet'),
 
+    # Chatbot API
+    path('api/chatbot/', views.chatbot_api, name='chatbot_api'),
+    path('chatbot/risultati/', views.chatbot_results, name='chatbot_results'),
+
     # RSS Feeds per IFTTT e social sharing
     path('feed/rss/', ArticoliFeedRSS(), name='rss-feed'),
     path('feed/atom/', ArticoliFeedAtom(), name='atom-feed'),

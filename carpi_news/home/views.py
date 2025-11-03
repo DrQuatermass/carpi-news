@@ -8,8 +8,11 @@ from django.http import JsonResponse, HttpResponse
 from django.template import loader
 from django.conf import settings
 from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
 from datetime import datetime, timedelta
 from .models import Articolo
+from .chatbot_service import ChatbotService
 
 
 logger = logging.getLogger(__name__)
@@ -369,3 +372,92 @@ def about(request):
     }
 
     return render(request, "about.html", context)
+
+
+@require_http_methods(["POST"])
+@csrf_exempt
+def chatbot_api(request):
+    """
+    API endpoint per il chatbot
+    Riceve messaggi dall'utente e restituisce risposte + articoli pertinenti
+    """
+    try:
+        # Parse JSON body
+        data = json.loads(request.body)
+        user_message = data.get('message', '').strip()
+        conversation_history = data.get('conversation_history', [])
+
+        if not user_message:
+            return JsonResponse({
+                'error': 'Messaggio vuoto'
+            }, status=400)
+
+        # Processa il messaggio con il servizio chatbot
+        chatbot = ChatbotService()
+        result = chatbot.process_message(user_message, conversation_history)
+
+        logger.info(f"Chatbot richiesta: '{user_message}' -> {len(result['articles'])} articoli trovati")
+
+        return JsonResponse({
+            'response': result['response'],
+            'articles': result['articles'],
+            'intent': result['intent']
+        })
+
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'error': 'JSON non valido'
+        }, status=400)
+    except Exception as e:
+        logger.error(f"Errore API chatbot: {e}", exc_info=True)
+        return JsonResponse({
+            'error': 'Errore interno del server'
+        }, status=500)
+
+
+def chatbot_results(request):
+    """
+    Vista per mostrare i risultati della ricerca chatbot
+    Mostra gli articoli trovati in base alla query
+    """
+    query = request.GET.get('q', '')
+    intent_json = request.GET.get('intent', '{}')
+
+    try:
+        intent = json.loads(intent_json)
+    except:
+        intent = {}
+
+    # Ricerca articoli usando lo stesso servizio del chatbot
+    chatbot = ChatbotService()
+    articles = chatbot._search_articles(intent)
+
+    # Ottieni categorie per il menu
+    categorie_raw = Articolo.objects.filter(approvato=True).values_list('categoria', flat=True).distinct()
+    categorie_disponibili = []
+    has_rubriche = False
+
+    for cat in sorted(categorie_raw):
+        if cat in ['Editoriale', "L'Eco del Consiglio"]:
+            if not has_rubriche:
+                categorie_disponibili.append('Rubriche')
+                has_rubriche = True
+        else:
+            categorie_disponibili.append(cat)
+
+    # Paginazione
+    paginator = Paginator(articles, 12)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+
+    context = {
+        'articoli': page_obj,
+        'query': query,
+        'intent': intent,
+        'total_results': len(articles),
+        'categorie_disponibili': list(categorie_disponibili),
+        'categoria_attiva': None,
+        'current_year': 2025,
+    }
+
+    return render(request, "chatbot_results.html", context)

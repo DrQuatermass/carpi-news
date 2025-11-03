@@ -130,6 +130,11 @@ class OmbraChatbot {
             // Aggiungi risposta bot
             this.addBotMessage(data.response);
 
+            // Se ci sono articoli, mostrali
+            if (data.articles && data.articles.length > 0) {
+                this.addArticlesCarousel(data.articles);
+            }
+
         } catch (error) {
             console.error('Errore chatbot:', error);
             this.hideTyping();
@@ -152,16 +157,60 @@ class OmbraChatbot {
         this.scrollToBottom();
     }
 
-    addBotMessage(text) {
+    addBotMessage(text, articles = null) {
         const message = {
             type: 'bot',
             text: text,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            articles: articles
         };
 
         this.messages.push(message);
         this.renderMessage(message);
         this.saveMessages();
+        this.scrollToBottom();
+    }
+
+    addArticlesCarousel(articles) {
+        /**
+         * Aggiunge un carosello di articoli alla chat
+         */
+        const carouselEl = document.createElement('div');
+        carouselEl.className = 'chatbot-message bot';
+
+        let articlesHtml = '<div class="articles-carousel">';
+
+        articles.forEach(article => {
+            const date = new Date(article.data_pubblicazione).toLocaleDateString('it-IT', {
+                day: 'numeric',
+                month: 'short'
+            });
+
+            const imageUrl = article.foto || '/static/home/images/placeholder.jpg';
+
+            articlesHtml += `
+                <a href="${article.url}" class="article-card" target="_blank">
+                    <div class="article-image" style="background-image: url('${imageUrl}')"></div>
+                    <div class="article-content">
+                        <span class="article-category">${article.categoria}</span>
+                        <h4 class="article-title">${this.escapeHtml(article.titolo)}</h4>
+                        <p class="article-summary">${this.escapeHtml(article.sommario)}</p>
+                        <span class="article-date">${date}</span>
+                    </div>
+                </a>
+            `;
+        });
+
+        articlesHtml += '</div>';
+
+        carouselEl.innerHTML = `
+            <div class="message-avatar bot">🏛️</div>
+            <div class="message-content articles-content">
+                ${articlesHtml}
+            </div>
+        `;
+
+        this.messagesArea.appendChild(carouselEl);
         this.scrollToBottom();
     }
 
