@@ -130,9 +130,29 @@ class OmbraChatbot {
             // Aggiungi risposta bot
             this.addBotMessage(data.response);
 
-            // Se ci sono articoli, mostrali
+            // Se ci sono articoli, gestisci redirect
             if (data.articles && data.articles.length > 0) {
-                this.addArticlesCarousel(data.articles);
+                if (data.articles.length === 1) {
+                    // Un solo articolo: redirect diretto
+                    this.addBotMessage('Ti porto all\'articolo...');
+                    setTimeout(() => {
+                        window.location.href = data.articles[0].url;
+                    }, 1000);
+                } else {
+                    // Multipli articoli: mostra in chat e offri link a pagina completa
+                    this.addArticlesCarousel(data.articles.slice(0, 3)); // Mostra max 3 in chat
+
+                    // Crea URL per pagina risultati
+                    const params = new URLSearchParams({
+                        q: user_message,
+                        intent: JSON.stringify(data.intent),
+                        session_id: data.session_id
+                    });
+                    const resultsUrl = `/chatbot/risultati/?${params.toString()}`;
+
+                    // Aggiungi bottone per vedere tutti
+                    this.addViewAllButton(resultsUrl, data.articles.length);
+                }
             }
 
         } catch (error) {
@@ -211,6 +231,26 @@ class OmbraChatbot {
         `;
 
         this.messagesArea.appendChild(carouselEl);
+        this.scrollToBottom();
+    }
+
+    addViewAllButton(url, totalCount) {
+        /**
+         * Aggiunge un bottone per vedere tutti i risultati
+         */
+        const buttonEl = document.createElement('div');
+        buttonEl.className = 'chatbot-message bot';
+
+        buttonEl.innerHTML = `
+            <div class="message-avatar bot">🏛️</div>
+            <div class="message-content">
+                <a href="${url}" class="view-all-button" target="_blank">
+                    Vedi tutti i ${totalCount} articoli →
+                </a>
+            </div>
+        `;
+
+        this.messagesArea.appendChild(buttonEl);
         this.scrollToBottom();
     }
 

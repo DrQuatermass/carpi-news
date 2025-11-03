@@ -480,10 +480,14 @@ def chatbot_results(request):
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
 
+    # Serializza intent per template
+    import json
+    intent_str = json.dumps(intent)
+
     context = {
         'articoli': page_obj,
         'query': query,
-        'intent': intent,
+        'intent': intent_str,
         'total_results': len(articles),
         'categorie_disponibili': list(categorie_disponibili),
         'categoria_attiva': None,

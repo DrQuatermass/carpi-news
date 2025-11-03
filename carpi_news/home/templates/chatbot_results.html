@@ -1,0 +1,217 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load italian_dates %}
+{% load webp_images %}
+
+{% block title %}Risultati ricerca: {{ query }} - Ombra del Portico{% endblock %}
+
+{% block content %}
+<div class="container">
+    <!-- Header risultati -->
+    <section class="results-header">
+        <a href="/" class="back-link">← Torna alla home</a>
+        <h1 class="results-title">Risultati ricerca</h1>
+        <p class="results-query">"{{ query }}"</p>
+        <p class="results-count">Trovati <strong>{{ total_results }}</strong> articol{{ total_results|pluralize:"o,i" }}</p>
+    </section>
+
+    <!-- Grid articoli -->
+    <section class="results-section">
+        <div class="results-grid">
+            {% for articolo in articoli %}
+            <a href="{% url 'dettaglio_articolo' articolo.slug %}" class="news-card-link">
+                <article class="news-card">
+                    <div class="news-image">
+                        <picture>
+                            <source srcset="{{ articolo.get_image_url|to_webp }}" type="image/webp">
+                            <img src="{{ articolo.get_image_url }}"
+                                 alt="{{ articolo.titolo }}"
+                                 class="card-img"
+                                 width="616"
+                                 height="347"
+                                 loading="lazy">
+                        </picture>
+                    </div>
+                    <div class="news-content">
+                        <div class="news-meta">
+                            <span class="category-tag">{{ articolo.categoria }}</span>
+                            <time datetime="{{ articolo.data_pubblicazione|date:'Y-m-d' }}">
+                                {{ articolo.data_pubblicazione|italian_date:'short' }}
+                            </time>
+                        </div>
+                        <h2 class="news-title">{{ articolo.titolo }}</h2>
+                        <p class="news-excerpt">{{ articolo.sommario|truncatewords:25 }}</p>
+                        <span class="read-more">Leggi tutto →</span>
+                    </div>
+                </article>
+            </a>
+            {% empty %}
+            <div class="no-results">
+                <p>Nessun articolo trovato per questa ricerca.</p>
+                <a href="/" class="btn-primary">Torna alla home</a>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Paginazione -->
+        {% if articoli.has_other_pages %}
+        <nav class="pagination" aria-label="Paginazione risultati">
+            {% if articoli.has_previous %}
+            <a href="?q={{ query }}&intent={{ intent|urlencode }}&page={{ articoli.previous_page_number }}"
+               class="pagination-link pagination-prev">
+                ← Precedente
+            </a>
+            {% endif %}
+
+            <span class="pagination-current">
+                Pagina {{ articoli.number }} di {{ articoli.paginator.num_pages }}
+            </span>
+
+            {% if articoli.has_next %}
+            <a href="?q={{ query }}&intent={{ intent|urlencode }}&page={{ articoli.next_page_number }}"
+               class="pagination-link pagination-next">
+                Successiva →
+            </a>
+            {% endif %}
+        </nav>
+        {% endif %}
+    </section>
+</div>
+
+<style>
+/* Results page styles */
+.results-header {
+    padding: 2rem 0;
+    text-align: center;
+    background: linear-gradient(135deg, rgba(150, 108, 66, 0.05) 0%, rgba(184, 149, 106, 0.05) 100%);
+    border-radius: 16px;
+    margin-bottom: 3rem;
+}
+
+.back-link {
+    display: inline-block;
+    margin-bottom: 1rem;
+    color: #966C42;
+    text-decoration: none;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.back-link:hover {
+    transform: translateX(-5px);
+}
+
+.results-title {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+    background: linear-gradient(45deg, #966C42, #B8956A);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.results-query {
+    font-size: 1.5rem;
+    color: #5A5A5A;
+    font-style: italic;
+    margin-bottom: 0.5rem;
+}
+
+.results-count {
+    color: #666;
+    font-size: 1rem;
+}
+
+.results-section {
+    padding: 2rem 0;
+}
+
+.results-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+    gap: 2rem;
+    margin-bottom: 3rem;
+}
+
+.no-results {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 4rem 2rem;
+}
+
+.no-results p {
+    font-size: 1.2rem;
+    color: #666;
+    margin-bottom: 2rem;
+}
+
+.btn-primary {
+    display: inline-block;
+    padding: 12px 24px;
+    background: linear-gradient(135deg, #966C42 0%, #B8956A 100%);
+    color: white;
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(150, 108, 66, 0.3);
+}
+
+/* Pagination */
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 2rem;
+    padding: 2rem 0;
+}
+
+.pagination-link {
+    padding: 10px 20px;
+    background: white;
+    border: 1px solid rgba(150, 108, 66, 0.2);
+    border-radius: 8px;
+    text-decoration: none;
+    color: #966C42;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.pagination-link:hover {
+    background: linear-gradient(135deg, #966C42 0%, #B8956A 100%);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(150, 108, 66, 0.2);
+}
+
+.pagination-current {
+    font-weight: 600;
+    color: #5A5A5A;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .results-grid {
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+
+    .results-title {
+        font-size: 2rem;
+    }
+
+    .results-query {
+        font-size: 1.2rem;
+    }
+
+    .pagination {
+        flex-direction: column;
+        gap: 1rem;
+    }
+}
+</style>
+{% endblock %}

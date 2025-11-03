@@ -480,6 +480,27 @@
     margin-top: auto;
 }
 
+/* View all button */
+.view-all-button {
+    display: inline-block;
+    padding: 12px 20px;
+    background: linear-gradient(135deg, #966C42 0%, #B8956A 100%);
+    color: #FAF7F0;
+    text-decoration: none;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    text-align: center;
+    width: 100%;
+}
+
+.view-all-button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(150, 108, 66, 0.4);
+    color: #FAF7F0;
+}
+
 /* Responsive */
 @media (max-width: 480px) {
     .chatbot-container {
