@@ -209,7 +209,7 @@ class OmbraChatbot {
             const imageUrl = article.foto || '/static/home/images/placeholder.jpg';
 
             articlesHtml += `
-                <a href="${article.url}" class="article-card" target="_blank">
+                <a href="${article.url}" class="article-card">
                     <div class="article-image" style="background-image: url('${imageUrl}')"></div>
                     <div class="article-content">
                         <span class="article-category">${article.categoria}</span>
@@ -244,7 +244,7 @@ class OmbraChatbot {
         buttonEl.innerHTML = `
             <div class="message-avatar bot">🏛️</div>
             <div class="message-content">
-                <a href="${url}" class="view-all-button" target="_blank">
+                <a href="${url}" class="view-all-button">
                     Vedi tutti i ${totalCount} articoli →
                 </a>
             </div>
