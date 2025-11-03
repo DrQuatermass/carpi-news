@@ -11,8 +11,10 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from datetime import datetime, timedelta
-from .models import Articolo
+from .models import Articolo, ChatbotConversation
 from .chatbot_service import ChatbotService
+import time
+import uuid
 
 
 logger = logging.getLogger(__name__)
@@ -386,22 +388,50 @@ def chatbot_api(request):
         data = json.loads(request.body)
         user_message = data.get('message', '').strip()
         conversation_history = data.get('conversation_history', [])
+        session_id = data.get('session_id', str(uuid.uuid4()))
 
         if not user_message:
             return JsonResponse({
                 'error': 'Messaggio vuoto'
             }, status=400)
 
+        # Traccia tempo di risposta
+        start_time = time.time()
+
         # Processa il messaggio con il servizio chatbot
         chatbot = ChatbotService()
         result = chatbot.process_message(user_message, conversation_history)
 
-        logger.info(f"Chatbot richiesta: '{user_message}' -> {len(result['articles'])} articoli trovati")
+        # Calcola tempo di risposta
+        response_time_ms = int((time.time() - start_time) * 1000)
+
+        # Estrai metadata
+        user_ip = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR'))
+        if user_ip:
+            user_ip = user_ip.split(',')[0].strip()
+        user_agent = request.META.get('HTTP_USER_AGENT', '')
+
+        # Salva conversazione nel database
+        article_ids = [a['id'] for a in result['articles']]
+        ChatbotConversation.objects.create(
+            session_id=session_id,
+            user_message=user_message,
+            bot_response=result['response'],
+            intent_data=result['intent'],
+            articles_found=len(result['articles']),
+            articles_ids=article_ids,
+            user_ip=user_ip,
+            user_agent=user_agent[:500] if user_agent else '',
+            response_time_ms=response_time_ms
+        )
+
+        logger.info(f"Chatbot richiesta: '{user_message}' -> {len(result['articles'])} articoli trovati ({response_time_ms}ms)")
 
         return JsonResponse({
             'response': result['response'],
             'articles': result['articles'],
-            'intent': result['intent']
+            'intent': result['intent'],
+            'session_id': session_id
         })
 
     except json.JSONDecodeError:

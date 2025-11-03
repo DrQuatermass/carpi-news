@@ -386,4 +386,42 @@ class APIUsage(models.Model):
         super().save(*args, **kwargs)
 
 
+class ChatbotConversation(models.Model):
+    """Traccia le conversazioni del chatbot per analisi e debugging"""
+
+    # Identificazione sessione
+    session_id = models.CharField(max_length=100, db_index=True, help_text="ID univoco della sessione chat")
+    timestamp = models.DateTimeField(auto_now_add=True, db_index=True, help_text="Data e ora del messaggio")
+
+    # Contenuto conversazione
+    user_message = models.TextField(help_text="Messaggio dell'utente")
+    bot_response = models.TextField(help_text="Risposta del bot")
+
+    # Intent analizzato
+    intent_data = models.JSONField(default=dict, help_text="Dati intent estratti (keywords, timeframe, ecc.)")
+
+    # Risultati
+    articles_found = models.IntegerField(default=0, help_text="Numero di articoli trovati")
+    articles_ids = models.JSONField(default=list, help_text="IDs degli articoli restituiti")
+
+    # Metadata
+    user_ip = models.GenericIPAddressField(null=True, blank=True, help_text="IP dell'utente")
+    user_agent = models.TextField(blank=True, help_text="User agent del browser")
+
+    # Performance
+    response_time_ms = models.IntegerField(null=True, blank=True, help_text="Tempo di risposta in millisecondi")
+
+    class Meta:
+        verbose_name = "Conversazione Chatbot"
+        verbose_name_plural = "Conversazioni Chatbot"
+        ordering = ['-timestamp']
+        indexes = [
+            models.Index(fields=['-timestamp']),
+            models.Index(fields=['session_id', '-timestamp']),
+        ]
+
+    def __str__(self):
+        return f"{self.timestamp.strftime('%Y-%m-%d %H:%M')} - {self.user_message[:50]}..."
+
+
 # Create your models here.

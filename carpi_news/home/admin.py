@@ -7,7 +7,7 @@ from django.shortcuts import redirect, render
 from django.contrib import messages
 from django.contrib.admin import SimpleListFilter
 from django import forms
-from .models import Articolo, MonitorConfig, APIUsage
+from .models import Articolo, MonitorConfig, APIUsage, ChatbotConversation
 import threading
 import urllib.parse
 import subprocess
@@ -1124,6 +1124,93 @@ class APIUsageAdmin(admin.ModelAdmin):
         }
 
         return render(request, 'admin/home/apiusage_dashboard.html', context)
+
+
+@admin.register(ChatbotConversation)
+class ChatbotConversationAdmin(admin.ModelAdmin):
+    """Admin per le conversazioni del chatbot"""
+
+    list_display = ('timestamp', 'session_id_short', 'user_message_preview', 'articles_found', 'response_time_display', 'user_ip')
+    list_filter = ('timestamp', 'articles_found')
+    search_fields = ('user_message', 'bot_response', 'session_id')
+    readonly_fields = ('timestamp', 'session_id', 'user_message', 'bot_response', 'intent_data_display',
+                      'articles_found', 'articles_links', 'user_ip', 'user_agent', 'response_time_ms')
+    date_hierarchy = 'timestamp'
+
+    fieldsets = (
+        ('Informazioni Conversazione', {
+            'fields': ('timestamp', 'session_id', 'response_time_ms')
+        }),
+        ('Messaggio Utente', {
+            'fields': ('user_message',)
+        }),
+        ('Risposta Bot', {
+            'fields': ('bot_response',)
+        }),
+        ('Analisi Intent', {
+            'fields': ('intent_data_display',),
+            'classes': ('collapse',)
+        }),
+        ('Risultati', {
+            'fields': ('articles_found', 'articles_links')
+        }),
+        ('Metadata', {
+            'fields': ('user_ip', 'user_agent'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def session_id_short(self, obj):
+        """Mostra versione abbreviata del session_id"""
+        return obj.session_id[:8] + '...' if len(obj.session_id) > 8 else obj.session_id
+    session_id_short.short_description = 'Session'
+
+    def user_message_preview(self, obj):
+        """Mostra anteprima del messaggio utente"""
+        return obj.user_message[:60] + '...' if len(obj.user_message) > 60 else obj.user_message
+    user_message_preview.short_description = 'Messaggio'
+
+    def response_time_display(self, obj):
+        """Mostra tempo di risposta formattato"""
+        if obj.response_time_ms:
+            color = '#4CAF50' if obj.response_time_ms < 1000 else '#FF9800' if obj.response_time_ms < 3000 else '#F44336'
+            return format_html(
+                '<span style="color: {}; font-weight: bold;">{} ms</span>',
+                color,
+                obj.response_time_ms
+            )
+        return '-'
+    response_time_display.short_description = 'Tempo Risposta'
+
+    def intent_data_display(self, obj):
+        """Mostra intent data formattato"""
+        import json
+        return format_html('<pre>{}</pre>', json.dumps(obj.intent_data, indent=2, ensure_ascii=False))
+    intent_data_display.short_description = 'Intent Data'
+
+    def articles_links(self, obj):
+        """Mostra link agli articoli trovati"""
+        if not obj.articles_ids:
+            return '-'
+
+        from .models import Articolo
+        articles = Articolo.objects.filter(id__in=obj.articles_ids)
+
+        links = []
+        for article in articles:
+            url = f'/admin/home/articolo/{article.id}/change/'
+            links.append(f'<a href="{url}" target="_blank">{article.titolo[:50]}</a>')
+
+        return format_html('<br>'.join(links))
+    articles_links.short_description = 'Articoli Trovati'
+
+    def has_add_permission(self, request):
+        """Non permettere creazione manuale"""
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        """Permetti solo agli admin di eliminare"""
+        return request.user.is_superuser
 
 
 # Aggiungi link alla dashboard nella lista APIUsage

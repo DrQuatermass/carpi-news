@@ -5,6 +5,7 @@ Analizza le richieste degli utenti e restituisce articoli pertinenti
 
 import logging
 import re
+import json
 from datetime import datetime, timedelta
 from django.utils import timezone
 from django.db.models import Q
@@ -12,6 +13,7 @@ import anthropic
 from django.conf import settings
 
 from .models import Articolo
+from .api_usage_tracker import APIUsageTracker
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +49,7 @@ class ChatbotService:
 
             return {
                 'response': response,
-                'articles': [self._serialize_article(a) for a in articles[:5]],  # Max 5 articoli
+                'articles': [self._serialize_article(a) for a in articles],  # Tutti gli articoli trovati
                 'intent': intent
             }
 
@@ -97,6 +99,15 @@ Esempi:
                 }]
             )
 
+            # Traccia utilizzo API
+            APIUsageTracker.track_anthropic(
+                operation='chatbot_intent_analysis',
+                model='claude-3-5-haiku-20241022',
+                input_tokens=message.usage.input_tokens,
+                output_tokens=message.usage.output_tokens,
+                success=True
+            )
+
             # Estrai il JSON dalla risposta
             response_text = message.content[0].text.strip()
 
@@ -104,7 +115,6 @@ Esempi:
             if response_text.startswith('```'):
                 response_text = re.sub(r'^```json?\s*|\s*```$', '', response_text, flags=re.MULTILINE)
 
-            import json
             intent = json.loads(response_text)
 
             logger.info(f"Intent estratto: {intent}")
