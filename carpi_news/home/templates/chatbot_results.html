@@ -22,15 +22,22 @@
             <a href="{% url 'dettaglio_articolo' articolo.slug %}" class="news-card-link">
                 <article class="news-card">
                     <div class="news-image">
-                        <picture>
-                            <source srcset="{{ articolo.get_image_url|to_webp }}" type="image/webp">
-                            <img src="{{ articolo.get_image_url }}"
+                        {% if articolo.foto %}
+                            <img src="{{ articolo.foto }}"
+                                 alt="{{ articolo.titolo }}"
+                                 class="card-img"
+                                 width="616"
+                                 height="347"
+                                 loading="lazy"
+                                 onerror="this.src='{% static 'home/images/portico_logo_nopayoff.png' %}'">
+                        {% else %}
+                            <img src="{% static 'home/images/portico_logo_nopayoff.png' %}"
                                  alt="{{ articolo.titolo }}"
                                  class="card-img"
                                  width="616"
                                  height="347"
                                  loading="lazy">
-                        </picture>
+                        {% endif %}
                     </div>
                     <div class="news-content">
                         <div class="news-meta">
