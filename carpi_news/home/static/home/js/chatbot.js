@@ -144,7 +144,7 @@ class OmbraChatbot {
 
                     // Crea URL per pagina risultati
                     const params = new URLSearchParams({
-                        q: user_message,
+                        q: message,
                         intent: JSON.stringify(data.intent),
                         session_id: data.session_id
                     });
