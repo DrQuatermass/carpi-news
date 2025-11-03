@@ -70,11 +70,16 @@ class ChatbotService:
         system_prompt = """Sei un assistente che analizza richieste su un sito di notizie locali (Carpi, Italia).
 Devi estrarre informazioni strutturate dalle richieste degli utenti.
 
+IMPORTANTE:
+- NON includere "carpi" nelle keywords (è ridondante, tutto il sito parla di Carpi)
+- Usa categoria SOLO per richieste generiche ("ultime notizie di sport")
+- Per ricerche specifiche (es. "rugby") NON usare categoria, usa solo keywords
+
 Restituisci SOLO un JSON valido con questa struttura:
 {
     "keywords": ["parola1", "parola2"],
     "timeframe": "oggi|ieri|settimana|mese|null",
-    "categoria": "Sport|Cronaca|Cultura|Eventi|null",
+    "categoria": "Sport|Cronaca|Cultura|Eventi|Attualità|Politica|null",
     "entity": "nome persona/organizzazione se menzionata|null",
     "request_type": "search|latest|help|greeting"
 }
@@ -82,8 +87,9 @@ Restituisci SOLO un JSON valido con questa struttura:
 Esempi:
 - "Trovami articoli su Aimag" -> {"keywords": ["aimag"], "timeframe": null, "categoria": null, "entity": "Aimag", "request_type": "search"}
 - "Cosa ha fatto ieri il sindaco" -> {"keywords": ["sindaco"], "timeframe": "ieri", "categoria": null, "entity": "sindaco", "request_type": "search"}
-- "Ultime notizie di sport" -> {"keywords": ["sport"], "timeframe": null, "categoria": "Sport", "entity": null, "request_type": "latest"}
-- "Eventi oggi" -> {"keywords": ["eventi"], "timeframe": "oggi", "categoria": "Eventi", "entity": null, "request_type": "search"}
+- "Ultime notizie di sport" -> {"keywords": [], "timeframe": null, "categoria": "Sport", "entity": null, "request_type": "latest"}
+- "Rugby Carpi" -> {"keywords": ["rugby"], "timeframe": null, "categoria": null, "entity": null, "request_type": "search"}
+- "Eventi oggi" -> {"keywords": [], "timeframe": "oggi", "categoria": "Eventi", "entity": null, "request_type": "search"}
 - "Ciao" -> {"keywords": [], "timeframe": null, "categoria": null, "entity": null, "request_type": "greeting"}
 """
 
