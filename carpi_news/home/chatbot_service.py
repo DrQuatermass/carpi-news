@@ -75,7 +75,9 @@ IMPORTANTE:
 - Usa categoria SOLO per richieste generiche ("ultime notizie di sport")
 - Per ricerche specifiche (es. "rugby") NON usare categoria, usa solo keywords
 - DOMANDE APERTE (chi/cosa/quando/dove/perché): usa request_type "question"
-- Valuta la complessità della domanda per ottimizzare l'uso dei token
+- Per domande su RELAZIONI tra entità (es. "cosa è successo tra X e Y"), usa articles_needed: 10
+- Per domande semplici su fatti specifici, usa articles_needed: 1-3
+- Per domande generiche o complesse, usa articles_needed: 5-10
 
 Restituisci SOLO un JSON valido con questa struttura:
 {
@@ -84,14 +86,15 @@ Restituisci SOLO un JSON valido con questa struttura:
     "categoria": "Sport|Cronaca|Cultura|Eventi|Attualità|Politica|null",
     "entity": "nome persona/organizzazione se menzionata|null",
     "request_type": "search|latest|help|greeting|question",
-    "articles_needed": 1-5 (solo per question, numero articoli da analizzare)
+    "articles_needed": 1-10 (solo per question, numero articoli da analizzare)
 }
 
 Esempi:
 - "Trovami articoli su Aimag" -> {"keywords": ["aimag"], "timeframe": null, "categoria": null, "entity": "Aimag", "request_type": "search", "articles_needed": 0}
-- "Chi è il sindaco di Campogalliano?" -> {"keywords": ["sindaco", "campogalliano"], "timeframe": null, "categoria": null, "entity": "sindaco", "request_type": "question", "articles_needed": 1}
-- "Cosa è successo questa settimana a Carpi?" -> {"keywords": [], "timeframe": "settimana", "categoria": null, "entity": null, "request_type": "question", "articles_needed": 5}
-- "Quando inizia il mercato?" -> {"keywords": ["mercato", "inizio"], "timeframe": null, "categoria": null, "entity": null, "request_type": "question", "articles_needed": 1}
+- "Cosa è successo tra Aimag e Hera?" -> {"keywords": ["aimag", "hera"], "timeframe": null, "categoria": null, "entity": null, "request_type": "question", "articles_needed": 10}
+- "Chi è il sindaco di Campogalliano?" -> {"keywords": ["sindaco", "campogalliano"], "timeframe": null, "categoria": null, "entity": "sindaco", "request_type": "question", "articles_needed": 3}
+- "Cosa è successo questa settimana a Carpi?" -> {"keywords": [], "timeframe": "settimana", "categoria": null, "entity": null, "request_type": "question", "articles_needed": 8}
+- "Quando inizia il mercato?" -> {"keywords": ["mercato", "inizio"], "timeframe": null, "categoria": null, "entity": null, "request_type": "question", "articles_needed": 2}
 - "Ultime notizie di sport" -> {"keywords": [], "timeframe": null, "categoria": "Sport", "entity": null, "request_type": "latest", "articles_needed": 0}
 - "Rugby" -> {"keywords": ["rugby"], "timeframe": null, "categoria": null, "entity": null, "request_type": "search", "articles_needed": 0}
 - "Ciao" -> {"keywords": [], "timeframe": null, "categoria": null, "entity": null, "request_type": "greeting", "articles_needed": 0}
@@ -276,8 +279,8 @@ Esempi:
         """
         Genera una risposta intelligente a una domanda usando il contenuto degli articoli
         """
-        # Determina quanti articoli leggere (default 1, max 5)
-        articles_to_read = min(intent.get('articles_needed', 1), len(articles), 5)
+        # Determina quanti articoli leggere (default 3, max 10)
+        articles_to_read = min(intent.get('articles_needed', 3), len(articles), 10)
 
         if articles_to_read == 0:
             return "Non ho trovato informazioni sufficienti per rispondere alla tua domanda."
