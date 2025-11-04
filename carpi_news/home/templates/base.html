@@ -33,7 +33,7 @@
     <meta name="twitter:image" content="{% block twitter_image %}https://ombradelportico.it{% static 'home/images/portico_logo_nopayoff.png' %}{% endblock %}">
 
     <!-- Preload risorse critiche -->
-    <link rel="preload" href="{% static 'home/css/style.min.css' %}" as="style">
+    <link rel="preload" href="{% static 'home/css/style.min.css' %}?v=4" as="style">
     <link rel="preload" href="{% static 'home/images/portico_logo_nopayoff.svg' %}" as="image">
     <link rel="preload" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" as="style">
 
@@ -47,10 +47,10 @@
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
 
     <!-- CSS principale -->
-    <link rel="stylesheet" href="{% static 'home/css/style.min.css' %}">
+    <link rel="stylesheet" href="{% static 'home/css/style.min.css' %}?v=4">
 
     <!-- Chatbot CSS -->
-    <link rel="stylesheet" href="{% static 'home/css/chatbot.css' %}">
+    <link rel="stylesheet" href="{% static 'home/css/chatbot.css' %}?v=2">
 
     <!-- Favicon -->
     <link rel="icon" type="image/png" sizes="32x32" href="{% static 'home/images/portico_logo_nopayoff.png' %}">

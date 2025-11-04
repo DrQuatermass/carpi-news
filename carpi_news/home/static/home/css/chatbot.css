@@ -230,8 +230,9 @@
 }
 
 .message-avatar.user {
-    background: rgba(150, 108, 66, 0.2);
+    background: #FAF7F0;
     color: #966C42;
+    border: 2px solid #966C42;
 }
 
 .message-content {
@@ -249,6 +250,10 @@
 .chatbot-message.bot .message-content {
     border-bottom-left-radius: 4px;
     border: 1px solid rgba(150, 108, 66, 0.1);
+}
+
+.chatbot-message.bot .message-content .view-all-button {
+    color: #FAF7F0 !important;
 }
 
 .chatbot-message.user .message-content {
@@ -425,7 +430,7 @@
     border-color: #966C42;
 }
 
-.article-image {
+.article-card .article-image {
     width: 100px;
     height: 100px;
     background-size: cover;
@@ -434,7 +439,7 @@
     flex-shrink: 0;
 }
 
-.article-content {
+.article-card .article-content {
     flex: 1;
     padding: 8px 12px;
     display: flex;
@@ -485,7 +490,7 @@
     display: inline-block;
     padding: 12px 20px;
     background: linear-gradient(135deg, #966C42 0%, #B8956A 100%);
-    color: #FAF7F0;
+    color: #FAF7F0 !important;
     text-decoration: none;
     border-radius: 8px;
     font-weight: 600;
@@ -498,7 +503,11 @@
 .view-all-button:hover {
     transform: translateY(-2px);
     box-shadow: 0 4px 16px rgba(150, 108, 66, 0.4);
-    color: #FAF7F0;
+    color: #FAF7F0 !important;
+}
+
+.view-all-button:visited {
+    color: #FAF7F0 !important;
 }
 
 /* Responsive */

@@ -455,7 +455,7 @@ def chatbot_results(request):
 
     try:
         intent = json.loads(intent_json)
-    except:
+    except Exception:
         intent = {}
 
     # Ricerca articoli usando lo stesso servizio del chatbot
@@ -481,7 +481,6 @@ def chatbot_results(request):
     page_obj = paginator.get_page(page_number)
 
     # Serializza intent per template
-    import json
     intent_str = json.dumps(intent)
 
     context = {
