@@ -210,9 +210,12 @@ Esempi:
         keywords = intent.get('keywords', [])
         if keywords:
             # Costruisci query OR per tutte le keywords
+            # Usa regex con word boundary per cercare parole intere
             keyword_query = Q()
             for keyword in keywords:
-                keyword_query |= Q(titolo__icontains=keyword) | Q(contenuto__icontains=keyword) | Q(sommario__icontains=keyword)
+                # \b = word boundary, cerca solo parole intere
+                regex_pattern = rf'\b{keyword}\b'
+                keyword_query |= Q(titolo__iregex=regex_pattern) | Q(contenuto__iregex=regex_pattern) | Q(sommario__iregex=regex_pattern)
             query = query.filter(keyword_query)
             logger.info(f"Filtro keywords applicato: {keywords}")
 
