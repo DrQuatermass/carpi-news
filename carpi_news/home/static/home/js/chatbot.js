@@ -63,7 +63,14 @@ class OmbraChatbot {
         // Messaggio di benvenuto
         if (this.messages.length === 0) {
             this.addBotMessage(
-                'Ciao! Sono l\'assistente di Ombra del Portico. Come posso aiutarti oggi?'
+                'Ciao! Sono l\'assistente virtuale di Ombra del Portico.\n\n' +
+                'Posso aiutarti a cercare tra gli articoli pubblicati sul sito. ' +
+                'Fai una domanda o chiedi di un argomento specifico e ti mostrerò tutti gli articoli pertinenti.\n\n' +
+                'Esempi:\n' +
+                '• "Cosa è successo questa settimana a Carpi?"\n' +
+                '• "Ultime notizie di sport"\n' +
+                '• "Articoli su Aimag"\n' +
+                '• "Eventi del weekend"'
             );
         }
     }

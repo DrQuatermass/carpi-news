@@ -235,9 +235,24 @@ Esempi:
         """
         request_type = intent.get('request_type', 'search')
 
+        # Gestisci richieste speciali (chi siamo, contatti, ecc.)
+        user_message_lower = user_message.lower()
+        if any(phrase in user_message_lower for phrase in ['chi siamo', 'chi sei', 'cosa fai', 'informazioni sul sito']):
+            return ("Ombra del Portico è il portale di notizie di Carpi.\n\nPer saperne di più su di noi, visita la pagina [Chi Siamo](/about/)")
+
+        if any(phrase in user_message_lower for phrase in ['contatti', 'contattare', 'email', 'scrivere']):
+            return ("📧 **Contatti**\n\nPer contattare Ombra del Portico:\n\n**Email:** info@ombradelportico.it\n\nSaremo felici di rispondere alle tue domande!")
+
         # Gestisci saluti
         if request_type == 'greeting':
-            return "Ciao! Sono l'assistente di Ombra del Portico. Posso aiutarti a trovare notizie su Carpi. Cosa ti interessa?"
+            return ("Ciao! Sono l'assistente virtuale di Ombra del Portico.\n\n"
+                   "Posso aiutarti a cercare tra gli articoli pubblicati sul sito. "
+                   "Fai una domanda o chiedi di un argomento specifico e ti mostrerò tutti gli articoli pertinenti.\n\n"
+                   "Esempi:\n"
+                   "• \"Cosa è successo questa settimana a Carpi?\"\n"
+                   "• \"Ultime notizie di sport\"\n"
+                   "• \"Articoli su Aimag\"\n"
+                   "• \"Eventi del weekend\"")
 
         # Gestisci richieste di aiuto
         if request_type == 'help':
