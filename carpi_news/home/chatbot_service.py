@@ -130,7 +130,8 @@ Esempi:
 
             intent = json.loads(response_text)
 
-            logger.info(f"Intent estratto: {intent}")
+            logger.info(f"Intent estratto da '{user_message}': {intent}")
+            logger.info(f"Keywords estratte: {intent.get('keywords', [])}")
             return intent
 
         except Exception as e:
@@ -180,6 +181,7 @@ Esempi:
         Cerca articoli in base all'intento
         """
         logger.info(f"_search_articles chiamato con intent: {intent}")
+        logger.info(f"Keywords ricevute per ricerca: {intent.get('keywords', [])}")
         query = Articolo.objects.filter(approvato=True)
 
         # Filtro temporale
@@ -249,9 +251,9 @@ Esempi:
             keywords_text = ", ".join(intent.get('keywords', [])) if intent.get('keywords') else "questa ricerca"
             return f"Non ho trovato articoli recenti su {keywords_text}. Prova a riformulare la domanda o cerca un altro argomento."
 
-        # DOMANDA APERTA: genera risposta intelligente dal contenuto
-        if request_type == 'question':
-            return self._answer_question(user_message, articles, intent)
+        # DOMANDA APERTA: restituisci solo gli articoli (senza risposta AI)
+        # if request_type == 'question':
+        #     return self._answer_question(user_message, articles, intent)
 
         # Risultati trovati - risposta normale per ricerca
         count = len(articles)
