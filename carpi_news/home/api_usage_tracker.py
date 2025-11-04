@@ -115,6 +115,8 @@ class APIUsageTracker:
         """
         Traccia una chiamata Google Custom Search API e calcola i costi
 
+        NOTA: Le prime 100 query al giorno sono gratuite, dopo si paga $0.005/query
+
         Args:
             operation: Nome dell'operazione (es. 'web_search')
             num_queries: Numero di query eseguite
@@ -127,10 +129,37 @@ class APIUsageTracker:
         """
         try:
             from home.models import APIUsage
+            from django.db.models import Sum
+            from django.utils import timezone
+            from datetime import datetime
 
-            # Calcola il costo
+            # Conta quante query sono già state fatte oggi
+            today_start = timezone.make_aware(datetime.combine(timezone.now().date(), datetime.min.time()))
+            queries_today = APIUsage.objects.filter(
+                api_type='google_search',
+                timestamp__gte=today_start
+            ).aggregate(total=Sum('search_queries'))['total'] or 0
+
+            # Calcola quante query sono a pagamento
+            free_quota = cls.GOOGLE_SEARCH_PRICING['free_daily_queries']
             cost_per_query = Decimal(str(cls.GOOGLE_SEARCH_PRICING['per_query']))
-            total_cost = cost_per_query * num_queries
+
+            # Query già usate oggi + query di questa chiamata
+            total_queries_today = queries_today + num_queries
+
+            # Quante query sono a pagamento in questa chiamata?
+            if queries_today >= free_quota:
+                # Abbiamo già superato il limite, tutte le query sono a pagamento
+                billable_queries = num_queries
+            elif total_queries_today <= free_quota:
+                # Siamo ancora dentro il limite gratuito
+                billable_queries = 0
+            else:
+                # Alcune query sono gratuite, altre a pagamento
+                billable_queries = total_queries_today - free_quota
+
+            # Calcola il costo effettivo
+            total_cost = cost_per_query * billable_queries
 
             # Arrotonda a 6 decimali
             total_cost = total_cost.quantize(Decimal('0.000001'))
@@ -147,7 +176,8 @@ class APIUsageTracker:
             )
 
             logger.info(f"API Google Search tracciata: {operation} - "
-                       f"{num_queries} queries - €{total_cost}")
+                       f"{num_queries} queries (oggi: {total_queries_today}/100 free) - "
+                       f"{billable_queries} a pagamento - ${total_cost}")
 
             return usage
 
