@@ -269,13 +269,14 @@ Esempi:
             keywords_text = ", ".join(intent.get('keywords', [])) if intent.get('keywords') else "questa ricerca"
             return f"Non ho trovato articoli recenti su {keywords_text}. Prova a riformulare la domanda o cerca un altro argomento."
 
-        # DOMANDA APERTA: restituisci solo gli articoli (senza risposta AI)
-        # if request_type == 'question':
-        #     return self._answer_question(user_message, articles, intent)
-
-        # Risultati trovati - risposta normale per ricerca
+        # Risultati trovati - risposta con presentazione articoli
         count = len(articles)
 
+        # Per domande, genera breve introduzione con AI
+        if request_type == 'question':
+            return self._generate_brief_intro(user_message, articles, intent)
+
+        # Per ricerche normali, risposta standard
         # Costruisci risposta
         if intent.get('timeframe') == 'oggi':
             response = f"Ho trovato {count} articol{'o' if count == 1 else 'i'} di oggi"
@@ -294,6 +295,70 @@ Esempi:
         response += ":"
 
         return response
+
+    def _generate_brief_intro(self, question, articles, intent):
+        """
+        Genera una breve introduzione (1-2 frasi) che presenta gli articoli trovati
+        Stringata, senza scuse o giustificazioni
+        """
+        count = len(articles)
+        articles_to_read = min(intent.get('articles_needed', 3), len(articles), 5)
+
+        # Prepara contesto dai primi articoli
+        context_parts = []
+        for article in articles[:articles_to_read]:
+            context_parts.append(f"{article.titolo}\n{article.sommario[:200]}")
+
+        context = "\n---\n".join(context_parts)
+
+        system_prompt = """Sei un assistente che presenta brevemente articoli di notizie.
+
+ISTRUZIONI:
+- Scrivi 1-2 frasi massimo che introducono gli articoli trovati
+- Sii diretto e stringato
+- NON scusarti o giustificarti
+- NON dire "ho trovato" o "ecco cosa ho trovato"
+- Presenta direttamente il tema degli articoli
+- Usa tono informativo e professionale
+
+Esempio:
+Domanda: "Cosa è successo tra Aimag e Hera?"
+Risposta: "Gli articoli riguardano la fusione tra Aimag e Hera, con aggiornamenti sui tempi e le modalità dell'operazione."
+
+Domanda: "Cosa è successo ieri in corso Cabassi?"
+Risposta: "Un episodio di cronaca ha coinvolto corso Cabassi ieri, con intervento delle forze dell'ordine."""
+
+        try:
+            message = self.client.messages.create(
+                model="claude-3-5-haiku-20241022",
+                max_tokens=150,
+                temperature=0.3,
+                system=system_prompt,
+                messages=[{
+                    "role": "user",
+                    "content": f"Domanda: {question}\n\nArticoli:\n{context}\n\nIntroduzione breve (1-2 frasi):"
+                }]
+            )
+
+            # Traccia utilizzo API
+            APIUsageTracker.track_anthropic(
+                operation='chatbot_brief_intro',
+                model='claude-3-5-haiku-20241022',
+                input_tokens=message.usage.input_tokens,
+                output_tokens=message.usage.output_tokens,
+                success=True
+            )
+
+            intro = message.content[0].text.strip()
+            return intro
+
+        except Exception as e:
+            logger.error(f"Errore generazione intro: {e}", exc_info=True)
+            # Fallback: risposta standard
+            if intent.get('keywords'):
+                keywords_text = ", ".join(intent['keywords'][:2])
+                return f"Ecco {count} articol{'o' if count == 1 else 'i'} su {keywords_text}:"
+            return f"Ecco {count} articol{'o' if count == 1 else 'i'} che potrebbero interessarti:"
 
     def _answer_question(self, question, articles, intent):
         """
