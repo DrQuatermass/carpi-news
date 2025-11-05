@@ -123,10 +123,6 @@ class OmbraChatbot {
 
             const data = await response.json();
 
-            console.log('=== RISPOSTA COMPLETA BACKEND ===');
-            console.log('Intera risposta:', data);
-            console.log('================================');
-
             // Rimuovi typing indicator
             this.hideTyping();
 
@@ -142,9 +138,18 @@ class OmbraChatbot {
                         window.location.href = data.articles[0].url;
                     }, 1000);
                 } else {
-                    // Multipli articoli
-                    // NON mostrare mai le card, solo il bottone
-                    // (Le card verranno mostrate nella pagina di risultati)
+                    // Multipli articoli - distingui tra ricerca e domanda
+                    const requestType = (data.intent && data.intent.request_type) ? data.intent.request_type : 'unknown';
+                    const isQuestion = requestType === 'question';
+
+                    // Debug: mostra tipo richiesta nel chatbot
+                    console.log('[CHATBOT] Request type:', requestType, '| Show cards:', !isQuestion);
+
+                    if (!isQuestion) {
+                        // RICERCA/LATEST: mostra card preview
+                        this.addArticlesCarousel(data.articles.slice(0, 3));
+                    }
+                    // DOMANDA: solo bottone, niente card
 
                     // Crea URL per pagina risultati
                     const params = new URLSearchParams({
