@@ -42,7 +42,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'home.apps.HomeConfig'  # Usa la configurazione personalizzata
+    'home.apps.HomeConfig',  # Usa la configurazione personalizzata
+    'admin_panel.apps.AdminPanelConfig',  # Admin panel per banner e gestione
 ]
 
 MIDDLEWARE = [
@@ -151,6 +152,7 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'home', 'static'),
+    os.path.join(BASE_DIR, 'admin_panel', 'static'),
 ]
 
 # Media files
