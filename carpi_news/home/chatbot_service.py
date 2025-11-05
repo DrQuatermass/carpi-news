@@ -422,12 +422,25 @@ Esempi:
 
         return articles_list
 
+    def _strip_links_from_content(self, content):
+        """
+        Rimuove link markdown e HTML dal contenuto per evitare match su URL
+        """
+        import re
+        # Rimuovi link markdown [testo](url) mantenendo solo il testo
+        content = re.sub(r'\[([^\]]+)\]\([^\)]+\)', r'\1', content)
+        # Rimuovi tag HTML <a href="...">testo</a> mantenendo solo il testo
+        content = re.sub(r'<a[^>]*>([^<]*)</a>', r'\1', content, flags=re.IGNORECASE)
+        # Rimuovi altri tag HTML
+        content = re.sub(r'<[^>]+>', '', content)
+        return content
+
     def _sort_by_relevance(self, articles, keywords):
         """
         Ordina articoli per rilevanza:
         1. Articoli con TUTTE le keywords nel titolo (priorità massima)
         2. Articoli con ALMENO UNA keyword nel titolo
-        3. Articoli con keywords solo nel contenuto
+        3. Articoli con keywords nel contenuto VISIBILE (esclude link)
         Dentro ogni gruppo, ordina per data pubblicazione (più recente prima)
         """
         if not keywords or not articles:
@@ -435,10 +448,14 @@ Esempi:
 
         title_all = []  # Tutte le keywords nel titolo
         title_some = []  # Almeno una keyword nel titolo
-        content_only = []  # Keywords solo nel contenuto
+        content_only = []  # Keywords nel contenuto visibile
 
         for article in articles:
             title_lower = article.titolo.lower()
+            # Rimuovi link dal contenuto prima di cercare
+            clean_content = self._strip_links_from_content(article.contenuto)
+            content_lower = clean_content.lower()
+
             # Conta quante keywords sono nel titolo
             keywords_in_title = sum(1 for kw in keywords if kw.lower() in title_lower)
 
@@ -447,7 +464,12 @@ Esempi:
             elif keywords_in_title > 0:
                 title_some.append(article)
             else:
-                content_only.append(article)
+                # Verifica se le keywords sono nel contenuto PULITO (senza link)
+                keywords_in_clean_content = sum(1 for kw in keywords if kw.lower() in content_lower)
+                if keywords_in_clean_content > 0:
+                    content_only.append(article)
+                else:
+                    logger.debug(f"Escluso '{article.titolo[:50]}...' - keyword solo in link")
 
         # Ordina ogni gruppo per data pubblicazione
         title_all.sort(key=lambda a: a.data_pubblicazione, reverse=True)
@@ -458,7 +480,7 @@ Esempi:
         result = title_all + title_some + content_only
 
         logger.info(f"Rilevanza: {len(title_all)} con tutte keywords in titolo, "
-                   f"{len(title_some)} con alcune in titolo, {len(content_only)} solo contenuto")
+                   f"{len(title_some)} con alcune in titolo, {len(content_only)} nel contenuto visibile")
 
         return result
 
