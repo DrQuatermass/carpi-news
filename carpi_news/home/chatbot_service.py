@@ -92,7 +92,7 @@ Restituisci SOLO un JSON valido con questa struttura:
 {
     "keywords": ["parola1", "parola2"],
     "timeframe": "oggi|ieri|weekend|lunedi|martedi|mercoledi|giovedi|venerdi|sabato|domenica|settimana|gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre|mese|null",
-    "categoria": "Sport|Cronaca|Cultura|Eventi|Attualità|Politica|null",
+    "categoria": "Sport|Cronaca|Cultura & Eventi|Attualità|Politica|null",
     "entity": "nome persona/organizzazione se menzionata|null",
     "request_type": "search|latest|help|greeting|question",
     "articles_needed": 1-10 (solo per question, numero articoli da analizzare)
@@ -193,10 +193,8 @@ Esempi:
         # Categorie
         if any(word in message_lower for word in ['sport', 'calcio', 'partita']):
             intent['categoria'] = 'Sport'
-        elif any(word in message_lower for word in ['evento', 'eventi', 'cosa fare']):
-            intent['categoria'] = 'Eventi'
-        elif any(word in message_lower for word in ['cultura', 'teatro', 'mostra']):
-            intent['categoria'] = 'Cultura'
+        elif any(word in message_lower for word in ['evento', 'eventi', 'cosa fare', 'cultura', 'teatro', 'mostra']):
+            intent['categoria'] = 'Cultura & Eventi'
 
         # Keywords: estrai parole significative
         words = re.findall(r'\w+', message_lower)
@@ -310,10 +308,11 @@ Esempi:
         # LOGICA SPECIALE: se keyword è "eventi" o "cultura" con timeframe, usa data_evento
         if keywords in [['eventi'], ['cultura']] and intent.get('timeframe'):
             timeframe = intent['timeframe']
-            categoria = 'Eventi' if keywords == ['eventi'] else 'Cultura'
+            # Categoria unificata: "Cultura & Eventi"
+            categoria = 'Cultura & Eventi'
             logger.info(f"Keyword '{keywords[0]}' con timeframe: cerco in categoria {categoria} usando data_evento")
 
-            # Cerca articoli Eventi/Cultura con data_evento nel range temporale
+            # Cerca articoli Cultura & Eventi con data_evento nel range temporale
             # Riapplica i filtri temporali ma su data_evento invece di data_pubblicazione
             query_eventi = Articolo.objects.filter(approvato=True, categoria__iexact=categoria)
 
