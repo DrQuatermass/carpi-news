@@ -139,17 +139,15 @@ class OmbraChatbot {
                     }, 1000);
                 } else {
                     // Multipli articoli - distingui tra ricerca e domanda
-                    const requestType = (data.intent && data.intent.request_type) ? data.intent.request_type : 'unknown';
-                    const isQuestion = requestType === 'question';
+                    // Se la risposta è lunga (>100 caratteri), è probabilmente una risposta AI per una domanda
+                    // In quel caso NON mostrare card per non distrarre dalla risposta
+                    const isLongResponse = data.response && data.response.length > 100;
 
-                    // Debug: mostra tipo richiesta nel chatbot
-                    console.log('[CHATBOT] Request type:', requestType, '| Show cards:', !isQuestion);
-
-                    if (!isQuestion) {
-                        // RICERCA/LATEST: mostra card preview
+                    if (!isLongResponse) {
+                        // Risposta breve = ricerca normale: mostra card preview
                         this.addArticlesCarousel(data.articles.slice(0, 3));
                     }
-                    // DOMANDA: solo bottone, niente card
+                    // Risposta lunga = domanda: solo bottone, niente card
 
                     // Crea URL per pagina risultati
                     const params = new URLSearchParams({
