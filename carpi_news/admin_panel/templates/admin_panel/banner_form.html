@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% if is_edit %}Modifica{% else %}Crea{% endif %} Banner - Admin Panel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f7fa;
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .navbar-brand {
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .btn-light {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 8px 16px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-light:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+
+        .form-card {
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        .form-header {
+            margin-bottom: 30px;
+        }
+
+        .form-header h1 {
+            color: #333;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .form-header p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        .form-group label {
+            display: block;
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .form-group label .required {
+            color: #dc3545;
+        }
+
+        .form-group input[type="text"],
+        .form-group input[type="url"],
+        .form-group input[type="number"],
+        .form-group select {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-group small {
+            display: block;
+            color: #999;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            width: 100%;
+        }
+
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+
+        .file-input-label {
+            display: block;
+            padding: 12px 15px;
+            border: 2px dashed #e0e0e0;
+            border-radius: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .file-input-label:hover {
+            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .pricing-info {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+        }
+
+        .pricing-info h3 {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        .pricing-info .price {
+            font-size: 32px;
+            font-weight: 700;
+        }
+
+        .pricing-info .details {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-top: 5px;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            flex: 1;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .messages {
+            margin-bottom: 20px;
+        }
+
+        .message {
+            padding: 12px 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border-left: 4px solid #dc3545;
+        }
+    </style>
+    <script>
+        function calculatePrice() {
+            const days = document.getElementById('duration_days').value || 1;
+            const pricePerDay = 5.00; // €5/giorno
+            const totalPrice = (days * pricePerDay).toFixed(2);
+
+            document.getElementById('total-price').textContent = '€' + totalPrice;
+            document.getElementById('price-details').textContent = days + ' giorni × €' + pricePerDay.toFixed(2) + '/giorno';
+        }
+
+        function updateFileName(input) {
+            const fileName = input.files[0]?.name || 'Nessun file selezionato';
+            document.getElementById('file-name').textContent = fileName;
+        }
+
+        window.onload = function() {
+            calculatePrice();
+        };
+    </script>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="navbar-brand">
+            📢 {% if is_edit %}Modifica{% else %}Crea{% endif %} Banner
+        </div>
+        <a href="{% url 'admin_panel:banner_list' %}" class="btn-light">← Torna ai Banner</a>
+    </nav>
+
+    <div class="container">
+        {% if messages %}
+        <div class="messages">
+            {% for message in messages %}
+            <div class="message {{ message.tags }}">
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="form-card">
+            <div class="form-header">
+                <h1>{% if is_edit %}Modifica Banner{% else %}Crea Nuovo Banner{% endif %}</h1>
+                <p>Compila i campi per configurare il tuo banner pubblicitario</p>
+            </div>
+
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+
+                <div class="form-group">
+                    <label for="title">Titolo <span class="required">*</span></label>
+                    <input type="text" id="title" name="title" value="{{ banner.title|default:'' }}" required>
+                    <small>Nome identificativo del tuo banner</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="image">Immagine <span class="required">*</span></label>
+                    <div class="file-input-wrapper">
+                        <input type="file" id="image" name="image" accept="image/*" onchange="updateFileName(this)" {% if not is_edit %}required{% endif %}>
+                        <label for="image" class="file-input-label">
+                            📷 <span id="file-name">Clicca per selezionare un'immagine</span>
+                        </label>
+                    </div>
+                    <small>Formati consigliati: 728x90px (leaderboard) o 300x250px (medium rectangle)</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="link_url">URL di Destinazione <span class="required">*</span></label>
+                    <input type="url" id="link_url" name="link_url" value="{{ banner.link_url|default:'' }}" placeholder="https://esempio.com" required>
+                    <small>Dove verranno reindirizzati gli utenti che cliccano sul banner</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="alt_text">Testo Alternativo <span class="required">*</span></label>
+                    <input type="text" id="alt_text" name="alt_text" value="{{ banner.alt_text|default:'' }}" required>
+                    <small>Descrizione per accessibilità e SEO</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="position">Posizione <span class="required">*</span></label>
+                    <select id="position" name="position" required>
+                        <option value="">-- Seleziona una posizione --</option>
+                        {% for value, label in positions %}
+                        <option value="{{ value }}" {% if banner.position == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                    <small>Dove verrà visualizzato il banner sul sito</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="duration_days">Durata (giorni) <span class="required">*</span></label>
+                    <input type="number" id="duration_days" name="duration_days" value="{{ banner.duration_days|default:7 }}" min="1" max="365" oninput="calculatePrice()" required>
+                    <small>Da 1 a 365 giorni</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="priority">Priorità</label>
+                    <input type="number" id="priority" name="priority" value="{{ banner.priority|default:1 }}" min="1" max="10">
+                    <small>Da 1 (bassa) a 10 (alta) - influenza l'ordine di visualizzazione</small>
+                </div>
+
+                <div class="pricing-info">
+                    <h3>💰 Riepilogo Costi</h3>
+                    <div class="price" id="total-price">€{{ banner.total_price|default:'35.00' }}</div>
+                    <div class="details" id="price-details">7 giorni × €5.00/giorno</div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">
+                        {% if is_edit %}💾 Salva Modifiche{% else %}➡️ Procedi al Pagamento{% endif %}
+                    </button>
+                    <a href="{% url 'admin_panel:banner_list' %}" class="btn btn-secondary">✖️ Annulla</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,8 @@
+{% if banner %}
+<div class="advertisement-banner" data-banner-id="{{ banner.id }}" style="margin: 20px 0;">
+    <a href="{% url 'admin_panel:banner_click' banner.id %}" target="_blank" rel="noopener noreferrer sponsored">
+        <img src="{{ banner.image.url }}" alt="{{ banner.alt_text }}" style="max-width: 100%; height: auto; border-radius: 8px; display: block;">
+    </a>
+    <div style="font-size: 10px; color: #999; text-align: center; margin-top: 5px;">Pubblicità</div>
+</div>
+{% endif %}

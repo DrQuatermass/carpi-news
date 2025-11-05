@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elimina Banner - Admin Panel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .delete-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            padding: 40px;
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
+        }
+
+        .delete-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            color: #333;
+            font-size: 24px;
+            margin-bottom: 15px;
+        }
+
+        .banner-info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            text-align: left;
+        }
+
+        .banner-info h3 {
+            color: #333;
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        .banner-info p {
+            color: #666;
+            font-size: 14px;
+            margin: 5px 0;
+        }
+
+        .warning-text {
+            color: #dc3545;
+            font-size: 14px;
+            margin-bottom: 25px;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 15px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px 24px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-size: 16px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(220, 53, 69, 0.4);
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+    </style>
+</head>
+<body>
+    <div class="delete-container">
+        <div class="delete-icon">🗑️</div>
+        <h1>Conferma Eliminazione</h1>
+        <p style="color: #666; margin-bottom: 20px;">
+            Sei sicuro di voler eliminare questo banner?
+        </p>
+
+        <div class="banner-info">
+            <h3>{{ banner.title }}</h3>
+            <p><strong>Posizione:</strong> {{ banner.get_position_display }}</p>
+            <p><strong>Durata:</strong> {{ banner.duration_days }} giorni</p>
+            <p><strong>Stato:</strong> {{ banner.get_status_display }}</p>
+            {% if banner.payment_status == 'completed' %}
+            <p><strong>💳 Pagato:</strong> €{{ banner.total_price }}</p>
+            {% endif %}
+        </div>
+
+        <p class="warning-text">
+            ⚠️ Questa azione è irreversibile!
+        </p>
+
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-actions">
+                <button type="submit" class="btn btn-danger">🗑️ Elimina Definitivamente</button>
+                <a href="{% url 'admin_panel:banner_list' %}" class="btn btn-secondary">✖️ Annulla</a>
+            </div>
+        </form>
+    </div>
+</body>
+</html>
