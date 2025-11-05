@@ -91,7 +91,7 @@ IMPORTANTE:
 Restituisci SOLO un JSON valido con questa struttura:
 {
     "keywords": ["parola1", "parola2"],
-    "timeframe": "oggi|ieri|weekend|lunedi|martedi|mercoledi|giovedi|venerdi|sabato|domenica|settimana|gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre|mese|null",
+    "timeframe": "oggi|domani|ieri|weekend|lunedi|martedi|mercoledi|giovedi|venerdi|sabato|domenica|settimana|gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre|mese|null",
     "categoria": "Sport|Cronaca|Cultura & Eventi|Attualità|Politica|null",
     "entity": "nome persona/organizzazione se menzionata|null",
     "request_type": "search|latest|help|greeting|question",
@@ -102,6 +102,7 @@ Esempi:
 - "Trovami articoli su Aimag" -> {"keywords": ["aimag"], "timeframe": null, "categoria": null, "entity": "Aimag", "request_type": "search", "articles_needed": 0}
 - "Cosa è successo tra Aimag e Hera?" -> {"keywords": ["aimag", "hera"], "timeframe": null, "categoria": null, "entity": null, "request_type": "question", "articles_needed": 10}
 - "Chi è il sindaco di Campogalliano?" -> {"keywords": ["sindaco", "campogalliano"], "timeframe": null, "categoria": null, "entity": "sindaco", "request_type": "question", "articles_needed": 3}
+- "Eventi di domani" -> {"keywords": ["eventi"], "timeframe": "domani", "categoria": null, "entity": null, "request_type": "search", "articles_needed": 0}
 - "Eventi del weekend" -> {"keywords": ["eventi"], "timeframe": "weekend", "categoria": null, "entity": null, "request_type": "search", "articles_needed": 0}
 - "Eventi di ieri" -> {"keywords": ["eventi"], "timeframe": "ieri", "categoria": null, "entity": null, "request_type": "search", "articles_needed": 0}
 - "Cosa è successo lunedì?" -> {"keywords": [], "timeframe": "lunedi", "categoria": null, "entity": null, "request_type": "question", "articles_needed": 5}
@@ -165,6 +166,8 @@ Esempi:
         # Timeframe
         if any(word in message_lower for word in ['oggi', 'stasera']):
             intent['timeframe'] = 'oggi'
+        elif 'domani' in message_lower:
+            intent['timeframe'] = 'domani'
         elif 'ieri' in message_lower:
             intent['timeframe'] = 'ieri'
         elif any(word in message_lower for word in ['weekend', 'fine settimana']):
@@ -221,6 +224,12 @@ Esempi:
             if timeframe == 'oggi':
                 start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
                 query = query.filter(data_pubblicazione__gte=start_date)
+
+            elif timeframe == 'domani':
+                tomorrow = now + timedelta(days=1)
+                start_date = tomorrow.replace(hour=0, minute=0, second=0, microsecond=0)
+                end_date = (tomorrow + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+                query = query.filter(data_pubblicazione__gte=start_date, data_pubblicazione__lt=end_date)
 
             elif timeframe == 'ieri':
                 yesterday = now - timedelta(days=1)
@@ -323,6 +332,10 @@ Esempi:
 
             if timeframe == 'oggi':
                 start_date = now.date()
+                end_date = start_date
+            elif timeframe == 'domani':
+                tomorrow = now + timedelta(days=1)
+                start_date = tomorrow.date()
                 end_date = start_date
             elif timeframe == 'ieri':
                 yesterday = now - timedelta(days=1)
