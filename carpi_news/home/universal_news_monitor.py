@@ -1570,10 +1570,22 @@ class GraphQLScraper(BaseScraper):
             # Dimensioni originali
             original_width, original_height = img.size
 
-            # Se l'immagine è già piccola, restituisci l'originale
+            # Se l'immagine è già piccola, converti comunque in WebP per uniformità
             if original_width <= max_width and original_height <= max_height:
-                self.logger.debug(f"Immagine già nelle dimensioni corrette: {original_width}x{original_height}")
-                return image_bytes
+                self.logger.debug(f"Immagine già nelle dimensioni corrette: {original_width}x{original_height}, converto in WebP")
+
+                # Converti in RGB se necessario
+                if img.mode in ('RGBA', 'LA'):
+                    pass  # Mantieni RGBA per trasparenza
+                elif img.mode == 'P':
+                    img = img.convert('RGBA')
+                elif img.mode != 'RGB':
+                    img = img.convert('RGB')
+
+                # Salva come WebP
+                output_buffer = io.BytesIO()
+                img.save(output_buffer, format='WEBP', quality=quality, method=6)
+                return output_buffer.getvalue(), '.webp'
 
             # Calcola nuove dimensioni mantenendo aspect ratio
             ratio = min(max_width / original_width, max_height / original_height)

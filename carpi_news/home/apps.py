@@ -64,6 +64,7 @@ class HomeConfig(AppConfig):
             # Avvia i monitor automaticamente con un piccolo ritardo per evitare conflitti
             import threading
             import time
+            from pathlib import Path
 
             print("[DEBUG] Definisco delayed_start", flush=True)
             def delayed_start():
@@ -86,19 +87,31 @@ class HomeConfig(AppConfig):
                     print(f"[DEBUG] Errore delayed_start: {e}", flush=True)
                     logger.error(f"Errore nell'avvio ritardato dei monitor: {e}")
 
-            # Solo se non sono già stati programmati
-            print(f"[DEBUG] Controllo _delayed_start_scheduled: {hasattr(HomeConfig, '_delayed_start_scheduled')}", flush=True)
-            if not hasattr(HomeConfig, '_delayed_start_scheduled'):
-                print("[DEBUG] Creo thread delayed_start", flush=True)
+            # Solo se non sono già stati programmati - usa lock file persistente
+            startup_lock_file = Path('locks') / '.delayed_start.lock'
+            startup_lock_file.parent.mkdir(exist_ok=True)
+
+            # Controlla se il lock esiste ed è recente (meno di 30 secondi)
+            if startup_lock_file.exists():
+                lock_age = time.time() - startup_lock_file.stat().st_mtime
+                if lock_age < 30:
+                    print(f"[DEBUG] Skip: delayed_start già programmato (lock età: {lock_age:.1f}s)", flush=True)
+                    logger.info(f"Monitor automatici già programmati (lock età: {lock_age:.1f}s), skip")
+                else:
+                    # Lock vecchio, rimuovilo
+                    print(f"[DEBUG] Rimozione lock vecchio ({lock_age:.1f}s)", flush=True)
+                    startup_lock_file.unlink()
+
+            # Se non c'è lock (o è stato rimosso), avvia
+            if not startup_lock_file.exists():
+                print("[DEBUG] Creo lock e avvio thread delayed_start", flush=True)
+                startup_lock_file.write_text(str(os.getpid()))
                 thread = threading.Thread(target=delayed_start, daemon=True)
                 print("[DEBUG] Avvio thread", flush=True)
                 thread.start()
                 HomeConfig._delayed_start_scheduled = True
                 print("[DEBUG] Thread avviato", flush=True)
                 logger.info("Monitor automatici programmati per l'avvio con ritardo di 5 secondi")
-            else:
-                print("[DEBUG] Skip: delayed_start già programmato", flush=True)
-                logger.info("Monitor automatici già programmati, skip")
         elif (is_production or is_dev) and not should_skip and not auto_start_enabled:
             logger.info("Auto-start monitor disabilitato (AUTO_START_MONITORS=False). Usa 'python manage.py start_monitors' per avviarli manualmente.")
     
