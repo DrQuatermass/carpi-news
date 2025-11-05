@@ -426,6 +426,8 @@ def chatbot_api(request):
         )
 
         logger.info(f"Chatbot richiesta: '{user_message}' -> {len(result['articles'])} articoli trovati ({response_time_ms}ms)")
+        logger.info(f"Intent restituito: {result.get('intent', 'MANCANTE')}")
+        logger.info(f"Lunghezza risposta: {len(result['response'])} caratteri")
 
         return JsonResponse({
             'response': result['response'],
