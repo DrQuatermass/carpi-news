@@ -209,15 +209,15 @@ Esempi:
         # Filtro keywords
         keywords = intent.get('keywords', [])
         if keywords:
-            # Costruisci query OR per tutte le keywords
+            # Costruisci query AND per tutte le keywords (articoli che contengono TUTTE le parole)
             # Usa regex con word boundary per cercare parole intere
-            keyword_query = Q()
             for keyword in keywords:
                 # \b = word boundary, cerca solo parole intere
                 regex_pattern = rf'\b{keyword}\b'
-                keyword_query |= Q(titolo__iregex=regex_pattern) | Q(contenuto__iregex=regex_pattern) | Q(sommario__iregex=regex_pattern)
-            query = query.filter(keyword_query)
-            logger.info(f"Filtro keywords applicato: {keywords}")
+                # AND: ogni keyword deve essere presente in titolo, contenuto o sommario
+                keyword_query = Q(titolo__iregex=regex_pattern) | Q(contenuto__iregex=regex_pattern) | Q(sommario__iregex=regex_pattern)
+                query = query.filter(keyword_query)
+            logger.info(f"Filtro keywords applicato (AND): {keywords}")
 
         # Ordina per rilevanza (più recenti prima)
         articles = query.order_by('-data_pubblicazione')
