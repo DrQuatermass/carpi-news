@@ -141,7 +141,9 @@ class OmbraChatbot {
                     // Multipli articoli
                     // Se è una domanda (question), mostra solo il bottone
                     // Altrimenti mostra le card preview
+                    console.log('Intent ricevuto:', data.intent);
                     const isQuestion = data.intent && data.intent.request_type === 'question';
+                    console.log('isQuestion:', isQuestion);
 
                     if (!isQuestion) {
                         // Per ricerche normali: mostra card preview
