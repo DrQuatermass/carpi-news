@@ -209,21 +209,36 @@ Esempi:
         # Filtro keywords
         keywords = intent.get('keywords', [])
         if keywords:
-            # Costruisci query AND per tutte le keywords (articoli che contengono TUTTE le parole)
+            # Prova prima con AND (articoli che contengono TUTTE le parole)
             # Usa regex con word boundary per cercare parole intere
+            query_and = query
             for keyword in keywords:
                 # \b = word boundary, cerca solo parole intere
                 regex_pattern = rf'\b{keyword}\b'
                 # AND: ogni keyword deve essere presente in titolo, contenuto o sommario
                 keyword_query = Q(titolo__iregex=regex_pattern) | Q(contenuto__iregex=regex_pattern) | Q(sommario__iregex=regex_pattern)
-                query = query.filter(keyword_query)
-            logger.info(f"Filtro keywords applicato (AND): {keywords}")
+                query_and = query_and.filter(keyword_query)
 
-        # Ordina per rilevanza (più recenti prima)
-        articles = query.order_by('-data_pubblicazione')
+            # Converti in lista per contare
+            articles_and = list(query_and.order_by('-data_pubblicazione'))
 
-        # Converti QuerySet in lista per contare
-        articles_list = list(articles)
+            if articles_and:
+                # Trovati risultati con AND
+                logger.info(f"Filtro keywords applicato (AND): {keywords} - {len(articles_and)} articoli")
+                articles_list = articles_and
+            else:
+                # Nessun risultato con AND, riprova con OR
+                logger.info(f"AND non ha trovato risultati, provo con OR: {keywords}")
+                keyword_query_or = Q()
+                for keyword in keywords:
+                    regex_pattern = rf'\b{keyword}\b'
+                    keyword_query_or |= Q(titolo__iregex=regex_pattern) | Q(contenuto__iregex=regex_pattern) | Q(sommario__iregex=regex_pattern)
+                query_or = query.filter(keyword_query_or)
+                articles_list = list(query_or.order_by('-data_pubblicazione'))
+                logger.info(f"Filtro keywords applicato (OR fallback): {keywords} - {len(articles_list)} articoli")
+        else:
+            # Nessuna keyword, usa query base
+            articles_list = list(query.order_by('-data_pubblicazione'))
 
         logger.info(f"Trovati {len(articles_list)} articoli per intent: {intent}")
 
