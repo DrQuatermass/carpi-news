@@ -123,6 +123,10 @@ class OmbraChatbot {
 
             const data = await response.json();
 
+            console.log('=== RISPOSTA COMPLETA BACKEND ===');
+            console.log('Intera risposta:', data);
+            console.log('================================');
+
             // Rimuovi typing indicator
             this.hideTyping();
 
