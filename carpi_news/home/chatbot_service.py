@@ -324,12 +324,12 @@ Esempi:
         Stringata, senza scuse o giustificazioni
         """
         count = len(articles)
-        articles_to_read = min(intent.get('articles_needed', 3), len(articles), 5)
+        articles_to_read = min(intent.get('articles_needed', 3), len(articles))
 
-        # Prepara contesto dai primi articoli
+        # Prepara contesto dai primi articoli (titolo + contenuto completo)
         context_parts = []
         for article in articles[:articles_to_read]:
-            context_parts.append(f"{article.titolo}\n{article.sommario[:200]}")
+            context_parts.append(f"Titolo: {article.titolo}\n\nContenuto:\n{article.contenuto}")
 
         context = "\n---\n".join(context_parts)
 
