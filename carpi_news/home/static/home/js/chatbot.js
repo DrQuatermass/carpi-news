@@ -141,11 +141,22 @@ class OmbraChatbot {
                     // Multipli articoli - distingui tra ricerca e domanda
                     // Se la risposta è lunga (>100 caratteri), è probabilmente una risposta AI per una domanda
                     // In quel caso NON mostrare card per non distrarre dalla risposta
-                    const isLongResponse = data.response && data.response.length > 100;
+                    const responseLength = data.response ? data.response.length : 0;
+                    const isLongResponse = responseLength > 100;
+
+                    console.log('🤖 CHATBOT DEBUG:', {
+                        responseLength: responseLength,
+                        isLong: isLongResponse,
+                        showCards: !isLongResponse,
+                        articlesCount: data.articles.length
+                    });
 
                     if (!isLongResponse) {
                         // Risposta breve = ricerca normale: mostra card preview
+                        console.log('📇 Mostro card preview');
                         this.addArticlesCarousel(data.articles.slice(0, 3));
+                    } else {
+                        console.log('🚫 NON mostro card (risposta lunga)');
                     }
                     // Risposta lunga = domanda: solo bottone, niente card
 
