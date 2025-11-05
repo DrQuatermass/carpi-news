@@ -215,8 +215,8 @@ Esempi:
             for keyword in keywords:
                 # \b = word boundary, cerca solo parole intere
                 regex_pattern = rf'\b{keyword}\b'
-                # AND: ogni keyword deve essere presente in titolo, contenuto o sommario
-                keyword_query = Q(titolo__iregex=regex_pattern) | Q(contenuto__iregex=regex_pattern) | Q(sommario__iregex=regex_pattern)
+                # AND: ogni keyword deve essere presente in titolo o contenuto
+                keyword_query = Q(titolo__iregex=regex_pattern) | Q(contenuto__iregex=regex_pattern)
                 query_and = query_and.filter(keyword_query)
 
             # Converti in lista per contare
@@ -232,7 +232,7 @@ Esempi:
                 keyword_query_or = Q()
                 for keyword in keywords:
                     regex_pattern = rf'\b{keyword}\b'
-                    keyword_query_or |= Q(titolo__iregex=regex_pattern) | Q(contenuto__iregex=regex_pattern) | Q(sommario__iregex=regex_pattern)
+                    keyword_query_or |= Q(titolo__iregex=regex_pattern) | Q(contenuto__iregex=regex_pattern)
                 query_or = query.filter(keyword_query_or)
                 articles_list = list(query_or.order_by('-data_pubblicazione'))
                 logger.info(f"Filtro keywords applicato (OR fallback): {keywords} - {len(articles_list)} articoli")
