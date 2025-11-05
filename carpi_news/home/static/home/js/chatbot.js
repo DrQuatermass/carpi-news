@@ -53,19 +53,21 @@ class OmbraChatbot {
     }
 
     showWelcomeMessage() {
-        // Pulisci messaggi precedenti
+        // IMPORTANTE: Pulisci TUTTO prima di mostrare il benvenuto
         this.messages = [];
         this.messagesArea.innerHTML = '';
 
-        // Mostra messaggio di benvenuto aggiornato
+        // Pulisci anche localStorage
+        try {
+            localStorage.removeItem('chatbot-messages');
+        } catch (e) {
+            console.error('Errore pulizia localStorage:', e);
+        }
+
+        // Mostra messaggio di benvenuto
         this.addBotMessage(
             'Ciao! Sono l\'assistente virtuale di Ombra del Portico.\n\n' +
             'Posso aiutarti a cercare articoli e rispondere alle tue domande su Carpi.\n\n' +
-            '**Cosa posso fare:**\n' +
-            '• Cercare articoli per argomento, persona o organizzazione\n' +
-            '• Filtrare per data (oggi, domani, ieri, weekend, giorni, mesi)\n' +
-            '• Trovare eventi per data specifica usando il calendario eventi\n' +
-            '• Rispondere a domande specifiche analizzando gli articoli\n\n' +
             '**Esempi:**\n' +
             '• "Eventi di domani"\n' +
             '• "Cosa è successo lunedì?"\n' +
