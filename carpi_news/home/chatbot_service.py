@@ -306,6 +306,17 @@ Esempi:
 
         # Filtro keywords
         keywords = intent.get('keywords', [])
+
+        # LOGICA SPECIALE: se keyword è "eventi" e c'è un timeframe, cerca prima per categoria Eventi
+        if keywords == ['eventi'] and intent.get('timeframe'):
+            logger.info("Keyword 'eventi' con timeframe: cerco prima nella categoria Eventi")
+            query_eventi_cat = query.filter(categoria__iexact='Eventi')
+            articles_eventi_cat = list(query_eventi_cat.order_by('-data_pubblicazione'))
+            if articles_eventi_cat:
+                logger.info(f"Trovati {len(articles_eventi_cat)} articoli nella categoria Eventi")
+                return articles_eventi_cat
+            else:
+                logger.info("Nessun articolo nella categoria Eventi, continuo con ricerca keyword")
         if keywords:
             # Prova prima con AND (articoli che contengono TUTTE le parole)
             # Usa regex con word boundary per cercare parole intere
