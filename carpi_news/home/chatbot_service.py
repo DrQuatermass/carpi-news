@@ -79,6 +79,8 @@ Devi estrarre informazioni strutturate dalle richieste degli utenti.
 
 IMPORTANTE:
 - NON includere "carpi" nelle keywords (è ridondante, tutto il sito parla di Carpi)
+- NON includere articoli, preposizioni o congiunzioni (il, lo, la, al, alla, del, della, di, da, a, e, o)
+- Correggi errori di battitura evidenti (es. "sivurezza" -> "sicurezza")
 - Usa categoria SOLO per richieste generiche ("ultime notizie di sport")
 - Per ricerche specifiche (es. "rugby") NON usare categoria, usa solo keywords
 - DOMANDE APERTE (chi/cosa/quando/dove/perché): usa request_type "question"
@@ -100,6 +102,7 @@ Esempi:
 - "Trovami articoli su Aimag" -> {"keywords": ["aimag"], "timeframe": null, "categoria": null, "entity": "Aimag", "request_type": "search", "articles_needed": 0}
 - "Cosa è successo tra Aimag e Hera?" -> {"keywords": ["aimag", "hera"], "timeframe": null, "categoria": null, "entity": null, "request_type": "question", "articles_needed": 10}
 - "Chi è il sindaco di Campogalliano?" -> {"keywords": ["sindaco", "campogalliano"], "timeframe": null, "categoria": null, "entity": "sindaco", "request_type": "question", "articles_needed": 3}
+- "Chi è l'assessore alla sicurezza?" -> {"keywords": ["assessore", "sicurezza"], "timeframe": null, "categoria": null, "entity": "assessore", "request_type": "question", "articles_needed": 3}
 - "Cosa è successo questa settimana a Carpi?" -> {"keywords": [], "timeframe": "settimana", "categoria": null, "entity": null, "request_type": "question", "articles_needed": 8}
 - "Quando inizia il mercato?" -> {"keywords": ["mercato", "inizio"], "timeframe": null, "categoria": null, "entity": null, "request_type": "question", "articles_needed": 2}
 - "Ultime notizie di sport" -> {"keywords": [], "timeframe": null, "categoria": "Sport", "entity": null, "request_type": "latest", "articles_needed": 0}
