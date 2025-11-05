@@ -400,7 +400,8 @@ Esempi:
             if articles_and:
                 # Trovati risultati con AND
                 logger.info(f"Filtro keywords applicato (AND): {keywords} - {len(articles_and)} articoli")
-                articles_list = articles_and
+                # Ordina per rilevanza: prima articoli con keyword nel titolo, poi per data
+                articles_list = self._sort_by_relevance(articles_and, keywords)
             else:
                 # Nessun risultato con AND, riprova con OR
                 logger.info(f"AND non ha trovato risultati, provo con OR: {keywords}")
@@ -409,8 +410,10 @@ Esempi:
                     regex_pattern = rf'\b{keyword}\b'
                     keyword_query_or |= Q(titolo__iregex=regex_pattern) | Q(contenuto__iregex=regex_pattern)
                 query_or = query.filter(keyword_query_or)
-                articles_list = list(query_or.order_by('-data_pubblicazione'))
-                logger.info(f"Filtro keywords applicato (OR fallback): {keywords} - {len(articles_list)} articoli")
+                articles_or = list(query_or.order_by('-data_pubblicazione'))
+                logger.info(f"Filtro keywords applicato (OR fallback): {keywords} - {len(articles_or)} articoli")
+                # Ordina per rilevanza anche con OR
+                articles_list = self._sort_by_relevance(articles_or, keywords)
         else:
             # Nessuna keyword, usa query base
             articles_list = list(query.order_by('-data_pubblicazione'))
@@ -418,6 +421,46 @@ Esempi:
         logger.info(f"Trovati {len(articles_list)} articoli per intent: {intent}")
 
         return articles_list
+
+    def _sort_by_relevance(self, articles, keywords):
+        """
+        Ordina articoli per rilevanza:
+        1. Articoli con TUTTE le keywords nel titolo (priorità massima)
+        2. Articoli con ALMENO UNA keyword nel titolo
+        3. Articoli con keywords solo nel contenuto
+        Dentro ogni gruppo, ordina per data pubblicazione (più recente prima)
+        """
+        if not keywords or not articles:
+            return articles
+
+        title_all = []  # Tutte le keywords nel titolo
+        title_some = []  # Almeno una keyword nel titolo
+        content_only = []  # Keywords solo nel contenuto
+
+        for article in articles:
+            title_lower = article.titolo.lower()
+            # Conta quante keywords sono nel titolo
+            keywords_in_title = sum(1 for kw in keywords if kw.lower() in title_lower)
+
+            if keywords_in_title == len(keywords):
+                title_all.append(article)
+            elif keywords_in_title > 0:
+                title_some.append(article)
+            else:
+                content_only.append(article)
+
+        # Ordina ogni gruppo per data pubblicazione
+        title_all.sort(key=lambda a: a.data_pubblicazione, reverse=True)
+        title_some.sort(key=lambda a: a.data_pubblicazione, reverse=True)
+        content_only.sort(key=lambda a: a.data_pubblicazione, reverse=True)
+
+        # Combina i gruppi
+        result = title_all + title_some + content_only
+
+        logger.info(f"Rilevanza: {len(title_all)} con tutte keywords in titolo, "
+                   f"{len(title_some)} con alcune in titolo, {len(content_only)} solo contenuto")
+
+        return result
 
     def _generate_response(self, intent, articles, user_message):
         """
