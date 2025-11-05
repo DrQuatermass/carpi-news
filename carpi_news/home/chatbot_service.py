@@ -47,9 +47,16 @@ class ChatbotService:
             # Genera risposta
             response = self._generate_response(intent, articles, user_message)
 
+            # Per le domande, restituisci solo gli articoli effettivamente analizzati dall'AI
+            articles_to_return = articles
+            if intent.get('request_type') == 'question' and articles:
+                articles_to_read = min(intent.get('articles_needed', 3), len(articles))
+                articles_to_return = articles[:articles_to_read]
+                logger.info(f"Question type: restituiti {len(articles_to_return)} articoli analizzati su {len(articles)} trovati")
+
             return {
                 'response': response,
-                'articles': [self._serialize_article(a) for a in articles],  # Tutti gli articoli trovati
+                'articles': [self._serialize_article(a) for a in articles_to_return],
                 'intent': intent
             }
 
