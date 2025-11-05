@@ -307,16 +307,83 @@ Esempi:
         # Filtro keywords
         keywords = intent.get('keywords', [])
 
-        # LOGICA SPECIALE: se keyword è "eventi" e c'è un timeframe, cerca prima per categoria Eventi
-        if keywords == ['eventi'] and intent.get('timeframe'):
-            logger.info("Keyword 'eventi' con timeframe: cerco prima nella categoria Eventi")
-            query_eventi_cat = query.filter(categoria__iexact='Eventi')
-            articles_eventi_cat = list(query_eventi_cat.order_by('-data_pubblicazione'))
-            if articles_eventi_cat:
-                logger.info(f"Trovati {len(articles_eventi_cat)} articoli nella categoria Eventi")
-                return articles_eventi_cat
-            else:
-                logger.info("Nessun articolo nella categoria Eventi, continuo con ricerca keyword")
+        # LOGICA SPECIALE: se keyword è "eventi" o "cultura" con timeframe, usa data_evento
+        if keywords in [['eventi'], ['cultura']] and intent.get('timeframe'):
+            timeframe = intent['timeframe']
+            categoria = 'Eventi' if keywords == ['eventi'] else 'Cultura'
+            logger.info(f"Keyword '{keywords[0]}' con timeframe: cerco in categoria {categoria} usando data_evento")
+
+            # Cerca articoli Eventi/Cultura con data_evento nel range temporale
+            # Riapplica i filtri temporali ma su data_evento invece di data_pubblicazione
+            query_eventi = Articolo.objects.filter(approvato=True, categoria__iexact=categoria)
+
+            # Calcola date range (come sopra ma per data_evento)
+            now = timezone.now()
+            start_date = None
+            end_date = None
+
+            if timeframe == 'oggi':
+                start_date = now.date()
+                end_date = start_date
+            elif timeframe == 'ieri':
+                yesterday = now - timedelta(days=1)
+                start_date = yesterday.date()
+                end_date = start_date
+            elif timeframe == 'weekend':
+                days_since_saturday = (now.weekday() - 5) % 7
+                if now.weekday() == 6:
+                    saturday = now - timedelta(days=1)
+                elif now.weekday() < 5:
+                    saturday = now - timedelta(days=days_since_saturday + 7)
+                else:
+                    saturday = now
+                start_date = saturday.date()
+                end_date = (saturday + timedelta(days=1)).date()
+            elif timeframe in ['lunedi', 'martedi', 'mercoledi', 'giovedi', 'venerdi', 'sabato', 'domenica']:
+                giorni_map = {'lunedi': 0, 'martedi': 1, 'mercoledi': 2, 'giovedi': 3,
+                             'venerdi': 4, 'sabato': 5, 'domenica': 6}
+                target_weekday = giorni_map[timeframe]
+                current_weekday = now.weekday()
+                if current_weekday >= target_weekday:
+                    days_ago = current_weekday - target_weekday
+                else:
+                    days_ago = 7 - (target_weekday - current_weekday)
+                target_date = now - timedelta(days=days_ago)
+                start_date = target_date.date()
+                end_date = start_date
+            elif timeframe in ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno',
+                              'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre']:
+                mesi_map = {'gennaio': 1, 'febbraio': 2, 'marzo': 3, 'aprile': 4, 'maggio': 5,
+                           'giugno': 6, 'luglio': 7, 'agosto': 8, 'settembre': 9,
+                           'ottobre': 10, 'novembre': 11, 'dicembre': 12}
+                target_month = mesi_map[timeframe]
+                if target_month > now.month:
+                    year = now.year - 1
+                else:
+                    year = now.year
+                from datetime import date
+                start_date = date(year, target_month, 1)
+                if target_month == 12:
+                    end_date = date(year, 12, 31)
+                else:
+                    end_date = date(year, target_month + 1, 1) - timedelta(days=1)
+            elif timeframe == 'settimana':
+                start_date = (now - timedelta(days=7)).date()
+                end_date = now.date()
+            elif timeframe == 'mese':
+                start_date = (now - timedelta(days=30)).date()
+                end_date = now.date()
+
+            if start_date and end_date:
+                if start_date == end_date:
+                    query_eventi = query_eventi.filter(data_evento=start_date)
+                else:
+                    query_eventi = query_eventi.filter(data_evento__gte=start_date, data_evento__lte=end_date)
+                articles_eventi = list(query_eventi.order_by('data_evento'))
+                logger.info(f"Trovati {len(articles_eventi)} articoli {categoria} con data_evento tra {start_date} e {end_date}")
+                if articles_eventi:
+                    return articles_eventi
+                logger.info(f"Nessun articolo {categoria} con data_evento, continuo con ricerca standard")
         if keywords:
             # Prova prima con AND (articoli che contengono TUTTE le parole)
             # Usa regex con word boundary per cercare parole intere
