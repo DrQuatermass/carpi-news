@@ -143,17 +143,8 @@ class OmbraChatbot {
                     }, 1000);
                 } else {
                     // Multipli articoli
-                    // Controlla se è una domanda (question) - se sì, NON mostrare card
-                    const requestType = data.intent?.request_type || '';
-                    const isQuestion = requestType === 'question';
-
-                    console.log('Request type:', requestType, '| Is question:', isQuestion);
-
-                    if (!isQuestion && requestType !== '') {
-                        // Per ricerche normali (search/latest): mostra card preview
-                        this.addArticlesCarousel(data.articles.slice(0, 3)); // Mostra max 3 in chat
-                    }
-                    // Per domande (question) o intent mancante: NON mostrare card, solo bottone
+                    // NON mostrare mai le card, solo il bottone
+                    // (Le card verranno mostrate nella pagina di risultati)
 
                     // Crea URL per pagina risultati
                     const params = new URLSearchParams({
