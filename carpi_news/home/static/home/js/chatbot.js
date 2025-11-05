@@ -49,14 +49,6 @@ class OmbraChatbot {
             if (e.key === 'Enter') this.sendMessage();
         });
 
-        // Gestisci suggerimenti
-        document.querySelectorAll('.suggestion-chip').forEach(chip => {
-            chip.addEventListener('click', () => {
-                this.input.value = chip.textContent;
-                this.sendMessage();
-            });
-        });
-
         // Carica messaggi salvati
         this.loadMessages();
 
