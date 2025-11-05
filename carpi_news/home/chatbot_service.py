@@ -91,7 +91,7 @@ IMPORTANTE:
 Restituisci SOLO un JSON valido con questa struttura:
 {
     "keywords": ["parola1", "parola2"],
-    "timeframe": "oggi|ieri|settimana|mese|null",
+    "timeframe": "oggi|ieri|weekend|settimana|mese|null",
     "categoria": "Sport|Cronaca|Cultura|Eventi|Attualità|Politica|null",
     "entity": "nome persona/organizzazione se menzionata|null",
     "request_type": "search|latest|help|greeting|question",
@@ -102,9 +102,9 @@ Esempi:
 - "Trovami articoli su Aimag" -> {"keywords": ["aimag"], "timeframe": null, "categoria": null, "entity": "Aimag", "request_type": "search", "articles_needed": 0}
 - "Cosa è successo tra Aimag e Hera?" -> {"keywords": ["aimag", "hera"], "timeframe": null, "categoria": null, "entity": null, "request_type": "question", "articles_needed": 10}
 - "Chi è il sindaco di Campogalliano?" -> {"keywords": ["sindaco", "campogalliano"], "timeframe": null, "categoria": null, "entity": "sindaco", "request_type": "question", "articles_needed": 3}
-- "Chi è l'assessore alla sicurezza?" -> {"keywords": ["assessore", "sicurezza"], "timeframe": null, "categoria": null, "entity": "assessore", "request_type": "question", "articles_needed": 3}
+- "Eventi del weekend" -> {"keywords": ["eventi"], "timeframe": "weekend", "categoria": null, "entity": null, "request_type": "search", "articles_needed": 0}
+- "Eventi di ieri" -> {"keywords": ["eventi"], "timeframe": "ieri", "categoria": null, "entity": null, "request_type": "search", "articles_needed": 0}
 - "Cosa è successo questa settimana a Carpi?" -> {"keywords": [], "timeframe": "settimana", "categoria": null, "entity": null, "request_type": "question", "articles_needed": 8}
-- "Quando inizia il mercato?" -> {"keywords": ["mercato", "inizio"], "timeframe": null, "categoria": null, "entity": null, "request_type": "question", "articles_needed": 2}
 - "Ultime notizie di sport" -> {"keywords": [], "timeframe": null, "categoria": "Sport", "entity": null, "request_type": "latest", "articles_needed": 0}
 - "Rugby" -> {"keywords": ["rugby"], "timeframe": null, "categoria": null, "entity": null, "request_type": "search", "articles_needed": 0}
 - "Ciao" -> {"keywords": [], "timeframe": null, "categoria": null, "entity": null, "request_type": "greeting", "articles_needed": 0}
@@ -166,6 +166,8 @@ Esempi:
             intent['timeframe'] = 'oggi'
         elif 'ieri' in message_lower:
             intent['timeframe'] = 'ieri'
+        elif any(word in message_lower for word in ['weekend', 'fine settimana']):
+            intent['timeframe'] = 'weekend'
         elif any(word in message_lower for word in ['settimana', 'ultimi giorni']):
             intent['timeframe'] = 'settimana'
 
@@ -205,6 +207,21 @@ Esempi:
                 start_date = yesterday.replace(hour=0, minute=0, second=0, microsecond=0)
                 end_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
                 query = query.filter(data_pubblicazione__gte=start_date, data_pubblicazione__lt=end_date)
+            elif intent['timeframe'] == 'weekend':
+                # Weekend: sabato (5) e domenica (6) dell'ultima settimana
+                # Trova il sabato più recente (questo weekend o quello passato)
+                days_since_saturday = (now.weekday() - 5) % 7
+                if now.weekday() == 6:  # Oggi è domenica
+                    saturday = now - timedelta(days=1)
+                elif now.weekday() < 5:  # Lunedì-Venerdì: weekend passato
+                    saturday = now - timedelta(days=days_since_saturday + 7)
+                else:  # Sabato: questo weekend
+                    saturday = now
+
+                start_date = saturday.replace(hour=0, minute=0, second=0, microsecond=0)
+                end_date = start_date + timedelta(days=2)  # Sabato + Domenica
+                query = query.filter(data_pubblicazione__gte=start_date, data_pubblicazione__lt=end_date)
+                logger.info(f"Filtro weekend: {start_date} - {end_date}")
             elif intent['timeframe'] == 'settimana':
                 start_date = now - timedelta(days=7)
                 query = query.filter(data_pubblicazione__gte=start_date)
