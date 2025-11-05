@@ -91,7 +91,7 @@ IMPORTANTE:
 Restituisci SOLO un JSON valido con questa struttura:
 {
     "keywords": ["parola1", "parola2"],
-    "timeframe": "oggi|ieri|weekend|settimana|mese|null",
+    "timeframe": "oggi|ieri|weekend|lunedi|martedi|mercoledi|giovedi|venerdi|sabato|domenica|settimana|gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre|mese|null",
     "categoria": "Sport|Cronaca|Cultura|Eventi|Attualità|Politica|null",
     "entity": "nome persona/organizzazione se menzionata|null",
     "request_type": "search|latest|help|greeting|question",
@@ -104,10 +104,11 @@ Esempi:
 - "Chi è il sindaco di Campogalliano?" -> {"keywords": ["sindaco", "campogalliano"], "timeframe": null, "categoria": null, "entity": "sindaco", "request_type": "question", "articles_needed": 3}
 - "Eventi del weekend" -> {"keywords": ["eventi"], "timeframe": "weekend", "categoria": null, "entity": null, "request_type": "search", "articles_needed": 0}
 - "Eventi di ieri" -> {"keywords": ["eventi"], "timeframe": "ieri", "categoria": null, "entity": null, "request_type": "search", "articles_needed": 0}
-- "Cosa è successo questa settimana a Carpi?" -> {"keywords": [], "timeframe": "settimana", "categoria": null, "entity": null, "request_type": "question", "articles_needed": 8}
+- "Cosa è successo lunedì?" -> {"keywords": [], "timeframe": "lunedi", "categoria": null, "entity": null, "request_type": "question", "articles_needed": 5}
+- "Notizie di ottobre" -> {"keywords": [], "timeframe": "ottobre", "categoria": null, "entity": null, "request_type": "search", "articles_needed": 0}
+- "Cosa è successo questa settimana?" -> {"keywords": [], "timeframe": "settimana", "categoria": null, "entity": null, "request_type": "question", "articles_needed": 8}
 - "Ultime notizie di sport" -> {"keywords": [], "timeframe": null, "categoria": "Sport", "entity": null, "request_type": "latest", "articles_needed": 0}
 - "Rugby" -> {"keywords": ["rugby"], "timeframe": null, "categoria": null, "entity": null, "request_type": "search", "articles_needed": 0}
-- "Ciao" -> {"keywords": [], "timeframe": null, "categoria": null, "entity": null, "request_type": "greeting", "articles_needed": 0}
 """
 
         try:
@@ -171,6 +172,24 @@ Esempi:
         elif any(word in message_lower for word in ['settimana', 'ultimi giorni']):
             intent['timeframe'] = 'settimana'
 
+        # Giorni della settimana
+        giorni = ['lunedì', 'lunedi', 'martedì', 'martedi', 'mercoledì', 'mercoledi',
+                 'giovedì', 'giovedi', 'venerdì', 'venerdi', 'sabato', 'domenica']
+        giorni_normalized = {'lunedì': 'lunedi', 'martedì': 'martedi', 'mercoledì': 'mercoledi',
+                            'giovedì': 'giovedi', 'venerdì': 'venerdi'}
+        for giorno in giorni:
+            if giorno in message_lower:
+                intent['timeframe'] = giorni_normalized.get(giorno, giorno)
+                break
+
+        # Mesi
+        mesi = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno',
+               'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre']
+        for mese in mesi:
+            if mese in message_lower:
+                intent['timeframe'] = mese
+                break
+
         # Categorie
         if any(word in message_lower for word in ['sport', 'calcio', 'partita']):
             intent['categoria'] = 'Sport'
@@ -199,17 +218,20 @@ Esempi:
         # Filtro temporale
         if intent.get('timeframe'):
             now = timezone.now()
-            if intent['timeframe'] == 'oggi':
+            timeframe = intent['timeframe']
+
+            if timeframe == 'oggi':
                 start_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
                 query = query.filter(data_pubblicazione__gte=start_date)
-            elif intent['timeframe'] == 'ieri':
+
+            elif timeframe == 'ieri':
                 yesterday = now - timedelta(days=1)
                 start_date = yesterday.replace(hour=0, minute=0, second=0, microsecond=0)
                 end_date = now.replace(hour=0, minute=0, second=0, microsecond=0)
                 query = query.filter(data_pubblicazione__gte=start_date, data_pubblicazione__lt=end_date)
-            elif intent['timeframe'] == 'weekend':
+
+            elif timeframe == 'weekend':
                 # Weekend: sabato (5) e domenica (6) dell'ultima settimana
-                # Trova il sabato più recente (questo weekend o quello passato)
                 days_since_saturday = (now.weekday() - 5) % 7
                 if now.weekday() == 6:  # Oggi è domenica
                     saturday = now - timedelta(days=1)
@@ -217,15 +239,64 @@ Esempi:
                     saturday = now - timedelta(days=days_since_saturday + 7)
                 else:  # Sabato: questo weekend
                     saturday = now
-
                 start_date = saturday.replace(hour=0, minute=0, second=0, microsecond=0)
-                end_date = start_date + timedelta(days=2)  # Sabato + Domenica
+                end_date = start_date + timedelta(days=2)
                 query = query.filter(data_pubblicazione__gte=start_date, data_pubblicazione__lt=end_date)
                 logger.info(f"Filtro weekend: {start_date} - {end_date}")
-            elif intent['timeframe'] == 'settimana':
+
+            elif timeframe in ['lunedi', 'martedi', 'mercoledi', 'giovedi', 'venerdi', 'sabato', 'domenica']:
+                # Mappa giorni della settimana a numeri (lunedì=0, domenica=6)
+                giorni_map = {'lunedi': 0, 'martedi': 1, 'mercoledi': 2, 'giovedi': 3,
+                             'venerdi': 4, 'sabato': 5, 'domenica': 6}
+                target_weekday = giorni_map[timeframe]
+                current_weekday = now.weekday()
+
+                # Calcola quanti giorni fa era quel giorno della settimana
+                if current_weekday >= target_weekday:
+                    days_ago = current_weekday - target_weekday
+                else:
+                    days_ago = 7 - (target_weekday - current_weekday)
+
+                target_date = now - timedelta(days=days_ago)
+                start_date = target_date.replace(hour=0, minute=0, second=0, microsecond=0)
+                end_date = start_date + timedelta(days=1)
+                query = query.filter(data_pubblicazione__gte=start_date, data_pubblicazione__lt=end_date)
+                logger.info(f"Filtro {timeframe}: {start_date} - {end_date}")
+
+            elif timeframe in ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno',
+                              'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre']:
+                # Mappa mesi a numeri
+                mesi_map = {'gennaio': 1, 'febbraio': 2, 'marzo': 3, 'aprile': 4, 'maggio': 5,
+                           'giugno': 6, 'luglio': 7, 'agosto': 8, 'settembre': 9,
+                           'ottobre': 10, 'novembre': 11, 'dicembre': 12}
+                target_month = mesi_map[timeframe]
+
+                # Se il mese è nel futuro, usa l'anno scorso
+                if target_month > now.month:
+                    year = now.year - 1
+                else:
+                    year = now.year
+
+                # Primo giorno del mese
+                start_date = datetime(year, target_month, 1)
+                # Primo giorno del mese successivo
+                if target_month == 12:
+                    end_date = datetime(year + 1, 1, 1)
+                else:
+                    end_date = datetime(year, target_month + 1, 1)
+
+                # Converti a timezone-aware
+                start_date = timezone.make_aware(start_date)
+                end_date = timezone.make_aware(end_date)
+
+                query = query.filter(data_pubblicazione__gte=start_date, data_pubblicazione__lt=end_date)
+                logger.info(f"Filtro {timeframe} {year}: {start_date} - {end_date}")
+
+            elif timeframe == 'settimana':
                 start_date = now - timedelta(days=7)
                 query = query.filter(data_pubblicazione__gte=start_date)
-            elif intent['timeframe'] == 'mese':
+
+            elif timeframe == 'mese':
                 start_date = now - timedelta(days=30)
                 query = query.filter(data_pubblicazione__gte=start_date)
 
