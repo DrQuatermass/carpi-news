@@ -139,7 +139,14 @@ class OmbraChatbot {
                     }, 1000);
                 } else {
                     // Multipli articoli
+                    console.log('=== DEBUG CHATBOT ===');
+                    console.log('Intent completo:', JSON.stringify(data.intent, null, 2));
+                    console.log('request_type:', data.intent?.request_type);
+
                     const isQuestion = data.intent && data.intent.request_type === 'question';
+                    console.log('isQuestion:', isQuestion);
+                    console.log('Mostrerò card?', !isQuestion);
+                    console.log('====================');
 
                     if (!isQuestion) {
                         // Per ricerche normali (search/latest): mostra card preview
