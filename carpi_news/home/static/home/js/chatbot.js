@@ -49,22 +49,31 @@ class OmbraChatbot {
             if (e.key === 'Enter') this.sendMessage();
         });
 
-        // Carica messaggi salvati
-        this.loadMessages();
+        // NON caricare messaggi salvati - chat sempre pulita all'avvio
+    }
 
-        // Messaggio di benvenuto
-        if (this.messages.length === 0) {
-            this.addBotMessage(
-                'Ciao! Sono l\'assistente virtuale di Ombra del Portico.\n\n' +
-                'Posso aiutarti a cercare tra gli articoli pubblicati sul sito. ' +
-                'Fai una domanda o chiedi di un argomento specifico e ti mostrerò tutti gli articoli pertinenti.\n\n' +
-                'Esempi:\n' +
-                '• "Cosa è successo questa settimana a Carpi?"\n' +
-                '• "Ultime notizie di sport"\n' +
-                '• "Articoli su Aimag"\n' +
-                '• "Eventi del weekend"'
-            );
-        }
+    showWelcomeMessage() {
+        // Pulisci messaggi precedenti
+        this.messages = [];
+        this.messagesArea.innerHTML = '';
+
+        // Mostra messaggio di benvenuto aggiornato
+        this.addBotMessage(
+            'Ciao! Sono l\'assistente virtuale di Ombra del Portico.\n\n' +
+            'Posso aiutarti a cercare articoli e rispondere alle tue domande su Carpi.\n\n' +
+            '**Cosa posso fare:**\n' +
+            '• Cercare articoli per argomento, persona o organizzazione\n' +
+            '• Filtrare per data (oggi, domani, ieri, weekend, giorni, mesi)\n' +
+            '• Trovare eventi per data specifica usando il calendario eventi\n' +
+            '• Rispondere a domande specifiche analizzando gli articoli\n\n' +
+            '**Esempi:**\n' +
+            '• "Eventi di domani"\n' +
+            '• "Cosa è successo lunedì?"\n' +
+            '• "Notizie di ottobre"\n' +
+            '• "Chi è il sindaco?"\n' +
+            '• "Articoli su Aimag"\n' +
+            '• "Ultime notizie di sport"'
+        );
     }
 
     toggle() {
@@ -80,6 +89,9 @@ class OmbraChatbot {
         this.isOpen = true;
         this.container.classList.add('active');
         this.input?.focus();
+
+        // Mostra sempre messaggio di benvenuto all'apertura
+        this.showWelcomeMessage();
         this.scrollToBottom();
 
         // Rimuovi badge notifiche
@@ -90,6 +102,9 @@ class OmbraChatbot {
     close() {
         this.isOpen = false;
         this.container.classList.remove('active');
+
+        // Pulisci messaggi quando si chiude la chat
+        this.clearMessages();
     }
 
     async sendMessage() {
@@ -336,26 +351,25 @@ class OmbraChatbot {
         }, 100);
     }
 
-    saveMessages() {
+    clearMessages() {
+        // Pulisci messaggi e localStorage
+        this.messages = [];
+        this.messagesArea.innerHTML = '';
         try {
-            localStorage.setItem('chatbot-messages', JSON.stringify(this.messages));
+            localStorage.removeItem('chatbot-messages');
         } catch (e) {
-            console.error('Errore salvataggio messaggi:', e);
+            console.error('Errore pulizia messaggi:', e);
         }
     }
 
+    saveMessages() {
+        // Non salviamo più i messaggi - chat sempre pulita
+        // Manteniamo la funzione per compatibilità
+    }
+
     loadMessages() {
-        try {
-            const saved = localStorage.getItem('chatbot-messages');
-            if (saved) {
-                this.messages = JSON.parse(saved);
-                this.messages.forEach(msg => this.renderMessage(msg));
-                this.scrollToBottom();
-            }
-        } catch (e) {
-            console.error('Errore caricamento messaggi:', e);
-            this.messages = [];
-        }
+        // Non carichiamo più messaggi salvati - chat sempre pulita
+        // Manteniamo la funzione per compatibilità
     }
 
     clearHistory() {
