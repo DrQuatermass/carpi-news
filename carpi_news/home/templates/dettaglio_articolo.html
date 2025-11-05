@@ -1,6 +1,7 @@
 {% extends 'base.html' %}
 {% load italian_dates %}
 {% load static %}
+{% load banner_tags %}
 
 {% block title %}{{ articolo.titolo }} - Ombra del Portico{% endblock %}
 
@@ -117,13 +118,20 @@
             <br>
             <h1 class="article-title">{{ articolo.titolo }}</h1>
             <br>
+
+            <!-- Banner inizio articolo -->
+            {% show_banner 'article_top' %}
+
             <div class="article-image">
                 <img src="{{ articolo.get_image_url }}" alt="{{ articolo.titolo }}" class="img-responsive" loading="eager">
             </div>
-            
+
             <div class="article-content">
                 {{ articolo.contenuto|safe }}
             </div>
+
+            <!-- Banner fine articolo -->
+            {% show_banner 'article_bottom' %}
 
             {% if articolo.fonte or articolo.fonti_web %}
             <div class="article-sources-link">
@@ -269,8 +277,8 @@
     }
 
     // CSS per le animazioni del toast e pulsanti tondi
-    const style = document.createElement('style');
-    style.textContent = `
+    const socialStyle = document.createElement('style');
+    socialStyle.textContent = `
         @keyframes slideInRight {
             from { 
                 transform: translateX(100%); 
@@ -439,6 +447,6 @@
             font-size: 12px;
         }
     `;
-    document.head.appendChild(style);
+    document.head.appendChild(socialStyle);
 </script>
 {% endblock %}
