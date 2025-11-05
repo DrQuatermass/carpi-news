@@ -138,8 +138,15 @@ class OmbraChatbot {
                         window.location.href = data.articles[0].url;
                     }, 1000);
                 } else {
-                    // Multipli articoli: mostra in chat e offri link a pagina completa
-                    this.addArticlesCarousel(data.articles.slice(0, 3)); // Mostra max 3 in chat
+                    // Multipli articoli
+                    // Se è una domanda (question), mostra solo il bottone
+                    // Altrimenti mostra le card preview
+                    const isQuestion = data.intent && data.intent.request_type === 'question';
+
+                    if (!isQuestion) {
+                        // Per ricerche normali: mostra card preview
+                        this.addArticlesCarousel(data.articles.slice(0, 3)); // Mostra max 3 in chat
+                    }
 
                     // Crea URL per pagina risultati
                     const params = new URLSearchParams({
