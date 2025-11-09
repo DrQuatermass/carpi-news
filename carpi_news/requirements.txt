@@ -4,113 +4,34 @@ asgiref==3.10.0
 sqlparse==0.5.3
 tzdata==2025.2
 
-# Django Extensions
-django-cors-headers==4.9.0
-django-environ==0.12.0
-django-filter==25.2
-djangorestframework==3.16.1
-djangorestframework_simplejwt==5.5.1
-whitenoise==6.6.0
-
 # Database
-dj-database-url==2.1.0
 psycopg2-binary==2.9.9
 
 # Web Server
 gunicorn==21.2.0
+whitenoise==6.6.0
 
-# Web Scraping
+# Environment Variables
+python-dotenv==1.0.0
+
+# Web Scraping & HTTP
 beautifulsoup4==4.12.2
 bs4==0.0.2
 requests==2.31.0
-requests-html==0.10.0
 lxml==6.0.2
-lxml_html_clean==0.4.2
-cssselect==1.3.0
-pyquery==2.0.1
-w3lib==2.3.1
 soupsieve==2.8
-fake-useragent==2.2.0
 
-# YouTube
-youtube-transcript-api==1.2.2
-
-# AI/Anthropic
+# AI - Anthropic Claude
 anthropic==0.64.0
 
-# PayPal
-paypalrestsdk==1.13.3
+# YouTube Transcripts
+youtube-transcript-api==1.2.2
 
-# Images
-pillow==10.4.0
+# Images (per banner e articoli)
+Pillow==10.4.0
 
-# Environment
-python-dotenv==1.0.0
-python-decouple==3.8
-dotenv==0.9.9
-
-# Google Sheets
-gspread==6.2.1
-google-auth==2.41.1
-google-auth-httplib2==0.2.0
-google-auth-oauthlib==1.2.2
-
-# Task Queue (Celery)
-celery==5.5.3
-redis==6.4.0
-amqp==5.3.1
-billiard==4.2.2
-kombu==5.5.4
-vine==5.1.0
-
-# Scheduling
+# Task Scheduling (per monitor)
 schedule==1.2.1
 
-# Social Media
-tweepy==4.16.0
-
-# Utilities
-certifi==2025.10.5
-charset-normalizer==3.4.3
-colorama==0.4.6
-idna==3.10
-urllib3==2.5.0
-six==1.17.0
-python-dateutil==2.9.0.post0
-packaging==25.0
-
-# HTTP/Web
-httpx==0.28.1
-httpcore==1.0.9
-httplib2==0.31.0
-h11==0.16.0
-anyio==4.10.0
-sniffio==1.3.1
-
-# Auth
-oauthlib==3.3.1
-requests-oauthlib==2.0.0
-PyJWT==2.10.1
-
-# Crypto/Security
-cryptography==46.0.3
-pyOpenSSL==25.3.0
-pycparser==2.23
-cffi==2.0.0
-
-# XML/JSON
-defusedxml==0.7.1
-PyYAML==6.0.3
-
-# Typing
-pydantic==2.11.7
-pydantic_core==2.33.2
-typing_extensions==4.15.0
-annotated-types==0.7.0
-
-# Other
-langdetect==1.0.9
-regex==2025.9.18
-filelock==3.20.0
-rich==14.2.0
-click==8.3.0
+# PayPal Payments (per banner)
+paypalrestsdk==1.13.3
