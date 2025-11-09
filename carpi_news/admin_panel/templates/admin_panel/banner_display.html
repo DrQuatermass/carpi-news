@@ -33,15 +33,15 @@
 {% else %}
     {# Nessun banner - mostra placeholder #}
     {% if position == 'header' or position == 'article_top' or position == 'article_middle' or position == 'article_bottom' %}
-        <a href="{% url 'admin_panel:banner_list' %}" class="banner-header-slot" style="text-decoration: none; display: flex;">
+        <a href="{% url 'admin_panel:banner_list' %}" class="banner-header-slot" style="text-decoration: none;">
             {# Placeholder gestito da CSS ::before e ::after #}
         </a>
     {% elif position == 'footer' %}
-        <a href="{% url 'admin_panel:banner_list' %}" class="banner-footer-slot" style="grid-column: 1 / -1; text-decoration: none; display: flex;">
+        <a href="{% url 'admin_panel:banner_list' %}" class="banner-footer-slot" style="grid-column: 1 / -1; text-decoration: none;">
             {# Placeholder gestito da CSS ::before e ::after #}
         </a>
     {% elif position == 'between_articles' or position == 'sidebar_top' or position == 'sidebar_middle' or position == 'sidebar_bottom' %}
-        <a href="{% url 'admin_panel:banner_list' %}" class="banner-card-slot" style="text-decoration: none; display: flex;">
+        <a href="{% url 'admin_panel:banner_list' %}" class="banner-card-slot" style="text-decoration: none;">
             {# Placeholder gestito da CSS ::before e ::after #}
         </a>
     {% endif %}
