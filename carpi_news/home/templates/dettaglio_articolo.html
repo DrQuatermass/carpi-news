@@ -581,22 +581,40 @@
         const middleBanner = document.getElementById('article-middle-banner');
 
         if (articleContent && middleBanner) {
-            // Trova tutti i paragrafi nel contenuto
-            const paragraphs = articleContent.querySelectorAll('p');
+            // Cerca prima gli H2 (titoli di sezione)
+            const headings = articleContent.querySelectorAll('h2');
 
-            if (paragraphs.length > 3) {
-                // Inserisci il banner dopo il paragrafo centrale
-                const middleIndex = Math.floor(paragraphs.length / 2);
-                const middleParagraph = paragraphs[middleIndex];
+            if (headings.length >= 2) {
+                // Se ci sono almeno 2 H2, inserisci dopo il primo H2
+                const firstHeading = headings[0];
 
-                // Sposta il banner dopo il paragrafo medio
-                if (middleParagraph && middleParagraph.parentNode) {
-                    middleParagraph.parentNode.insertBefore(middleBanner, middleParagraph.nextSibling);
-                    middleBanner.style.display = ''; // Mostra il banner dopo averlo spostato
-                    middleBanner.style.margin = '30px 0'; // Aggiungi margini
+                // Trova il prossimo elemento dopo l'H2 (di solito un paragrafo)
+                let insertAfter = firstHeading.nextElementSibling;
+                if (insertAfter && insertAfter.tagName === 'P') {
+                    // Inserisci dopo il primo paragrafo che segue l'H2
+                    insertAfter.parentNode.insertBefore(middleBanner, insertAfter.nextSibling);
+                } else {
+                    // Altrimenti inserisci subito dopo l'H2
+                    firstHeading.parentNode.insertBefore(middleBanner, firstHeading.nextSibling);
+                }
+                middleBanner.style.display = ''; // Mostra il banner
+                middleBanner.style.margin = '30px 0'; // Aggiungi margini
+            } else {
+                // Fallback: usa i paragrafi se non ci sono H2
+                const paragraphs = articleContent.querySelectorAll('p');
+
+                if (paragraphs.length > 3) {
+                    // Inserisci il banner dopo il paragrafo centrale
+                    const middleIndex = Math.floor(paragraphs.length / 2);
+                    const middleParagraph = paragraphs[middleIndex];
+
+                    if (middleParagraph && middleParagraph.parentNode) {
+                        middleParagraph.parentNode.insertBefore(middleBanner, middleParagraph.nextSibling);
+                        middleBanner.style.display = ''; // Mostra il banner
+                        middleBanner.style.margin = '30px 0'; // Aggiungi margini
+                    }
                 }
             }
-            // Se ci sono pochi paragrafi, il banner rimane nascosto
         }
     })();
 
