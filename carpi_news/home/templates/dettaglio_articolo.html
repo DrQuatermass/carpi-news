@@ -194,94 +194,8 @@
         box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
     }
 
-    /* Banner nel centro articolo (verticale) */
-    .article-middle-banner {
-        margin: 40px auto;
-        padding: 40px;
-        background: linear-gradient(135deg, rgba(150, 108, 66, 0.03) 0%, rgba(184, 149, 106, 0.05) 100%);
-        border-radius: 15px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-height: 300px;
-        max-width: 300px;
-        width: 300px;
-        position: relative;
-        overflow: hidden;
-        border: 2px dashed rgba(150, 108, 66, 0.2);
-        transition: all 0.3s ease;
-        cursor: pointer;
-    }
-
-    .article-middle-banner:hover {
-        border-color: rgba(150, 108, 66, 0.3);
-        box-shadow: 0 4px 20px rgba(150, 108, 66, 0.08);
-        background: linear-gradient(135deg, rgba(150, 108, 66, 0.05) 0%, rgba(184, 149, 106, 0.08) 100%);
-    }
-
-    /* Contenuto placeholder */
-    .article-middle-banner::before {
-        content: 'SPAZIO PUBBLICITARIO';
-        position: absolute;
-        top: 40%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        font-size: 1.1rem;
-        font-weight: 600;
-        color: rgba(150, 108, 66, 0.75);
-        text-align: center;
-        width: 100%;
-        letter-spacing: 3px;
-        z-index: 2;
-        font-family: 'Georgia', serif;
-    }
-
-    .article-middle-banner::after {
-        content: 'Clicca qui per acquistare';
-        position: absolute;
-        bottom: 25px;
-        left: 50%;
-        transform: translateX(-50%);
-        font-size: 0.85rem;
-        color: rgba(150, 108, 66, 0.7);
-        text-align: center;
-        letter-spacing: 1px;
-        z-index: 2;
-        font-weight: 600;
-        text-decoration: underline;
-    }
-
-    /* Quando c'è un banner, sfondo trasparente e nascondi placeholder */
-    .article-middle-banner:has(.advertisement-banner) {
-        background: transparent !important;
-        padding: 0 !important;
-        min-height: auto !important;
-        margin: 40px 0 !important;
-        border: none !important;
-        cursor: default !important;
-    }
-
-    .article-middle-banner:has(.advertisement-banner)::before,
-    .article-middle-banner:has(.advertisement-banner)::after {
-        display: none !important;
-    }
-
-    .article-middle-banner:has(.advertisement-banner):hover {
-        border: none !important;
-        box-shadow: none !important;
-        background: transparent !important;
-    }
-
-    .article-middle-banner .advertisement-banner {
-        margin: 0 !important;
-        width: 100%;
-        max-width: 100%;
-    }
-
-    .article-middle-banner .advertisement-banner img {
-        border-radius: 10px !important;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-    }
+    /* Banner nel centro articolo (ORIZZONTALE come article_top e article_bottom) */
+    /* Gli stili sono già definiti in .banner-header-slot, non serve duplicarli */
 
     /* Desktop: banner orizzontali a larghezza piena */
     @media (min-width: 769px) {
@@ -321,11 +235,6 @@
 
             <div class="article-content" id="article-content">
                 {{ articolo.contenuto|safe }}
-            </div>
-
-            <!-- Banner centro articolo (verrà spostato nel mezzo via JS) -->
-            <div class="article-middle-banner" id="article-middle-banner" style="display: none;">
-                {% show_banner 'article_middle' %}
             </div>
 
             <!-- Banner fine articolo -->
@@ -661,36 +570,6 @@
         });
     })();
 
-    // Sposta il banner article_middle nel mezzo del contenuto
-    (function() {
-        const articleContent = document.getElementById('article-content');
-        const middleBanner = document.getElementById('article-middle-banner');
-
-        if (articleContent && middleBanner) {
-            // Trova tutti i paragrafi nel contenuto
-            const paragraphs = articleContent.querySelectorAll('p');
-
-            if (paragraphs.length > 2) {
-                // Inserisci il banner dopo il paragrafo centrale
-                const middleIndex = Math.floor(paragraphs.length / 2);
-                const middleParagraph = paragraphs[middleIndex];
-
-                // Sposta il banner dopo il paragrafo medio
-                if (middleParagraph && middleParagraph.parentNode) {
-                    middleParagraph.parentNode.insertBefore(middleBanner, middleParagraph.nextSibling);
-                    middleBanner.style.display = ''; // Mostra il banner dopo averlo spostato
-                }
-            } else if (paragraphs.length > 0) {
-                // Se ci sono pochi paragrafi, metti dopo il primo
-                const firstParagraph = paragraphs[0];
-                if (firstParagraph && firstParagraph.parentNode) {
-                    firstParagraph.parentNode.insertBefore(middleBanner, firstParagraph.nextSibling);
-                    middleBanner.style.display = ''; // Mostra il banner dopo averlo spostato
-                }
-            }
-            // Se non ci sono paragrafi, il banner rimane nascosto
-        }
-    })();
 
     // Preview mode per selezione banner
     {% if request.GET.preview_mode %}
@@ -703,7 +582,7 @@
         // Aspetta che il banner sia stato spostato
         setTimeout(function() {
             // Rendi gli spazi banner cliccabili in preview mode
-            const bannerSlots = document.querySelectorAll('.article-middle-banner, [class*="banner"]');
+            const bannerSlots = document.querySelectorAll('[class*="banner"]');
 
             // Funzione per deselezionare tutti i banner
             function deselectAll() {
@@ -726,8 +605,7 @@
                 const classes = slot.className;
                 const id = slot.id;
 
-                if (id === 'article-middle-banner' || classes.includes('article-middle')) position = 'article_middle';
-                else if (classes.includes('article-top')) position = 'article_top';
+                if (classes.includes('article-top')) position = 'article_top';
                 else if (classes.includes('article-bottom')) position = 'article_bottom';
                 else if (classes.includes('sidebar-top')) position = 'sidebar_top';
                 else if (classes.includes('sidebar-middle')) position = 'sidebar_middle';
