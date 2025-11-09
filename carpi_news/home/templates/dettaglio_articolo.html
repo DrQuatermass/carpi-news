@@ -584,17 +584,29 @@
             // Cerca prima gli H2 (titoli di sezione)
             const headings = articleContent.querySelectorAll('h2');
 
-            if (headings.length >= 2) {
-                // Se ci sono almeno 2 H2, inserisci dopo il primo H2
-                const firstHeading = headings[0];
+            if (headings.length >= 3) {
+                // Se ci sono almeno 3 H2, inserisci dopo il secondo H2 (più in basso nell'articolo)
+                const secondHeading = headings[1];
 
                 // Trova il prossimo elemento dopo l'H2 (di solito un paragrafo)
-                let insertAfter = firstHeading.nextElementSibling;
+                let insertAfter = secondHeading.nextElementSibling;
                 if (insertAfter && insertAfter.tagName === 'P') {
                     // Inserisci dopo il primo paragrafo che segue l'H2
                     insertAfter.parentNode.insertBefore(middleBanner, insertAfter.nextSibling);
                 } else {
                     // Altrimenti inserisci subito dopo l'H2
+                    secondHeading.parentNode.insertBefore(middleBanner, secondHeading.nextSibling);
+                }
+                middleBanner.style.display = ''; // Mostra il banner
+                middleBanner.style.margin = '30px 0'; // Aggiungi margini
+            } else if (headings.length === 2) {
+                // Se ci sono solo 2 H2, inserisci dopo il primo H2
+                const firstHeading = headings[0];
+
+                let insertAfter = firstHeading.nextElementSibling;
+                if (insertAfter && insertAfter.tagName === 'P') {
+                    insertAfter.parentNode.insertBefore(middleBanner, insertAfter.nextSibling);
+                } else {
                     firstHeading.parentNode.insertBefore(middleBanner, firstHeading.nextSibling);
                 }
                 middleBanner.style.display = ''; // Mostra il banner
