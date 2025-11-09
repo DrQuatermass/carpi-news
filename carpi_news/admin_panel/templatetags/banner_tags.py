@@ -84,7 +84,7 @@ def show_banner(context, position):
             reset_shown_users()
 
         # Definisci i gruppi di posizioni intercambiabili
-        horizontal_positions = ['header', 'footer', 'article_top', 'article_bottom']
+        horizontal_positions = ['header', 'footer', 'article_top', 'article_middle', 'article_bottom']
 
         # Determina quali posizioni cercare
         if position in horizontal_positions:

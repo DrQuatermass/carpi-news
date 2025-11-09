@@ -237,6 +237,11 @@
                 {{ articolo.contenuto|safe }}
             </div>
 
+            <!-- Banner centro articolo (verrà spostato nel mezzo via JS) -->
+            <div id="article-middle-banner" style="display: none;">
+                {% show_banner 'article_middle' %}
+            </div>
+
             <!-- Banner fine articolo -->
             {% show_banner 'article_bottom' %}
 
@@ -570,6 +575,30 @@
         });
     })();
 
+    // Sposta il banner article_middle nel mezzo del contenuto
+    (function() {
+        const articleContent = document.getElementById('article-content');
+        const middleBanner = document.getElementById('article-middle-banner');
+
+        if (articleContent && middleBanner) {
+            // Trova tutti i paragrafi nel contenuto
+            const paragraphs = articleContent.querySelectorAll('p');
+
+            if (paragraphs.length > 3) {
+                // Inserisci il banner dopo il paragrafo centrale
+                const middleIndex = Math.floor(paragraphs.length / 2);
+                const middleParagraph = paragraphs[middleIndex];
+
+                // Sposta il banner dopo il paragrafo medio
+                if (middleParagraph && middleParagraph.parentNode) {
+                    middleParagraph.parentNode.insertBefore(middleBanner, middleParagraph.nextSibling);
+                    middleBanner.style.display = ''; // Mostra il banner dopo averlo spostato
+                    middleBanner.style.margin = '30px 0'; // Aggiungi margini
+                }
+            }
+            // Se ci sono pochi paragrafi, il banner rimane nascosto
+        }
+    })();
 
     // Preview mode per selezione banner
     {% if request.GET.preview_mode %}
@@ -605,7 +634,8 @@
                 const classes = slot.className;
                 const id = slot.id;
 
-                if (classes.includes('article-top')) position = 'article_top';
+                if (id === 'article-middle-banner') position = 'article_middle';
+                else if (classes.includes('article-top')) position = 'article_top';
                 else if (classes.includes('article-bottom')) position = 'article_bottom';
                 else if (classes.includes('sidebar-top')) position = 'sidebar_top';
                 else if (classes.includes('sidebar-middle')) position = 'sidebar_middle';
