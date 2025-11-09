@@ -5,8 +5,8 @@
     {# TUTTI i banner orizzontali (728×90) usano le stesse classi header/footer in base allo slot #}
     {% if position == 'header' or position == 'article_top' or position == 'article_bottom' %}
         <div class="banner-header-slot has-active-banner">
-            <div class="advertisement-banner" data-banner-id="{{ banner.id }}">
-                <a href="{% url 'admin_panel:banner_click' banner.id %}" target="_blank" rel="noopener noreferrer sponsored" style="display: block;">
+            <div class="advertisement-banner" data-banner-id="{{ banner.id }}" style="width: 100%;">
+                <a href="{% url 'admin_panel:banner_click' banner.id %}" target="_blank" rel="noopener noreferrer sponsored" style="display: block; width: 100%;">
                     <img src="{{ banner.image.url }}" alt="{{ banner.alt_text }}" style="width: 100%; height: auto; border-radius: 10px; display: block; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);">
                 </a>
                 <div style="font-size: 10px; color: #999; text-align: center; margin-top: 5px;">Pubblicità</div>
@@ -14,8 +14,8 @@
         </div>
     {% elif position == 'footer' %}
         <div class="banner-footer-slot has-active-banner" style="grid-column: 1 / -1;">
-            <div class="advertisement-banner" data-banner-id="{{ banner.id }}">
-                <a href="{% url 'admin_panel:banner_click' banner.id %}" target="_blank" rel="noopener noreferrer sponsored" style="display: block;">
+            <div class="advertisement-banner" data-banner-id="{{ banner.id }}" style="width: 100%;">
+                <a href="{% url 'admin_panel:banner_click' banner.id %}" target="_blank" rel="noopener noreferrer sponsored" style="display: block; width: 100%;">
                     <img src="{{ banner.image.url }}" alt="{{ banner.alt_text }}" style="width: 100%; height: auto; border-radius: 10px; display: block; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);">
                 </a>
                 <div style="font-size: 10px; color: #999; text-align: center; margin-top: 5px;">Pubblicità</div>
@@ -23,8 +23,8 @@
         </div>
     {% else %}
         {# Banner verticali (300×250) - solo il contenuto #}
-        <div class="advertisement-banner" data-banner-id="{{ banner.id }}">
-            <a href="{% url 'admin_panel:banner_click' banner.id %}" target="_blank" rel="noopener noreferrer sponsored" style="display: block;">
+        <div class="advertisement-banner" data-banner-id="{{ banner.id }}" style="width: 100%;">
+            <a href="{% url 'admin_panel:banner_click' banner.id %}" target="_blank" rel="noopener noreferrer sponsored" style="display: block; width: 100%;">
                 <img src="{{ banner.image.url }}" alt="{{ banner.alt_text }}" style="width: 100%; height: auto; border-radius: 10px; display: block; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);">
             </a>
             <div style="font-size: 10px; color: #999; text-align: center; margin-top: 5px;">Pubblicità</div>
