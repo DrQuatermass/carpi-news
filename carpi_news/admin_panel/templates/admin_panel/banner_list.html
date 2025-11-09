@@ -255,7 +255,6 @@
             📢 I Miei Banner
         </div>
         <div class="navbar-user">
-            <a href="{% url 'admin_panel:dashboard' %}" class="btn btn-light">← Dashboard</a>
             <a href="{% url 'admin_panel:logout' %}" class="btn btn-light">Logout</a>
         </div>
     </nav>
@@ -315,8 +314,8 @@
                 </div>
 
                 <div class="banner-actions">
-                    {% if banner.status == 'pending_payment' %}
-                        <a href="{% url 'admin_panel:banner_payment' banner.id %}" class="btn btn-primary">💳 Paga</a>
+                    {% if banner.status == 'pending_payment' and banner.payment_status != 'completed' %}
+                        <a href="{% url 'admin_panel:banner_payment' banner.id %}" class="btn btn-primary">🛒 Acquista</a>
                     {% endif %}
 
                     {% if banner.status != 'active' or banner.payment_status != 'completed' %}

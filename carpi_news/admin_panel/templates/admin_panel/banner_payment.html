@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pagamento Banner - Admin Panel</title>
+    <title>Acquisto Banner - Admin Panel</title>
     <style>
         * {
             margin: 0;
@@ -124,52 +124,6 @@
             font-weight: 700;
         }
 
-        .payment-methods {
-            display: grid;
-            gap: 15px;
-            margin-top: 20px;
-        }
-
-        .payment-option {
-            display: none;
-        }
-
-        .payment-option:checked + label {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border-color: #667eea;
-        }
-
-        .payment-label {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            padding: 15px 20px;
-            border: 2px solid #e0e0e0;
-            border-radius: 10px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .payment-label:hover {
-            border-color: #667eea;
-            transform: translateY(-2px);
-        }
-
-        .payment-icon {
-            font-size: 24px;
-        }
-
-        .payment-info h4 {
-            font-size: 16px;
-            margin-bottom: 5px;
-        }
-
-        .payment-info p {
-            font-size: 12px;
-            opacity: 0.7;
-        }
-
         .btn {
             padding: 15px 30px;
             border-radius: 10px;
@@ -184,19 +138,13 @@
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            background: linear-gradient(135deg, #0070ba 0%, #003087 100%);
             color: white;
         }
 
         .btn-primary:hover {
             transform: translateY(-2px);
-            box-shadow: 0 10px 25px rgba(40, 167, 69, 0.4);
-        }
-
-        .btn-primary:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-            transform: none;
+            box-shadow: 0 10px 25px rgba(0, 112, 186, 0.4);
         }
 
         .security-note {
@@ -209,6 +157,20 @@
             text-align: center;
         }
 
+        .paypal-info {
+            background: #fef9e7;
+            border-left: 4px solid #f39c12;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: #856404;
+        }
+
+        .paypal-info strong {
+            color: #e67e22;
+        }
+
         @media (max-width: 768px) {
             .payment-grid {
                 grid-template-columns: 1fr;
@@ -216,25 +178,18 @@
         }
     </style>
     <script>
-        function enablePayButton() {
-            const payButton = document.getElementById('pay-button');
-            const paymentMethods = document.getElementsByName('payment_method');
-            let isSelected = false;
-
-            paymentMethods.forEach(method => {
-                if (method.checked) {
-                    isSelected = true;
-                }
-            });
-
-            payButton.disabled = !isSelected;
-        }
+        // Previeni che errori JavaScript esterni bloccino il form
+        window.addEventListener('error', function(e) {
+            console.warn('Errore JavaScript intercettato:', e.message);
+            // Non propagare l'errore
+            e.preventDefault();
+        });
     </script>
 </head>
 <body>
     <nav class="navbar">
         <div class="navbar-brand">
-            💳 Pagamento Banner
+            🛒 Acquisto Banner
         </div>
         <a href="{% url 'admin_panel:banner_list' %}" class="btn-light">← Torna ai Banner</a>
     </nav>
@@ -276,7 +231,7 @@
 
                 <div class="detail-row">
                     <span class="detail-label">Priorità</span>
-                    <span class="detail-value">{{ banner.priority }}/10</span>
+                    <span class="detail-value">{{ banner.priority }}/4</span>
                 </div>
 
                 <div class="total-amount">
@@ -285,53 +240,36 @@
                 </div>
             </div>
 
-            <!-- Metodi di Pagamento -->
+            <!-- Metodo di Pagamento PayPal -->
             <div class="card">
-                <h2>💳 Metodo di Pagamento</h2>
-                <p style="color: #666; font-size: 14px; margin-bottom: 20px;">
-                    Seleziona come preferisci pagare il tuo banner pubblicitario
-                </p>
+                <h2>💰 Completa l'Acquisto</h2>
 
-                <form method="post">
+                <div class="paypal-info">
+                    <strong>ℹ️ Informazioni sull'acquisto:</strong><br>
+                    • Sarai reindirizzato a PayPal per completare il pagamento in sicurezza<br>
+                    • Puoi pagare con il tuo account PayPal o con carta di credito<br>
+                    • Il banner sarà attivo dopo l'approvazione dell'amministratore
+                </div>
+
+                <form method="post" id="payment-form">
                     {% csrf_token %}
-
-                    <div class="payment-methods">
-                        <input type="radio" id="card" name="payment_method" value="carta_credito" class="payment-option" onchange="enablePayButton()">
-                        <label for="card" class="payment-label">
-                            <span class="payment-icon">💳</span>
-                            <div class="payment-info">
-                                <h4>Carta di Credito/Debito</h4>
-                                <p>Visa, Mastercard, American Express</p>
-                            </div>
-                        </label>
-
-                        <input type="radio" id="paypal" name="payment_method" value="paypal" class="payment-option" onchange="enablePayButton()">
-                        <label for="paypal" class="payment-label">
-                            <span class="payment-icon">💰</span>
-                            <div class="payment-info">
-                                <h4>PayPal</h4>
-                                <p>Paga in modo sicuro con il tuo account PayPal</p>
-                            </div>
-                        </label>
-
-                        <input type="radio" id="bank" name="payment_method" value="bonifico" class="payment-option" onchange="enablePayButton()">
-                        <label for="bank" class="payment-label">
-                            <span class="payment-icon">🏦</span>
-                            <div class="payment-info">
-                                <h4>Bonifico Bancario</h4>
-                                <p>Trasferimento diretto sul conto</p>
-                            </div>
-                        </label>
-                    </div>
-
-                    <button type="submit" id="pay-button" class="btn btn-primary" disabled>
-                        🔒 Paga €{{ banner.total_price }} in Sicurezza
+                    <button type="submit" class="btn btn-primary" id="pay-button">
+                        🔒 Acquista con PayPal - €{{ banner.total_price }}
                     </button>
                 </form>
 
+                <script>
+                    // Debug form submission
+                    document.getElementById('payment-form').addEventListener('submit', function(e) {
+                        console.log('Form submitted!');
+                        document.getElementById('pay-button').disabled = true;
+                        document.getElementById('pay-button').textContent = 'Elaborazione...';
+                    });
+                </script>
+
                 <div class="security-note">
-                    🔒 Pagamento sicuro e protetto. I tuoi dati sono crittografati.<br>
-                    <small>Demo: il pagamento verrà simulato automaticamente</small>
+                    🔒 Pagamento sicuro e protetto con PayPal<br>
+                    I tuoi dati di pagamento sono gestiti direttamente da PayPal
                 </div>
             </div>
         </div>

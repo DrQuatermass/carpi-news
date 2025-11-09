@@ -13,6 +13,15 @@ class SecurityHeadersMiddleware:
     def __call__(self, request):
         response = self.get_response(request)
 
+        # Escludi le pagine di preview admin e pagine in preview_mode dalle restrizioni iframe
+        is_preview_page = (
+            request.path.startswith('/gestionale/banners/preview/') or
+            request.GET.get('preview_mode') == '1'
+        )
+
+        # Pagine di pagamento PayPal necessitano di form-action più permissivo
+        is_payment_page = '/payment' in request.path and '/gestionale/banner' in request.path
+
         # Cache headers per file statici
         if request.path.startswith('/static/'):
             # File statici: cache per 1 anno
@@ -34,16 +43,35 @@ class SecurityHeadersMiddleware:
             "child-src 'self' https://www.youtube.com https://googleads.g.doubleclick.net",
             "object-src 'none'",
             "base-uri 'self'",
-            "form-action 'self'",
-            "frame-ancestors 'none'",
-            "upgrade-insecure-requests"
         ]
+
+        # form-action: permetti PayPal per pagine di pagamento
+        if is_payment_page:
+            csp_directives.append("form-action 'self' https://www.paypal.com https://www.sandbox.paypal.com")
+        else:
+            csp_directives.append("form-action 'self'")
+
+        # frame-ancestors: permetti 'self' per le pagine di preview admin
+        if is_preview_page:
+            csp_directives.append("frame-ancestors 'self'")
+        else:
+            csp_directives.append("frame-ancestors 'none'")
+
+        # upgrade-insecure-requests solo in produzione
+        if not is_preview_page:
+            csp_directives.append("upgrade-insecure-requests")
 
         response['Content-Security-Policy'] = "; ".join(csp_directives)
 
         # Altri header di sicurezza
         response['X-Content-Type-Options'] = 'nosniff'
-        response['X-Frame-Options'] = 'DENY'
+
+        # X-Frame-Options: permetti SAMEORIGIN per preview, altrimenti DENY
+        if is_preview_page:
+            response['X-Frame-Options'] = 'SAMEORIGIN'
+        else:
+            response['X-Frame-Options'] = 'DENY'
+
         response['Referrer-Policy'] = 'strict-origin-when-cross-origin'
         response['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
 

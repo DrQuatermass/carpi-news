@@ -2,6 +2,7 @@
 {% load static %}
 {% load italian_dates %}
 {% load webp_images %}
+{% load banner_tags %}
 
 {% block title %}Ombra del Portico - Le notizie della tua città{% endblock %}
 
@@ -26,17 +27,265 @@
 
 <!-- Meta description generale -->
 <meta name="description" content="Portale di informazione locale della città di Carpi e dintorni. Notizie, eventi e tutto quello che accade nella nostra comunità.">
+
+<style>
+    /* Banner slot tra le card - PLACEHOLDER */
+    .banner-card-slot {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 25px;
+        background: linear-gradient(135deg, rgba(150, 108, 66, 0.03) 0%, rgba(184, 149, 106, 0.05) 100%);
+        border-radius: 12px;
+        min-height: 200px;
+        position: relative;
+        overflow: hidden;
+        border: 1px solid rgba(150, 108, 66, 0.15);
+        transition: all 0.3s ease;
+        cursor: pointer;
+        text-decoration: none;
+    }
+
+    .banner-card-slot:hover {
+        border-color: rgba(150, 108, 66, 0.3);
+        box-shadow: 0 4px 20px rgba(150, 108, 66, 0.08);
+        background: linear-gradient(135deg, rgba(150, 108, 66, 0.05) 0%, rgba(184, 149, 106, 0.08) 100%);
+    }
+
+    /* Testo placeholder (solo quando NON ha classe .has-active-banner) */
+    .banner-card-slot::before {
+        content: 'SPAZIO PUBBLICITARIO';
+        position: absolute;
+        top: 40%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: rgba(150, 108, 66, 0.6);
+        text-align: center;
+        width: 100%;
+        letter-spacing: 2px;
+        z-index: 2;
+        font-family: 'Georgia', serif;
+    }
+
+    .banner-card-slot::after {
+        content: 'Clicca qui per acquistare';
+        position: absolute;
+        bottom: 25px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 0.85rem;
+        color: rgba(150, 108, 66, 0.7);
+        text-align: center;
+        width: 90%;
+        z-index: 2;
+        font-weight: 600;
+        font-style: normal;
+        text-decoration: underline;
+    }
+
+    /* Banner attivo - nascondi placeholder e rimuovi stili */
+    .banner-card-slot.has-active-banner {
+        background: transparent !important;
+        padding: 0 !important;
+        min-height: auto !important;
+        border: none !important;
+        cursor: default !important;
+    }
+
+    .banner-card-slot.has-active-banner::before,
+    .banner-card-slot.has-active-banner::after {
+        display: none !important;
+    }
+
+    .banner-card-slot.has-active-banner:hover {
+        border: none !important;
+        box-shadow: none !important;
+        background: transparent !important;
+    }
+
+    .banner-card-slot.has-active-banner a {
+        display: block !important;
+        width: 100% !important;
+    }
+
+    .banner-card-slot.has-active-banner img {
+        width: 100% !important;
+        height: auto !important;
+        display: block !important;
+        border-radius: 10px !important;
+    }
+
+    /* Banner header e footer */
+    .banner-header-slot,
+    .banner-footer-slot {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        background: linear-gradient(135deg, rgba(150, 108, 66, 0.03) 0%, rgba(184, 149, 106, 0.05) 100%);
+        border-radius: 12px;
+        min-height: 120px;
+        position: relative;
+        overflow: hidden;
+        margin: 15px 0;
+        border: 1px solid rgba(150, 108, 66, 0.15);
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+    .banner-header-slot:hover,
+    .banner-footer-slot:hover {
+        border-color: rgba(150, 108, 66, 0.3);
+        box-shadow: 0 4px 20px rgba(150, 108, 66, 0.08);
+        background: linear-gradient(135deg, rgba(150, 108, 66, 0.05) 0%, rgba(184, 149, 106, 0.08) 100%);
+    }
+
+    /* Contenuto placeholder header - SOLO se vuoto */
+    .banner-header-slot::before {
+        content: 'SPAZIO PUBBLICITARIO';
+        position: absolute;
+        top: 40%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 1rem;
+        font-weight: 600;
+        color: rgba(150, 108, 66, 0.6);
+        text-align: center;
+        width: 100%;
+        letter-spacing: 3px;
+        z-index: 1;
+        font-family: 'Georgia', serif;
+        pointer-events: none;
+    }
+
+    .banner-header-slot::after {
+        content: 'Clicca qui per acquistare';
+        position: absolute;
+        bottom: 15px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 0.85rem;
+        color: rgba(150, 108, 66, 0.7);
+        text-align: center;
+        letter-spacing: 1px;
+        z-index: 1;
+        pointer-events: none;
+        font-weight: 600;
+        text-decoration: underline;
+    }
+
+    /* Nascondi placeholder quando c'è un banner */
+    .banner-header-slot:has(.advertisement-banner)::before,
+    .banner-header-slot:has(.advertisement-banner)::after {
+        display: none !important;
+    }
+
+    /* Contenuto placeholder footer - SOLO se vuoto */
+    .banner-footer-slot::before {
+        content: 'SPAZIO PUBBLICITARIO';
+        position: absolute;
+        top: 40%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 1.2rem;
+        font-weight: 600;
+        color: rgba(150, 108, 66, 0.75);
+        text-align: center;
+        width: 100%;
+        letter-spacing: 4px;
+        z-index: 1;
+        font-family: 'Georgia', serif;
+        pointer-events: none;
+    }
+
+    .banner-footer-slot::after {
+        content: 'Clicca qui per acquistare';
+        position: absolute;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 0.85rem;
+        color: rgba(150, 108, 66, 0.7);
+        text-align: center;
+        letter-spacing: 1px;
+        z-index: 1;
+        pointer-events: none;
+        font-weight: 600;
+        text-decoration: underline;
+    }
+
+    /* Nascondi placeholder quando c'è un banner */
+    .banner-footer-slot:has(.advertisement-banner)::before,
+    .banner-footer-slot:has(.advertisement-banner)::after {
+        display: none !important;
+    }
+
+    /* Quando c'è un banner, sfondo trasparente */
+    .banner-header-slot:has(.advertisement-banner),
+    .banner-footer-slot:has(.advertisement-banner) {
+        background: transparent !important;
+        padding: 0 !important;
+        min-height: auto !important;
+        margin: 20px 0 !important;
+        border: none !important;
+        cursor: default !important;
+    }
+
+    .banner-header-slot:has(.advertisement-banner):hover,
+    .banner-footer-slot:has(.advertisement-banner):hover {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
+
+    /* Il banner occupa tutto lo spazio disponibile */
+    .banner-header-slot .advertisement-banner,
+    .banner-footer-slot .advertisement-banner {
+        position: relative;
+        z-index: 10;
+        margin: 0 !important;
+        width: 100%;
+        max-width: 100%;
+    }
+
+    /* Desktop: banner orizzontali (header/footer) più grandi */
+    @media (min-width: 769px) {
+        .banner-header-slot,
+        .banner-footer-slot {
+            min-height: 120px;
+        }
+
+        .banner-header-slot .advertisement-banner img,
+        .banner-footer-slot .advertisement-banner img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        /* Banner verticali (card/sidebar) - larghezza piena della card */
+        .banner-card-slot .advertisement-banner img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+    }
+</style>
 {% endblock %}
 
 {% block content %}
     <div class="container">
+            <!-- Banner Header -->
+            {% show_banner 'header' %}
+
             <!-- Hero Section -->
             <section class="hero">
                 <div class="hero-content">
                     <div class="hero-logo">
                         <img src="{% static 'home/images/portico_logo.svg' %}" alt="Ombra del Portico" class="hero-logo-img">
                     </div>
-                    
+
                 </div>
             </section>
 
@@ -47,34 +296,51 @@
                         <div class="loading-spinner" id="loading-spinner">
                             <div class="spinner"></div>
                         </div>
-                        {% for articolo in articoli %}
-                        <a href="{% url 'dettaglio_articolo' articolo.slug %}" class="news-card-link">
-                            <article class="news-card loading">
-                                <div class="news-image">
-                                    <picture>
-                                        <source srcset="{{ articolo.get_image_url|to_webp }}" type="image/webp">
-                                        <img src="{{ articolo.get_image_url }}"
-                                             alt="{{ articolo.titolo }}"
-                                             class="card-img"
-                                             width="616"
-                                             height="347"
-                                             {% if forloop.counter <= 2 %}fetchpriority="high" loading="eager"{% else %}loading="lazy"{% endif %}>
-                                    </picture>
-                                </div>
-                                <div class="news-content">
-                                    <div class="news-meta">
-                                        <span class="category-tag">{{ articolo.categoria }}</span>
-                                        <time datetime="{{ articolo.data_pubblicazione|date:'Y-m-d' }}">
-                                            {{ articolo.data_pubblicazione|italian_date:'short' }}
-                                        </time>
+
+                        {# Griglia dinamica con articoli e banner/placeholder #}
+                        {% for item in grid_items %}
+                            {% if item.type == 'banner' %}
+                                {# Slot banner: mostra banner attivo o placeholder #}
+                                {% if item.banner %}
+                                    {# Banner attivo #}
+                                    <div class="banner-card-slot has-active-banner">
+                                        <a href="{% url 'admin_panel:banner_click' item.banner.id %}" target="_blank" rel="noopener noreferrer sponsored">
+                                            <img src="{{ item.banner.image.url }}" alt="{{ item.banner.alt_text }}" style="max-width: 100%; height: auto; border-radius: 10px; display: block; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);">
+                                        </a>
+                                        <div style="font-size: 10px; color: #999; text-align: center; margin-top: 5px;">Pubblicità</div>
                                     </div>
-                                    <h2 class="news-title">{{ articolo.titolo }}</h2>
-                                    <p class="news-excerpt">{{ articolo.sommario|truncatewords:25 }}</p>
-                                    <span class="read-more">Leggi tutto →</span>
-                                </div>
-                            </article>
-                        </a>
+                                {% else %}
+                                    {# Placeholder #}
+                                    <a href="{% url 'admin_panel:banner_list' %}" class="banner-card-slot">
+                                        {# Il placeholder è gestito dal CSS con ::before e ::after #}
+                                    </a>
+                                {% endif %}
+                            {% elif item.type == 'article' %}
+                                {# Articolo #}
+                                <a href="{% url 'dettaglio_articolo' item.data.slug %}" class="news-card-link">
+                                    <article class="news-card loading">
+                                        <div class="news-image">
+                                            <picture>
+                                                <source srcset="{{ item.data.get_image_url|to_webp }}" type="image/webp">
+                                                <img src="{{ item.data.get_image_url }}" alt="{{ item.data.titolo }}" class="card-img" width="616" height="347" {% if forloop.first %}fetchpriority="high" loading="eager"{% else %}loading="lazy"{% endif %}>
+                                            </picture>
+                                        </div>
+                                        <div class="news-content">
+                                            <div class="news-meta">
+                                                <span class="category-tag">{{ item.data.categoria }}</span>
+                                                <time datetime="{{ item.data.data_pubblicazione|date:'Y-m-d' }}">{{ item.data.data_pubblicazione|italian_date:'short' }}</time>
+                                            </div>
+                                            <h2 class="news-title">{{ item.data.titolo }}</h2>
+                                            <p class="news-excerpt">{{ item.data.sommario|truncatewords:25 }}</p>
+                                            <span class="read-more">Leggi tutto →</span>
+                                        </div>
+                                    </article>
+                                </a>
+                            {% endif %}
                         {% endfor %}
+
+                        <!-- Banner Footer (dentro la griglia, sopra la paginazione) -->
+                        {% show_banner 'footer' %}
                     </div>
 
                     <div class="nav-controls-bottom">
@@ -90,8 +356,6 @@
                         </button>
                     </div>
                 </div>
-                
-                
             </section>
 
         </div>
@@ -100,9 +364,13 @@
 {% block javascript %}
 {{ block.super }}
 <script>
+        // Variabili globali minime
         let currentPage = parseInt('{{ current_page|default:1 }}');
         let totalPages = parseInt('{{ total_pages|default:1 }}');
         let isTransitioning = false;
+        let parallaxHandler = null;
+        let keyboardHandler = null;
+        let isInitialized = false;
 
         // Helper function per calcolo parallasse
         function updateParallax(hero) {
@@ -110,11 +378,6 @@
             const scrolled = window.scrollY;
             hero.style.transform = `translateY(${scrolled * -0.5}px)`;
         }
-
-        // Handlers registrati una sola volta
-        let parallaxHandler = null;
-        let keyboardHandler = null;
-        let isInitialized = false;
 
         // Inizializzazione specifica della homepage
         function initPageSpecific() {
@@ -246,15 +509,44 @@
 
             // Attendi la fine dell'animazione di uscita
             setTimeout(() => {
-                // Rimuovi le card esistenti
-                const existingCardLinks = newsGrid.querySelectorAll('.news-card-link');
-                existingCardLinks.forEach(link => link.remove());
-
-                // Aggiungi le nuove card
-                data.articoli.forEach((articolo) => {
-                    const cardLink = createNewsCard(articolo);
-                    newsGrid.appendChild(cardLink);
+                // Rimuovi le card esistenti e i banner (tranne spinner e footer)
+                const existingItems = newsGrid.querySelectorAll('.news-card-link, .banner-card-slot');
+                existingItems.forEach(item => {
+                    // Non rimuovere il banner footer (è l'ultimo nella griglia)
+                    if (!item.classList.contains('banner-footer-slot')) {
+                        item.remove();
+                    }
                 });
+
+                // Usa le posizioni dei banner dal server
+                const bannerPositions = data.banner_positions || [];
+                const numBannerSlots = data.num_banner_slots || 0;
+                const bannerHTML = `
+                    <a href="{% url 'admin_panel:banner_list' %}" class="news-card-link banner-card-slot">
+                    </a>
+                `;
+
+                let articleIndex = 0;
+                const footerBanner = newsGrid.querySelector('.banner-footer-slot');
+                const totalSlots = 4 + numBannerSlots;  // Articoli + banner slots
+
+                // Inserisci elementi (articoli + banner)
+                for (let position = 0; position < totalSlots; position++) {
+                    if (bannerPositions.includes(position)) {
+                        // Inserisci banner
+                        const tempDiv = document.createElement('div');
+                        tempDiv.innerHTML = bannerHTML;
+                        const bannerElement = tempDiv.firstElementChild;
+                        newsGrid.insertBefore(bannerElement, footerBanner);
+                    } else {
+                        // Inserisci articolo
+                        if (articleIndex < data.articoli.length) {
+                            const cardLink = createNewsCard(data.articoli[articleIndex]);
+                            newsGrid.insertBefore(cardLink, footerBanner);
+                            articleIndex++;
+                        }
+                    }
+                }
 
                 // Aggiorna stato della paginazione
                 currentPage = data.current_page;
@@ -325,6 +617,107 @@
             prevBtn.disabled = !hasPrev;
             nextBtn.disabled = !hasNext;
         }
+
+        // Banner attivi: la classe .has-active-banner è già applicata nel template
+        // Non serve JavaScript aggiuntivo
+
+        // Preview mode per selezione banner
+        {% if request.GET.preview_mode %}
+        (function() {
+            // Ottieni le posizioni occupate dall'URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const occupiedPositionsParam = urlParams.get('occupied_positions');
+            const occupiedPositions = occupiedPositionsParam ? occupiedPositionsParam.split(',') : [];
+
+            // Rendi gli spazi banner cliccabili in preview mode
+            const bannerSlots = document.querySelectorAll('.banner-header-slot, .banner-card-slot, .banner-footer-slot');
+
+            // Funzione per deselezionare tutti i banner
+            function deselectAll() {
+                bannerSlots.forEach(s => {
+                    s.style.borderColor = '#667eea';
+                    s.style.background = '';
+                    const lbl = s.querySelector('[data-banner-label]');
+                    if (lbl) {
+                        lbl.style.background = '#667eea';
+                        lbl.textContent = '📢 Clicca per selezionare';
+                    }
+                    s.classList.remove('banner-selected');
+                });
+            }
+
+            bannerSlots.forEach(slot => {
+                // Determina la posizione del banner
+                let position = '';
+                if (slot.classList.contains('banner-header-slot')) {
+                    position = 'header';
+                } else if (slot.classList.contains('banner-footer-slot')) {
+                    position = 'footer';
+                } else if (slot.classList.contains('banner-card-slot')) {
+                    position = 'between_articles';
+                }
+
+                // Tutte le posizioni sono sempre selezionabili
+                // Il sistema di priorità decide quale banner mostrare
+
+                // Aggiungi stile visivo
+                slot.style.cursor = 'pointer';
+                slot.style.position = 'relative';
+                slot.style.border = '3px dashed #667eea';
+
+                // Aggiungi label
+                const label = document.createElement('div');
+                label.setAttribute('data-banner-label', 'true');
+                label.style.cssText = 'position: absolute; top: 10px; right: 10px; background: #667eea; color: white; padding: 5px 10px; border-radius: 5px; font-size: 12px; font-weight: bold; z-index: 1000;';
+
+                // Mostra se la posizione è già occupata da altri banner
+                if (occupiedPositions.includes(position)) {
+                    label.textContent = '📢 Clicca per selezionare (priorità gestita)';
+                    label.style.background = '#f59e0b'; // Arancione per indicare che ci sono già banner
+                } else {
+                    label.textContent = '📢 Clicca per selezionare';
+                }
+                slot.appendChild(label);
+
+                // Aggiungi click handler
+                slot.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    // Deseleziona tutti gli altri
+                    deselectAll();
+
+                    // Comunica al parent
+                    if (window.parent && window.parent !== window) {
+                        window.parent.postMessage({
+                            type: 'banner_position_selected',
+                            position: position
+                        }, '*');
+
+                        // Visual feedback per questo slot
+                        slot.style.borderColor = '#48bb78';
+                        slot.style.borderStyle = 'solid';
+                        slot.style.background = 'rgba(72, 187, 120, 0.1)';
+                        slot.classList.add('banner-selected');
+                        label.style.background = '#48bb78';
+                        label.textContent = '✓ Selezionato';
+                    }
+                });
+            });
+
+            // Mantieni preview_mode e occupied_positions nella navigazione
+            document.querySelectorAll('a').forEach(link => {
+                const href = link.getAttribute('href');
+                if (href && href.startsWith('/') && !href.includes('preview_mode')) {
+                    let newHref = href + (href.includes('?') ? '&' : '?') + 'preview_mode=1';
+                    if (occupiedPositionsParam) {
+                        newHref += '&occupied_positions=' + encodeURIComponent(occupiedPositionsParam);
+                    }
+                    link.setAttribute('href', newHref);
+                }
+            });
+        })();
+        {% endif %}
 
 </script>
 {% endblock %}

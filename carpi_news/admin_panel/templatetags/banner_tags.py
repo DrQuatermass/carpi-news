@@ -1,39 +1,136 @@
 from django import template
 from django.utils import timezone
 from admin_panel.models import Banner
+import random
 
 register = template.Library()
 
+# Cache per gli utenti già mostrati nella pagina corrente
+_shown_users = []
 
-@register.inclusion_tag('admin_panel/banner_display.html')
-def show_banner(position):
+
+def reset_shown_users():
+    """Resetta la cache degli utenti mostrati (chiamato a inizio pagina)"""
+    global _shown_users
+    _shown_users = []
+
+
+def get_priority_weight(priority, user_already_shown=False):
     """
-    Template tag per mostrare un banner in una specifica posizione
+    Calcola il peso per la selezione randomica basato sulla priorità
+
+    Priorità 1 (Massima): peso 5
+    Priorità 2 (Alta): peso 3
+    Priorità 3 (Media): peso 2
+    Priorità 4 (Normale): peso 1
+
+    Se l'utente è già mostrato nella pagina, il peso viene ridotto del 75%
+    """
+    weight_map = {1: 5, 2: 3, 3: 2, 4: 1}
+    weight = weight_map.get(priority, 1)
+
+    # Penalizzazione per utenti già presenti nella pagina
+    if user_already_shown:
+        weight = weight * 0.25  # Riduce il peso del 75%
+
+    return weight
+
+
+def weighted_random_choice(banners):
+    """
+    Seleziona un banner randomicamente basandosi sui pesi di priorità
+    """
+    if not banners:
+        return None
+
+    # Calcola i pesi per ogni banner
+    weights = []
+    for banner in banners:
+        user_already_shown = banner.user_id in _shown_users
+        weight = get_priority_weight(banner.priority, user_already_shown)
+        weights.append(weight)
+
+    # Selezione pesata randomica
+    selected_banner = random.choices(banners, weights=weights, k=1)[0]
+
+    # Aggiungi l'utente alla lista degli utenti mostrati
+    if selected_banner.user_id not in _shown_users:
+        _shown_users.append(selected_banner.user_id)
+
+    return selected_banner
+
+
+@register.inclusion_tag('admin_panel/banner_display.html', takes_context=True)
+def show_banner(context, position):
+    """
+    Template tag per mostrare un banner in una specifica posizione con selezione randomica pesata
+
+    - La priorità influenza la probabilità di selezione
+    - Gli utenti già presenti nella pagina hanno peso ridotto del 75%
+    - Massimizza la diversità di utenti per pagina
+    - I banner orizzontali (728×90) sono intercambiabili tra header, footer, article_top, article_bottom
+    - I banner verticali (300×250) sono specifici per posizione
 
     Uso: {% load banner_tags %}
          {% show_banner 'header' %}
     """
     try:
-        # Ottieni banner attivi per la posizione specificata
-        banners = Banner.objects.filter(
-            position=position,
+        # Reset della cache all'inizio di ogni richiesta
+        if hasattr(context, 'request') and not hasattr(context.request, '_banner_users_reset'):
+            reset_shown_users()
+            context.request._banner_users_reset = True
+        elif not hasattr(context, 'request'):
+            # Nessuna request nel context, reset comunque
+            reset_shown_users()
+
+        # Definisci i gruppi di posizioni intercambiabili
+        horizontal_positions = ['header', 'footer', 'article_top', 'article_bottom']
+
+        # Determina quali posizioni cercare
+        if position in horizontal_positions:
+            # Per banner orizzontali, cerca in tutte le posizioni orizzontali
+            search_positions = horizontal_positions
+        else:
+            # Per banner verticali, cerca solo nella posizione specifica
+            search_positions = [position]
+
+        # Ottieni tutti i banner attivi, approvati per le posizioni specificate
+        banners = list(Banner.objects.filter(
+            position__in=search_positions,
             status='active',
             payment_status='completed',
+            approved=True,  # Solo banner approvati
             start_date__lte=timezone.now(),
             end_date__gte=timezone.now()
-        ).order_by('-priority', '?')[:1]
+        ).select_related('user'))
 
-        banner = banners.first() if banners else None
+        if not banners:
+            return {
+                'banner': None,
+                'position': position
+            }
 
-        # Incrementa le impressioni se il banner esiste
+        # Selezione randomica pesata
+        banner = weighted_random_choice(banners)
+
+        # Incrementa le impressioni
         if banner:
             banner.impressions += 1
             banner.save(update_fields=['impressions'])
 
-        return {'banner': banner}
+        return {
+            'banner': banner,
+            'position': position  # Passa anche la posizione per il placeholder
+        }
 
-    except Exception:
-        return {'banner': None}
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Errore in show_banner per posizione '{position}': {str(e)}")
+        return {
+            'banner': None,
+            'position': position
+        }
 
 
 @register.simple_tag

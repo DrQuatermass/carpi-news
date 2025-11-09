@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load banner_tags %}
 
 {% block title %}Caplet - Il gioco strategico{% endblock %}
 
@@ -21,10 +22,177 @@
 
 <!-- Meta description generale -->
 <meta name="description" content="Gioca a Caplet, il gioco delle bolle nel brodo. Piazza i segnalini seguendo le regole delle zone, righe e colonne.">
+
+<style>
+    /* Banner header e footer */
+    .banner-header-slot,
+    .banner-footer-slot {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        background: linear-gradient(135deg, rgba(150, 108, 66, 0.03) 0%, rgba(184, 149, 106, 0.05) 100%);
+        border-radius: 12px;
+        min-height: 120px;
+        position: relative;
+        overflow: hidden;
+        margin: 15px 0;
+        border: 1px solid rgba(150, 108, 66, 0.15);
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+    .banner-header-slot:hover,
+    .banner-footer-slot:hover {
+        border-color: rgba(150, 108, 66, 0.3);
+        box-shadow: 0 4px 20px rgba(150, 108, 66, 0.08);
+        background: linear-gradient(135deg, rgba(150, 108, 66, 0.05) 0%, rgba(184, 149, 106, 0.08) 100%);
+    }
+
+    .banner-header-slot::before {
+        content: 'SPAZIO PUBBLICITARIO';
+        position: absolute;
+        top: 40%;
+        margin-left: calc((100vw - 1200px) / -2);
+        transform: translate(-50%, -50%);
+        font-size: 1rem;
+        font-weight: 600;
+        color: rgba(150, 108, 66, 0.6);
+        text-align: center;
+        width: 100%;
+        letter-spacing: 3px;
+        z-index: 1;
+        font-family: 'Georgia', serif;
+        pointer-events: none;
+    }
+
+    .banner-header-slot::after {
+        content: 'Clicca qui per acquistare';
+        position: absolute;
+        bottom: 15px;
+        margin-left: calc((100vw - 1200px) / -2);
+        transform: translateX(-50%);
+        font-size: 0.85rem;
+        color: rgba(150, 108, 66, 0.7);
+        text-align: center;
+        letter-spacing: 1px;
+        z-index: 1;
+        pointer-events: none;
+        font-weight: 600;
+        text-decoration: underline;
+    }
+
+    .banner-footer-slot::before {
+        content: 'SPAZIO PUBBLICITARIO';
+        position: absolute;
+        top: 40%;
+        margin-left: calc((100vw - 1200px) / -2);
+        transform: translate(-50%, -50%);
+        font-size: 1rem;
+        font-weight: 600;
+        color: rgba(150, 108, 66, 0.75);
+        text-align: center;
+        width: 100%;
+        letter-spacing: 3px;
+        z-index: 1;
+        font-family: 'Georgia', serif;
+        pointer-events: none;
+    }
+
+    .banner-footer-slot::after {
+        content: 'Clicca qui per acquistare';
+        position: absolute;
+        bottom: 20px;
+        margin-left: calc((100vw - 1200px) / -2);
+        transform: translateX(-50%);
+        font-size: 0.85rem;
+        color: rgba(150, 108, 66, 0.7);
+        text-align: center;
+        letter-spacing: 1px;
+        z-index: 1;
+        pointer-events: none;
+        font-weight: 600;
+        text-decoration: underline;
+    }
+
+    /* Nascondi placeholder quando c'è un banner */
+    .banner-header-slot:has(.advertisement-banner)::before,
+    .banner-header-slot:has(.advertisement-banner)::after,
+    .banner-footer-slot:has(.advertisement-banner)::before,
+    .banner-footer-slot:has(.advertisement-banner)::after,
+    .banner-header-slot.has-active-banner::before,
+    .banner-header-slot.has-active-banner::after,
+    .banner-footer-slot.has-active-banner::before,
+    .banner-footer-slot.has-active-banner::after {
+        display: none !important;
+    }
+
+    /* Quando c'è un banner, sfondo trasparente */
+    .banner-header-slot:has(.advertisement-banner),
+    .banner-footer-slot:has(.advertisement-banner),
+    .banner-header-slot.has-active-banner,
+    .banner-footer-slot.has-active-banner {
+        background: transparent !important;
+        padding: 0 !important;
+        min-height: auto !important;
+        margin: 20px 0 !important;
+        border: none !important;
+        cursor: default !important;
+    }
+
+    .banner-header-slot:has(.advertisement-banner):hover,
+    .banner-footer-slot:has(.advertisement-banner):hover,
+    .banner-header-slot.has-active-banner:hover,
+    .banner-footer-slot.has-active-banner:hover {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
+
+    .banner-header-slot .advertisement-banner,
+    .banner-footer-slot .advertisement-banner {
+        position: relative;
+        z-index: 10;
+        margin: 0 !important;
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .banner-header-slot .advertisement-banner img,
+    .banner-footer-slot .advertisement-banner img {
+        border-radius: 10px !important;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Desktop: banner fuori dal container per larghezza piena */
+    /* Desktop: banner più grande */
+    @media (min-width: 769px) {
+        /* Banner verticali (card/sidebar) - larghezza piena della card */
+        .banner-card-slot .advertisement-banner img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        .banner-header-slot,
+        .banner-footer-slot {
+            min-height: 120px;
+        }
+
+        .banner-header-slot .advertisement-banner img,
+        .banner-footer-slot .advertisement-banner img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+    }
+</style>
 {% endblock %}
 
 {% block content %}
 <div class="container">
+    <!-- Banner Header -->
+    {% show_banner 'header' %}
+
     <!-- Titolo del gioco -->
     <div class="game-header">
         <h1 class="game-title">Caplet</h1>
@@ -142,6 +310,9 @@
             </ul>
         </div>
     </section>
+
+    <!-- Banner Footer -->
+    {% show_banner 'footer' %}
 </div>
 
 <!-- Dati del puzzle per JavaScript -->

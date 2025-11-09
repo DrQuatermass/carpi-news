@@ -1,0 +1,425 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Seleziona Posizione Banner</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f7fa;
+            padding: 20px;
+        }
+
+        .preview-site {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Header fake del sito */
+        .site-header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .site-logo {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .site-tagline {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        /* Container principale */
+        .site-container {
+            padding: 20px;
+        }
+
+        /* Banner slots */
+        .banner-slot {
+            background: linear-gradient(135deg, #f5f7fa 0%, #e8eef5 100%);
+            border: 3px dashed #cbd5e0;
+            border-radius: 12px;
+            padding: 30px 20px;
+            margin: 20px 0;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .banner-slot::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: repeating-linear-gradient(
+                45deg,
+                transparent,
+                transparent 10px,
+                rgba(255,255,255,0.1) 10px,
+                rgba(255,255,255,0.1) 20px
+            );
+            pointer-events: none;
+        }
+
+        .banner-slot:hover {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-color: #667eea;
+            border-style: solid;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .banner-slot:hover .banner-slot-label,
+        .banner-slot:hover .banner-slot-size {
+            color: white;
+        }
+
+        .banner-slot.selected {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            border-color: #48bb78;
+            border-style: solid;
+            box-shadow: 0 8px 20px rgba(72, 187, 120, 0.4);
+        }
+
+        .banner-slot.selected::after {
+            content: '✓ Selezionato';
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: white;
+            color: #48bb78;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .banner-slot-label {
+            font-size: 16px;
+            font-weight: 700;
+            color: #333;
+            margin-bottom: 8px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .banner-slot-size {
+            font-size: 13px;
+            color: #666;
+            position: relative;
+            z-index: 1;
+        }
+
+        .banner-slot-icon {
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        /* Article grid simulato */
+        .article-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .article-card {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 15px;
+            min-height: 200px;
+        }
+
+        .article-image-placeholder {
+            width: 100%;
+            height: 120px;
+            background: linear-gradient(135deg, #f0f0f0 0%, #e0e0e0 100%);
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .article-title-placeholder {
+            height: 20px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            margin-bottom: 8px;
+        }
+
+        .article-text-placeholder {
+            height: 12px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            margin-bottom: 6px;
+        }
+
+        /* Dettaglio articolo simulato */
+        .article-detail {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .article-detail-image {
+            width: 100%;
+            height: 300px;
+            background: linear-gradient(135deg, #f0f0f0 0%, #e0e0e0 100%);
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .article-detail-title {
+            height: 30px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+
+        .article-detail-text {
+            height: 15px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+
+        /* Layout con sidebar */
+        .content-with-sidebar {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 20px;
+        }
+
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .sidebar .banner-slot {
+            min-height: 250px;
+            margin: 0;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .article-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .content-with-sidebar {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Info banner */
+        .info-banner {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            text-align: center;
+            font-size: 14px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="info-banner">
+        👆 Clicca sugli spazi banner per selezionare dove vuoi posizionare il tuo annuncio
+    </div>
+
+    <div class="preview-site">
+        <!-- Header -->
+        <div class="site-header">
+            <div class="site-logo">Ombra del Portico</div>
+            <div class="site-tagline">Le notizie della tua città</div>
+        </div>
+
+        <div class="site-container">
+            <!-- Banner Header -->
+            <div class="banner-slot" onclick="selectPosition('header')" data-position="header">
+                <div class="banner-slot-icon">📢</div>
+                <div class="banner-slot-label">Header Banner</div>
+                <div class="banner-slot-size">Consigliato: 728x90 o 970x90</div>
+            </div>
+
+            <!-- Sezione Homepage -->
+            <h3 style="margin: 30px 0 15px; color: #333;">📰 Homepage - Griglia Articoli</h3>
+            <p style="margin-bottom: 15px; color: #666; font-size: 14px;">⚠️ I banner "Tra gli Articoli" vengono inseriti come CARD nella griglia insieme agli articoli (non a tutta larghezza)</p>
+
+            <div class="article-grid">
+                <!-- Articolo 1 -->
+                <div class="article-card">
+                    <div class="article-image-placeholder"></div>
+                    <div class="article-title-placeholder"></div>
+                    <div class="article-text-placeholder"></div>
+                    <div class="article-text-placeholder"></div>
+                </div>
+
+                <!-- Articolo 2 -->
+                <div class="article-card">
+                    <div class="article-image-placeholder"></div>
+                    <div class="article-title-placeholder"></div>
+                    <div class="article-text-placeholder"></div>
+                    <div class="article-text-placeholder"></div>
+                </div>
+
+                <!-- Banner 1 - appare come card nella griglia -->
+                <div class="banner-slot" onclick="selectPosition('between_articles')" data-position="between_articles" style="margin: 0;">
+                    <div class="banner-slot-icon">📢</div>
+                    <div class="banner-slot-label">Banner Card 1</div>
+                    <div class="banner-slot-size">Occupa 1 slot griglia (stesso spazio articolo)</div>
+                </div>
+
+                <!-- Articolo 3 -->
+                <div class="article-card">
+                    <div class="article-image-placeholder"></div>
+                    <div class="article-title-placeholder"></div>
+                    <div class="article-text-placeholder"></div>
+                    <div class="article-text-placeholder"></div>
+                </div>
+
+                <!-- Banner 2 - appare come card nella griglia -->
+                <div class="banner-slot" onclick="selectPosition('between_articles')" data-position="between_articles" style="margin: 0;">
+                    <div class="banner-slot-icon">📢</div>
+                    <div class="banner-slot-label">Banner Card 2</div>
+                    <div class="banner-slot-size">Occupa 1 slot griglia (stesso spazio articolo)</div>
+                </div>
+
+                <!-- Articolo 4 -->
+                <div class="article-card">
+                    <div class="article-image-placeholder"></div>
+                    <div class="article-title-placeholder"></div>
+                    <div class="article-text-placeholder"></div>
+                    <div class="article-text-placeholder"></div>
+                </div>
+            </div>
+
+            <!-- Sezione Dettaglio Articolo -->
+            <h3 style="margin: 50px 0 15px; color: #333;">📄 Pagina Dettaglio Articolo</h3>
+            <div class="content-with-sidebar">
+                <div class="main-content">
+                    <div class="article-detail">
+                        <div class="article-detail-image"></div>
+
+                        <!-- Banner Article Top -->
+                        <div class="banner-slot" onclick="selectPosition('article_top')" data-position="article_top" style="margin: 20px 0;">
+                            <div class="banner-slot-icon">📢</div>
+                            <div class="banner-slot-label">Inizio Articolo</div>
+                            <div class="banner-slot-size">Consigliato: 468x60 o 728x90</div>
+                        </div>
+
+                        <div class="article-detail-title"></div>
+                        <div class="article-detail-text"></div>
+                        <div class="article-detail-text"></div>
+                        <div class="article-detail-text"></div>
+                        <div class="article-detail-text" style="width: 80%;"></div>
+
+                        <!-- Banner Article Middle -->
+                        <div class="banner-slot" onclick="selectPosition('article_middle')" data-position="article_middle" style="margin: 20px 0;">
+                            <div class="banner-slot-icon">📢</div>
+                            <div class="banner-slot-label">Centro Articolo</div>
+                            <div class="banner-slot-size">Consigliato: 468x60 o 728x90</div>
+                        </div>
+
+                        <div class="article-detail-text"></div>
+                        <div class="article-detail-text"></div>
+                        <div class="article-detail-text"></div>
+                        <div class="article-detail-text" style="width: 70%;"></div>
+
+                        <!-- Banner Article Bottom -->
+                        <div class="banner-slot" onclick="selectPosition('article_bottom')" data-position="article_bottom" style="margin: 20px 0;">
+                            <div class="banner-slot-icon">📢</div>
+                            <div class="banner-slot-label">Fine Articolo</div>
+                            <div class="banner-slot-size">Consigliato: 468x60 o 728x90</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sidebar -->
+                <div class="sidebar">
+                    <div class="banner-slot" onclick="selectPosition('sidebar_top')" data-position="sidebar_top">
+                        <div class="banner-slot-icon">📢</div>
+                        <div class="banner-slot-label">Sidebar Alto</div>
+                        <div class="banner-slot-size">Consigliato: 300x250</div>
+                    </div>
+
+                    <div class="banner-slot" onclick="selectPosition('sidebar_middle')" data-position="sidebar_middle">
+                        <div class="banner-slot-icon">📢</div>
+                        <div class="banner-slot-label">Sidebar Centro</div>
+                        <div class="banner-slot-size">Consigliato: 300x250</div>
+                    </div>
+
+                    <div class="banner-slot" onclick="selectPosition('sidebar_bottom')" data-position="sidebar_bottom">
+                        <div class="banner-slot-icon">📢</div>
+                        <div class="banner-slot-label">Sidebar Basso</div>
+                        <div class="banner-slot-size">Consigliato: 300x250</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Banner Footer -->
+            <div class="banner-slot" onclick="selectPosition('footer')" data-position="footer">
+                <div class="banner-slot-icon">📢</div>
+                <div class="banner-slot-label">Footer Banner</div>
+                <div class="banner-slot-size">Consigliato: 728x90 o 970x90</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function selectPosition(position) {
+            // Rimuovi selezione precedente
+            document.querySelectorAll('.banner-slot').forEach(slot => {
+                slot.classList.remove('selected');
+            });
+
+            // Aggiungi selezione al nuovo slot
+            const slot = document.querySelector(`[data-position="${position}"]`);
+            if (slot) {
+                slot.classList.add('selected');
+            }
+
+            // Comunica al parent frame (se esiste)
+            if (window.parent && window.parent !== window) {
+                window.parent.postMessage({
+                    type: 'banner_position_selected',
+                    position: position
+                }, '*');
+            }
+
+            // Scroll smooth verso l'elemento selezionato
+            slot.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        // Ricevi la posizione selezionata dal parent se esiste
+        window.addEventListener('message', function(event) {
+            if (event.data.type === 'set_selected_position') {
+                selectPosition(event.data.position);
+            }
+        });
+    </script>
+</body>
+</html>

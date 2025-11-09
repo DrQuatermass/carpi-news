@@ -2,6 +2,7 @@
 {% load static %}
 {% load italian_dates %}
 {% load webp_images %}
+{% load banner_tags %}
 
 {% block title %}Risultati ricerca: {{ query }} - Ombra del Portico{% endblock %}
 
@@ -10,11 +11,268 @@
     .back-link {
         color: #FAF7F0 !important;
     }
+
+    /* Banner inline tra le card */
+    .banner-card-slot {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 25px;
+        background: linear-gradient(135deg, rgba(150, 108, 66, 0.03) 0%, rgba(184, 149, 106, 0.05) 100%);
+        border-radius: 12px;
+        min-height: 200px;
+        position: relative;
+        overflow: hidden;
+        border: 1px solid rgba(150, 108, 66, 0.15);
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+    .banner-card-slot:hover {
+        border-color: rgba(150, 108, 66, 0.3);
+        box-shadow: 0 4px 20px rgba(150, 108, 66, 0.08);
+        background: linear-gradient(135deg, rgba(150, 108, 66, 0.05) 0%, rgba(184, 149, 106, 0.08) 100%);
+    }
+
+    .banner-card-slot::before {
+        content: 'SPAZIO PUBBLICITARIO';
+        position: absolute;
+        top: 40%;
+        margin-left: calc((100vw - 1200px) / -2);
+        transform: translate(-50%, -50%);
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: rgba(150, 108, 66, 0.6);
+        text-align: center;
+        width: 100%;
+        letter-spacing: 2px;
+        z-index: 2;
+        font-family: 'Georgia', serif;
+    }
+
+    .banner-card-slot::after {
+        content: 'Clicca qui per acquistare';
+        position: absolute;
+        bottom: 25px;
+        margin-left: calc((100vw - 1200px) / -2);
+        transform: translateX(-50%);
+        font-size: 0.85rem;
+        color: rgba(150, 108, 66, 0.7);
+        text-align: center;
+        width: 90%;
+        z-index: 2;
+        font-weight: 600;
+        font-style: normal;
+        text-decoration: underline;
+    }
+
+    /* Banner attivo - nascondi placeholder */
+    .banner-card-slot:has(.advertisement-banner) {
+        background: transparent !important;
+        padding: 0 !important;
+        min-height: auto !important;
+        border: none !important;
+        cursor: default !important;
+    }
+
+    .banner-card-slot:has(.advertisement-banner)::before,
+    .banner-card-slot:has(.advertisement-banner)::after {
+        display: none !important;
+    }
+
+    .banner-card-slot:has(.advertisement-banner):hover {
+        border: none !important;
+        box-shadow: none !important;
+        background: transparent !important;
+    }
+
+    .banner-card-slot .advertisement-banner {
+        margin: 0 !important;
+        width: 100%;
+        max-width: 100%;
+        position: relative;
+        z-index: 10;
+    }
+
+    .banner-card-slot .advertisement-banner img {
+        border-radius: 10px !important;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        transition: transform 0.3s ease;
+    }
+
+    .banner-card-slot .advertisement-banner:hover img {
+        transform: scale(1.02);
+    }
+
+    /* Banner header e footer */
+    .banner-header-slot,
+    .banner-footer-slot {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        background: linear-gradient(135deg, rgba(150, 108, 66, 0.03) 0%, rgba(184, 149, 106, 0.05) 100%);
+        border-radius: 12px;
+        min-height: 120px;
+        position: relative;
+        overflow: hidden;
+        margin: 15px 0;
+        border: 1px solid rgba(150, 108, 66, 0.15);
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+    .banner-header-slot:hover,
+    .banner-footer-slot:hover {
+        border-color: rgba(150, 108, 66, 0.3);
+        box-shadow: 0 4px 20px rgba(150, 108, 66, 0.08);
+        background: linear-gradient(135deg, rgba(150, 108, 66, 0.05) 0%, rgba(184, 149, 106, 0.08) 100%);
+    }
+
+    .banner-header-slot::before {
+        content: 'SPAZIO PUBBLICITARIO';
+        position: absolute;
+        top: 40%;
+        margin-left: calc((100vw - 1200px) / -2);
+        transform: translate(-50%, -50%);
+        font-size: 1rem;
+        font-weight: 600;
+        color: rgba(150, 108, 66, 0.6);
+        text-align: center;
+        width: 100%;
+        letter-spacing: 3px;
+        z-index: 1;
+        font-family: 'Georgia', serif;
+        pointer-events: none;
+    }
+
+    .banner-header-slot::after {
+        content: 'Clicca qui per acquistare';
+        position: absolute;
+        bottom: 15px;
+        margin-left: calc((100vw - 1200px) / -2);
+        transform: translateX(-50%);
+        font-size: 0.85rem;
+        color: rgba(150, 108, 66, 0.7);
+        text-align: center;
+        letter-spacing: 1px;
+        z-index: 1;
+        pointer-events: none;
+        font-weight: 600;
+        text-decoration: underline;
+    }
+
+    .banner-footer-slot::before {
+        content: 'SPAZIO PUBBLICITARIO';
+        position: absolute;
+        top: 40%;
+        margin-left: calc((100vw - 1200px) / -2);
+        transform: translate(-50%, -50%);
+        font-size: 1rem;
+        font-weight: 600;
+        color: rgba(150, 108, 66, 0.75);
+        text-align: center;
+        width: 100%;
+        letter-spacing: 3px;
+        z-index: 1;
+        font-family: 'Georgia', serif;
+        pointer-events: none;
+    }
+
+    .banner-footer-slot::after {
+        content: 'Clicca qui per acquistare';
+        position: absolute;
+        bottom: 20px;
+        margin-left: calc((100vw - 1200px) / -2);
+        transform: translateX(-50%);
+        font-size: 0.85rem;
+        color: rgba(150, 108, 66, 0.7);
+        text-align: center;
+        letter-spacing: 1px;
+        z-index: 1;
+        pointer-events: none;
+        font-weight: 600;
+        text-decoration: underline;
+    }
+
+    /* Nascondi placeholder quando c'è un banner */
+    .banner-header-slot:has(.advertisement-banner)::before,
+    .banner-header-slot:has(.advertisement-banner)::after,
+    .banner-footer-slot:has(.advertisement-banner)::before,
+    .banner-footer-slot:has(.advertisement-banner)::after,
+    .banner-header-slot.has-active-banner::before,
+    .banner-header-slot.has-active-banner::after,
+    .banner-footer-slot.has-active-banner::before,
+    .banner-footer-slot.has-active-banner::after {
+        display: none !important;
+    }
+
+    /* Quando c'è un banner, sfondo trasparente */
+    .banner-header-slot:has(.advertisement-banner),
+    .banner-footer-slot:has(.advertisement-banner),
+    .banner-header-slot.has-active-banner,
+    .banner-footer-slot.has-active-banner {
+        background: transparent !important;
+        padding: 0 !important;
+        min-height: auto !important;
+        margin: 20px 0 !important;
+        border: none !important;
+        cursor: default !important;
+    }
+
+    .banner-header-slot:has(.advertisement-banner):hover,
+    .banner-footer-slot:has(.advertisement-banner):hover,
+    .banner-header-slot.has-active-banner:hover,
+    .banner-footer-slot.has-active-banner:hover {
+        background: transparent !important;
+        border: none !important;
+        box-shadow: none !important;
+    }
+
+    .banner-header-slot .advertisement-banner,
+    .banner-footer-slot .advertisement-banner {
+        position: relative;
+        z-index: 10;
+        margin: 0 !important;
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .banner-header-slot .advertisement-banner img,
+    .banner-footer-slot .advertisement-banner img {
+        border-radius: 10px !important;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    /* Desktop: banner fuori dal container per larghezza piena */
+    /* Desktop: banner più grande */
+    @media (min-width: 769px) {
+        /* Banner verticali (card/sidebar) - larghezza piena della card */
+        .banner-card-slot .advertisement-banner img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        .banner-header-slot,
+        .banner-footer-slot {
+            min-height: 120px;
+        }
+
+        .banner-header-slot .advertisement-banner img,
+        .banner-footer-slot .advertisement-banner img {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container">
+    <!-- Banner Header -->
+    {% show_banner 'header' %}
+
     <!-- Header risultati -->
     <section class="results-header">
         <a href="/" class="back-link">← Torna alla home</a>
@@ -26,46 +284,105 @@
     <!-- Grid articoli -->
     <section class="results-section">
         <div class="results-grid">
-            {% for articolo in articoli %}
-            <a href="{% url 'dettaglio_articolo' articolo.slug %}" class="news-card-link">
-                <article class="news-card">
-                    <div class="news-image">
-                        {% if articolo.foto %}
-                            <img src="{{ articolo.foto }}"
-                                 alt="{{ articolo.titolo }}"
-                                 class="card-img"
-                                 width="616"
-                                 height="347"
-                                 loading="lazy"
-                                 onerror="this.src='{% static 'home/images/portico_logo_nopayoff.png' %}'">
-                        {% else %}
-                            <img src="{% static 'home/images/portico_logo_nopayoff.png' %}"
-                                 alt="{{ articolo.titolo }}"
-                                 class="card-img"
-                                 width="616"
-                                 height="347"
-                                 loading="lazy">
-                        {% endif %}
-                    </div>
-                    <div class="news-content">
-                        <div class="news-meta">
-                            <span class="category-tag">{{ articolo.categoria }}</span>
-                            <time datetime="{{ articolo.data_pubblicazione|date:'Y-m-d' }}">
-                                {{ articolo.data_pubblicazione|italian_date:'short' }}
-                            </time>
-                        </div>
-                        <h2 class="news-title">{{ articolo.titolo }}</h2>
-                        <p class="news-excerpt">{{ articolo.sommario|truncatewords:25 }}</p>
-                        <span class="read-more">Leggi tutto →</span>
-                    </div>
-                </article>
-            </a>
-            {% empty %}
-            <div class="no-results">
-                <p>Nessun articolo trovato per questa ricerca.</p>
-                <a href="/" class="btn-primary">Torna alla home</a>
-            </div>
-            {% endfor %}
+            {% if articoli %}
+                {# Posizione 0: Articolo 1 #}
+                {% if articoli.0 %}
+                    <a href="{% url 'dettaglio_articolo' articoli.0.slug %}" class="news-card-link">
+                        <article class="news-card">
+                            <div class="news-image">
+                                <img src="{{ articoli.0.foto|default:'/static/home/images/portico_logo_nopayoff.png' }}" alt="{{ articoli.0.titolo }}" class="card-img" width="616" height="347" loading="lazy" onerror="this.src='{% static 'home/images/portico_logo_nopayoff.png' %}'">
+                            </div>
+                            <div class="news-content">
+                                <div class="news-meta">
+                                    <span class="category-tag">{{ articoli.0.categoria }}</span>
+                                    <time datetime="{{ articoli.0.data_pubblicazione|date:'Y-m-d' }}">{{ articoli.0.data_pubblicazione|italian_date:'short' }}</time>
+                                </div>
+                                <h2 class="news-title">{{ articoli.0.titolo }}</h2>
+                                <p class="news-excerpt">{{ articoli.0.sommario|truncatewords:25 }}</p>
+                                <span class="read-more">Leggi tutto →</span>
+                            </div>
+                        </article>
+                    </a>
+                {% endif %}
+
+                {# Posizione 1: Articolo 2 #}
+                {% if articoli.1 %}
+                    <a href="{% url 'dettaglio_articolo' articoli.1.slug %}" class="news-card-link">
+                        <article class="news-card">
+                            <div class="news-image">
+                                <img src="{{ articoli.1.foto|default:'/static/home/images/portico_logo_nopayoff.png' }}" alt="{{ articoli.1.titolo }}" class="card-img" width="616" height="347" loading="lazy" onerror="this.src='{% static 'home/images/portico_logo_nopayoff.png' %}'">
+                            </div>
+                            <div class="news-content">
+                                <div class="news-meta">
+                                    <span class="category-tag">{{ articoli.1.categoria }}</span>
+                                    <time datetime="{{ articoli.1.data_pubblicazione|date:'Y-m-d' }}">{{ articoli.1.data_pubblicazione|italian_date:'short' }}</time>
+                                </div>
+                                <h2 class="news-title">{{ articoli.1.titolo }}</h2>
+                                <p class="news-excerpt">{{ articoli.1.sommario|truncatewords:25 }}</p>
+                                <span class="read-more">Leggi tutto →</span>
+                            </div>
+                        </article>
+                    </a>
+                {% endif %}
+
+                {# Posizione 2: Banner 1 #}
+                <div class="news-card-link banner-card-slot">
+                    {% show_banner 'between_articles' %}
+                </div>
+
+                {# Posizione 3: Articolo 3 #}
+                {% if articoli.2 %}
+                    <a href="{% url 'dettaglio_articolo' articoli.2.slug %}" class="news-card-link">
+                        <article class="news-card">
+                            <div class="news-image">
+                                <img src="{{ articoli.2.foto|default:'/static/home/images/portico_logo_nopayoff.png' }}" alt="{{ articoli.2.titolo }}" class="card-img" width="616" height="347" loading="lazy" onerror="this.src='{% static 'home/images/portico_logo_nopayoff.png' %}'">
+                            </div>
+                            <div class="news-content">
+                                <div class="news-meta">
+                                    <span class="category-tag">{{ articoli.2.categoria }}</span>
+                                    <time datetime="{{ articoli.2.data_pubblicazione|date:'Y-m-d' }}">{{ articoli.2.data_pubblicazione|italian_date:'short' }}</time>
+                                </div>
+                                <h2 class="news-title">{{ articoli.2.titolo }}</h2>
+                                <p class="news-excerpt">{{ articoli.2.sommario|truncatewords:25 }}</p>
+                                <span class="read-more">Leggi tutto →</span>
+                            </div>
+                        </article>
+                    </a>
+                {% endif %}
+
+                {# Posizione 4: Banner 2 #}
+                <div class="news-card-link banner-card-slot">
+                    {% show_banner 'between_articles' %}
+                </div>
+
+                {# Posizione 5: Articolo 4 #}
+                {% if articoli.3 %}
+                    <a href="{% url 'dettaglio_articolo' articoli.3.slug %}" class="news-card-link">
+                        <article class="news-card">
+                            <div class="news-image">
+                                <img src="{{ articoli.3.foto|default:'/static/home/images/portico_logo_nopayoff.png' }}" alt="{{ articoli.3.titolo }}" class="card-img" width="616" height="347" loading="lazy" onerror="this.src='{% static 'home/images/portico_logo_nopayoff.png' %}'">
+                            </div>
+                            <div class="news-content">
+                                <div class="news-meta">
+                                    <span class="category-tag">{{ articoli.3.categoria }}</span>
+                                    <time datetime="{{ articoli.3.data_pubblicazione|date:'Y-m-d' }}">{{ articoli.3.data_pubblicazione|italian_date:'short' }}</time>
+                                </div>
+                                <h2 class="news-title">{{ articoli.3.titolo }}</h2>
+                                <p class="news-excerpt">{{ articoli.3.sommario|truncatewords:25 }}</p>
+                                <span class="read-more">Leggi tutto →</span>
+                            </div>
+                        </article>
+                    </a>
+                {% endif %}
+            {% else %}
+                <div class="no-results">
+                    <p>Nessun articolo trovato per questa ricerca.</p>
+                    <a href="/" class="btn-primary">Torna alla home</a>
+                </div>
+            {% endif %}
+
+            <!-- Banner Footer (dentro la griglia, sopra la paginazione) -->
+            {% show_banner 'footer' %}
         </div>
 
         <!-- Paginazione -->

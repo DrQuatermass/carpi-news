@@ -290,6 +290,11 @@ if not DEBUG:
 # Anthropic API Configuration
 ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY', '')
 
+# PayPal Payment Configuration
+PAYPAL_MODE = os.getenv('PAYPAL_MODE', 'sandbox')  # sandbox or live
+PAYPAL_CLIENT_ID = os.getenv('PAYPAL_CLIENT_ID', '')
+PAYPAL_CLIENT_SECRET = os.getenv('PAYPAL_CLIENT_SECRET', '')
+
 # Site URL for media files
 SITE_URL = os.getenv('SITE_URL', 'https://ombradelportico.it')
 

@@ -37,11 +37,56 @@ def home(request):
     
     # Ordina per data di pubblicazione
     articoli_list = articoli_query.order_by('-data_pubblicazione')
-    
-    # Paginazione: 6 articoli per pagina
-    paginator = Paginator(articoli_list, 6)
+
+    # Paginazione: 4 articoli per pagina
+    paginator = Paginator(articoli_list, 4)
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
+
+    # LOGICA BANNER: 2 banner tra le card, mai contigui
+    # Posizioni possibili: 1, 2, 3, 4 (tra gli articoli, mai prima o dopo)
+    # Combina posizioni valide (non contigue)
+    from admin_panel.models import Banner
+    from admin_panel.templatetags.banner_tags import weighted_random_choice, reset_shown_users
+
+    # Reset cache utenti mostrati per questa pagina
+    reset_shown_users()
+
+    valid_combinations = [
+        [1, 3],  # Banner in pos 1 e 3
+        [1, 4],  # Banner in pos 1 e 4
+        [2, 4],  # Banner in pos 2 e 4
+    ]
+    banner_positions = random.choice(valid_combinations)
+
+    # Ottieni tutti i banner attivi per la posizione 'between_articles'
+    all_banners = list(Banner.objects.filter(
+        position='between_articles',
+        status='active',
+        payment_status='completed',
+        start_date__lte=timezone.now(),
+        end_date__gte=timezone.now()
+    ).select_related('user'))
+
+    # Selezione randomica pesata dei 2 banner
+    active_banners = []
+    if all_banners:
+        # Primo banner
+        banner1 = weighted_random_choice(all_banners)
+        if banner1:
+            active_banners.append(banner1)
+            # Incrementa impressions
+            banner1.impressions += 1
+            banner1.save(update_fields=['impressions'])
+
+        # Secondo banner (se ci sono abbastanza banner)
+        if len(all_banners) >= 2:
+            banner2 = weighted_random_choice(all_banners)
+            if banner2:
+                active_banners.append(banner2)
+                # Incrementa impressions
+                banner2.impressions += 1
+                banner2.save(update_fields=['impressions'])
     
     # Log per debugging
     if categoria:
@@ -62,8 +107,34 @@ def home(request):
         else:
             categorie_disponibili.append(cat)
     
+    # Crea la griglia mescolando articoli e banner/placeholder
+    # Posizioni 0-5: sempre 4 articoli + 2 slot banner
+    grid_items = []
+    article_index = 0
+    banner_index = 0
+
+    for i in range(6):  # 6 posizioni totali (0-5)
+        if i in banner_positions:
+            # Slot banner: mostra banner attivo o placeholder
+            banner_data = active_banners[banner_index] if banner_index < len(active_banners) else None
+            grid_items.append({
+                'type': 'banner',
+                'banner': banner_data,  # None = placeholder, oggetto Banner = banner attivo
+                'slot_index': banner_index
+            })
+            banner_index += 1
+        else:
+            # Slot articolo
+            if article_index < len(page_obj):
+                grid_items.append({
+                    'type': 'article',
+                    'data': page_obj[article_index]
+                })
+                article_index += 1
+
     context = {
         'articoli': page_obj,
+        'grid_items': grid_items,  # Griglia con articoli e banner/placeholder
         'current_page': page_obj.number,
         'total_pages': paginator.num_pages,
         'has_prev': page_obj.has_previous(),
@@ -71,6 +142,8 @@ def home(request):
         'categoria_attiva': categoria,
         'categorie_disponibili': list(categorie_disponibili),
         'current_year': 2025,
+        'banner_positions': banner_positions,
+        'active_banners_count': len(active_banners),
     }
     
     # Se è una richiesta AJAX, restituisci solo i dati JSON
@@ -104,6 +177,8 @@ def home(request):
             'has_prev': page_obj.has_previous(),
             'has_next': page_obj.has_next(),
             'categoria_attiva': categoria,
+            'banner_positions': banner_positions,
+            'num_banner_slots': num_banner_slots,
         })
     
     return render(request, "homepage.html", context)
@@ -477,10 +552,14 @@ def chatbot_results(request):
         else:
             categorie_disponibili.append(cat)
 
-    # Paginazione
-    paginator = Paginator(articles, 12)
+    # Paginazione: 4 articoli per pagina (come homepage)
+    # Con 2 banner in posizioni fisse, avremo 6 elementi totali
+    paginator = Paginator(articles, 4)
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
+
+    # Posizioni fisse dei banner (stesse della homepage)
+    banner_positions = [2, 4]  # Dopo il 2° articolo e dopo il 4° articolo
 
     # Serializza intent per template
     intent_str = json.dumps(intent)
@@ -493,6 +572,7 @@ def chatbot_results(request):
         'categorie_disponibili': list(categorie_disponibili),
         'categoria_attiva': None,
         'current_year': 2025,
+        'banner_positions': banner_positions,
     }
 
     return render(request, "chatbot_results.html", context)

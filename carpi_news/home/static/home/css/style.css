@@ -254,12 +254,12 @@ main {
 .hero {
     background: linear-gradient(135deg, #966C42 0%, #B8956A 50%, #D4C4A0 100%);
     color: white;
-    padding: 2rem 0;
-    margin-bottom: 1.5rem;
-    border-radius: 20px;
+    padding: 1.5rem 0;
+    margin-bottom: 2rem;
+    border-radius: 15px;
     position: relative;
     overflow: hidden;
-    box-shadow: 0 8px 32px rgba(150, 108, 66, 0.2);
+    box-shadow: 0 6px 24px rgba(150, 108, 66, 0.15);
 }
 
 .hero::before {
@@ -297,7 +297,7 @@ main {
 }
 
 .hero-logo {
-    margin: 0.5rem 1rem 0.5rem 1rem;
+    margin: 0.3rem 1rem 0.3rem 1rem;
     animation: slideInDown 1s ease;
 }
 
@@ -497,7 +497,7 @@ main {
 .news-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-    gap: 2rem;
+    gap: 1.5rem;
     flex: 1;
     position: relative;
     overflow: hidden;
@@ -2057,21 +2057,6 @@ footer {
     background: linear-gradient(135deg, #FFA500 0%, #FF8C00 100%);
     transform: translateY(-3px);
     box-shadow: 0 6px 20px rgba(255, 140, 0, 0.5);
-}
-
-    10% {
-        opacity: 1;
-        transform: translateX(0) scale(1);
-    }
-    90% {
-        opacity: 1;
-        transform: translateX(10px) scale(1.2);
-    }
-    100% {
-        bottom: 300px;
-        opacity: 0;
-        transform: translateX(20px) scale(0.8);
-    }
 }
 
 /* Responsive Design */

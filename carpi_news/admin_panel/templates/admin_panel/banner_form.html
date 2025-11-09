@@ -95,6 +95,7 @@
         .form-group input[type="text"],
         .form-group input[type="url"],
         .form-group input[type="number"],
+        .form-group input[type="date"],
         .form-group select {
             width: 100%;
             padding: 12px 15px;
@@ -102,6 +103,22 @@
             border-radius: 10px;
             font-size: 14px;
             transition: all 0.3s ease;
+        }
+
+        .form-group input[type="date"] {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            cursor: pointer;
+        }
+
+        .form-group input[type="date"]::-webkit-calendar-picker-indicator {
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 5px;
+            transition: all 0.2s ease;
+        }
+
+        .form-group input[type="date"]::-webkit-calendar-picker-indicator:hover {
+            background-color: rgba(102, 126, 234, 0.1);
         }
 
         .form-group input:focus,
@@ -143,6 +160,40 @@
         .file-input-label:hover {
             border-color: #667eea;
             background: rgba(102, 126, 234, 0.05);
+        }
+
+        .date-range-display {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-top: 15px;
+            margin-bottom: 25px;
+            display: none;
+        }
+
+        .date-range-display.active {
+            display: block;
+        }
+
+        .date-range-display .range-info {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 15px;
+        }
+
+        .date-range-display .dates {
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        .date-range-display .duration {
+            background: rgba(255, 255, 255, 0.25);
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 700;
         }
 
         .pricing-info {
@@ -222,15 +273,381 @@
             color: #721c24;
             border-left: 4px solid #dc3545;
         }
+
+        .message.success {
+            background-color: #d4edda;
+            color: #155724;
+            border-left: 4px solid #28a745;
+        }
+
+        .message.info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border-left: 4px solid #17a2b8;
+        }
+
+        /* Position Selector Styles */
+        .position-selector {
+            margin-top: 15px;
+        }
+
+        .site-preview {
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 20px;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .preview-section {
+            margin-bottom: 15px;
+        }
+
+        .preview-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .header-section,
+        .footer-section {
+            text-align: center;
+        }
+
+        .main-section {
+            display: flex;
+            gap: 15px;
+        }
+
+        .content-area {
+            flex: 1;
+        }
+
+        .sidebar-area {
+            width: 220px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .article-preview {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 12px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+        }
+
+        .fake-article-content {
+            height: 40px;
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        .position-slot {
+            background: white;
+            border: 3px dashed #cbd5e0;
+            border-radius: 10px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            margin-bottom: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .position-slot:hover {
+            border-color: #667eea;
+            background: #f7fafc;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+        }
+
+        .preview-btn {
+            background: linear-gradient(135deg, #48bb78 0%, #38a169 100%);
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            align-self: flex-start;
+        }
+
+        .preview-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 4px 10px rgba(72, 187, 120, 0.3);
+        }
+
+        .preview-container-wrapper {
+            display: none;
+            margin-top: 30px;
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        .preview-container-wrapper.active {
+            display: block;
+            animation: slideDown 0.3s ease;
+        }
+
+        .preview-header-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .preview-header-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+        }
+
+        .preview-position-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 5px 12px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        .preview-close-btn {
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .preview-close-btn:hover {
+            background: #5a6268;
+        }
+
+        .preview-iframe-container {
+            width: 100%;
+            height: 600px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+            background: white;
+            position: relative;
+        }
+
+        .preview-iframe-container iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        .preview-loading {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+
+        .preview-loading.hidden {
+            display: none;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(102, 126, 234, 0.1);
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .position-slot.selected {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-color: #667eea;
+            border-style: solid;
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .position-slot.selected .slot-label,
+        .position-slot.selected .slot-placeholder {
+            color: white;
+        }
+
+        .position-slot.selected::after {
+            content: '✓';
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: white;
+            color: #667eea;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .slot-label {
+            display: block;
+            font-weight: 600;
+            font-size: 13px;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .slot-placeholder {
+            font-size: 11px;
+            color: #999;
+            text-align: center;
+            padding: 8px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            border: 1px solid #e9ecef;
+        }
+
+        .position-slot.small {
+            padding: 10px;
+            margin-bottom: 8px;
+        }
+
+        .position-slot.small .slot-label {
+            font-size: 12px;
+            margin-bottom: 5px;
+        }
+
+        .position-slot.small .slot-placeholder {
+            font-size: 10px;
+            padding: 5px;
+        }
+
+        .position-slot.sidebar {
+            min-height: 100px;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .main-section {
+                flex-direction: column;
+            }
+
+            .sidebar-area {
+                width: 100%;
+            }
+        }
     </style>
     <script>
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            const options = { day: 'numeric', month: 'long', year: 'numeric' };
+            return date.toLocaleDateString('it-IT', options);
+        }
+
         function calculatePrice() {
-            const days = document.getElementById('duration_days').value || 1;
-            const pricePerDay = 5.00; // €5/giorno
+            const startDate = document.getElementById('start_date').value;
+            const endDate = document.getElementById('end_date').value;
+            const priority = document.getElementById('priority').value || 4;
+            const basePricePerDay = 1.00; // €1/giorno base
+
+            const dateRangeDisplay = document.getElementById('date-range-display');
+
+            // Calcola giorni tra le date
+            let days = 1;
+            if (startDate && endDate) {
+                const start = new Date(startDate);
+                const end = new Date(endDate);
+                const diffTime = Math.abs(end - start);
+                days = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; // +1 per includere entrambi i giorni
+
+                if (days < 1) days = 1;
+
+                // Mostra il range di date
+                dateRangeDisplay.classList.add('active');
+                document.getElementById('range-dates').textContent = formatDate(startDate) + ' → ' + formatDate(endDate);
+                document.getElementById('range-duration').textContent = days + (days === 1 ? ' giorno' : ' giorni');
+            } else {
+                dateRangeDisplay.classList.remove('active');
+            }
+
+            // Aggiorna il campo nascosto duration_days
+            document.getElementById('duration_days').value = days;
+
+            // Moltiplicatore in base alla priorità
+            let multiplier = 1;
+            if (priority == 1) multiplier = 5;
+            else if (priority == 2) multiplier = 3;
+            else if (priority == 3) multiplier = 2;
+            else if (priority == 4) multiplier = 1;
+
+            const pricePerDay = basePricePerDay * multiplier;
             const totalPrice = (days * pricePerDay).toFixed(2);
 
             document.getElementById('total-price').textContent = '€' + totalPrice;
-            document.getElementById('price-details').textContent = days + ' giorni × €' + pricePerDay.toFixed(2) + '/giorno';
+            document.getElementById('price-details').textContent = days + ' giorni × €' + pricePerDay.toFixed(2) + '/giorno (priorità ' + priority + ')';
+        }
+
+        function setMinEndDate() {
+            const startDate = document.getElementById('start_date').value;
+            const endDateInput = document.getElementById('end_date');
+
+            if (startDate) {
+                endDateInput.min = startDate;
+
+                // Se la data fine è precedente alla data inizio, resettala
+                if (endDateInput.value && endDateInput.value < startDate) {
+                    endDateInput.value = startDate;
+                }
+            }
+
+            calculatePrice();
         }
 
         function updateFileName(input) {
@@ -238,8 +655,147 @@
             document.getElementById('file-name').textContent = fileName;
         }
 
+        // Mappa delle dimensioni consigliate per posizione
+        const recommendedSizes = {
+            'header': '728×90 pixel (Leaderboard)',
+            'footer': '728×90 pixel (Leaderboard)',
+            'article_top': '728×90 pixel (Leaderboard)',
+            'article_bottom': '728×90 pixel (Leaderboard)',
+            'between_articles': '300×250 pixel (Medium Rectangle)',
+            'article_middle': '300×250 pixel (Medium Rectangle)',
+            'sidebar_top': '300×250 pixel (Medium Rectangle)',
+            'sidebar_middle': '300×250 pixel (Medium Rectangle)',
+            'sidebar_bottom': '300×250 pixel (Medium Rectangle)'
+        };
+
+        // Mappa del tipo di banner (orizzontale vs verticale)
+        // ORIZZONTALI (728×90 Leaderboard): header, footer, article_top, article_bottom
+        // VERTICALI (300×250 Medium Rectangle): between_articles, sidebar_*, article_middle
+        const bannerTypes = {
+            'header': 'horizontal',           // 728×90 - Header sito
+            'footer': 'horizontal',           // 728×90 - Footer sito
+            'article_top': 'horizontal',      // 728×90 - Inizio articolo
+            'article_bottom': 'horizontal',   // 728×90 - Fine articolo
+            'between_articles': 'vertical',   // 300×250 - Tra le card homepage
+            'article_middle': 'vertical',     // 300×250 - Centro articolo
+            'sidebar_top': 'vertical',        // 300×250 - Sidebar alto (non implementato)
+            'sidebar_middle': 'vertical',     // 300×250 - Sidebar centro (non implementato)
+            'sidebar_bottom': 'vertical'      // 300×250 - Sidebar basso (non implementato)
+        };
+
+        function updateRecommendedSize(position) {
+            const sizeInfo = document.getElementById('image-size-info');
+            const sizeText = document.getElementById('recommended-size-text');
+            const warningBox = document.getElementById('banner-size-warning');
+            const warningText = document.getElementById('banner-size-warning-text');
+
+            if (position && recommendedSizes[position]) {
+                // Mostra dimensioni consigliate
+                sizeText.textContent = recommendedSizes[position];
+                sizeInfo.style.display = 'block';
+
+                // Mostra avviso appropriato in base al tipo
+                const bannerType = bannerTypes[position];
+                if (bannerType === 'horizontal') {
+                    // Banner orizzontali (728×90): altezza massima 270px, intercambiabili
+                    warningText.innerHTML = 'I banner orizzontali (Leaderboard 728×90) sono <strong>intercambiabili</strong> tra Header, Footer e Articoli.<br>Altezza massima: <strong>270 pixel</strong> (3× l\'altezza standard). Larghezza: scalata automaticamente mantenendo le proporzioni.';
+                    warningBox.style.display = 'block';
+                    warningBox.style.background = '#fff3cd';
+                    warningBox.style.borderColor = '#ffc107';
+                } else {
+                    // Banner verticali (300×250): nessun limite di altezza
+                    warningText.innerHTML = 'I banner verticali (Medium Rectangle 300×250) appaiono <strong>tra le Card degli articoli</strong>.<br><strong>Nessun limite di altezza</strong>. Larghezza massima: 300px mantenendo le proporzioni.';
+                    warningBox.style.display = 'block';
+                    warningBox.style.background = '#d1ecf1';
+                    warningBox.style.borderColor = '#17a2b8';
+                }
+            } else {
+                sizeInfo.style.display = 'none';
+                warningBox.style.display = 'none';
+            }
+        }
+
+        function initPositionSelector() {
+            const positionInput = document.getElementById('position');
+            const iframe = document.getElementById('preview-iframe');
+
+            // Aggiorna dimensioni consigliate se c'è già una posizione selezionata
+            if (positionInput.value) {
+                updateRecommendedSize(positionInput.value);
+            }
+
+            // Ascolta i messaggi dall'iframe
+            window.addEventListener('message', function(event) {
+                if (event.data.type === 'banner_position_selected') {
+                    positionInput.value = event.data.position;
+                    updateRecommendedSize(event.data.position);
+                }
+            });
+
+            // Invia la posizione corrente all'iframe quando è caricato
+            iframe.addEventListener('load', function() {
+                if (positionInput.value) {
+                    iframe.contentWindow.postMessage({
+                        type: 'set_selected_position',
+                        position: positionInput.value
+                    }, '*');
+                }
+            });
+        }
+
+        function setPreviewMode(mode) {
+            const iframeWrapper = document.getElementById('iframe-wrapper');
+            const iframe = document.getElementById('preview-iframe');
+            const desktopBtn = document.getElementById('desktop-view-btn');
+            const mobileBtn = document.getElementById('mobile-view-btn');
+
+            if (mode === 'mobile') {
+                // Modalità mobile: 375px width (iPhone) verticale
+                iframeWrapper.style.maxWidth = '375px';
+                iframeWrapper.style.transform = 'scale(1)';
+                iframeWrapper.style.height = 'auto';
+                iframe.style.width = '375px';
+                iframe.style.height = '800px';
+
+                // Stile bottoni
+                mobileBtn.style.background = '#667eea';
+                mobileBtn.style.color = 'white';
+                mobileBtn.style.borderColor = '#667eea';
+                desktopBtn.style.background = 'white';
+                desktopBtn.style.color = '#666';
+                desktopBtn.style.borderColor = '#e0e0e0';
+            } else {
+                // Modalità desktop: 1440px scalato al 50% in orizzontale
+                const desktopWidth = 1440;
+                const desktopHeight = 900;
+                const scale = 0.5; // Scala al 50%
+
+                iframeWrapper.style.maxWidth = (desktopWidth * scale) + 'px';
+                iframeWrapper.style.height = (desktopHeight * scale) + 'px';
+                iframeWrapper.style.transform = `scale(${scale})`;
+                iframeWrapper.style.transformOrigin = 'top left';
+
+                iframe.style.width = desktopWidth + 'px';
+                iframe.style.height = desktopHeight + 'px';
+
+                // Stile bottoni
+                desktopBtn.style.background = '#667eea';
+                desktopBtn.style.color = 'white';
+                desktopBtn.style.borderColor = '#667eea';
+                mobileBtn.style.background = 'white';
+                mobileBtn.style.color = '#666';
+                mobileBtn.style.borderColor = '#e0e0e0';
+            }
+        }
+
         window.onload = function() {
+            // Imposta data minima ad oggi per start_date
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('start_date').min = today;
+
             calculatePrice();
+            initPositionSelector();
+            setPreviewMode('desktop'); // Inizializza la vista desktop di default
         };
     </script>
 </head>
@@ -272,8 +828,63 @@
                 {% csrf_token %}
 
                 <div class="form-group">
+                    <label for="position">Posizione <span class="required">*</span></label>
+                    <input type="hidden" id="position" name="position" value="{% if form_data.position %}{{ form_data.position }}{% elif banner %}{{ banner.position }}{% endif %}" required>
+
+                    {% if form_data.position %}
+                    <script>
+                        // Ripristina la posizione selezionata dopo errore di validazione
+                        document.addEventListener('DOMContentLoaded', function() {
+                            const selectedPosition = '{{ form_data.position }}';
+                            if (selectedPosition) {
+                                // Aggiorna subito le dimensioni consigliate
+                                setTimeout(function() {
+                                    updateRecommendedSize(selectedPosition);
+                                }, 100);
+
+                                const iframe = document.getElementById('preview-iframe');
+                                iframe.addEventListener('load', function() {
+                                    iframe.contentWindow.postMessage({
+                                        type: 'set_selected_position',
+                                        position: selectedPosition
+                                    }, '*');
+                                });
+                            }
+                        });
+                    </script>
+                    {% endif %}
+
+                    <!-- Interactive Preview -->
+                    <div class="position-selector">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <p style="margin: 0; color: #666; font-size: 14px;">
+                                <strong>Anteprima Sito Reale:</strong> Clicca sugli spazi banner evidenziati
+                            </p>
+                            <div class="preview-mode-switch" style="display: flex; gap: 10px; align-items: center;">
+                                <span style="font-size: 13px; color: #666;">Visualizzazione:</span>
+                                <button type="button" id="desktop-view-btn" class="view-mode-btn active" onclick="setPreviewMode('desktop')" style="padding: 8px 16px; border: 2px solid #667eea; background: #667eea; color: white; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.3s;">
+                                    🖥️ Desktop
+                                </button>
+                                <button type="button" id="mobile-view-btn" class="view-mode-btn" onclick="setPreviewMode('mobile')" style="padding: 8px 16px; border: 2px solid #e0e0e0; background: white; color: #666; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; transition: all 0.3s;">
+                                    📱 Mobile
+                                </button>
+                            </div>
+                        </div>
+                        <div class="interactive-preview-container" style="background: #f5f7fa; padding: 20px; border-radius: 12px; display: flex; justify-content: center; align-items: flex-start; overflow: auto;">
+                            <div id="iframe-wrapper" style="transition: all 0.5s ease; transform-origin: top left;">
+                                <iframe id="preview-iframe" src="/?preview_mode=1&occupied_positions={{ occupied_positions|join:',' }}" style="border: 2px solid #e0e0e0; border-radius: 12px; background: white; display: block; pointer-events: auto;"></iframe>
+                            </div>
+                        </div>
+                        <p style="margin-top: 10px; color: #999; font-size: 12px; text-align: center;">
+                            💡 Naviga tra Homepage e Articoli per vedere dove appariranno i banner
+                        </p>
+                    </div>
+                    <small>Gli spazi banner nel sito sono evidenziati con bordo blu tratteggiato</small>
+                </div>
+
+                <div class="form-group">
                     <label for="title">Titolo <span class="required">*</span></label>
-                    <input type="text" id="title" name="title" value="{{ banner.title|default:'' }}" required>
+                    <input type="text" id="title" name="title" value="{% if form_data.title %}{{ form_data.title }}{% elif banner %}{{ banner.title }}{% endif %}" required>
                     <small>Nome identificativo del tuo banner</small>
                 </div>
 
@@ -282,56 +893,79 @@
                     <div class="file-input-wrapper">
                         <input type="file" id="image" name="image" accept="image/*" onchange="updateFileName(this)" {% if not is_edit %}required{% endif %}>
                         <label for="image" class="file-input-label">
-                            📷 <span id="file-name">Clicca per selezionare un'immagine</span>
+                            📷 <span id="file-name">{% if banner and banner.image %}{{ banner.image.name }}{% else %}Clicca per selezionare un'immagine{% endif %}</span>
                         </label>
                     </div>
-                    <small>Formati consigliati: 728x90px (leaderboard) o 300x250px (medium rectangle)</small>
+                    <div id="image-size-info" style="margin-top: 8px; padding: 10px; background: #e3f2fd; border-left: 4px solid #2196f3; border-radius: 6px; display: none;">
+                        <strong style="color: #1565c0;">📐 Dimensioni consigliate:</strong>
+                        <span id="recommended-size-text" style="color: #0d47a1; font-weight: 600;">Seleziona prima una posizione</span>
+                    </div>
+                    <small>L'immagine sarà scalata alla larghezza massima disponibile mantenendo le proporzioni e convertita in WebP</small>
+                    <div id="banner-size-warning" style="margin-top: 8px; padding: 10px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 6px; display: none;">
+                        <strong style="color: #856404;">⚠️ Limiti dimensioni:</strong><br>
+                        <span id="banner-size-warning-text" style="color: #856404; font-size: 13px;"></span>
+                    </div>
                 </div>
 
                 <div class="form-group">
                     <label for="link_url">URL di Destinazione <span class="required">*</span></label>
-                    <input type="url" id="link_url" name="link_url" value="{{ banner.link_url|default:'' }}" placeholder="https://esempio.com" required>
+                    <input type="url" id="link_url" name="link_url" value="{% if form_data.link_url %}{{ form_data.link_url }}{% elif banner %}{{ banner.link_url }}{% endif %}" placeholder="https://esempio.com" required>
                     <small>Dove verranno reindirizzati gli utenti che cliccano sul banner</small>
                 </div>
 
                 <div class="form-group">
                     <label for="alt_text">Testo Alternativo <span class="required">*</span></label>
-                    <input type="text" id="alt_text" name="alt_text" value="{{ banner.alt_text|default:'' }}" required>
+                    <input type="text" id="alt_text" name="alt_text" value="{% if form_data.alt_text %}{{ form_data.alt_text }}{% elif banner %}{{ banner.alt_text }}{% endif %}" required>
                     <small>Descrizione per accessibilità e SEO</small>
                 </div>
 
                 <div class="form-group">
-                    <label for="position">Posizione <span class="required">*</span></label>
-                    <select id="position" name="position" required>
-                        <option value="">-- Seleziona una posizione --</option>
-                        {% for value, label in positions %}
-                        <option value="{{ value }}" {% if banner.position == value %}selected{% endif %}>{{ label }}</option>
-                        {% endfor %}
+                    <label for="start_date">📅 Data Inizio <span class="required">*</span></label>
+                    <input type="date" id="start_date" name="start_date" value="{% if form_data.start_date %}{{ form_data.start_date }}{% elif banner and banner.start_date %}{{ banner.start_date|date:'Y-m-d' }}{% endif %}" onchange="setMinEndDate()" required>
+                    <small>Data di inizio pubblicazione del banner (può essere oggi)</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="end_date">📅 Data Fine <span class="required">*</span></label>
+                    <input type="date" id="end_date" name="end_date" value="{% if form_data.end_date %}{{ form_data.end_date }}{% elif banner and banner.end_date %}{{ banner.end_date|date:'Y-m-d' }}{% endif %}" onchange="calculatePrice()" required>
+                    <small>Data di termine pubblicazione del banner</small>
+                </div>
+
+                <!-- Campo nascosto per duration_days (calcolato automaticamente) -->
+                <input type="hidden" id="duration_days" name="duration_days" value="{% if banner and banner.duration_days %}{{ banner.duration_days }}{% else %}1{% endif %}">
+
+                <!-- Visualizzazione range di date -->
+                <div id="date-range-display" class="date-range-display">
+                    <div class="range-info">
+                        <div class="dates">
+                            📅 <span id="range-dates">-</span>
+                        </div>
+                        <div class="duration">
+                            ⏱️ <span id="range-duration">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="priority">Priorità <span class="required">*</span></label>
+                    <select id="priority" name="priority" onchange="calculatePrice()" required>
+                        <option value="1" {% if form_data.priority == '1' or form_data.priority == 1 or banner and banner.priority == 1 %}selected{% endif %}>1 - Massima (×5 prezzo)</option>
+                        <option value="2" {% if form_data.priority == '2' or form_data.priority == 2 or banner and banner.priority == 2 %}selected{% endif %}>2 - Alta (×3 prezzo)</option>
+                        <option value="3" {% if form_data.priority == '3' or form_data.priority == 3 or banner and banner.priority == 3 %}selected{% endif %}>3 - Media (×2 prezzo)</option>
+                        <option value="4" {% if form_data.priority == '4' or form_data.priority == 4 or banner and banner.priority == 4 or not form_data.priority and not banner %}selected{% endif %}>4 - Normale (×1 prezzo)</option>
                     </select>
-                    <small>Dove verrà visualizzato il banner sul sito</small>
-                </div>
-
-                <div class="form-group">
-                    <label for="duration_days">Durata (giorni) <span class="required">*</span></label>
-                    <input type="number" id="duration_days" name="duration_days" value="{{ banner.duration_days|default:7 }}" min="1" max="365" oninput="calculatePrice()" required>
-                    <small>Da 1 a 365 giorni</small>
-                </div>
-
-                <div class="form-group">
-                    <label for="priority">Priorità</label>
-                    <input type="number" id="priority" name="priority" value="{{ banner.priority|default:1 }}" min="1" max="10">
-                    <small>Da 1 (bassa) a 10 (alta) - influenza l'ordine di visualizzazione</small>
+                    <small>La priorità influenza la visibilità e il costo del banner</small>
                 </div>
 
                 <div class="pricing-info">
                     <h3>💰 Riepilogo Costi</h3>
-                    <div class="price" id="total-price">€{{ banner.total_price|default:'35.00' }}</div>
-                    <div class="details" id="price-details">7 giorni × €5.00/giorno</div>
+                    <div class="price" id="total-price">€7.00</div>
+                    <div class="details" id="price-details">7 giorni × €1.00/giorno (priorità 4)</div>
                 </div>
 
                 <div class="form-actions">
                     <button type="submit" class="btn btn-primary">
-                        {% if is_edit %}💾 Salva Modifiche{% else %}➡️ Procedi al Pagamento{% endif %}
+                        {% if is_edit %}💾 Salva Modifiche{% else %}🛒 Procedi all'Acquisto{% endif %}
                     </button>
                     <a href="{% url 'admin_panel:banner_list' %}" class="btn btn-secondary">✖️ Annulla</a>
                 </div>

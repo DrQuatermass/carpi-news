@@ -40,8 +40,9 @@
     <!-- Preconnect per performance -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://www.googletagmanager.com">
-    <link rel="preconnect" href="https://pagead2.googlesyndication.com">
+    <link rel="dns-prefetch" href="https://www.googletagmanager.com">
+    <link rel="dns-prefetch" href="https://pagead2.googlesyndication.com">
+    <link rel="dns-prefetch" href="https://fundingchoicesmessages.google.com">
 
     <!-- Fonts con display=swap per rendering veloce -->
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
@@ -57,18 +58,6 @@
     <link rel="icon" type="image/png" sizes="16x16" href="{% static 'home/images/portico_logo_nopayoff.png' %}">
     <link rel="apple-touch-icon" href="{% static 'home/images/portico_logo_nopayoff.png' %}">
     
-    <!-- Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-MSCYFFSNGD"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-MSCYFFSNGD');
-    </script>
-
-    <!-- Google AdSense -->
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3345905614586761" crossorigin="anonymous"></script>
-
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -281,20 +270,23 @@
 
     {% block javascript %}
     <script>
+        // Polyfill requestIdleCallback
+        window.requestIdleCallback = window.requestIdleCallback || function(cb) { setTimeout(cb, 1); };
+
         // Cookie Banner Management
         function checkCookieConsent() {
             const consent = localStorage.getItem('cookie-consent');
             if (!consent) {
-                setTimeout(() => {
+                requestIdleCallback(() => {
                     document.getElementById('cookie-banner').style.display = 'block';
-                }, 1000); // Mostra dopo 1 secondo
+                }, { timeout: 2000 });
             }
         }
 
         function setCookieConsent(type) {
             localStorage.setItem('cookie-consent', type);
             localStorage.setItem('cookie-date', new Date().toISOString());
-            
+
             // Nascondi banner con animazione
             const banner = document.getElementById('cookie-banner');
             banner.style.animation = 'slideDown 0.5s ease-in';
@@ -314,8 +306,8 @@
                 setCookieConsent('essential');
             });
 
-            // Controlla consenso cookie
-            checkCookieConsent();
+            // Controlla consenso cookie - deferred
+            requestIdleCallback(checkCookieConsent, { timeout: 2000 });
 
             // Scroll effect per header
             window.addEventListener('scroll', function() {
@@ -412,6 +404,21 @@
 
     <!-- Chatbot JavaScript -->
     <script src="{% static 'home/js/chatbot.js' %}?v=2025110502"></script>
+
+    <!-- Google Analytics - Deferred -->
+    <script>
+      window.addEventListener('load', function() {
+        var script = document.createElement('script');
+        script.src = 'https://www.googletagmanager.com/gtag/js?id=G-MSCYFFSNGD';
+        script.async = true;
+        document.head.appendChild(script);
+
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-MSCYFFSNGD');
+      });
+    </script>
     {% endblock %}
 </body>
 </html>
