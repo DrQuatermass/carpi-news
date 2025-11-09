@@ -322,7 +322,7 @@
             </div>
 
             <!-- Banner centro articolo (verrà spostato nel mezzo via JS) -->
-            <div class="article-middle-banner" id="article-middle-banner">
+            <div class="article-middle-banner" id="article-middle-banner" style="display: none;">
                 {% show_banner 'article_middle' %}
             </div>
 
@@ -676,14 +676,17 @@
                 // Sposta il banner dopo il paragrafo medio
                 if (middleParagraph && middleParagraph.parentNode) {
                     middleParagraph.parentNode.insertBefore(middleBanner, middleParagraph.nextSibling);
+                    middleBanner.style.display = ''; // Mostra il banner dopo averlo spostato
                 }
             } else if (paragraphs.length > 0) {
                 // Se ci sono pochi paragrafi, metti dopo il primo
                 const firstParagraph = paragraphs[0];
                 if (firstParagraph && firstParagraph.parentNode) {
                     firstParagraph.parentNode.insertBefore(middleBanner, firstParagraph.nextSibling);
+                    middleBanner.style.display = ''; // Mostra il banner dopo averlo spostato
                 }
             }
+            // Se non ci sono paragrafi, il banner rimane nascosto
         }
     })();
 
