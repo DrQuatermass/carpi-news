@@ -2491,11 +2491,21 @@ class UniversalNewsMonitor:
                     # Controllo duplicati sia in memoria che nel database
                     if article_hash not in self.seen_articles:
                         # Controllo duplicati nel database prima di processare
-                        existing = Articolo.objects.filter(fonte=article_data['url']).exists()
-                        if not existing:
+                        # Controlla sia per URL esatto che per titolo simile
+                        existing_by_url = Articolo.objects.filter(fonte=article_data['url']).exists()
+                        existing_by_title = Articolo.objects.filter(titolo=article_data['title']).exists()
+
+                        if not existing_by_url and not existing_by_title:
                             self.process_new_article(article_data)
                             processed_count += 1
-                        self.seen_articles[article_hash] = datetime.now().isoformat()
+                            # Aggiungi hash solo se effettivamente processato
+                            self.seen_articles[article_hash] = datetime.now().isoformat()
+                        else:
+                            # Articolo già esistente, aggiungi comunque l'hash per evitare ricontrolli DB
+                            self.seen_articles[article_hash] = datetime.now().isoformat()
+                            self.logger.debug(f"Articolo già esistente nel DB: {article_data['title'][:50]}...")
+                    else:
+                        self.logger.debug(f"Articolo già visto in memoria: {article_data['title'][:50]}...")
 
                 self.logger.info(f"Processati {processed_count} nuovi articoli")
             else:
@@ -2718,42 +2728,58 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
                 'contenuto': contenuto
             })
 
-            # Salva nel database
-            # Usa categoria override se disponibile, altrimenti quella di default
-            category = article_data.get('category_override', self.config.category)
+            # Salva nel database con protezione race condition
+            from django.db import transaction
 
-            # Determina se deve essere auto-approvato
-            auto_approve = self.should_auto_approve(category)
+            # Controllo atomico per prevenire duplicati da race condition
+            with transaction.atomic():
+                # Lock a livello DB: controlla se esiste già per URL fonte o titolo
+                # (per articoli senza fonte come editoriali usa il titolo)
+                if article_data.get('url'):
+                    existing = Articolo.objects.select_for_update().filter(fonte=article_data['url']).first()
+                else:
+                    # Per articoli senza fonte (editoriali), usa il titolo generato dall'AI
+                    existing = Articolo.objects.select_for_update().filter(titolo=polished_data['titolo']).first()
 
-            # Estrai data evento se presente (per Eventi Carpi GraphQL)
-            data_evento = None
-            if article_data.get('event_start'):
-                try:
-                    from datetime import datetime
-                    # Formato: "2025-10-28T10:00:00" o "2025-10-28"
-                    event_start_str = article_data['event_start']
-                    if 'T' in event_start_str:
-                        data_evento = datetime.fromisoformat(event_start_str).date()
-                    else:
-                        data_evento = datetime.strptime(event_start_str, '%Y-%m-%d').date()
-                except Exception as e:
-                    self.logger.warning(f"Errore parsing data evento: {e}")
+                if existing:
+                    self.logger.warning(f"Articolo AI già esistente (race condition evitata): {existing.titolo}")
+                    return f"Articolo già esistente con ID: {existing.id}"
 
-            articolo = Articolo(
-                titolo=polished_data['titolo'],
-                contenuto=polished_data['contenuto'],
-                categoria=category,
-                fonte=article_data['url'],
-                foto=article_data.get('image_url'),
-                fonti_web=used_sources if used_sources else None,  # Salva fonti web utilizzate
-                data_evento=data_evento,  # Imposta data evento se disponibile
-                approvato=auto_approve,  # Auto-approva se configurato
-                data_pubblicazione=timezone.now()
-            )
-            articolo.save()
+                # Usa categoria override se disponibile, altrimenti quella di default
+                category = article_data.get('category_override', self.config.category)
 
-            search_status = f" (fonti web: {len(used_sources)})" if enable_web_search and used_sources else ""
-            return f"Articolo AI salvato con ID: {articolo.id}{search_status}"
+                # Determina se deve essere auto-approvato
+                auto_approve = self.should_auto_approve(category)
+
+                # Estrai data evento se presente (per Eventi Carpi GraphQL)
+                data_evento = None
+                if article_data.get('event_start'):
+                    try:
+                        from datetime import datetime
+                        # Formato: "2025-10-28T10:00:00" o "2025-10-28"
+                        event_start_str = article_data['event_start']
+                        if 'T' in event_start_str:
+                            data_evento = datetime.fromisoformat(event_start_str).date()
+                        else:
+                            data_evento = datetime.strptime(event_start_str, '%Y-%m-%d').date()
+                    except Exception as e:
+                        self.logger.warning(f"Errore parsing data evento: {e}")
+
+                articolo = Articolo(
+                    titolo=polished_data['titolo'],
+                    contenuto=polished_data['contenuto'],
+                    categoria=category,
+                    fonte=article_data['url'],
+                    foto=article_data.get('image_url'),
+                    fonti_web=used_sources if used_sources else None,  # Salva fonti web utilizzate
+                    data_evento=data_evento,  # Imposta data evento se disponibile
+                    approvato=auto_approve,  # Auto-approva se configurato
+                    data_pubblicazione=timezone.now()
+                )
+                articolo.save()
+
+                search_status = f" (fonti web: {len(used_sources)})" if enable_web_search and used_sources else ""
+                return f"Articolo AI salvato con ID: {articolo.id}{search_status}"
 
         except Exception as e:
             return f"Errore nella generazione AI: {e}"
@@ -2948,42 +2974,58 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
 
 
     def save_article_directly(self, article_data: Dict[str, Any]):
-        """Salva articolo direttamente senza AI"""
-        # Applica polishing anche al salvataggio diretto
-        polished_data = content_polisher.polish_article({
-            'titolo': article_data['title'],
-            'contenuto': article_data['full_content']
-        })
+        """Salva articolo direttamente senza AI con protezione race condition"""
+        from django.db import transaction
 
-        # Determina se deve essere auto-approvato
-        auto_approve = self.should_auto_approve(self.config.category)
+        # Controllo atomico per prevenire duplicati da race condition
+        with transaction.atomic():
+            # Lock a livello DB: controlla se esiste già per URL fonte o titolo
+            # (per articoli senza fonte come editoriali usa il titolo)
+            if article_data.get('url'):
+                existing = Articolo.objects.select_for_update().filter(fonte=article_data['url']).first()
+            else:
+                # Per articoli senza fonte (editoriali), usa il titolo
+                existing = Articolo.objects.select_for_update().filter(titolo=article_data['title']).first()
 
-        # Estrai data evento se presente (per Eventi Carpi GraphQL)
-        data_evento = None
-        if article_data.get('event_start'):
-            try:
-                from datetime import datetime
-                # Formato: "2025-10-28T10:00:00" o "2025-10-28"
-                event_start_str = article_data['event_start']
-                if 'T' in event_start_str:
-                    data_evento = datetime.fromisoformat(event_start_str).date()
-                else:
-                    data_evento = datetime.strptime(event_start_str, '%Y-%m-%d').date()
-            except Exception as e:
-                self.logger.warning(f"Errore parsing data evento: {e}")
+            if existing:
+                self.logger.warning(f"Articolo già esistente (race condition evitata): {existing.titolo}")
+                return
 
-        articolo = Articolo(
-            titolo=polished_data['titolo'],
-            contenuto=polished_data['contenuto'],
-            categoria=self.config.category,
-            fonte=article_data['url'],
-            foto=article_data.get('image_url'),
-            data_evento=data_evento,  # Imposta data evento se disponibile
-            approvato=auto_approve,  # Auto-approva se configurato
-            data_pubblicazione=timezone.now()
-        )
-        articolo.save()
-        self.logger.info(f"Articolo salvato direttamente con ID: {articolo.id}")
+            # Applica polishing anche al salvataggio diretto
+            polished_data = content_polisher.polish_article({
+                'titolo': article_data['title'],
+                'contenuto': article_data['full_content']
+            })
+
+            # Determina se deve essere auto-approvato
+            auto_approve = self.should_auto_approve(self.config.category)
+
+            # Estrai data evento se presente (per Eventi Carpi GraphQL)
+            data_evento = None
+            if article_data.get('event_start'):
+                try:
+                    from datetime import datetime
+                    # Formato: "2025-10-28T10:00:00" o "2025-10-28"
+                    event_start_str = article_data['event_start']
+                    if 'T' in event_start_str:
+                        data_evento = datetime.fromisoformat(event_start_str).date()
+                    else:
+                        data_evento = datetime.strptime(event_start_str, '%Y-%m-%d').date()
+                except Exception as e:
+                    self.logger.warning(f"Errore parsing data evento: {e}")
+
+            articolo = Articolo(
+                titolo=polished_data['titolo'],
+                contenuto=polished_data['contenuto'],
+                categoria=self.config.category,
+                fonte=article_data['url'],
+                foto=article_data.get('image_url'),
+                data_evento=data_evento,  # Imposta data evento se disponibile
+                approvato=auto_approve,  # Auto-approva se configurato
+                data_pubblicazione=timezone.now()
+            )
+            articolo.save()
+            self.logger.info(f"Articolo salvato direttamente con ID: {articolo.id}")
     
     def start_monitoring(self, daemon: bool = False) -> bool:
         """Avvia il monitoraggio"""
