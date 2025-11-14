@@ -425,18 +425,9 @@ Rispondi con JSON: {"complete": true} oppure {"complete": false, "question": "la
         from datetime import datetime
         oggi = datetime.now().strftime("%d/%m/%Y")
 
-        # Passa il contesto completo SOLO alla prima domanda, poi solo conversazione
-        if questions_asked == 1:
-            context_section = f"""=== CONTENUTO SITO WEB (usa per contestualizzare) ===
-{website_content[:5000]}
-
-=== RICERCA MERCATO/SETTORE (usa per approfondimenti) ===
-{market_analysis[:3000]}
-
-"""
-        else:
-            # Dalla seconda domanda in poi: niente contesto esterno, solo conversazione
-            context_section = ""
+        # NESSUN contesto esterno - solo conversazione
+        # Il contesto viene usato solo per generare la prima domanda iniziale
+        context_section = ""
 
         prompt = f"""AZIENDA: {self.pubbliredazionale.nome_azienda}
 {interviewer_line}
