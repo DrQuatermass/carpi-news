@@ -408,8 +408,7 @@ Rispondi con JSON: {"complete": true} oppure {"complete": false, "question": "la
             for msg in conversation
         ])
 
-        # Dati di contesto - RIDOTTI per evitare timeout
-        # Passa il contesto completo solo per le prime 2 domande, poi usa solo la conversazione
+        # Dati di contesto - Passa TUTTO solo alla prima domanda, poi solo conversazione
         website_content = interview_data.get('website_content', '')
         market_analysis = interview_data.get('web_research', {}).get('findings', '')
 
@@ -426,17 +425,17 @@ Rispondi con JSON: {"complete": true} oppure {"complete": false, "question": "la
         from datetime import datetime
         oggi = datetime.now().strftime("%d/%m/%Y")
 
-        # Dopo le prime 2 domande, riduci il contesto per evitare timeout
-        if questions_asked <= 2:
+        # Passa il contesto completo SOLO alla prima domanda, poi solo conversazione
+        if questions_asked == 1:
             context_section = f"""=== CONTENUTO SITO WEB (usa per contestualizzare) ===
-{website_content[:2000]}
+{website_content[:5000]}
 
 === RICERCA MERCATO/SETTORE (usa per approfondimenti) ===
-{market_analysis[:1500]}
+{market_analysis[:3000]}
 
 """
         else:
-            # Dalla terza domanda in poi: niente contesto esterno, solo conversazione
+            # Dalla seconda domanda in poi: niente contesto esterno, solo conversazione
             context_section = ""
 
         prompt = f"""AZIENDA: {self.pubbliredazionale.nome_azienda}
