@@ -38,7 +38,7 @@
         content: 'SPAZIO PUBBLICITARIO';
         position: absolute;
         top: 40%;
-        margin-left: calc((100vw - 1200px) / -2);
+        left: 50%;
         transform: translate(-50%, -50%);
         font-size: 0.95rem;
         font-weight: 600;
@@ -54,7 +54,7 @@
         content: 'Clicca qui per acquistare';
         position: absolute;
         bottom: 25px;
-        margin-left: calc((100vw - 1200px) / -2);
+        left: 50%;
         transform: translateX(-50%);
         font-size: 0.85rem;
         color: rgba(150, 108, 66, 0.7);
@@ -133,7 +133,7 @@
         content: 'SPAZIO PUBBLICITARIO';
         position: absolute;
         top: 40%;
-        margin-left: calc((100vw - 1200px) / -2);
+        left: 50%;
         transform: translate(-50%, -50%);
         font-size: 1rem;
         font-weight: 600;
@@ -150,7 +150,7 @@
         content: 'Clicca qui per acquistare';
         position: absolute;
         bottom: 15px;
-        margin-left: calc((100vw - 1200px) / -2);
+        left: 50%;
         transform: translateX(-50%);
         font-size: 0.85rem;
         color: rgba(150, 108, 66, 0.7);
@@ -166,7 +166,7 @@
         content: 'SPAZIO PUBBLICITARIO';
         position: absolute;
         top: 40%;
-        margin-left: calc((100vw - 1200px) / -2);
+        left: 50%;
         transform: translate(-50%, -50%);
         font-size: 1rem;
         font-weight: 600;
@@ -183,7 +183,7 @@
         content: 'Clicca qui per acquistare';
         position: absolute;
         bottom: 20px;
-        margin-left: calc((100vw - 1200px) / -2);
+        left: 50%;
         transform: translateX(-50%);
         font-size: 0.85rem;
         color: rgba(150, 108, 66, 0.7);
@@ -326,9 +326,7 @@
                 {% endif %}
 
                 {# Posizione 2: Banner 1 #}
-                <div class="news-card-link banner-card-slot">
-                    {% show_banner 'between_articles' %}
-                </div>
+                {% show_banner 'between_articles' %}
 
                 {# Posizione 3: Articolo 3 #}
                 {% if articoli.2 %}
@@ -351,9 +349,7 @@
                 {% endif %}
 
                 {# Posizione 4: Banner 2 #}
-                <div class="news-card-link banner-card-slot">
-                    {% show_banner 'between_articles' %}
-                </div>
+                {% show_banner 'between_articles' %}
 
                 {# Posizione 5: Articolo 4 #}
                 {% if articoli.3 %}
