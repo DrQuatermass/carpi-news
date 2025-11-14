@@ -548,13 +548,10 @@ IMPORTANTE: Rispondi SOLO con il JSON, nient'altro."""
                 self.pubbliredazionale.interview_data = interview_data
                 self.pubbliredazionale.save()
 
-            # NUOVA FASE: Ricerca approfondita post-intervista su prodotti/servizi/settore citati
-            logger.info("Inizio ricerca post-intervista su dettagli emersi...")
-            post_interview_research = self._perform_post_interview_research(interview_data)
-            interview_data['post_interview_research'] = post_interview_research
-            self.pubbliredazionale.interview_data = interview_data
-            self.pubbliredazionale.save()
-            logger.info(f"Ricerca post-intervista completata: {len(post_interview_research.get('findings', ''))} caratteri")
+            # DISABILITATA: Ricerca post-intervista troppo lenta, causa timeout
+            # Usiamo solo la ricerca iniziale + conversazione per generare l'articolo
+            logger.info("Ricerca post-intervista saltata per evitare timeout")
+            post_interview_research = {'findings': '', 'research_performed': False}
 
             # Genera articolo
             article = self._generate_article(interview_data)
