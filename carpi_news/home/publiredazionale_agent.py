@@ -625,7 +625,7 @@ Genera un'analisi NARRATIVA che mi aiuti a scrivere una storia coinvolgente su q
 
             message = self.client.messages.create(
                 model="claude-sonnet-4-20250514",
-                max_tokens=1500,
+                max_tokens=800,  # Ridotto da 1500 per velocità
                 temperature=0.5,
                 system=system_prompt,
                 messages=[{
@@ -867,7 +867,7 @@ Rispondi in formato JSON:
             }
 
             logger.info(f"Scraping approfondito del sito: {url}")
-            response = requests.get(url, headers=headers, timeout=20, allow_redirects=True)
+            response = requests.get(url, headers=headers, timeout=10, allow_redirects=True)
             response.raise_for_status()
             logger.info(f"HTTP Status: {response.status_code}, Content-Length: {len(response.content)}, Encoding: {response.encoding}")
 
