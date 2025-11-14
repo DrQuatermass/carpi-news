@@ -1,5 +1,6 @@
 from django.contrib import admin
-from .models import Banner
+from .models import Banner, PromotionalCode
+from home.models import Articolo
 
 
 @admin.register(Banner)
@@ -49,6 +50,8 @@ class BannerAdmin(admin.ModelAdmin):
     def approve_banners(self, request, queryset):
         """Approva banner selezionati"""
         from django.utils import timezone
+        from django.core.mail import send_mail
+        from django.conf import settings
 
         count = 0
         for banner in queryset.filter(approved=False):
@@ -57,13 +60,49 @@ class BannerAdmin(admin.ModelAdmin):
             banner.approved_at = timezone.now()
 
             # Se il banner è in attesa di approvazione e il pagamento è completato, attivalo
-            if banner.status == 'pending_approval' and banner.payment_status == 'completed':
+            was_pending = banner.status == 'pending_approval'
+            if was_pending and banner.payment_status == 'completed':
                 banner.status = 'active'
 
             banner.save()
             count += 1
 
-        self.message_user(request, f'{count} banner approvati.')
+            # Invia email all'utente per notificare l'approvazione
+            if banner.user.email:
+                try:
+                    subject = f'✅ Banner Approvato: {banner.title}'
+                    message = f'''Ciao {banner.user.username},
+
+Il tuo banner è stato approvato ed è ora attivo sul sito!
+
+Dettagli del banner:
+- Titolo: {banner.title}
+- Posizione: {banner.get_position_display()}
+- Data inizio: {banner.start_date.strftime('%d/%m/%Y %H:%M')}
+- Data fine: {banner.end_date.strftime('%d/%m/%Y %H:%M')}
+- Durata: {banner.duration_days} giorni
+
+Il banner sarà visibile ai visitatori del sito fino alla data di scadenza.
+
+Grazie per aver scelto Ombra del Portico!
+
+---
+Ombra del Portico
+{settings.SITE_URL if hasattr(settings, 'SITE_URL') else 'https://ombradelportico.it'}
+'''
+                    send_mail(
+                        subject,
+                        message,
+                        settings.DEFAULT_FROM_EMAIL,
+                        [banner.user.email],
+                        fail_silently=True,
+                    )
+                except Exception as e:
+                    import logging
+                    logger = logging.getLogger(__name__)
+                    logger.error(f"Errore invio email approvazione banner {banner.id}: {e}")
+
+        self.message_user(request, f'{count} banner approvati e notifiche inviate agli utenti.')
     approve_banners.short_description = 'Approva banner selezionati'
 
     def reject_banners(self, request, queryset):
@@ -85,3 +124,48 @@ class BannerAdmin(admin.ModelAdmin):
         else:
             self.message_user(request, f'{count} banner attivati.')
     activate_banners.short_description = 'Attiva banner selezionati'
+
+
+# Admin per pubbliredazionali (filtro su Articolo)
+class PubbliredazionaleInline(admin.StackedInline):
+    """Inline per campi pubbliredazionale nell'admin articoli"""
+    model = Articolo
+    fields = ('nome_azienda', 'sito_web', 'intervistato_nome', 'intervistato_cognome', 'payment_status', 'payment_method',
+              'payment_transaction_id', 'payment_date', 'total_price', 'interview_data', 'admin_notes')
+    readonly_fields = ('total_price', 'interview_data')
+    can_delete = False
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(PromotionalCode)
+class PromotionalCodeAdmin(admin.ModelAdmin):
+    list_display = ['code', 'description', 'discount_type', 'discount_value', 'applies_to', 'is_active', 'current_uses', 'max_uses', 'valid_until']
+    list_filter = ['is_active', 'discount_type', 'applies_to', 'valid_from', 'valid_until']
+    search_fields = ['code', 'description']
+    readonly_fields = ['current_uses', 'created_at', 'updated_at', 'created_by']
+
+    fieldsets = (
+        ('Codice Promozionale', {
+            'fields': ('code', 'description', 'is_active')
+        }),
+        ('Tipo Sconto', {
+            'fields': ('discount_type', 'discount_value', 'applies_to')
+        }),
+        ('Validità', {
+            'fields': ('valid_from', 'valid_until')
+        }),
+        ('Limiti', {
+            'fields': ('max_uses', 'current_uses', 'min_amount')
+        }),
+        ('Metadati', {
+            'fields': ('created_at', 'updated_at', 'created_by'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def save_model(self, request, obj, form, change):
+        if not change:  # Se è un nuovo oggetto
+            obj.created_by = request.user
+        super().save_model(request, obj, form, change)

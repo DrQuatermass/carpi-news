@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pagamento - {{ pubbliredazionale.nome_azienda }}</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f7fa;
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .navbar-brand {
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .navbar-user {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            display: inline-block;
+        }
+
+        .btn-light {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .btn-light:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 40px;
+            font-size: 16px;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .container {
+            max-width: 700px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.08);
+            padding: 40px;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            color: #2d3748;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .subtitle {
+            color: #718096;
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .summary-section {
+            background: #f7fafc;
+            border-radius: 8px;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+
+        .summary-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .summary-item:last-child {
+            border-bottom: none;
+        }
+
+        .summary-label {
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .summary-value {
+            color: #4a5568;
+        }
+
+        .price-highlight {
+            font-size: 24px;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .payment-info {
+            background: #f0f9ff;
+            border-left: 4px solid #0ea5e9;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+
+        .payment-info h3 {
+            color: #0369a1;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .payment-info ul {
+            color: #0c4a6e;
+            margin-left: 20px;
+        }
+
+        .payment-info li {
+            margin-bottom: 5px;
+        }
+
+        .action-section {
+            text-align: center;
+            padding-top: 20px;
+        }
+
+        .paypal-logo {
+            font-size: 48px;
+            margin-bottom: 20px;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            border: none;
+            transition: all 0.3s ease;
+        }
+
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .promo-code-section {
+            margin: 30px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border: 2px dashed #dee2e6;
+        }
+
+        .promo-code-section label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 15px;
+        }
+
+        .promo-input-group {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+
+        .promo-input-wrapper {
+            flex: 1;
+        }
+
+        .promo-input-wrapper input {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+            font-weight: 500;
+        }
+
+        .promo-input-wrapper input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        #promo-message {
+            margin-top: 10px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        #discount-section {
+            padding: 15px;
+            background: #d1fae5;
+            border-radius: 8px;
+            margin-top: 15px;
+            display: none;
+        }
+
+        .discount-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+
+        .discount-label {
+            color: #065f46;
+            font-weight: 600;
+        }
+
+        .discount-amount {
+            color: #065f46;
+            font-weight: 600;
+        }
+
+        .discount-description {
+            font-size: 12px;
+            color: #047857;
+        }
+
+        .total-final {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin-top: 15px;
+        }
+
+        .total-final .label {
+            font-size: 14px;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+
+        .total-final .amount {
+            font-size: 32px;
+            font-weight: 700;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <div class="navbar">
+        <div class="navbar-brand">🏛️ Ombra del Portico - Pagamento</div>
+        <div class="navbar-user">
+            <span>{{ user.username }}</span>
+            <a href="{% url 'admin_panel:dashboard' %}" class="btn btn-light">← Torna alla Lista</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="card">
+            <h1>💳 Completa l'Acquisto</h1>
+            <p class="subtitle">Paga in modo sicuro con PayPal</p>
+
+            <!-- Summary Section -->
+            <div class="summary-section">
+                <div class="summary-item">
+                    <span class="summary-label">Azienda:</span>
+                    <span class="summary-value">{{ pubbliredazionale.nome_azienda }}</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">Sito Web:</span>
+                    <span class="summary-value">{{ pubbliredazionale.sito_web|truncatechars:40 }}</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">Categoria:</span>
+                    <span class="summary-value">{{ pubbliredazionale.categoria }}</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">Servizio:</span>
+                    <span class="summary-value">Articolo Pubbliredazionale</span>
+                </div>
+                <div class="summary-item">
+                    <span class="summary-label">Subtotale:</span>
+                    <span class="price-highlight" id="subtotal-amount">€{{ pubbliredazionale.total_price|floatformat:2 }}</span>
+                </div>
+            </div>
+
+            <!-- Sezione sconto -->
+            <div id="discount-section">
+                <div class="discount-row">
+                    <span class="discount-label">🎉 Sconto Applicato</span>
+                    <span class="discount-amount" id="discount-amount">-€0.00</span>
+                </div>
+                <div class="discount-description" id="discount-description"></div>
+            </div>
+
+            <!-- Totale finale -->
+            <div class="total-final">
+                <div class="label">Totale da Pagare</div>
+                <div class="amount" id="final-amount">€{{ pubbliredazionale.total_price|floatformat:2 }}</div>
+            </div>
+
+            <!-- Codice Sconto -->
+            <div class="promo-code-section">
+                <label>🎁 Codice Sconto (opzionale)</label>
+                <div class="promo-input-group">
+                    <div class="promo-input-wrapper">
+                        <input type="text" id="promo-code-input" placeholder="Inserisci codice sconto">
+                        <div id="promo-message"></div>
+                    </div>
+                    <button type="button" class="btn-secondary" onclick="validatePromoCode()" id="apply-promo-btn">
+                        Applica
+                    </button>
+                </div>
+            </div>
+
+            <!-- Payment Info -->
+            <div class="payment-info">
+                <h3>📋 Cosa succede dopo il pagamento?</h3>
+                <ul>
+                    <li>Il tuo articolo verrà inviato all'amministratore per l'approvazione</li>
+                    <li>Una volta approvato, l'articolo sarà pubblicato sul sito</li>
+                    <li>Riceverai una notifica via email quando l'articolo viene pubblicato</li>
+                    <li>Potrai monitorare lo stato del tuo pubbliredazionale dal pannello di controllo</li>
+                </ul>
+            </div>
+
+            <!-- Payment Action -->
+            <div class="action-section">
+                <div class="paypal-logo">💳</div>
+
+                <form method="post" id="paymentForm">
+                    {% csrf_token %}
+                    <input type="hidden" name="promo_code" id="promo-code-hidden" value="">
+                    <button type="submit" class="btn btn-primary" id="pay-button">
+                        Paga con PayPal - <span id="pay-button-amount">€{{ pubbliredazionale.total_price|floatformat:2 }}</span>
+                    </button>
+                </form>
+
+                <p style="margin-top: 20px; color: #718096; font-size: 13px;">
+                    Sarai reindirizzato a PayPal per completare il pagamento in modo sicuro
+                </p>
+
+                <p style="margin-top: 30px;">
+                    <a href="{% url 'admin_panel:pubbliredazionale_preview' pubbliredazionale.id %}" style="color: #667eea; text-decoration: none;">
+                        ← Torna all'anteprima
+                    </a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const csrfToken = '{{ csrf_token }}';
+        const pubbliredazionaleId = {{ pubbliredazionale.id }};
+        const originalPrice = parseFloat({{ pubbliredazionale.total_price }});
+        let appliedPromoCode = null;
+        let discountAmount = 0;
+
+        // Debug
+        console.log('Pubbliredazionale ID:', pubbliredazionaleId);
+        console.log('Prezzo originale:', originalPrice);
+
+        // Validazione codice promozionale
+        async function validatePromoCode() {
+            const promoInput = document.getElementById('promo-code-input');
+            const promoMessage = document.getElementById('promo-message');
+            const applyBtn = document.getElementById('apply-promo-btn');
+            const code = promoInput.value.trim();
+
+            if (!code) {
+                promoMessage.style.color = '#dc2626';
+                promoMessage.textContent = 'Inserisci un codice';
+                return;
+            }
+
+            applyBtn.disabled = true;
+            applyBtn.textContent = 'Verifica...';
+            promoMessage.textContent = '';
+
+            try {
+                const response = await fetch('/gestionale/validate-promo-code/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: JSON.stringify({
+                        code: code,
+                        item_type: 'pubbliredazionale',
+                        original_price: originalPrice
+                    })
+                });
+
+                const data = await response.json();
+                console.log('Risposta validazione:', data);
+
+                if (data.valid) {
+                    // Codice valido
+                    appliedPromoCode = code;
+                    discountAmount = parseFloat(data.discount_amount);
+
+                    console.log('Sconto applicato:', discountAmount);
+
+                    // Aggiorna UI
+                    document.getElementById('discount-section').style.display = 'block';
+                    document.getElementById('discount-amount').textContent = `-€${discountAmount.toFixed(2)}`;
+                    document.getElementById('discount-description').textContent = data.description;
+
+                    const finalPrice = Math.max(0, originalPrice - discountAmount);
+                    console.log('Prezzo finale:', finalPrice);
+
+                    document.getElementById('final-amount').textContent = `€${finalPrice.toFixed(2)}`;
+                    document.getElementById('pay-button-amount').textContent = `€${finalPrice.toFixed(2)}`;
+                    document.getElementById('promo-code-hidden').value = code;
+
+                    promoMessage.style.color = '#059669';
+                    promoMessage.textContent = '✓ Codice applicato!';
+                    promoInput.disabled = true;
+                    applyBtn.textContent = '✓ Applicato';
+                } else {
+                    // Codice non valido
+                    promoMessage.style.color = '#dc2626';
+                    promoMessage.textContent = '✗ ' + data.message;
+                    applyBtn.disabled = false;
+                    applyBtn.textContent = 'Applica';
+                }
+            } catch (error) {
+                console.error('Errore:', error);
+                promoMessage.style.color = '#dc2626';
+                promoMessage.textContent = 'Errore di connessione';
+                applyBtn.disabled = false;
+                applyBtn.textContent = 'Applica';
+            }
+        }
+
+        // Mostra loading quando si invia il form
+        document.getElementById('paymentForm').addEventListener('submit', function() {
+            const button = document.getElementById('pay-button');
+            button.disabled = true;
+            button.innerHTML = '⏳ Reindirizzamento a PayPal...';
+        });
+    </script>
+</body>
+</html>

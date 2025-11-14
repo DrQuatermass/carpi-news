@@ -657,30 +657,30 @@
 
         // Mappa delle dimensioni consigliate per posizione
         const recommendedSizes = {
-            'header': '728×90 pixel (Leaderboard)',
-            'footer': '728×90 pixel (Leaderboard)',
-            'article_top': '728×90 pixel (Leaderboard)',
-            'article_bottom': '728×90 pixel (Leaderboard)',
-            'between_articles': '300×250 pixel (Medium Rectangle)',
-            'article_middle': '300×250 pixel (Medium Rectangle)',
-            'sidebar_top': '300×250 pixel (Medium Rectangle)',
-            'sidebar_middle': '300×250 pixel (Medium Rectangle)',
-            'sidebar_bottom': '300×250 pixel (Medium Rectangle)'
+            'header': '728×270 pixel (Leaderboard)',
+            'footer': '728×270 pixel (Leaderboard)',
+            'article_top': '728×270 pixel (Leaderboard)',
+            'article_bottom': '728×270 pixel (Leaderboard)',
+            'between_articles': '300×600 pixel (Half Page)',
+            'article_middle': '728×270 pixel (Leaderboard)',
+            'sidebar_top': '728×270 pixel (Leaderboard)',
+            'sidebar_middle': '728×270 pixel (Leaderboard)',
+            'sidebar_bottom': '728×270 pixel (Leaderboard)'
         };
 
         // Mappa del tipo di banner (orizzontale vs verticale)
-        // ORIZZONTALI (728×90 Leaderboard): header, footer, article_top, article_bottom
-        // VERTICALI (300×250 Medium Rectangle): between_articles, sidebar_*, article_middle
+        // ORIZZONTALI (728×270 Leaderboard): tutti tranne between_articles
+        // VERTICALI (300×600 Half Page): solo between_articles
         const bannerTypes = {
-            'header': 'horizontal',           // 728×90 - Header sito
-            'footer': 'horizontal',           // 728×90 - Footer sito
-            'article_top': 'horizontal',      // 728×90 - Inizio articolo
-            'article_bottom': 'horizontal',   // 728×90 - Fine articolo
-            'between_articles': 'vertical',   // 300×250 - Tra le card homepage
-            'article_middle': 'vertical',     // 300×250 - Centro articolo
-            'sidebar_top': 'vertical',        // 300×250 - Sidebar alto (non implementato)
-            'sidebar_middle': 'vertical',     // 300×250 - Sidebar centro (non implementato)
-            'sidebar_bottom': 'vertical'      // 300×250 - Sidebar basso (non implementato)
+            'header': 'horizontal',           // 728×270 - Header sito
+            'footer': 'horizontal',           // 728×270 - Footer sito
+            'article_top': 'horizontal',      // 728×270 - Inizio articolo
+            'article_bottom': 'horizontal',   // 728×270 - Fine articolo
+            'between_articles': 'vertical',   // 300×600 - Tra le card homepage
+            'article_middle': 'horizontal',   // 728×270 - Centro articolo
+            'sidebar_top': 'horizontal',      // 728×270 - Sidebar alto
+            'sidebar_middle': 'horizontal',   // 728×270 - Sidebar centro
+            'sidebar_bottom': 'horizontal'    // 728×270 - Sidebar basso
         };
 
         function updateRecommendedSize(position) {
@@ -697,14 +697,14 @@
                 // Mostra avviso appropriato in base al tipo
                 const bannerType = bannerTypes[position];
                 if (bannerType === 'horizontal') {
-                    // Banner orizzontali (728×90): altezza massima 270px, intercambiabili
-                    warningText.innerHTML = 'I banner orizzontali (Leaderboard 728×90) sono <strong>intercambiabili</strong> tra Header, Footer e Articoli.<br>Altezza massima: <strong>270 pixel</strong> (3× l\'altezza standard). Larghezza: scalata automaticamente mantenendo le proporzioni.';
+                    // Banner orizzontali (728×270): altezza massima 270px, intercambiabili
+                    warningText.innerHTML = 'I banner orizzontali (Leaderboard 728×270) sono <strong>intercambiabili</strong> tra tutte le posizioni tranne "Between Articles".<br>Altezza massima: <strong>270 pixel</strong>. Larghezza: scalata automaticamente mantenendo le proporzioni.';
                     warningBox.style.display = 'block';
                     warningBox.style.background = '#fff3cd';
                     warningBox.style.borderColor = '#ffc107';
-                } else {
-                    // Banner verticali (300×250): nessun limite di altezza
-                    warningText.innerHTML = 'I banner verticali (Medium Rectangle 300×250) appaiono <strong>tra le Card degli articoli</strong>.<br><strong>Nessun limite di altezza</strong>. Larghezza massima: 300px mantenendo le proporzioni.';
+                } else if (position === 'between_articles') {
+                    // Banner verticali Between Articles (300×600): Half Page
+                    warningText.innerHTML = 'I banner "Between Articles" (Half Page 300×600) appaiono <strong>tra le Card degli articoli</strong>.<br><strong>Nessun limite di altezza</strong>. Larghezza massima: 300px mantenendo le proporzioni.';
                     warningBox.style.display = 'block';
                     warningBox.style.background = '#d1ecf1';
                     warningBox.style.borderColor = '#17a2b8';
@@ -804,7 +804,7 @@
         <div class="navbar-brand">
             📢 {% if is_edit %}Modifica{% else %}Crea{% endif %} Banner
         </div>
-        <a href="{% url 'admin_panel:banner_list' %}" class="btn-light">← Torna ai Banner</a>
+        <a href="{% url 'admin_panel:dashboard' %}" class="btn-light">← Torna ai Banner</a>
     </nav>
 
     <div class="container">
@@ -967,7 +967,7 @@
                     <button type="submit" class="btn btn-primary">
                         {% if is_edit %}💾 Salva Modifiche{% else %}🛒 Procedi all'Acquisto{% endif %}
                     </button>
-                    <a href="{% url 'admin_panel:banner_list' %}" class="btn btn-secondary">✖️ Annulla</a>
+                    <a href="{% url 'admin_panel:dashboard' %}" class="btn btn-secondary">✖️ Annulla</a>
                 </div>
             </form>
         </div>

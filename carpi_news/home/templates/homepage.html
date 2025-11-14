@@ -313,7 +313,7 @@
                                     </div>
                                 {% else %}
                                     {# Placeholder #}
-                                    <a href="{% url 'admin_panel:banner_list' %}" class="banner-card-slot">
+                                    <a href="{% url 'admin_panel:dashboard' %}" class="banner-card-slot">
                                         {# Il placeholder è gestito dal CSS con ::before e ::after #}
                                     </a>
                                 {% endif %}
@@ -524,7 +524,7 @@
                 const bannerPositions = data.banner_positions || [];
                 const numBannerSlots = data.num_banner_slots || 0;
                 const bannerHTML = `
-                    <a href="{% url 'admin_panel:banner_list' %}" class="news-card-link banner-card-slot">
+                    <a href="{% url 'admin_panel:dashboard' %}" class="news-card-link banner-card-slot">
                     </a>
                 `;
 

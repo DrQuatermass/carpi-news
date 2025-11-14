@@ -85,45 +85,142 @@
             font-size: 16px;
         }
 
-        .cards-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin-top: 30px;
-        }
-
-        .card {
+        .section {
             background: white;
             border-radius: 15px;
             padding: 30px;
             box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            text-decoration: none;
-            color: inherit;
-            display: block;
+            margin-bottom: 30px;
         }
 
-        .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e2e8f0;
         }
 
-        .card-icon {
-            font-size: 48px;
-            margin-bottom: 15px;
-        }
-
-        .card-title {
-            font-size: 20px;
-            font-weight: 600;
+        .section-header h2 {
+            font-size: 22px;
             color: #333;
-            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
-        .card-description {
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-decoration: none;
             font-size: 14px;
-            color: #666;
-            line-height: 1.5;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: inline-block;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .item {
+            padding: 20px;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.2s ease;
+            gap: 15px;
+        }
+
+        .item:last-child {
+            border-bottom: none;
+        }
+
+        .item:hover {
+            background: #f7fafc;
+        }
+
+        .item-content {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex: 1;
+        }
+
+        .item-thumbnail {
+            width: 80px;
+            height: 60px;
+            border-radius: 8px;
+            object-fit: cover;
+            border: 2px solid #e2e8f0;
+            flex-shrink: 0;
+        }
+
+        .item-thumbnail-placeholder {
+            width: 80px;
+            height: 60px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            border: 2px solid #e2e8f0;
+            flex-shrink: 0;
+        }
+
+        .item-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .item-info h3 {
+            color: #2d3748;
+            margin-bottom: 5px;
+            font-size: 16px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .item-meta {
+            color: #718096;
+            font-size: 13px;
+        }
+
+        .badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .badge-success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .badge-warning {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .badge-info {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #718096;
         }
 
         .messages {
@@ -190,37 +287,119 @@
     <div class="container">
         <div class="welcome-section">
             <h1>Benvenuto, {{ user.first_name|default:user.username }}! 👋</h1>
-            <p>Questa è la tua area riservata per la gestione del contenuto</p>
-            {% if total_banners > 0 %}
-            <div style="margin-top: 20px; display: flex; gap: 20px; justify-content: center; font-size: 14px;">
-                <span>📢 <strong>{{ total_banners }}</strong> banner totali</span>
-                <span>✅ <strong>{{ active_banners }}</strong> attivi</span>
-                <span>⏳ <strong>{{ pending_banners }}</strong> in attesa</span>
+            <p>Gestisci i tuoi pubbliredazionali e banner pubblicitari</p>
+        </div>
+
+        <!-- Pubbliredazionali Section -->
+        <div class="section">
+            <div class="section-header">
+                <h2>📰 I Tuoi Pubbliredazionali</h2>
+                <a href="{% url 'admin_panel:pubbliredazionale_create' %}" class="btn-primary">+ Nuovo Pubbliredazionale</a>
             </div>
+
+            {% if pubbliredazionali %}
+                {% for pub in pubbliredazionali %}
+                    <div class="item">
+                        <div class="item-content">
+                            {% if pub.foto %}
+                                <img src="{{ pub.foto }}" alt="{{ pub.nome_azienda }}" class="item-thumbnail">
+                            {% else %}
+                                <div class="item-thumbnail-placeholder">📰</div>
+                            {% endif %}
+                            <div class="item-info">
+                                <h3>{{ pub.nome_azienda }}{% if pub.titolo %} - {{ pub.titolo|truncatechars:30 }}{% endif %}</h3>
+                                <div class="item-meta">
+                                    {{ pub.categoria }} • {{ pub.data_creazione|date:"d/m/Y" }}
+                                    {% if pub.payment_status == 'completed' %} • Pagato €{{ pub.total_price }}{% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            {% if pub.approvato %}
+                                <span class="badge badge-success">✅ Pubblicato</span>
+                                <a href="/articolo/{{ pub.slug }}/" class="btn-primary" style="padding: 6px 12px; font-size: 13px;" target="_blank">Vedi Articolo</a>
+                            {% elif pub.payment_status == 'completed' %}
+                                <span class="badge badge-warning">⏳ In attesa di approvazione</span>
+                                <a href="{% url 'admin_panel:pubbliredazionale_preview' pub.id %}" class="btn-primary" style="padding: 6px 12px; font-size: 13px;">Anteprima</a>
+                            {% elif pub.titolo and pub.contenuto %}
+                                <span class="badge badge-info">💳 Da pagare</span>
+                                <a href="{% url 'admin_panel:pubbliredazionale_payment' pub.id %}" class="btn-primary" style="padding: 6px 12px; font-size: 13px;">Paga</a>
+                            {% else %}
+                                <span class="badge badge-info">📝 Bozza</span>
+                                <a href="{% url 'admin_panel:pubbliredazionale_interview' pub.id %}" class="btn-primary" style="padding: 6px 12px; font-size: 13px;">Continua</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">
+                    <p>Non hai ancora creato pubbliredazionali.</p>
+                    <p style="margin-top: 15px;">
+                        <a href="{% url 'admin_panel:pubbliredazionale_create' %}" class="btn-primary">Crea il Tuo Primo Pubbliredazionale</a>
+                    </p>
+                </div>
             {% endif %}
         </div>
 
-        <div class="cards-grid">
-            <a href="{% url 'admin_panel:banner_list' %}" class="card">
-                <div class="card-icon">📢</div>
-                <div class="card-title">I Miei Banner</div>
-                <div class="card-description">Crea e gestisci i tuoi banner pubblicitari
-                    {% if total_banners > 0 %}<br><strong>{{ active_banners }}/{{ total_banners }}</strong> attivi{% endif %}
+        <!-- Banners Section -->
+        <div class="section">
+            <div class="section-header">
+                <h2>🎯 I Tuoi Banner</h2>
+                <a href="{% url 'admin_panel:banner_create' %}" class="btn-primary">+ Nuovo Banner</a>
+            </div>
+
+            {% if banners %}
+                {% for banner in banners %}
+                    <div class="item">
+                        <div class="item-content">
+                            {% if banner.image %}
+                                <img src="{{ banner.image.url }}" alt="{{ banner.alt_text }}" class="item-thumbnail">
+                            {% else %}
+                                <div class="item-thumbnail-placeholder">🖼️</div>
+                            {% endif %}
+                            <div class="item-info">
+                                <h3>{{ banner.title }}</h3>
+                                <div class="item-meta">
+                                    {{ banner.get_position_display }} • {{ banner.created_at|date:"d/m/Y" }}
+                                    {% if banner.payment_status == 'completed' %} • Pagato €{{ banner.total_price }}{% endif %}
+                                    {% if banner.status == 'active' %} • 👁️ {{ banner.impressions }} • 👆 {{ banner.clicks }} • 📊 CTR {{ banner.ctr|floatformat:2 }}%{% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            {% if banner.status == 'active' and banner.payment_status == 'completed' %}
+                                <!-- Banner attivo e pagato: mostra solo Disattiva -->
+                                <span class="badge badge-success">✅ Attivo</span>
+                                <form method="post" action="{% url 'admin_panel:banner_toggle_status' banner.id %}" style="margin: 0;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn-primary" style="padding: 6px 12px; font-size: 13px; background: #dc2626; border: none; cursor: pointer;">⏸️ Disattiva</button>
+                                </form>
+                            {% elif banner.status == 'pending_approval' and banner.payment_status == 'completed' %}
+                                <!-- Banner in attesa di approvazione -->
+                                <span class="badge badge-warning">⏳ In attesa di approvazione</span>
+                            {% elif banner.payment_status == 'completed' %}
+                                <!-- Banner pagato ma non attivo: mostra Attiva -->
+                                <span class="badge badge-warning">⏸️ In pausa</span>
+                                <form method="post" action="{% url 'admin_panel:banner_toggle_status' banner.id %}" style="margin: 0;">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn-primary" style="padding: 6px 12px; font-size: 13px; background: #059669; border: none; cursor: pointer;">▶️ Attiva</button>
+                                </form>
+                            {% else %}
+                                <!-- Banner non pagato: mostra Modifica e Paga -->
+                                <span class="badge badge-info">💳 Da pagare</span>
+                                <a href="{% url 'admin_panel:banner_edit' banner.id %}" class="btn-primary" style="padding: 6px 12px; font-size: 13px;">✏️ Modifica</a>
+                                <a href="{% url 'admin_panel:banner_payment' banner.id %}" class="btn-primary" style="padding: 6px 12px; font-size: 13px; background: #0070ba;">💳 Paga</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">
+                    <p>Non hai ancora creato banner.</p>
+                    <p style="margin-top: 15px;">
+                        <a href="{% url 'admin_panel:banner_create' %}" class="btn-primary">Crea il Tuo Primo Banner</a>
+                    </p>
                 </div>
-            </a>
-
-            <a href="/" class="card">
-                <div class="card-icon">🏠</div>
-                <div class="card-title">Homepage</div>
-                <div class="card-description">Visualizza il sito pubblico</div>
-            </a>
-
-            {% if user.is_staff %}
-            <a href="/admin/" class="card">
-                <div class="card-icon">⚙️</div>
-                <div class="card-title">Amministrazione</div>
-                <div class="card-description">Gestisci articoli, monitor e configurazioni (solo staff)</div>
-            </a>
             {% endif %}
         </div>
     </div>

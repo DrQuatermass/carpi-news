@@ -29,6 +29,77 @@ class Articolo(models.Model):
     data_pubblicazione = models.DateTimeField(blank=True, null=True,default=timezone.now)
     data_evento = models.DateField(blank=True, null=True, help_text="Data dell'evento per articoli di categoria Cultura ed Eventi")
 
+    # CAMPI PUBBLIREDAZIONALE
+    is_pubbliredazionale = models.BooleanField(default=False, help_text="È un articolo pubbliredazionale", db_index=True)
+
+    # Utente che ha richiesto il pubbliredazionale
+    pubbliredazionale_user = models.ForeignKey(
+        'auth.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='pubbliredazionali',
+        verbose_name='Utente richiedente'
+    )
+
+    # Informazioni azienda
+    nome_azienda = models.CharField('Nome azienda', max_length=200, blank=True, help_text='Nome dell\'azienda per il pubbliredazionale')
+    sito_web = models.URLField('Sito web azienda', max_length=500, blank=True, help_text='URL del sito web dell\'azienda')
+    intervistato_nome = models.CharField('Nome intervistato', max_length=100, blank=True, help_text='Nome della persona intervistata')
+    intervistato_cognome = models.CharField('Cognome intervistato', max_length=100, blank=True, help_text='Cognome della persona intervistata')
+
+    # Conversazione AI (salvata come JSON)
+    interview_data = models.JSONField(
+        'Dati intervista',
+        default=dict,
+        blank=True,
+        help_text='Conversazione AI e informazioni raccolte'
+    )
+
+    # Pagamento (prezzo fisso €5)
+    PAYMENT_STATUS_CHOICES = [
+        ('pending', 'In attesa'),
+        ('saved', 'Salvato (senza pagamento)'),
+        ('completed', 'Completato'),
+        ('failed', 'Fallito'),
+        ('refunded', 'Rimborsato'),
+    ]
+
+    payment_status = models.CharField('Stato pagamento', max_length=20, blank=True, choices=PAYMENT_STATUS_CHOICES, default='')
+    payment_method = models.CharField('Metodo di pagamento', max_length=50, blank=True)
+    payment_transaction_id = models.CharField('ID transazione', max_length=200, blank=True)
+    payment_date = models.DateTimeField('Data pagamento', blank=True, null=True)
+    total_price = models.DecimalField('Prezzo totale (€)', max_digits=10, decimal_places=2, default=5.00)
+
+    # Codice promozionale
+    promo_code = models.ForeignKey(
+        'admin_panel.PromotionalCode',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='pubbliredazionale_uses',
+        verbose_name='Codice promozionale applicato'
+    )
+    discount_amount = models.DecimalField(
+        'Sconto applicato (€)',
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text='Importo dello sconto applicato'
+    )
+
+    # Approvazione pubbliredazionale
+    approved_by = models.ForeignKey(
+        'auth.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='pubbliredazionali_approvati',
+        verbose_name='Approvato da'
+    )
+    approved_at = models.DateTimeField('Approvato il', null=True, blank=True)
+    admin_notes = models.TextField('Note amministrative', blank=True, help_text='Visibili solo agli admin')
+
     def save(self, *args, **kwargs):
         if not self.slug:
             base_slug = slugify(self.titolo)
@@ -48,6 +119,11 @@ class Articolo(models.Model):
             # Pulisci spazi multipli e normalizza
             contenuto_pulito = re.sub(r'\s+', ' ', contenuto_pulito).strip()
             self.sommario = contenuto_pulito[:200] + '...' if len(contenuto_pulito) > 200 else contenuto_pulito
+
+        # Se è un pubbliredazionale approvato senza data di pubblicazione, impostala
+        if self.is_pubbliredazionale and self.approvato and not self.data_pubblicazione:
+            self.data_pubblicazione = timezone.now()
+
         super().save(*args, **kwargs)
 
     def get_image_url(self):
@@ -247,7 +323,65 @@ class Articolo(models.Model):
             cache.set(cache_key, False, 1800)
             return fallback_image
 
+    def can_proceed_to_payment(self):
+        """Verifica se il pubbliredazionale può procedere al pagamento"""
+        return (
+            self.is_pubbliredazionale and
+            self.titolo and
+            self.contenuto and
+            self.interview_data and  # Intervista completata se ci sono dati
+            self.payment_status != 'completed'  # Non ancora pagato
+        )
+
+    def send_admin_notification(self):
+        """Invia email di notifica all'amministratore per nuovo pubbliredazionale"""
+        if not self.is_pubbliredazionale:
+            return
+
+        from django.core.mail import send_mail
+        from django.contrib.auth.models import User
+
+        try:
+            admin_emails = User.objects.filter(is_superuser=True).values_list('email', flat=True)
+            admin_emails = [email for email in admin_emails if email]
+
+            if not admin_emails:
+                return
+
+            subject = f'🔔 Nuovo pubbliredazionale pagato: {self.nome_azienda}'
+            message = f"""
+Ciao,
+
+Un nuovo pubbliredazionale è stato pagato e richiede approvazione.
+
+Dettagli:
+- Azienda: {self.nome_azienda}
+- Sito web: {self.sito_web}
+- Utente: {self.pubbliredazionale_user.username if self.pubbliredazionale_user else 'N/A'} ({self.pubbliredazionale_user.email if self.pubbliredazionale_user else 'N/A'})
+- Categoria: {self.categoria}
+- Pagamento: {self.get_payment_status_display() if self.payment_status else 'In attesa'}
+- Approvato: {'Sì' if self.approvato else 'No - richiede approvazione'}
+
+Vai al pannello di amministrazione:
+{settings.SITE_URL}/admin/home/articolo/{self.pk}/change/
+
+---
+Ombra del Portico - Sistema pubbliredazionali
+            """
+
+            send_mail(
+                subject,
+                message,
+                settings.DEFAULT_FROM_EMAIL,
+                admin_emails,
+                fail_silently=True,
+            )
+        except Exception as e:
+            logger.error(f"Errore invio email notifica pubbliredazionale {self.pk}: {str(e)}")
+
     def __str__(self):
+        if self.is_pubbliredazionale:
+            return f"[PUBB] {self.nome_azienda} - {self.titolo}"
         return self.titolo
 
 
@@ -348,7 +482,7 @@ class APIUsage(models.Model):
 
     # Dettagli chiamata
     operation = models.CharField(max_length=100, help_text="Operazione eseguita (es. 'generate_article', 'polish_content')")
-    model = models.CharField(max_length=100, blank=True, help_text="Modello utilizzato (es. 'claude-3-5-sonnet-20241022')")
+    model = models.CharField(max_length=100, blank=True, help_text="Modello utilizzato (es. 'claude-sonnet-4-20250514')")
 
     # Token usage (per Anthropic)
     input_tokens = models.IntegerField(default=0, help_text="Token di input (prompt)")

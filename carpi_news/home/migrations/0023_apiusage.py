@@ -18,7 +18,7 @@ class Migration(migrations.Migration):
                 ('api_type', models.CharField(choices=[('anthropic', 'Anthropic Claude'), ('google_search', 'Google Search')], help_text='Tipo di API utilizzata', max_length=20)),
                 ('timestamp', models.DateTimeField(auto_now_add=True, db_index=True, help_text='Data e ora della chiamata')),
                 ('operation', models.CharField(help_text="Operazione eseguita (es. 'generate_article', 'polish_content')", max_length=100)),
-                ('model', models.CharField(blank=True, help_text="Modello utilizzato (es. 'claude-3-5-sonnet-20241022')", max_length=100)),
+                ('model', models.CharField(blank=True, help_text="Modello utilizzato (es. 'claude-sonnet-4-20250514')", max_length=100)),
                 ('input_tokens', models.IntegerField(default=0, help_text='Token di input (prompt)')),
                 ('output_tokens', models.IntegerField(default=0, help_text='Token di output (risposta)')),
                 ('search_queries', models.IntegerField(default=0, help_text='Numero di query di ricerca')),

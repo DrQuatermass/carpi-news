@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Elimina Banner - Admin Panel</title>
+    <title>Elimina Pubbliredazionale - Admin Panel</title>
     <style>
         * {
             margin: 0;
@@ -42,7 +42,7 @@
             margin-bottom: 15px;
         }
 
-        .banner-info {
+        .pubbliredazionale-info {
             background: #f8f9fa;
             padding: 20px;
             border-radius: 10px;
@@ -50,13 +50,13 @@
             text-align: left;
         }
 
-        .banner-info h3 {
+        .pubbliredazionale-info h3 {
             color: #333;
             font-size: 18px;
             margin-bottom: 10px;
         }
 
-        .banner-info p {
+        .pubbliredazionale-info p {
             color: #666;
             font-size: 14px;
             margin: 5px 0;
@@ -111,21 +111,19 @@
         <div class="delete-icon">🗑️</div>
         <h1>Conferma Eliminazione</h1>
         <p style="color: #666; margin-bottom: 20px;">
-            Sei sicuro di voler eliminare questo banner?
+            Sei sicuro di voler eliminare questo pubbliredazionale?
         </p>
 
-        <div class="banner-info">
-            <h3>{{ banner.title }}</h3>
-            <p><strong>Posizione:</strong> {{ banner.get_position_display }}</p>
-            <p><strong>Durata:</strong> {{ banner.duration_days }} giorni</p>
-            <p><strong>Stato:</strong> {{ banner.get_status_display }}</p>
-            {% if banner.payment_status == 'completed' %}
-            <p><strong>💳 Pagato:</strong> €{{ banner.total_price }}</p>
-            {% endif %}
+        <div class="pubbliredazionale-info">
+            <h3>{{ pubbliredazionale.nome_azienda }}</h3>
+            <p><strong>Sito web:</strong> {{ pubbliredazionale.sito_web }}</p>
+            <p><strong>Categoria:</strong> {{ pubbliredazionale.categoria }}</p>
+            <p><strong>Stato:</strong> {{ pubbliredazionale.get_status_display }}</p>
+            <p><strong>Creato:</strong> {{ pubbliredazionale.created_at|date:"d/m/Y H:i" }}</p>
         </div>
 
         <p class="warning-text">
-            ⚠️ Questa azione è irreversibile!
+            ⚠️ Questa azione è irreversibile! Tutti i dati dell'intervista e l'articolo generato verranno eliminati.
         </p>
 
         <form method="post">

@@ -37,6 +37,24 @@ class HasWebSourcesFilter(SimpleListFilter):
         return queryset
 
 
+class IsPubbliredazionaleFilter(SimpleListFilter):
+    title = 'Tipo Articolo'
+    parameter_name = 'is_pubbliredazionale'
+
+    def lookups(self, request, model_admin):
+        return (
+            ('yes', 'Pubbliredazionali'),
+            ('no', 'Articoli normali'),
+        )
+
+    def queryset(self, request, queryset):
+        if self.value() == 'yes':
+            return queryset.filter(is_pubbliredazionale=True)
+        elif self.value() == 'no':
+            return queryset.filter(is_pubbliredazionale=False)
+        return queryset
+
+
 class MonitorConfigForm(forms.ModelForm):
     """Form personalizzato per MonitorConfig con validazione JSON e help text"""
 
@@ -196,10 +214,68 @@ class MonitorConfigForm(forms.ModelForm):
 
 @admin.register(Articolo)
 class ArticoloAdmin(admin.ModelAdmin):
-    list_display = ("titolo", "categoria", "approvato", "data_pubblicazione", "data_evento", "views", "fonti_web_count")
-    list_filter = ['approvato', 'categoria', HasWebSourcesFilter]
-    fields = ('titolo', 'contenuto', 'sommario', 'categoria', 'data_evento', 'approvato', 'fonte', 'foto', 'foto_upload', 'views', 'richieste_modifica', 'fonti_web_display', 'rigenera_button')
-    readonly_fields = ('rigenera_button', 'views', 'fonti_web_display')
+    list_display = ("titolo", "categoria", "is_pubbliredazionale", "payment_status_display", "approvato", "data_pubblicazione", "views", "fonti_web_count")
+    list_filter = ['approvato', 'categoria', IsPubbliredazionaleFilter, 'payment_status', HasWebSourcesFilter]
+    search_fields = ['titolo', 'nome_azienda', 'sito_web', 'pubbliredazionale_user__username']
+
+    def get_fieldsets(self, request, obj=None):
+        """Fieldsets dinamici: diversi per pubbliredazionali e articoli normali"""
+        if obj and obj.is_pubbliredazionale:
+            return (
+                ('Informazioni Base', {
+                    'fields': ('titolo', 'contenuto', 'sommario', 'categoria', 'foto', 'foto_upload')
+                }),
+                ('Pubbliredazionale - Informazioni Azienda', {
+                    'fields': ('nome_azienda', 'sito_web', 'pubbliredazionale_user')
+                }),
+                ('Pubbliredazionale - Pagamento', {
+                    'fields': ('payment_status', 'payment_method',
+                               'payment_transaction_id', 'payment_date', 'total_price'),
+                    'description': 'Informazioni sul pagamento. L\'approvazione si gestisce nel campo "Approvato" sotto.'
+                }),
+                ('Pubbliredazionale - Intervista AI', {
+                    'fields': ('interview_data',),
+                    'classes': ('collapse',)
+                }),
+                ('Approvazione', {
+                    'fields': ('approvato', 'approved_by', 'approved_at', 'admin_notes')
+                }),
+                ('Metadata', {
+                    'fields': ('views', 'data_pubblicazione', 'richieste_modifica', 'fonti_web_display', 'rigenera_button'),
+                    'classes': ('collapse',)
+                }),
+            )
+        else:
+            return (
+                ('Informazioni Base', {
+                    'fields': ('titolo', 'contenuto', 'sommario', 'categoria', 'data_evento', 'foto', 'foto_upload')
+                }),
+                ('Pubblicazione', {
+                    'fields': ('approvato', 'fonte', 'data_pubblicazione', 'views')
+                }),
+                ('Rigenerazione AI', {
+                    'fields': ('richieste_modifica', 'fonti_web_display', 'rigenera_button')
+                }),
+            )
+
+    def get_readonly_fields(self, request, obj=None):
+        """Readonly fields dinamici"""
+        base_readonly = ['rigenera_button', 'views', 'fonti_web_display', 'total_price', 'approved_by', 'approved_at']
+        if obj and obj.is_pubbliredazionale:
+            return base_readonly + ['interview_data']
+        return base_readonly
+
+    def payment_status_display(self, obj):
+        """Mostra stato pagamento"""
+        if not obj.is_pubbliredazionale or not obj.payment_status:
+            return '-'
+        color = '#4CAF50' if obj.payment_status == 'completed' else '#FF9800'
+        return format_html(
+            '<span style="background: {}; color: white; padding: 4px 8px; '
+            'border-radius: 12px; font-size: 11px; font-weight: bold;">{}</span>',
+            color, obj.get_payment_status_display()
+        )
+    payment_status_display.short_description = 'Pagamento'
     
     def rigenera_button(self, obj):
         if obj.pk:  # Solo per oggetti già salvati

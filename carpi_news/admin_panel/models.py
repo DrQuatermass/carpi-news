@@ -50,6 +50,7 @@ class Banner(models.Model):
 
     PAYMENT_STATUS_CHOICES = [
         ('pending', 'In attesa'),
+        ('saved', 'Salvato (senza pagamento)'),
         ('completed', 'Completato'),
         ('failed', 'Fallito'),
         ('refunded', 'Rimborsato'),
@@ -86,6 +87,23 @@ class Banner(models.Model):
     payment_method = models.CharField('Metodo di pagamento', max_length=50, blank=True, null=True)
     payment_transaction_id = models.CharField('ID transazione', max_length=200, blank=True, null=True)
     payment_date = models.DateTimeField('Data pagamento', blank=True, null=True)
+
+    # Codice promozionale
+    promo_code = models.ForeignKey(
+        'PromotionalCode',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='banner_uses',
+        verbose_name='Codice promozionale applicato'
+    )
+    discount_amount = models.DecimalField(
+        'Sconto applicato (€)',
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text='Importo dello sconto applicato'
+    )
 
     # Statistiche
     impressions = models.PositiveIntegerField('Visualizzazioni', default=0)
@@ -131,9 +149,7 @@ class Banner(models.Model):
 
         super().save(*args, **kwargs)
 
-        # Invia email all'amministratore per nuovi banner
-        if is_new:
-            self.send_admin_notification()
+        # Email verrà inviata dopo il pagamento, non alla creazione
 
     def send_admin_notification(self):
         """Invia email di notifica all'amministratore per nuovo banner"""
@@ -223,3 +239,177 @@ Ombra del Portico - Sistema di gestione banner
             width, height = self.get_recommended_size(self.position)
             return f"{width}x{height} pixel"
         return "Seleziona prima una posizione"
+
+
+class PromotionalCode(models.Model):
+    """Modello per codici promozionali/sconto"""
+
+    DISCOUNT_TYPE_CHOICES = [
+        ('percentage', 'Percentuale (%)'),
+        ('fixed', 'Importo fisso (€)'),
+        ('free_banner', 'Banner gratuito'),
+        ('free_pubbliredazionale', 'Pubbliredazionale gratuito'),
+    ]
+
+    APPLIES_TO_CHOICES = [
+        ('banner', 'Solo Banner'),
+        ('pubbliredazionale', 'Solo Pubbliredazionali'),
+        ('both', 'Entrambi'),
+    ]
+
+    # Codice promozionale
+    code = models.CharField(
+        'Codice',
+        max_length=50,
+        unique=True,
+        help_text='Codice univoco (es: ESTATE2024, PROMO50)'
+    )
+
+    # Descrizione
+    description = models.CharField(
+        'Descrizione',
+        max_length=200,
+        help_text='Descrizione interna del codice'
+    )
+
+    # Tipo sconto
+    discount_type = models.CharField(
+        'Tipo sconto',
+        max_length=30,
+        choices=DISCOUNT_TYPE_CHOICES,
+        default='percentage'
+    )
+
+    # Valore sconto
+    discount_value = models.DecimalField(
+        'Valore sconto',
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(0)],
+        help_text='Percentuale (0-100) o importo fisso in €'
+    )
+
+    # A cosa si applica
+    applies_to = models.CharField(
+        'Si applica a',
+        max_length=20,
+        choices=APPLIES_TO_CHOICES,
+        default='both'
+    )
+
+    # Validità
+    valid_from = models.DateTimeField(
+        'Valido da',
+        default=timezone.now
+    )
+
+    valid_until = models.DateTimeField(
+        'Valido fino a',
+        null=True,
+        blank=True,
+        help_text='Lascia vuoto per nessuna scadenza'
+    )
+
+    # Limiti utilizzo
+    max_uses = models.PositiveIntegerField(
+        'Utilizzi massimi',
+        null=True,
+        blank=True,
+        help_text='Numero massimo di volte che può essere usato (lascia vuoto per illimitato)'
+    )
+
+    current_uses = models.PositiveIntegerField(
+        'Utilizzi correnti',
+        default=0,
+        editable=False
+    )
+
+    # Importo minimo
+    min_amount = models.DecimalField(
+        'Importo minimo',
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        validators=[MinValueValidator(0)],
+        help_text='Importo minimo per applicare lo sconto (0 = nessun minimo)'
+    )
+
+    # Stato
+    is_active = models.BooleanField(
+        'Attivo',
+        default=True,
+        help_text='Il codice può essere utilizzato'
+    )
+
+    # Metadati
+    created_at = models.DateTimeField('Creato il', auto_now_add=True)
+    updated_at = models.DateTimeField('Aggiornato il', auto_now=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='created_promo_codes',
+        verbose_name='Creato da'
+    )
+
+    class Meta:
+        verbose_name = 'Codice Promozionale'
+        verbose_name_plural = 'Codici Promozionali'
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.code} - {self.get_discount_display()}"
+
+    def get_discount_display(self):
+        """Restituisce la descrizione dello sconto"""
+        if self.discount_type == 'percentage':
+            return f"{self.discount_value}% di sconto"
+        elif self.discount_type == 'fixed':
+            return f"€{self.discount_value} di sconto"
+        elif self.discount_type == 'free_banner':
+            return "Banner gratuito"
+        elif self.discount_type == 'free_pubbliredazionale':
+            return "Pubbliredazionale gratuito"
+        return "Sconto"
+
+    def is_valid(self):
+        """Verifica se il codice è valido"""
+        if not self.is_active:
+            return False, "Codice non attivo"
+
+        # Verifica validità temporale
+        now = timezone.now()
+        if now < self.valid_from:
+            return False, "Codice non ancora valido"
+
+        if self.valid_until and now > self.valid_until:
+            return False, "Codice scaduto"
+
+        # Verifica utilizzi
+        if self.max_uses and self.current_uses >= self.max_uses:
+            return False, "Codice esaurito (raggiunto limite utilizzi)"
+
+        return True, "OK"
+
+    def can_apply_to(self, item_type):
+        """Verifica se può essere applicato al tipo di item"""
+        if self.applies_to == 'both':
+            return True
+        return self.applies_to == item_type
+
+    def calculate_discount(self, original_price):
+        """Calcola lo sconto da applicare"""
+        if self.discount_type == 'free_banner' or self.discount_type == 'free_pubbliredazionale':
+            return original_price  # Sconto totale
+        elif self.discount_type == 'percentage':
+            return (original_price * self.discount_value) / 100
+        elif self.discount_type == 'fixed':
+            return min(self.discount_value, original_price)  # Non può essere maggiore del prezzo
+        return 0
+
+    def increment_uses(self):
+        """Incrementa il contatore utilizzi"""
+        self.current_uses += 1
+        self.save(update_fields=['current_uses'])

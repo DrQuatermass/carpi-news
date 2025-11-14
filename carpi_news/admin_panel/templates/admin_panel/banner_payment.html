@@ -137,6 +137,76 @@
             margin-top: 20px;
         }
 
+        .btn-secondary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            white-space: nowrap;
+            border: none;
+            transition: all 0.3s ease;
+        }
+
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .promo-code-section {
+            margin: 20px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border: 2px dashed #dee2e6;
+        }
+
+        .promo-code-section label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 15px;
+        }
+
+        .promo-input-group {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+
+        .promo-input-wrapper {
+            flex: 1;
+        }
+
+        .promo-input-wrapper input {
+            width: 100%;
+            padding: 14px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+            font-weight: 500;
+        }
+
+        .promo-input-wrapper input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        #promo-message {
+            margin-top: 10px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
         .btn-primary {
             background: linear-gradient(135deg, #0070ba 0%, #003087 100%);
             color: white;
@@ -145,6 +215,26 @@
         .btn-primary:hover {
             transform: translateY(-2px);
             box-shadow: 0 10px 25px rgba(0, 112, 186, 0.4);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(16, 185, 129, 0.4);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .button-group .btn {
+            margin-top: 0;
         }
 
         .security-note {
@@ -191,7 +281,7 @@
         <div class="navbar-brand">
             🛒 Acquisto Banner
         </div>
-        <a href="{% url 'admin_panel:banner_list' %}" class="btn-light">← Torna ai Banner</a>
+        <a href="{% url 'admin_panel:dashboard' %}" class="btn-light">← Torna ai Banner</a>
     </nav>
 
     <div class="container">
@@ -235,8 +325,21 @@
                 </div>
 
                 <div class="total-amount">
+                    <div class="label">Subtotale</div>
+                    <div class="amount" id="subtotal-amount">€{{ banner.total_price|floatformat:2 }}</div>
+                </div>
+
+                <div id="discount-section" style="display: none; padding: 15px; background: #d1fae5; border-radius: 8px; margin-top: 10px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                        <span style="color: #065f46; font-weight: 600;">🎉 Sconto Applicato</span>
+                        <span style="color: #065f46; font-weight: 600;" id="discount-amount">-€0.00</span>
+                    </div>
+                    <div style="font-size: 12px; color: #047857;" id="discount-description"></div>
+                </div>
+
+                <div class="total-amount" style="margin-top: 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
                     <div class="label">Totale da Pagare</div>
-                    <div class="amount">€{{ banner.total_price }}</div>
+                    <div class="amount" id="final-amount">€{{ banner.total_price|floatformat:2 }}</div>
                 </div>
             </div>
 
@@ -251,20 +354,166 @@
                     • Il banner sarà attivo dopo l'approvazione dell'amministratore
                 </div>
 
-                <form method="post" id="payment-form">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-primary" id="pay-button">
-                        🔒 Acquista con PayPal - €{{ banner.total_price }}
+                <!-- Codice Sconto -->
+                <div class="promo-code-section">
+                    <label>
+                        🎁 Codice Sconto (opzionale)
+                    </label>
+                    <div class="promo-input-group">
+                        <div class="promo-input-wrapper">
+                            <input type="text" id="promo-code-input" placeholder="Inserisci codice sconto">
+                            <div id="promo-message"></div>
+                        </div>
+                        <button type="button" class="btn-secondary" onclick="validatePromoCode()" id="apply-promo-btn">
+                            Applica
+                        </button>
+                    </div>
+                </div>
+
+                <div class="button-group">
+                    <button type="button" class="btn btn-success" onclick="saveBanner()" id="save-button">
+                        💾 Salva Banner
                     </button>
-                </form>
+                    <form method="post" id="payment-form" style="flex: 1; margin: 0;">
+                        {% csrf_token %}
+                        <input type="hidden" name="promo_code" id="promo-code-hidden" value="">
+                        <button type="submit" class="btn btn-primary" id="pay-button">
+                            💳 Paga con PayPal - <span id="pay-button-amount">€{{ banner.total_price|floatformat:2 }}</span>
+                        </button>
+                    </form>
+                </div>
 
                 <script>
+                    const csrfToken = '{{ csrf_token }}';
+                    const bannerId = {{ banner.id }};
+                    const originalPrice = parseFloat({{ banner.total_price }});
+                    let appliedPromoCode = null;
+                    let discountAmount = 0;
+
+                    // Debug
+                    console.log('Banner ID:', bannerId);
+                    console.log('Prezzo originale:', originalPrice);
+                    console.log('Duration days:', {{ banner.duration_days }});
+                    console.log('Price per day:', {{ banner.price_per_day }});
+
+                    // Validazione codice promozionale
+                    async function validatePromoCode() {
+                        const promoInput = document.getElementById('promo-code-input');
+                        const promoMessage = document.getElementById('promo-message');
+                        const applyBtn = document.getElementById('apply-promo-btn');
+                        const code = promoInput.value.trim();
+
+                        if (!code) {
+                            promoMessage.style.color = '#dc2626';
+                            promoMessage.textContent = 'Inserisci un codice';
+                            return;
+                        }
+
+                        applyBtn.disabled = true;
+                        applyBtn.textContent = 'Verifica...';
+                        promoMessage.textContent = '';
+
+                        try {
+                            const response = await fetch('/gestionale/validate-promo-code/', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                    'X-CSRFToken': csrfToken
+                                },
+                                body: JSON.stringify({
+                                    code: code,
+                                    item_type: 'banner',
+                                    original_price: originalPrice
+                                })
+                            });
+
+                            const data = await response.json();
+                            console.log('Risposta validazione:', data);
+
+                            if (data.valid) {
+                                // Codice valido
+                                appliedPromoCode = code;
+                                discountAmount = parseFloat(data.discount_amount);
+
+                                console.log('Sconto applicato:', discountAmount);
+
+                                // Aggiorna UI
+                                document.getElementById('discount-section').style.display = 'block';
+                                document.getElementById('discount-amount').textContent = `-€${discountAmount.toFixed(2)}`;
+                                document.getElementById('discount-description').textContent = data.description;
+
+                                const finalPrice = Math.max(0, originalPrice - discountAmount);
+                                console.log('Prezzo finale:', finalPrice);
+
+                                document.getElementById('final-amount').textContent = `€${finalPrice.toFixed(2)}`;
+                                document.getElementById('pay-button-amount').textContent = `€${finalPrice.toFixed(2)}`;
+                                document.getElementById('promo-code-hidden').value = code;
+
+                                promoMessage.style.color = '#059669';
+                                promoMessage.textContent = '✓ Codice applicato!';
+                                promoInput.disabled = true;
+                                applyBtn.textContent = '✓ Applicato';
+                            } else {
+                                // Codice non valido
+                                promoMessage.style.color = '#dc2626';
+                                promoMessage.textContent = '✗ ' + data.message;
+                                applyBtn.disabled = false;
+                                applyBtn.textContent = 'Applica';
+                            }
+                        } catch (error) {
+                            console.error('Errore:', error);
+                            promoMessage.style.color = '#dc2626';
+                            promoMessage.textContent = 'Errore di connessione';
+                            applyBtn.disabled = false;
+                            applyBtn.textContent = 'Applica';
+                        }
+                    }
+
+                    // Nota: il codice verrà convertito in maiuscolo solo quando viene inviato al server
+
                     // Debug form submission
                     document.getElementById('payment-form').addEventListener('submit', function(e) {
                         console.log('Form submitted!');
                         document.getElementById('pay-button').disabled = true;
                         document.getElementById('pay-button').textContent = 'Elaborazione...';
                     });
+
+                    function saveBanner() {
+                        if (!confirm('Salvare il banner? Verrà inviata una notifica all\'amministratore per l\'approvazione.')) {
+                            return;
+                        }
+
+                        document.getElementById('save-button').disabled = true;
+                        document.getElementById('save-button').textContent = 'Salvataggio...';
+
+                        fetch(`/gestionale/banner/${bannerId}/payment/`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': csrfToken
+                            },
+                            body: JSON.stringify({
+                                action: 'save'
+                            })
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                alert('Banner salvato! L\'amministratore riceverà una notifica per l\'approvazione.');
+                                window.location.href = '/gestionale/';
+                            } else {
+                                alert('Errore: ' + (data.error || 'Impossibile salvare il banner'));
+                                document.getElementById('save-button').disabled = false;
+                                document.getElementById('save-button').textContent = '💾 Salva Banner';
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Errore:', error);
+                            alert('Errore di connessione. Riprova.');
+                            document.getElementById('save-button').disabled = false;
+                            document.getElementById('save-button').textContent = '💾 Salva Banner';
+                        });
+                    }
                 </script>
 
                 <div class="security-note">

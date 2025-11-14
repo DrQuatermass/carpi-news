@@ -183,10 +183,15 @@ def track_approval_change(sender, instance, **kwargs):
 def article_created_notification(sender, instance, created, **kwargs):
     """
     Invia notifica email quando viene creato un nuovo articolo non approvato
+    ESCLUSI i pubbliredazionali (che hanno il proprio flusso di notifica al pagamento)
     """
+    # Skip pubbliredazionali - hanno il loro flusso di notifica
+    if instance.is_pubbliredazionale:
+        return
+
     if created and not instance.approvato:
         logger.info(f"Nuovo articolo creato (ID: {instance.id}) - Invio notifica email")
-        
+
         # Invia email di notifica in modo asincrono per non bloccare il salvataggio
         try:
             success = send_article_approval_notification(instance)
@@ -202,16 +207,17 @@ def article_created_notification(sender, instance, created, **kwargs):
 def handle_article_approval(sender, instance, created, **kwargs):
     """
     Gestisce la condivisione automatica quando un articolo viene approvato
+    E invia email al cliente se è un pubbliredazionale
     """
     # Recupera lo stato di approvazione dalla cache
     approval_state = cache.get(f'article_approval_state_{instance.pk}')
-    
+
     # Per articoli nuovi, controlla anche la cache temporanea
     if not approval_state and created:
         approval_state = cache.get(f'article_approval_state_new_{id(instance)}')
         if approval_state:
             cache.delete(f'article_approval_state_new_{id(instance)}')
-    
+
     if not approval_state:
         # Se non c'è cache, assumiamo sia un nuovo articolo
         was_approved = False
@@ -222,12 +228,20 @@ def handle_article_approval(sender, instance, created, **kwargs):
         # Pulizia cache
         if instance.pk:
             cache.delete(f'article_approval_state_{instance.pk}')
-    
+
     # Condividi se:
     # 1. L'articolo è passato da non approvato ad approvato (approvazione manuale)
     # 2. L'articolo è nuovo e già approvato (auto-approvazione)
     if (not was_approved and is_approved) or (created and is_approved):
         logger.info(f"Articolo '{instance.titolo}' appena approvato, aggiorno feed RSS e avvio condivisione automatica")
+
+        # Invia email al cliente se è un pubbliredazionale
+        if instance.is_pubbliredazionale:
+            from .email_notifications import send_pubbliredazionale_approved_notification
+            try:
+                send_pubbliredazionale_approved_notification(instance)
+            except Exception as e:
+                logger.error(f"Errore invio email approvazione pubbliredazionale ID {instance.id}: {e}")
 
         # I link interni sono già stati aggiunti durante la generazione (polish_article)
         # Non è necessario riaggiungerli qui

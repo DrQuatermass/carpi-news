@@ -145,13 +145,199 @@ Generato automaticamente dal sistema Ombra del Portico
         return False
 
 
+def send_pubbliredazionale_approved_notification(articolo):
+    """
+    Invia email al cliente quando il pubbliredazionale viene approvato
+    """
+    try:
+        if not articolo.is_pubbliredazionale or not articolo.pubbliredazionale_user:
+            logger.warning(f"Tentativo di inviare notifica approvazione per articolo non-pubbliredazionale o senza utente: {articolo.id}")
+            return False
+
+        cliente_email = articolo.pubbliredazionale_user.email
+        if not cliente_email:
+            logger.warning(f"Utente pubbliredazionale {articolo.pubbliredazionale_user.username} senza email")
+            return False
+
+        # URL articolo pubblicato
+        protocol = 'https' if not getattr(settings, 'DEBUG', False) else 'http'
+        domain = getattr(settings, 'SITE_URL', 'https://ombradelportico.it').replace('https://', '').replace('http://', '')
+        article_url = f"{protocol}://{domain}/articolo/{articolo.slug}/"
+
+        subject = f'✅ Il tuo pubbliredazionale "{articolo.nome_azienda}" è stato approvato!'
+
+        html_message = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #27ae60; border-bottom: 2px solid #27ae60; padding-bottom: 10px;">
+                🎉 Pubbliredazionale Approvato!
+            </h2>
+
+            <p>Gentile <strong>{articolo.pubbliredazionale_user.get_full_name() or articolo.pubbliredazionale_user.username}</strong>,</p>
+
+            <p>Siamo lieti di informarti che il tuo pubbliredazionale è stato approvato ed è ora <strong>pubblicato</strong> su Ombra del Portico!</p>
+
+            <div style="background-color: #f8f9fa; padding: 15px; border-left: 4px solid #27ae60; margin: 20px 0;">
+                <h3 style="margin-top: 0; color: #2c3e50;">Dettagli Pubbliredazionale:</h3>
+                <p><strong>Azienda:</strong> {articolo.nome_azienda}</p>
+                <p><strong>Titolo:</strong> {articolo.titolo}</p>
+                <p><strong>Data pubblicazione:</strong> {articolo.data_pubblicazione.strftime('%d/%m/%Y %H:%M') if articolo.data_pubblicazione else 'Ora'}</p>
+            </div>
+
+            <p style="text-align: center; margin: 30px 0;">
+                <a href="{article_url}"
+                   style="background-color: #3498db; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
+                    📰 Visualizza il tuo articolo
+                </a>
+            </p>
+
+            <p>Il tuo articolo è ora visibile a tutti i lettori di Ombra del Portico e verrà condiviso sui nostri canali social.</p>
+
+            <p style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;">
+                Grazie per aver scelto Ombra del Portico!<br>
+                <em>La Redazione</em>
+            </p>
+        </div>
+        """
+
+        plain_message = f"""
+🎉 Pubbliredazionale Approvato!
+
+Gentile {articolo.pubbliredazionale_user.get_full_name() or articolo.pubbliredazionale_user.username},
+
+Siamo lieti di informarti che il tuo pubbliredazionale è stato approvato ed è ora pubblicato su Ombra del Portico!
+
+Dettagli Pubbliredazionale:
+- Azienda: {articolo.nome_azienda}
+- Titolo: {articolo.titolo}
+- Data pubblicazione: {articolo.data_pubblicazione.strftime('%d/%m/%Y %H:%M') if articolo.data_pubblicazione else 'Ora'}
+
+Visualizza il tuo articolo: {article_url}
+
+Il tuo articolo è ora visibile a tutti i lettori di Ombra del Portico e verrà condiviso sui nostri canali social.
+
+Grazie per aver scelto Ombra del Portico!
+La Redazione
+        """
+
+        send_mail(
+            subject=subject,
+            message=plain_message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[cliente_email],
+            html_message=html_message,
+            fail_silently=False,
+        )
+
+        logger.info(f"Email di approvazione pubbliredazionale inviata a {cliente_email} per articolo ID {articolo.id}")
+        return True
+
+    except Exception as e:
+        logger.error(f"Errore nell'invio email approvazione pubbliredazionale ID {articolo.id}: {e}")
+        return False
+
+
+def send_banner_approved_notification(banner):
+    """
+    Invia email al cliente quando il banner viene approvato
+    """
+    try:
+        from admin_panel.models import Banner
+
+        if not isinstance(banner, Banner) or not banner.user:
+            logger.warning(f"Tentativo di inviare notifica approvazione per banner senza utente: {banner.id if hasattr(banner, 'id') else 'unknown'}")
+            return False
+
+        cliente_email = banner.user.email
+        if not cliente_email:
+            logger.warning(f"Utente banner {banner.user.username} senza email")
+            return False
+
+        # URL dashboard gestionale
+        protocol = 'https' if not getattr(settings, 'DEBUG', False) else 'http'
+        domain = getattr(settings, 'SITE_URL', 'https://ombradelportico.it').replace('https://', '').replace('http://', '')
+        dashboard_url = f"{protocol}://{domain}/gestionale/dashboard/"
+
+        subject = f'✅ Il tuo banner "{banner.title}" è stato approvato!'
+
+        html_message = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h2 style="color: #27ae60; border-bottom: 2px solid #27ae60; padding-bottom: 10px;">
+                🎉 Banner Approvato!
+            </h2>
+
+            <p>Gentile <strong>{banner.user.get_full_name() or banner.user.username}</strong>,</p>
+
+            <p>Siamo lieti di informarti che il tuo banner è stato approvato ed è ora <strong>attivo</strong> su Ombra del Portico!</p>
+
+            <div style="background-color: #f8f9fa; padding: 15px; border-left: 4px solid #27ae60; margin: 20px 0;">
+                <h3 style="margin-top: 0; color: #2c3e50;">Dettagli Banner:</h3>
+                <p><strong>Titolo:</strong> {banner.title}</p>
+                <p><strong>Posizione:</strong> {banner.get_position_display()}</p>
+                <p><strong>Periodo:</strong> {banner.start_date.strftime('%d/%m/%Y')} - {banner.end_date.strftime('%d/%m/%Y')}</p>
+                <p><strong>Durata:</strong> {banner.duration_days} giorni</p>
+            </div>
+
+            <p style="text-align: center; margin: 30px 0;">
+                <a href="{dashboard_url}"
+                   style="background-color: #3498db; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
+                    📊 Visualizza Dashboard
+                </a>
+            </p>
+
+            <p>Il tuo banner è ora visibile nella posizione selezionata e puoi monitorare le statistiche (impression e click) dalla tua dashboard.</p>
+
+            <p style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;">
+                Grazie per aver scelto Ombra del Portico!<br>
+                <em>La Redazione</em>
+            </p>
+        </div>
+        """
+
+        plain_message = f"""
+🎉 Banner Approvato!
+
+Gentile {banner.user.get_full_name() or banner.user.username},
+
+Siamo lieti di informarti che il tuo banner è stato approvato ed è ora attivo su Ombra del Portico!
+
+Dettagli Banner:
+- Titolo: {banner.title}
+- Posizione: {banner.get_position_display()}
+- Periodo: {banner.start_date.strftime('%d/%m/%Y')} - {banner.end_date.strftime('%d/%m/%Y')}
+- Durata: {banner.duration_days} giorni
+
+Visualizza Dashboard: {dashboard_url}
+
+Il tuo banner è ora visibile nella posizione selezionata e puoi monitorare le statistiche (impression e click) dalla tua dashboard.
+
+Grazie per aver scelto Ombra del Portico!
+La Redazione
+        """
+
+        send_mail(
+            subject=subject,
+            message=plain_message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[cliente_email],
+            html_message=html_message,
+            fail_silently=False,
+        )
+
+        logger.info(f"Email di approvazione banner inviata a {cliente_email} per banner ID {banner.id}")
+        return True
+
+    except Exception as e:
+        logger.error(f"Errore nell'invio email approvazione banner ID {banner.id if hasattr(banner, 'id') else 'unknown'}: {e}")
+        return False
+
+
 def send_test_email():
     """
     Invia email di test per verificare la configurazione
     """
     try:
         admin_email = getattr(settings, 'ADMIN_EMAIL', 'readazione@ombradelportico.it')
-        
+
         send_mail(
             subject='[Test] Configurazione Email Ombra del Portico',
             message='Questo è un test per verificare che la configurazione email funzioni correttamente.',
@@ -160,10 +346,10 @@ def send_test_email():
             html_message='<h2>Email Test</h2><p>La configurazione email funziona correttamente!</p>',
             fail_silently=False,
         )
-        
+
         logger.info(f"Email di test inviata con successo a {admin_email}")
         return True
-        
+
     except Exception as e:
         logger.error(f"Errore nell'invio email di test: {e}")
         return False

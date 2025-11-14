@@ -17,7 +17,7 @@ class APIUsageTracker:
             'input': 3.00,   # $3 per MTok
             'output': 15.00  # $15 per MTok
         },
-        'claude-3-5-sonnet-20241022': {
+        'claude-sonnet-4-20250514': {
             'input': 3.00,
             'output': 15.00
         },
@@ -73,7 +73,7 @@ class APIUsageTracker:
             from home.models import APIUsage
 
             # Calcola i costi
-            pricing = cls.ANTHROPIC_PRICING.get(model, cls.ANTHROPIC_PRICING['claude-3-5-sonnet-20241022'])
+            pricing = cls.ANTHROPIC_PRICING.get(model, cls.ANTHROPIC_PRICING['claude-sonnet-4-20250514'])
 
             # Costo = (tokens / 1,000,000) * prezzo_per_MTok
             input_cost = Decimal(str((input_tokens / 1_000_000) * pricing['input']))

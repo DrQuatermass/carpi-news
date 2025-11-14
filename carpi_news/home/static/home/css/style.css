@@ -493,14 +493,27 @@ main {
     transform: translateX(-50%);
 }
 
-/* News Grid */
+/* News Grid - Fixed columns to prevent CLS */
 .news-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+    grid-template-columns: 1fr;
     gap: 1.5rem;
     flex: 1;
     position: relative;
     overflow: hidden;
+}
+
+/* Responsive grid columns */
+@media (min-width: 769px) and (max-width: 1079px) {
+    .news-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (min-width: 1080px) {
+    .news-grid {
+        grid-template-columns: repeat(3, 1fr);
+    }
 }
 
 /* Transizioni per le card */

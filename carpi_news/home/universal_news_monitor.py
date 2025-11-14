@@ -2216,6 +2216,14 @@ class EmailScraper(BaseScraper):
 
             # Se non trova tweet specifico, estrai tutto il testo
             if not tweet_content:
+                # IMPORTANTE: Preserva i paragrafi sostituendo i tag HTML con newline prima dell'estrazione
+                # Questo mantiene la struttura dei paragrafi come negli altri monitor
+                import re
+
+                # Sostituisci tag di chiusura paragrafo/div/br con doppia newline
+                for tag in soup.find_all(['p', 'div', 'br', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6']):
+                    tag.append('\n\n')  # Aggiungi doppia newline dopo ogni paragrafo
+
                 text = soup.get_text()
             else:
                 text = tweet_content
@@ -2238,23 +2246,29 @@ class EmailScraper(BaseScraper):
             for emoji, replacement in emoji_replacements.items():
                 text = text.replace(emoji, f' {replacement} ')
 
-            # Pulisci spazi multipli e newline
-            text = re.sub(r'\s+', ' ', text)
+            # Pulisci spazi multipli SOLO per spazi, NON per newline
+            # Preserva doppie newline per divisione paragrafi (come negli altri monitor)
+            text = re.sub(r'[ \t]+', ' ', text)  # Collassa solo spazi/tab orizzontali
+            text = re.sub(r'\n{3,}', '\n\n', text)  # Max 2 newline consecutive
             text = text.strip()
 
             # Se il testo è troppo corto o sembra vuoto, prova estrazione alternativa
             if len(text) < 20:
                 text = soup.get_text()
-                text = re.sub(r'\s+', ' ', text).strip()
+                text = re.sub(r'[ \t]+', ' ', text)  # Collassa solo spazi/tab orizzontali
+                text = re.sub(r'\n{3,}', '\n\n', text).strip()  # Max 2 newline consecutive
 
             return text
 
         except Exception as e:
             self.logger.error(f"Errore conversione HTML: {e}")
-            # Fallback: restituisci HTML grezzo pulito
+            # Fallback: restituisci HTML grezzo pulito preservando paragrafi
             import re
-            clean_text = re.sub(r'<[^>]+>', ' ', html_content)
-            clean_text = re.sub(r'\s+', ' ', clean_text).strip()
+            # Sostituisci tag di chiusura paragrafo con doppie newline
+            clean_text = re.sub(r'</p>|</div>|<br\s*/?>|</h[1-6]>', '\n\n', html_content)
+            clean_text = re.sub(r'<[^>]+>', ' ', clean_text)  # Rimuovi altri tag
+            clean_text = re.sub(r'[ \t]+', ' ', clean_text)  # Collassa spazi/tab
+            clean_text = re.sub(r'\n{3,}', '\n\n', clean_text).strip()  # Max 2 newline
             return clean_text
 
     def _extract_first_image(self, content: str) -> Optional[str]:

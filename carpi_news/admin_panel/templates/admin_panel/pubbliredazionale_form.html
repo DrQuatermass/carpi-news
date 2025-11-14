@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nuovo Pubbliredazionale - Admin Panel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f7fa;
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .navbar-brand {
+            font-size: 20px;
+            font-weight: 700;
+        }
+
+        .navbar-user {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+            display: inline-block;
+        }
+
+        .btn-light {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .btn-light:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 20px rgba(0, 0, 0, 0.08);
+            padding: 30px;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            color: #2d3748;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #718096;
+            margin-bottom: 30px;
+            font-size: 15px;
+        }
+
+        .form-group {
+            margin-bottom: 25px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            color: #2d3748;
+            margin-bottom: 8px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        select.form-control {
+            cursor: pointer;
+        }
+
+        .help-text {
+            font-size: 13px;
+            color: #718096;
+            margin-top: 5px;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 15px;
+            justify-content: flex-end;
+            margin-top: 30px;
+        }
+
+        .alert {
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+
+        .alert-danger {
+            background: #fee;
+            color: #c53030;
+            border-left: 4px solid #c53030;
+        }
+
+        .info-box {
+            background: #f0f9ff;
+            border-left: 4px solid #0ea5e9;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+
+        .info-box h3 {
+            color: #0369a1;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .info-box ul {
+            color: #0c4a6e;
+            margin-left: 20px;
+        }
+
+        .info-box li {
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <div class="navbar">
+        <div class="navbar-brand">🏛️ Ombra del Portico - Pubbliredazionali</div>
+        <div class="navbar-user">
+            <span>{{ user.username }}</span>
+            <a href="{% url 'admin_panel:dashboard' %}" class="btn btn-light">I Miei Pubbliredazionali</a>
+            <a href="{% url 'admin_panel:logout' %}" class="btn btn-light">Logout</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Messages -->
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+
+        <!-- Info Box -->
+        <div class="info-box">
+            <h3>✨ Come funziona il servizio Pubbliredazionale</h3>
+            <ul>
+                <li>Inserisci il nome della tua azienda e, opzionalmente, il sito web o la pagina Facebook</li>
+                <li>Il nostro AI agent farà una breve intervista (3-5 domande) per capire la tua attività</li>
+                <li>L'intelligenza artificiale creerà un articolo pubbliredazionale professionale</li>
+                <li>Potrai rivederlo e richiedere modifiche prima di procedere</li>
+                <li>Pagamento: <strong>€5</strong> (pagamento sicuro via PayPal)</li>
+                <li>Dopo l'approvazione dell'amministratore, l'articolo verrà pubblicato nella sezione <strong>Attualità</strong></li>
+            </ul>
+        </div>
+
+        <!-- Form Card -->
+        <div class="card">
+            <h1>Nuovo Articolo Pubbliredazionale</h1>
+            <p class="subtitle">Inizia creando un nuovo articolo pubbliredazionale per la tua azienda</p>
+
+            <form method="post">
+                {% csrf_token %}
+
+                <div class="form-group">
+                    <label for="nome_azienda">Nome Azienda *</label>
+                    <input type="text" id="nome_azienda" name="nome_azienda" class="form-control"
+                           value="{{ form_data.nome_azienda }}" required
+                           placeholder="Es: Pasticceria Da Mario">
+                    <div class="help-text">Il nome della tua azienda o attività</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="intervistato_nome">Nome Intervistato</label>
+                    <input type="text" id="intervistato_nome" name="intervistato_nome" class="form-control"
+                           value="{{ form_data.intervistato_nome }}"
+                           placeholder="Es: Mario">
+                    <div class="help-text"><strong>Opzionale:</strong> Il nome della persona che risponderà all'intervista</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="intervistato_cognome">Cognome Intervistato</label>
+                    <input type="text" id="intervistato_cognome" name="intervistato_cognome" class="form-control"
+                           value="{{ form_data.intervistato_cognome }}"
+                           placeholder="Es: Rossi">
+                    <div class="help-text"><strong>Opzionale:</strong> Il cognome della persona che risponderà all'intervista</div>
+                </div>
+
+                <div class="form-group">
+                    <label for="sito_web">Sito Web o Pagina Facebook</label>
+                    <input type="url" id="sito_web" name="sito_web" class="form-control"
+                           value="{{ form_data.sito_web }}"
+                           placeholder="https://www.tuosito.it oppure https://www.facebook.com/tuapagina">
+                    <div class="help-text">
+                        <strong>Opzionale:</strong> L'URL del sito web aziendale oppure il link alla tua pagina Facebook.<br>
+                        Esempi validi: https://www.tuosito.it, https://www.facebook.com/tuapagina, https://www.instagram.com/tuoaccount
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="promo_code">🎁 Codice Sconto</label>
+                    <input type="text" id="promo_code" name="promo_code" class="form-control"
+                           value="{{ form_data.promo_code }}"
+                           placeholder="Inserisci il codice se ne hai uno"
+                           style="text-transform: uppercase;">
+                    <div class="help-text">
+                        <strong>Opzionale:</strong> Se hai un codice promozionale, inseriscilo qui per ottenere uno sconto o un pubbliredazionale gratuito.
+                    </div>
+                    <div id="promo-validation-message" style="margin-top: 10px; font-weight: 600;"></div>
+                </div>
+
+                <div class="form-actions">
+                    <a href="{% url 'admin_panel:dashboard' %}" class="btn btn-light">Annulla</a>
+                    <button type="submit" class="btn btn-primary">Inizia Intervista →</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Validazione real-time del codice promozionale
+        const promoInput = document.getElementById('promo_code');
+        const promoMessage = document.getElementById('promo-validation-message');
+        let validationTimeout;
+
+        promoInput.addEventListener('input', function() {
+            const code = this.value.trim().toUpperCase();
+            this.value = code; // Forza uppercase
+
+            // Clear timeout precedente
+            clearTimeout(validationTimeout);
+
+            if (code.length === 0) {
+                promoMessage.innerHTML = '';
+                promoMessage.style.color = '';
+                return;
+            }
+
+            // Mostra loading
+            promoMessage.innerHTML = '⏳ Verifica codice...';
+            promoMessage.style.color = '#718096';
+
+            // Debounce per evitare troppe richieste
+            validationTimeout = setTimeout(() => {
+                validatePromoCode(code);
+            }, 500);
+        });
+
+        async function validatePromoCode(code) {
+            try {
+                const response = await fetch('/gestionale/validate-promo-code/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}'
+                    },
+                    body: JSON.stringify({
+                        code: code,
+                        item_type: 'pubbliredazionale',
+                        original_price: 5.00
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.valid) {
+                    // Codice valido
+                    if (data.discount_amount >= 5.00) {
+                        promoMessage.innerHTML = '✅ <strong>PUBBLIREDAZIONALE GRATUITO!</strong> Codice valido.';
+                        promoMessage.style.color = '#10b981';
+                    } else {
+                        promoMessage.innerHTML = `✅ Codice valido! Sconto: <strong>€${data.discount_amount.toFixed(2)}</strong> - ${data.description}`;
+                        promoMessage.style.color = '#10b981';
+                    }
+                } else {
+                    // Codice non valido
+                    promoMessage.innerHTML = `❌ ${data.message}`;
+                    promoMessage.style.color = '#ef4444';
+                }
+            } catch (error) {
+                console.error('Errore validazione codice:', error);
+                promoMessage.innerHTML = '⚠️ Errore verifica codice. Puoi comunque procedere.';
+                promoMessage.style.color = '#f59e0b';
+            }
+        }
+    </script>
+</body>
+</html>
