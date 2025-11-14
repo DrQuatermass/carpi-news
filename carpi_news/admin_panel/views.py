@@ -9,6 +9,9 @@ from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.http import JsonResponse
 from datetime import timedelta
 from .models import Banner
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def login_view(request):
