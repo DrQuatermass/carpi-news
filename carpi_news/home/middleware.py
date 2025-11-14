@@ -20,7 +20,7 @@ class SecurityHeadersMiddleware:
         )
 
         # Pagine di pagamento PayPal necessitano di form-action più permissivo
-        is_payment_page = '/payment' in request.path and '/gestionale/banner' in request.path
+        is_payment_page = '/payment' in request.path and ('/gestionale/banner' in request.path or '/gestionale/pubbliredazionale' in request.path)
 
         # Cache headers per file statici
         if request.path.startswith('/static/'):
