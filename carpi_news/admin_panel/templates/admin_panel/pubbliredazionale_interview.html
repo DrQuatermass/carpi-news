@@ -410,7 +410,8 @@
             addUserMessage(answer);
             input.value = '';
             disableInput();
-            showLoading();
+            // NON mostrare i 3 step di loading - solo un messaggio semplice
+            addSystemMessage('🤖 Sto elaborando la tua risposta...');
 
             // Invia risposta all'AI
             fetch(`/gestionale/pubbliredazionale/${pubbliredazionaleId}/interview/`, {
@@ -426,7 +427,7 @@
             })
             .then(response => response.json())
             .then(data => {
-                hideLoading();
+                // Non chiamare hideLoading() perché non abbiamo chiamato showLoading()
 
                 if (data.success) {
                     if (data.interview_complete) {
@@ -447,7 +448,6 @@
                 }
             })
             .catch(error => {
-                hideLoading();
                 console.error('Errore:', error);
                 alert('Errore di connessione. Riprova.');
                 enableInput();
