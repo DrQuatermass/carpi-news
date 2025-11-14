@@ -1003,11 +1003,98 @@ def pubbliredazionale_payment(request, pubbliredazionale_id):
         return redirect('admin_panel:pubbliredazionale_list')
 
     if request.method == 'POST':
+        # Check se è una richiesta JSON (azione save)
+        if request.content_type == 'application/json':
+            import json as json_lib
+            from django.core.mail import send_mail
+            from admin_panel.models import PromotionalCode
+            from decimal import Decimal
+
+            data = json_lib.loads(request.body)
+            action = data.get('action')
+
+            if action == 'save':
+                # Gestisci codice promozionale se presente
+                promo_code_str = data.get('promo_code', '').strip()
+                final_price = pubbliredazionale.total_price
+                discount_amount = Decimal('0')
+                promo_obj = None
+
+                if promo_code_str:
+                    try:
+                        promo_obj = PromotionalCode.objects.get(code=promo_code_str)
+                        is_valid, message = promo_obj.is_valid()
+
+                        if is_valid and promo_obj.can_apply_to('pubbliredazionale'):
+                            discount_amount = promo_obj.calculate_discount(final_price)
+                            final_price = max(Decimal('0'), final_price - discount_amount)
+                            logger.info(f"Codice promo '{promo_code_str}' applicato: sconto €{discount_amount}, prezzo finale €{final_price}")
+
+                            # Applica il codice promo
+                            pubbliredazionale.promo_code = promo_obj
+                            pubbliredazionale.discount_amount = discount_amount
+                            promo_obj.increment_uses()
+                        else:
+                            logger.warning(f"Codice promo '{promo_code_str}' non valido o non applicabile: {message}")
+                    except PromotionalCode.DoesNotExist:
+                        logger.warning(f"Codice promo '{promo_code_str}' non trovato")
+
+                # Salva il pubbliredazionale con stato 'saved' (o 'completed' se gratuito con promo)
+                if final_price == 0 and promo_obj:
+                    # Pubbliredazionale gratuito con codice promo
+                    pubbliredazionale.payment_status = 'completed'
+                    pubbliredazionale.payment_transaction_id = f'PROMO-FREE-{promo_code_str}'
+                    pubbliredazionale.save()
+
+                    # Invia notifica all'admin
+                    pubbliredazionale.send_admin_notification()
+
+                    return JsonResponse({'success': True, 'message': 'Pubbliredazionale gratuito attivato!'})
+                else:
+                    # Salvato senza pagamento
+                    pubbliredazionale.payment_status = 'saved'
+                    pubbliredazionale.save()
+
+                    # Invia email all'admin
+                    admin_email = settings.ADMIN_EMAIL or settings.DEFAULT_FROM_EMAIL
+                    subject = f'Nuovo Pubbliredazionale da Approvare: {pubbliredazionale.nome_azienda}'
+                    message = f'''Un nuovo pubbliredazionale è stato salvato e richiede approvazione.
+
+Azienda: {pubbliredazionale.nome_azienda}
+Sito Web: {pubbliredazionale.sito_web}
+Categoria: {pubbliredazionale.categoria}
+Utente: {request.user.username} ({request.user.email})
+
+Titolo Articolo: {pubbliredazionale.titolo}
+
+Link per approvare: {settings.SITE_URL}/admin/home/articolo/{pubbliredazionale.id}/change/
+
+Il cliente ha scelto di salvare il pubbliredazionale senza pagamento immediato.
+'''
+
+                    try:
+                        send_mail(
+                            subject,
+                            message,
+                            settings.DEFAULT_FROM_EMAIL,
+                            [admin_email],
+                            fail_silently=False,
+                        )
+                    except Exception as e:
+                        logger.error(f"Errore invio email admin: {e}")
+
+                    return JsonResponse({'success': True})
+            else:
+                return JsonResponse({'success': False, 'error': 'Azione non valida'})
+
+        # Altrimenti è un normale POST per pagamento PayPal
         from admin_panel.models import PromotionalCode
         from decimal import Decimal
 
-        # Gestisci codice promozionale se presente
-        promo_code_str = request.session.get(f'promo_pubbliredazionale_{pubbliredazionale.id}', '').strip()
+        # Gestisci codice promozionale se presente (dalla form o dalla sessione)
+        promo_code_str = request.POST.get('promo_code', '').strip()
+        if not promo_code_str:
+            promo_code_str = request.session.get(f'promo_pubbliredazionale_{pubbliredazionale.id}', '').strip()
         final_price = pubbliredazionale.total_price
         discount_amount = Decimal('0')
         promo_obj = None

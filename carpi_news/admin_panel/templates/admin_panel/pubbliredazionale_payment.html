@@ -368,13 +368,18 @@
                     </div>
                 </div>
 
-                <form method="post" id="paymentForm">
-                    {% csrf_token %}
-                    <input type="hidden" name="promo_code" id="promo-code-hidden" value="">
-                    <button type="submit" class="btn btn-primary" id="pay-button">
-                        Paga con PayPal - <span id="pay-button-amount">€{{ pubbliredazionale.total_price|floatformat:2 }}</span>
+                <div class="button-group" style="display: flex; gap: 15px; justify-content: center; margin-top: 20px;">
+                    <button type="button" class="btn btn-secondary" onclick="savePubbliredazionale()" id="save-button">
+                        💾 Salva Pubbliredazionale
                     </button>
-                </form>
+                    <form method="post" id="paymentForm" style="margin: 0;">
+                        {% csrf_token %}
+                        <input type="hidden" name="promo_code" id="promo-code-hidden" value="">
+                        <button type="submit" class="btn btn-primary" id="pay-button">
+                            💳 Paga con PayPal - <span id="pay-button-amount">€{{ pubbliredazionale.total_price|floatformat:2 }}</span>
+                        </button>
+                    </form>
+                </div>
 
                 <p style="margin-top: 20px; color: #718096; font-size: 13px;">
                     Sarai reindirizzato a PayPal per completare il pagamento in modo sicuro
@@ -474,11 +479,51 @@
         }
 
         // Mostra loading quando si invia il form
-        document.getElementById('paymentForm').addEventListener('submit', function() {
+        document.getElementById('paymentForm').addEventListener('submit', function(e) {
+            console.log('Form submitted!');
             const button = document.getElementById('pay-button');
             button.disabled = true;
             button.innerHTML = '⏳ Reindirizzamento a PayPal...';
         });
+
+        // Funzione per salvare il pubbliredazionale senza pagare
+        function savePubbliredazionale() {
+            if (!confirm('Salvare il pubbliredazionale? Verrà inviata una notifica all\'amministratore per l\'approvazione.')) {
+                return;
+            }
+
+            document.getElementById('save-button').disabled = true;
+            document.getElementById('save-button').textContent = 'Salvataggio...';
+
+            fetch(`/gestionale/pubbliredazionale/${pubbliredazionaleId}/payment/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrfToken
+                },
+                body: JSON.stringify({
+                    action: 'save',
+                    promo_code: document.getElementById('promo-code-hidden').value
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Pubbliredazionale salvato! L\'amministratore riceverà una notifica per l\'approvazione.');
+                    window.location.href = '/gestionale/';
+                } else {
+                    alert('Errore: ' + (data.error || 'Impossibile salvare il pubbliredazionale'));
+                    document.getElementById('save-button').disabled = false;
+                    document.getElementById('save-button').textContent = '💾 Salva Pubbliredazionale';
+                }
+            })
+            .catch(error => {
+                console.error('Errore:', error);
+                alert('Errore di connessione. Riprova.');
+                document.getElementById('save-button').disabled = false;
+                document.getElementById('save-button').textContent = '💾 Salva Pubbliredazionale';
+            });
+        }
     </script>
 </body>
 </html>
