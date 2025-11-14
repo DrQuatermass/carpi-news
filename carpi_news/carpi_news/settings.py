@@ -91,13 +91,20 @@ if DATABASE_URL:
         'default': dj_database_url.parse(DATABASE_URL)
     }
 else:
-    # Development database (SQLite)
+    # Development database (SQLite) con ottimizzazioni per produzione
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',
             'NAME': BASE_DIR / 'db.sqlite3',
             'OPTIONS': {
                 'timeout': 20,  # Timeout di 20 secondi per gestire concorrenza
+                'init_command': (
+                    'PRAGMA journal_mode=WAL;'      # Write-Ahead Logging: migliora concorrenza
+                    'PRAGMA synchronous=NORMAL;'    # Bilanciamento velocità/sicurezza
+                    'PRAGMA cache_size=-64000;'     # 64MB cache in memoria
+                    'PRAGMA temp_store=MEMORY;'     # Tabelle temporanee in RAM
+                    'PRAGMA mmap_size=268435456;'   # 256MB memory-mapped I/O
+                )
             }
         }
     }
