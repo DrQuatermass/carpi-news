@@ -249,18 +249,6 @@
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <label for="promo_code">🎁 Codice Sconto</label>
-                    <input type="text" id="promo_code" name="promo_code" class="form-control"
-                           value="{{ form_data.promo_code }}"
-                           placeholder="Inserisci il codice se ne hai uno"
-                           style="text-transform: uppercase;">
-                    <div class="help-text">
-                        <strong>Opzionale:</strong> Se hai un codice promozionale, inseriscilo qui per ottenere uno sconto o un pubbliredazionale gratuito.
-                    </div>
-                    <div id="promo-validation-message" style="margin-top: 10px; font-weight: 600;"></div>
-                </div>
-
                 <div class="form-actions">
                     <a href="{% url 'admin_panel:dashboard' %}" class="btn btn-light">Annulla</a>
                     <button type="submit" class="btn btn-primary">Inizia Intervista →</button>
@@ -269,72 +257,5 @@
         </div>
     </div>
 
-    <script>
-        // Validazione real-time del codice promozionale
-        const promoInput = document.getElementById('promo_code');
-        const promoMessage = document.getElementById('promo-validation-message');
-        let validationTimeout;
-
-        promoInput.addEventListener('input', function() {
-            const code = this.value.trim().toUpperCase();
-            this.value = code; // Forza uppercase
-
-            // Clear timeout precedente
-            clearTimeout(validationTimeout);
-
-            if (code.length === 0) {
-                promoMessage.innerHTML = '';
-                promoMessage.style.color = '';
-                return;
-            }
-
-            // Mostra loading
-            promoMessage.innerHTML = '⏳ Verifica codice...';
-            promoMessage.style.color = '#718096';
-
-            // Debounce per evitare troppe richieste
-            validationTimeout = setTimeout(() => {
-                validatePromoCode(code);
-            }, 500);
-        });
-
-        async function validatePromoCode(code) {
-            try {
-                const response = await fetch('/gestionale/validate-promo-code/', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRFToken': '{{ csrf_token }}'
-                    },
-                    body: JSON.stringify({
-                        code: code,
-                        item_type: 'pubbliredazionale',
-                        original_price: 5.00
-                    })
-                });
-
-                const data = await response.json();
-
-                if (data.valid) {
-                    // Codice valido
-                    if (data.discount_amount >= 5.00) {
-                        promoMessage.innerHTML = '✅ <strong>PUBBLIREDAZIONALE GRATUITO!</strong> Codice valido.';
-                        promoMessage.style.color = '#10b981';
-                    } else {
-                        promoMessage.innerHTML = `✅ Codice valido! Sconto: <strong>€${data.discount_amount.toFixed(2)}</strong> - ${data.description}`;
-                        promoMessage.style.color = '#10b981';
-                    }
-                } else {
-                    // Codice non valido
-                    promoMessage.innerHTML = `❌ ${data.message}`;
-                    promoMessage.style.color = '#ef4444';
-                }
-            } catch (error) {
-                console.error('Errore validazione codice:', error);
-                promoMessage.innerHTML = '⚠️ Errore verifica codice. Puoi comunque procedere.';
-                promoMessage.style.color = '#f59e0b';
-            }
-        }
-    </script>
 </body>
 </html>

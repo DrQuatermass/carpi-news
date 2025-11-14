@@ -339,20 +339,6 @@
                 <div class="amount" id="final-amount">€{{ pubbliredazionale.total_price|floatformat:2 }}</div>
             </div>
 
-            <!-- Codice Sconto -->
-            <div class="promo-code-section">
-                <label>🎁 Codice Sconto (opzionale)</label>
-                <div class="promo-input-group">
-                    <div class="promo-input-wrapper">
-                        <input type="text" id="promo-code-input" placeholder="Inserisci codice sconto">
-                        <div id="promo-message"></div>
-                    </div>
-                    <button type="button" class="btn-secondary" onclick="validatePromoCode()" id="apply-promo-btn">
-                        Applica
-                    </button>
-                </div>
-            </div>
-
             <!-- Payment Info -->
             <div class="payment-info">
                 <h3>📋 Cosa succede dopo il pagamento?</h3>
@@ -367,6 +353,20 @@
             <!-- Payment Action -->
             <div class="action-section">
                 <div class="paypal-logo">💳</div>
+
+                <!-- Codice Sconto -->
+                <div class="promo-code-section">
+                    <label>🎁 Codice Sconto (opzionale)</label>
+                    <div class="promo-input-group">
+                        <div class="promo-input-wrapper">
+                            <input type="text" id="promo-code-input" placeholder="Inserisci codice sconto">
+                            <div id="promo-message"></div>
+                        </div>
+                        <button type="button" class="btn-secondary" onclick="validatePromoCode()" id="apply-promo-btn">
+                            Applica
+                        </button>
+                    </div>
+                </div>
 
                 <form method="post" id="paymentForm">
                     {% csrf_token %}
