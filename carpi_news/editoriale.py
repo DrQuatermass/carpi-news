@@ -27,14 +27,15 @@ def setup_logging():
     return setup_centralized_logger('editoriale_quotidiano', 'INFO')
 
 def raccoglie_articoli_ieri():
-    """Raccoglie i 4 articoli più visti del giorno precedente, escludendo Cultura & Eventi ed Editoriali"""
+    """Raccoglie i 4 articoli più visti del giorno precedente, escludendo Cultura & Eventi, Editoriali e Pubbliredazionali"""
     ieri = timezone.now().date() - timedelta(days=1)
     inizio_ieri = timezone.make_aware(datetime.combine(ieri, datetime.min.time()))
     fine_ieri = timezone.make_aware(datetime.combine(ieri, datetime.max.time()))
 
     articoli = Articolo.objects.filter(
         approvato=True,
-        data_pubblicazione__range=(inizio_ieri, fine_ieri)
+        data_pubblicazione__range=(inizio_ieri, fine_ieri),
+        is_pubbliredazionale=False  # Esclude i pubbliredazionali
     ).exclude(
         categoria__in=['Editoriale', 'Cultura & Eventi']  # Esclude editoriali precedenti ed eventi
     ).order_by('-views')[:4]  # Ordina per visualizzazioni decrescenti e prende i primi 4
@@ -224,8 +225,35 @@ def salva_editoriale(titolo, contenuto, data_ieri, numero_articoli):
 def main():
     """Funzione principale"""
     logger = setup_logging()
-    
+
+    # Lock file per prevenire esecuzioni concorrenti
+    from pathlib import Path
+
+    locks_dir = Path('locks')
+    locks_dir.mkdir(exist_ok=True)
+    lock_file_path = locks_dir / 'editoriale_generation.lock'
+
+    lock_file = None
     try:
+        # Apri il lock file
+        lock_file = open(lock_file_path, 'w')
+
+        # Acquisci lock esclusivo (non-blocking)
+        if os.name == 'nt':  # Windows
+            import msvcrt
+            try:
+                msvcrt.locking(lock_file.fileno(), msvcrt.LK_NBLCK, 1)
+            except OSError:
+                logger.info("Un altro processo sta già generando l'editoriale, skip")
+                return 0
+        else:  # Unix/Linux
+            import fcntl
+            try:
+                fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except IOError:
+                logger.info("Un altro processo sta già generando l'editoriale, skip")
+                return 0
+
         logger.info("🏛️ Avvio generazione editoriale quotidiano")
         
         # 1. Raccogli articoli di ieri
@@ -272,8 +300,21 @@ def main():
         import traceback
         logger.error(f"Traceback: {traceback.format_exc()}")
         return 1
-        
-    return 0
+    finally:
+        # Rilascia il lock
+        if lock_file:
+            try:
+                if os.name == 'nt':
+                    import msvcrt
+                    msvcrt.locking(lock_file.fileno(), msvcrt.LK_UNLCK, 1)
+                else:
+                    import fcntl
+                    fcntl.flock(lock_file.fileno(), fcntl.LOCK_UN)
+                lock_file.close()
+            except Exception:
+                pass
+
+        return 0
 
 if __name__ == "__main__":
     sys.exit(main())

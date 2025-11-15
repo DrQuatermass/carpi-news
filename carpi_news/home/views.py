@@ -68,6 +68,11 @@ def home(request):
         end_date__gte=timezone.now()
     ).select_related('user'))
 
+    # Verifica che non sia un bot
+    user_agent = request.META.get('HTTP_USER_AGENT', '').lower()
+    bot_keywords = ['bot', 'crawler', 'spider', 'scraper', 'curl', 'wget', 'python-requests']
+    is_bot = any(keyword in user_agent for keyword in bot_keywords)
+
     # Selezione randomica pesata dei 2 banner
     active_banners = []
     if all_banners:
@@ -75,18 +80,30 @@ def home(request):
         banner1 = weighted_random_choice(all_banners)
         if banner1:
             active_banners.append(banner1)
-            # Incrementa impressions
-            banner1.impressions += 1
-            banner1.save(update_fields=['impressions'])
+            # Incrementa impressions solo se non bot e non già mostrato in questa sessione
+            session_key = f'banner_impression_{banner1.id}_{page_number}'
+            if not is_bot and not request.session.get(session_key, False):
+                banner1.impressions += 1
+                banner1.save(update_fields=['impressions'])
+                request.session[session_key] = True
+                logger.debug(f"Impression unica banner: {banner1.title} (pag {page_number})")
+            elif is_bot:
+                logger.debug(f"Bot rilevato, impression non contata per banner: {banner1.title}")
 
         # Secondo banner (se ci sono abbastanza banner)
         if len(all_banners) >= 2:
             banner2 = weighted_random_choice(all_banners)
             if banner2:
                 active_banners.append(banner2)
-                # Incrementa impressions
-                banner2.impressions += 1
-                banner2.save(update_fields=['impressions'])
+                # Incrementa impressions solo se non bot e non già mostrato in questa sessione
+                session_key = f'banner_impression_{banner2.id}_{page_number}'
+                if not is_bot and not request.session.get(session_key, False):
+                    banner2.impressions += 1
+                    banner2.save(update_fields=['impressions'])
+                    request.session[session_key] = True
+                    logger.debug(f"Impression unica banner: {banner2.title} (pag {page_number})")
+                elif is_bot:
+                    logger.debug(f"Bot rilevato, impression non contata per banner: {banner2.title}")
     
     # Log per debugging
     if categoria:
@@ -185,15 +202,30 @@ def home(request):
 
 def dettaglio_articolo(request, slug):
     articolo = get_object_or_404(Articolo, slug=slug, approvato=True)
-    
-    # Incrementa il contatore delle views
-    from django.db.models import F
-    Articolo.objects.filter(pk=articolo.pk).update(views=F('views') + 1)
-    
-    # Ricarica l'oggetto per avere il valore aggiornato
+
+    # Incrementa il contatore delle views solo se non visto in questa sessione
+    session_key = f'viewed_article_{articolo.pk}'
+    if not request.session.get(session_key, False):
+        from django.db.models import F
+
+        # Verifica che non sia un bot noto
+        user_agent = request.META.get('HTTP_USER_AGENT', '').lower()
+        bot_keywords = ['bot', 'crawler', 'spider', 'scraper', 'curl', 'wget', 'python-requests']
+        is_bot = any(keyword in user_agent for keyword in bot_keywords)
+
+        if not is_bot:
+            Articolo.objects.filter(pk=articolo.pk).update(views=F('views') + 1)
+            # Segna come visto in questa sessione (scade con la sessione)
+            request.session[session_key] = True
+            articolo.refresh_from_db()
+            logger.info(f"Visualizzazione unica articolo: {articolo.titolo} (views: {articolo.views})")
+        else:
+            logger.debug(f"Bot rilevato, view non contata: {articolo.titolo} (UA: {user_agent[:100]})")
+    else:
+        logger.debug(f"Articolo già visto in questa sessione: {articolo.titolo}")
+
+    # Ricarica l'oggetto comunque per avere dati aggiornati
     articolo.refresh_from_db()
-    
-    logger.info(f"Visualizzazione dettaglio articolo: {articolo.titolo} (views: {articolo.views})")
     
     # Ottieni liste categorie per il menu di navigazione
     categorie_raw = Articolo.objects.filter(approvato=True).values_list('categoria', flat=True).distinct()
