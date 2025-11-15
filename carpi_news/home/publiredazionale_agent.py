@@ -1025,6 +1025,7 @@ STRUTTURA NARRATIVA:
    - Visione futura, dove vogliono andare
    - Invito naturale a conoscerli (NON "per maggiori informazioni...")
    - Chiudi con calore e autenticità
+   - OBBLIGATORIO: Alla fine dell'articolo aggiungi il link al sito aziendale in modo naturale (es: "Per saperne di più, visita [nome azienda]" con link al sito)
 
 REGOLE D'ORO - DETTAGLI SPECIFICI:
 - **PRIORITÀ ASSOLUTA**: Usa TUTTI i dettagli specifici raccolti nell'intervista
@@ -1046,6 +1047,7 @@ FORMATTAZIONE RICHIESTA:
 - Per il contenuto usa <strong>grassetto</strong> per nomi di persone, aziende e fatti importanti
 - Separa i paragrafi con tag <p></p>
 - Crea una struttura chiara e leggibile
+- Alla fine dell'articolo, SEMPRE inserire il link al sito aziendale usando <a href="URL">testo</a>
 
 STRUTTURA CON HEADING:
 - Usa <h2> per i sottotitoli principali delle sezioni
@@ -1137,6 +1139,7 @@ Prima di completare, rileggi l'intervista e assicurati di aver usato:
 - I nomi/termini specifici citati dal cliente
 - Gli esempi/aneddoti raccontati
 - Le informazioni delle ricerche per arricchire
+- Il link al sito aziendale ({sito_web}) nella parte finale dell'articolo
 
 Genera JSON."""
 
@@ -1233,7 +1236,8 @@ FORMATTAZIONE RICHIESTA:
 - Separa i paragrafi con tag <p></p>
 - Usa <h2> per i sottotitoli principali delle sezioni
 - Usa <h3> per le sottosezioni (se necessario)
-- NON usare mai <h1> (riservato solo al titolo dell'articolo)"""
+- NON usare mai <h1> (riservato solo al titolo dell'articolo)
+- OBBLIGATORIO: Alla fine dell'articolo, aggiungi il link al sito aziendale con <a href="URL">testo</a>"""
 
         current_article = {
             'titolo': self.pubbliredazionale.titolo,
@@ -1247,15 +1251,19 @@ FORMATTAZIONE RICHIESTA:
 Feedback utente:
 {feedback}
 
+Sito web aziendale: {sito_web}
+
 Riscrivi l'articolo applicando il feedback.
 
-IMPORTANTE: Usa <strong> per evidenziare nomi di persone, aziende e fatti importanti nel contenuto.
+IMPORTANTE:
+- Usa <strong> per evidenziare nomi di persone, aziende e fatti importanti nel contenuto
+- Assicurati di includere il link al sito aziendale alla fine dell'articolo
 
 Restituisci JSON con:
 {{
     "titolo": "Titolo (PLAIN TEXT, no HTML)",
     "sommario": "Sommario (PLAIN TEXT)",
-    "contenuto": "Contenuto HTML con <p>, <strong> per nomi/fatti importanti, <h2>/<h3> per sezioni"
+    "contenuto": "Contenuto HTML con <p>, <strong> per nomi/fatti importanti, <h2>/<h3> per sezioni, e link al sito aziendale alla fine"
 }}"""
 
         try:
