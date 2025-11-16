@@ -4,6 +4,8 @@
 {% block title %}Fonti - {{ articolo.titolo }} - Ombra del Portico{% endblock %}
 
 {% block extra_css %}
+<!-- Canonical punta all'articolo principale -->
+<link rel="canonical" href="https://ombradelportico.it/articolo/{{ articolo.slug }}/">
 <meta name="robots" content="noindex, follow">
 {% endblock %}
 
