@@ -1,6 +1,50 @@
 """
 Custom middleware for security headers including Content Security Policy (CSP)
 """
+from django.http import HttpResponsePermanentRedirect
+from django.conf import settings
+
+
+class SEOMiddleware:
+    """
+    Middleware per gestire redirect SEO:
+    - HTTP → HTTPS (solo in produzione)
+    - www.ombradelportico.it → ombradelportico.it
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+        self.canonical_domain = 'ombradelportico.it'
+
+    def __call__(self, request):
+        # Ottieni host e schema
+        host = request.get_host().lower()
+        scheme = 'https' if request.is_secure() else 'http'
+
+        # Flag per controllare se serve redirect
+        needs_redirect = False
+        new_host = host
+        new_scheme = scheme
+
+        # 1. Redirect www → non-www
+        if host.startswith('www.'):
+            new_host = host[4:]  # Rimuovi 'www.'
+            needs_redirect = True
+
+        # 2. Redirect HTTP → HTTPS (solo in produzione)
+        if not settings.DEBUG and scheme == 'http':
+            new_scheme = 'https'
+            needs_redirect = True
+
+        # Esegui redirect se necessario
+        if needs_redirect:
+            new_url = f"{new_scheme}://{new_host}{request.get_full_path()}"
+            return HttpResponsePermanentRedirect(new_url)
+
+        # Continua normalmente
+        response = self.get_response(request)
+        return response
+
 
 class SecurityHeadersMiddleware:
     """

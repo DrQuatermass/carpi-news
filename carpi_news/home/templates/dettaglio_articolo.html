@@ -21,7 +21,7 @@
 
 {% block extra_css %}
 <!-- Canonical URL -->
-<link rel="canonical" href="{{ request.build_absolute_uri }}">
+<link rel="canonical" href="{{ canonical_url }}">
 
 <!-- Open Graph article meta tags -->
 <meta property="article:published_time" content="{{ articolo.data_pubblicazione|date:'c' }}">
@@ -62,10 +62,10 @@
   },
   "description": "{{ articolo.sommario|striptags|truncatechars:200|escapejs }}",
   "articleSection": "{{ articolo.categoria|escapejs }}",
-  "url": "{{ request.build_absolute_uri }}",
+  "url": "{{ canonical_url }}",
   "mainEntityOfPage": {
     "@type": "WebPage",
-    "@id": "{{ request.build_absolute_uri }}"
+    "@id": "{{ canonical_url }}"
   },
   "isAccessibleForFree": "True",
   "isPartOf": {
@@ -98,7 +98,7 @@
       "@type": "ListItem",
       "position": 3,
       "name": "{{ articolo.titolo|truncatechars:50 }}",
-      "item": "{{ request.build_absolute_uri }}"
+      "item": "{{ canonical_url }}"
     }
   ]
 }

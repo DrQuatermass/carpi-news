@@ -48,6 +48,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'home.middleware.SEOMiddleware',  # Redirect HTTP→HTTPS e www→non-www
     'home.middleware.SecurityHeadersMiddleware',  # CSP e security headers
     'django.middleware.gzip.GZipMiddleware',  # Compressione GZIP per performance
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -70,6 +71,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'home.context_processors.canonical_url',  # URL canonici
             ],
         },
     },

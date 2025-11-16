@@ -8,13 +8,13 @@
 
 {% block extra_css %}
 <!-- Canonical URL -->
-<link rel="canonical" href="https://ombradelportico.it/">
+<link rel="canonical" href="{{ canonical_url }}">
 
 <!-- Open Graph meta tags per homepage -->
 <meta property="og:title" content="Ombra del Portico - Notizie di Carpi">
 <meta property="og:description" content="Portale di informazione locale della città di Carpi e dintorni. Notizie, eventi e tutto quello che accade nella nostra comunità.">
 <meta property="og:image" content="https://ombradelportico.it{% static 'home/images/portico_logo_nopayoff.png' %}">
-<meta property="og:url" content="{{ request.build_absolute_uri }}">
+<meta property="og:url" content="{{ canonical_url }}">
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Ombra del Portico">
 
