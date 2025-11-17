@@ -996,11 +996,11 @@ def pubbliredazionale_payment(request, pubbliredazionale_id):
     # Verifica che sia pronto per il pagamento (intervista completata)
     if not (pubbliredazionale.titolo and pubbliredazionale.contenuto and pubbliredazionale.interview_data):
         messages.warning(request, 'Questo pubbliredazionale non è pronto per il pagamento.')
-        return redirect('admin_panel:pubbliredazionale_list')
+        return redirect('admin_panel:dashboard')
 
     if pubbliredazionale.payment_status == 'completed':
         messages.info(request, 'Hai già acquistato questo pubbliredazionale.')
-        return redirect('admin_panel:pubbliredazionale_list')
+        return redirect('admin_panel:dashboard')
 
     if request.method == 'POST':
         # Check se è una richiesta JSON (azione save)
@@ -1138,7 +1138,7 @@ Il cliente ha scelto di salvare il pubbliredazionale senza pagamento immediato.
             pubbliredazionale.send_admin_notification()
 
             messages.success(request, 'Pubbliredazionale gratuito attivato! Il tuo articolo è ora in attesa di approvazione.')
-            return redirect('admin_panel:pubbliredazionale_list')
+            return redirect('admin_panel:dashboard')
 
         # Verifica credenziali PayPal
         if not settings.PAYPAL_CLIENT_ID or not settings.PAYPAL_CLIENT_SECRET:
@@ -1238,7 +1238,7 @@ def pubbliredazionale_payment_success(request, pubbliredazionale_id):
 
     if not token:
         messages.error(request, 'Pagamento non valido.')
-        return redirect('admin_panel:pubbliredazionale_list')
+        return redirect('admin_panel:dashboard')
 
     # Determina URL base PayPal
     base_url = 'https://api-m.sandbox.paypal.com' if settings.PAYPAL_MODE == 'sandbox' else 'https://api-m.paypal.com'
@@ -1256,7 +1256,7 @@ def pubbliredazionale_payment_success(request, pubbliredazionale_id):
 
     if token_response.status_code != 200:
         messages.error(request, 'Errore autenticazione PayPal.')
-        return redirect('admin_panel:pubbliredazionale_list')
+        return redirect('admin_panel:dashboard')
 
     access_token = token_response.json()['access_token']
 
@@ -1306,7 +1306,7 @@ def pubbliredazionale_payment_success(request, pubbliredazionale_id):
         pubbliredazionale.send_admin_notification()
 
         messages.success(request, 'Acquisto completato! Il tuo articolo pubbliredazionale è ora in attesa di approvazione da parte dell\'amministratore.')
-        return redirect('admin_panel:pubbliredazionale_list')
+        return redirect('admin_panel:dashboard')
     else:
         messages.error(request, 'Errore nell\'esecuzione dell\'acquisto.')
         return redirect('admin_panel:pubbliredazionale_payment', pubbliredazionale_id=pubbliredazionale.id)
@@ -1342,13 +1342,13 @@ def pubbliredazionale_delete(request, pubbliredazionale_id):
     # Non permettere eliminazione se già pagato/pubblicato
     if pubbliredazionale.payment_status == 'completed':
         messages.error(request, 'Non puoi eliminare un pubbliredazionale già pagato.')
-        return redirect('admin_panel:pubbliredazionale_list')
+        return redirect('admin_panel:dashboard')
 
     if request.method == 'POST':
         nome_azienda = pubbliredazionale.nome_azienda
         pubbliredazionale.delete()
         messages.success(request, f'Pubbliredazionale "{nome_azienda}" eliminato.')
-        return redirect('admin_panel:pubbliredazionale_list')
+        return redirect('admin_panel:dashboard')
 
     context = {'pubbliredazionale': pubbliredazionale}
     return render(request, 'admin_panel/pubbliredazionale_delete.html', context)

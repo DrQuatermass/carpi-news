@@ -7,12 +7,15 @@ register = template.Library()
 
 # Cache per gli utenti già mostrati nella pagina corrente
 _shown_users = []
+# Cache per i banner già mostrati nella pagina corrente (per ID)
+_shown_banner_ids = []
 
 
 def reset_shown_users():
     """Resetta la cache degli utenti mostrati (chiamato a inizio pagina)"""
-    global _shown_users
+    global _shown_users, _shown_banner_ids
     _shown_users = []
+    _shown_banner_ids = []
 
 
 def get_priority_weight(priority, user_already_shown=False):
@@ -39,21 +42,32 @@ def get_priority_weight(priority, user_already_shown=False):
 def weighted_random_choice(banners):
     """
     Seleziona un banner randomicamente basandosi sui pesi di priorità
+    Esclude i banner già mostrati nella stessa pagina per garantire diversità
     """
     if not banners:
         return None
 
+    # Filtra i banner già mostrati nella pagina
+    available_banners = [b for b in banners if b.id not in _shown_banner_ids]
+
+    # Se tutti i banner sono già stati mostrati, usa tutti i banner disponibili
+    # (questo può succedere se ci sono più slot che banner)
+    if not available_banners:
+        available_banners = banners
+
     # Calcola i pesi per ogni banner
     weights = []
-    for banner in banners:
+    for banner in available_banners:
         user_already_shown = banner.user_id in _shown_users
         weight = get_priority_weight(banner.priority, user_already_shown)
         weights.append(weight)
 
     # Selezione pesata randomica
-    selected_banner = random.choices(banners, weights=weights, k=1)[0]
+    selected_banner = random.choices(available_banners, weights=weights, k=1)[0]
 
-    # Aggiungi l'utente alla lista degli utenti mostrati
+    # Aggiungi il banner e l'utente alla cache
+    if selected_banner.id not in _shown_banner_ids:
+        _shown_banner_ids.append(selected_banner.id)
     if selected_banner.user_id not in _shown_users:
         _shown_users.append(selected_banner.user_id)
 
