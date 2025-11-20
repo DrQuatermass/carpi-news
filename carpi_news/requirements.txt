@@ -22,8 +22,9 @@ lxml==6.0.2
 soupsieve==2.8
 PyPDF2==3.0.1
 
-# AI - Anthropic Claude
+# AI - Anthropic Claude & OpenAI (fallback)
 anthropic==0.64.0
+openai==1.58.1
 
 # YouTube Transcripts
 youtube-transcript-api==1.2.2

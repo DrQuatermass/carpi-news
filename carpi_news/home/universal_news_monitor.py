@@ -3008,8 +3008,21 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
             return final_content, web_sources
 
         except Exception as e:
-            self.logger.error(f"Errore nella conversazione AI: {e}")
-            # Fallback: prova a estrarre il testo dalla risposta originale
+            error_str = str(e)
+
+            # Se errore 529 (Overloaded), prova fallback OpenAI
+            if "529" in error_str or "overloaded" in error_str.lower():
+                self.logger.warning(f"Anthropic API sovraccarica (529), fallback a OpenAI...")
+                try:
+                    return self._generate_with_openai_fallback(
+                        article_data, system_prompt, web_search_tool_def
+                    )
+                except Exception as openai_error:
+                    self.logger.error(f"Anche fallback OpenAI fallito: {openai_error}")
+            else:
+                self.logger.error(f"Errore nella conversazione AI: {e}")
+
+            # Fallback finale: prova a estrarre il testo dalla risposta originale
             try:
                 fallback_content = ""
                 for content_block in message.content:
@@ -3019,6 +3032,54 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
             except:
                 return "", web_sources
 
+    def _generate_with_openai_fallback(self, article_data: Dict[str, Any], system_prompt: str, web_search_tool_def: Dict = None) -> tuple[str, list]:
+        """Fallback a OpenAI GPT-4 Turbo quando Anthropic è sovraccarico"""
+        from openai import OpenAI
+        from django.conf import settings
+
+        # API key OpenAI
+        openai_api_key = getattr(settings, 'OPENAI_API_KEY', None)
+        if not openai_api_key:
+            raise ValueError("OPENAI_API_KEY non configurata in settings")
+
+        client = OpenAI(api_key=openai_api_key)
+
+        # Costruisci prompt con contenuto articolo
+        links_section = ""
+        if article_data.get('links_content'):
+            links_section = "\n\nContenuto aggiuntivo dai link riferiti:\n"
+            for i, link_data in enumerate(article_data['links_content'], 1):
+                links_section += f"\n--- Link {i}: {link_data['url']} ---\n"
+                if link_data.get('title'):
+                    links_section += f"Titolo: {link_data['title']}\n"
+                links_section += f"Contenuto: {link_data['content']}\n"
+
+        user_prompt = f"""Titolo originale: {article_data['title']}
+
+Contenuto originale:
+{article_data['full_content']}
+{links_section}
+
+Rielabora questa notizia seguendo le istruzioni del sistema. Rispondi SOLO con l'articolo rielaborato, senza commenti o note aggiuntive."""
+
+        # Chiamata a OpenAI (senza tool use per semplicità)
+        response = client.chat.completions.create(
+            model="gpt-4-turbo-2024-04-09",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            max_tokens=4096,
+            temperature=0.7
+        )
+
+        content = response.choices[0].message.content
+
+        # Log utilizzo
+        self.logger.info(f"OpenAI fallback completato: {response.usage.total_tokens} tokens")
+
+        # Nessuna fonte web (OpenAI non ha tool use in questo fallback)
+        return content, []
 
     def save_article_directly(self, article_data: Dict[str, Any]):
         """Salva articolo direttamente senza AI con protezione race condition"""
