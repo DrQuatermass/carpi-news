@@ -299,8 +299,9 @@ if not DEBUG:
     CSRF_COOKIE_SECURE = os.getenv('CSRF_COOKIE_SECURE', 'True').lower() in ['true', '1', 'yes']
     X_FRAME_OPTIONS = 'DENY'
 
-# Anthropic API Configuration
+# AI API Configuration
 ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY', '')
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
 
 # PayPal Payment Configuration
 PAYPAL_MODE = os.getenv('PAYPAL_MODE', 'sandbox')  # sandbox or live
