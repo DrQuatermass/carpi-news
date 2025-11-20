@@ -74,8 +74,23 @@ class Command(BaseCommand):
         for evento in eventi:
             self.stdout.write(f'  • {evento.titolo} ({evento.categoria})')
 
+        # Controlla se esiste già un articolo "Cosa fare oggi" per questa data
+        titolo_base = self.genera_titolo(target_date)
+        existing = Articolo.objects.filter(
+            titolo=titolo_base,
+            data_pubblicazione__date=target_date
+        ).first()
+
+        if existing:
+            self.stdout.write(self.style.WARNING(f'\n[!] Articolo "Cosa fare oggi" già esistente per {target_date.strftime("%d/%m/%Y")}'))
+            self.stdout.write(f'  ID: {existing.id}')
+            self.stdout.write(f'  Slug: {existing.slug}')
+            self.stdout.write(f'  Creato: {existing.data_creazione.strftime("%d/%m/%Y %H:%M")}')
+            self.stdout.write(self.style.WARNING('  Usa --force per sovrascriverlo o elimina manualmente il vecchio articolo'))
+            return
+
         # Genera il contenuto dell'articolo
-        titolo = self.genera_titolo(target_date)
+        titolo = titolo_base
         contenuto = self.genera_contenuto(eventi, target_date)
         sommario = self.genera_sommario(eventi, target_date)
 

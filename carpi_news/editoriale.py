@@ -255,13 +255,26 @@ def main():
                 return 0
 
         logger.info("🏛️ Avvio generazione editoriale quotidiano")
-        
+
+        # 0. Controlla se esiste già un editoriale per oggi
+        today = timezone.now().date()
+        existing_editoriale = Articolo.objects.filter(
+            categoria='Editoriale',
+            data_pubblicazione__date=today
+        ).first()
+
+        if existing_editoriale:
+            logger.info(f"✓ Editoriale già esistente per oggi ({today.strftime('%d/%m/%Y')})")
+            logger.info(f"  ID: {existing_editoriale.id}, Slug: {existing_editoriale.slug}")
+            logger.info("  Skip generazione per evitare duplicati")
+            return 0
+
         # 1. Raccogli articoli di ieri
         articoli = raccoglie_articoli_ieri()
         if not articoli.exists():
             logger.info("Nessun articolo trovato per ieri, skip editoriale")
             return
-            
+
         data_ieri = (timezone.now().date() - timedelta(days=1))
         logger.info(f"Trovati {articoli.count()} articoli del {data_ieri.strftime('%d/%m/%Y')}")
         

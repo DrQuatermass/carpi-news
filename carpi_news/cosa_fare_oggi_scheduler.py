@@ -12,10 +12,13 @@ import sys
 import os
 import django
 
-# Setup Django
+# Setup Django (solo se non già inizializzato)
 sys.path.append(os.path.dirname(__file__))
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "carpi_news.settings")
-django.setup()
+
+# Controlla se Django è già inizializzato (apps.py già chiamato)
+if not django.apps.apps.ready:
+    django.setup()
 
 from home.logger_config import setup_centralized_logger
 
