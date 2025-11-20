@@ -64,7 +64,40 @@ class BaseScraper(ABC):
         self.logger = get_monitor_logger(f"{config.name.lower().replace(' ', '_')}.scraper")
         # Timeout configurabile, default 15 secondi
         self.timeout = config.config.get('request_timeout', 15)
-        
+        # Modalità incognito: crea nuova sessione pulita ad ogni richiesta
+        self.incognito_mode = config.config.get('incognito_mode', False)
+
+    def _get_request(self, url: str, **kwargs) -> Any:
+        """Esegue richiesta GET con supporto modalità incognito"""
+        import requests
+
+        if self.incognito_mode:
+            # Modalità incognito: sessione pulita senza cookies persistenti
+            session = requests.Session()
+            session.cookies.clear()
+
+            # Headers minimalisti (simili a navigazione incognito)
+            incognito_headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Accept-Language': 'it-IT,it;q=0.9',
+                'DNT': '1',
+                'Upgrade-Insecure-Requests': '1',
+            }
+
+            # Merge con eventuali headers custom
+            final_headers = {**incognito_headers, **kwargs.get('headers', {})}
+            kwargs['headers'] = final_headers
+
+            response = session.get(url, **kwargs)
+            session.close()
+            return response
+        else:
+            # Modalità normale
+            if 'headers' not in kwargs:
+                kwargs['headers'] = self.headers
+            return requests.get(url, **kwargs)
+
     @abstractmethod
     def scrape_articles(self) -> List[Dict[str, Any]]:
         """Scrape articoli dal sito"""
@@ -106,8 +139,8 @@ class HTMLScraper(BaseScraper):
         for url in urls_to_scrape:
             try:
                 self.logger.info(f"Scraping HTML: {url}")
-                
-                response = requests.get(url, headers=self.headers, timeout=self.timeout)
+
+                response = self._get_request(url, timeout=self.timeout)
                 response.raise_for_status()
 
                 soup = BeautifulSoup(response.content, 'html.parser')
@@ -154,7 +187,7 @@ class HTMLScraper(BaseScraper):
         try:
             self.logger.info(f"Discovering articles from RSS: {rss_url}")
 
-            response = requests.get(rss_url, headers=self.headers, timeout=self.timeout)
+            response = self._get_request(rss_url, timeout=self.timeout)
             response.raise_for_status()
 
             # Parse RSS feed con gestione encoding migliorata
@@ -217,7 +250,7 @@ class HTMLScraper(BaseScraper):
                         image_url = None
                         try:
                             from bs4 import BeautifulSoup
-                            article_response = requests.get(article_url, headers=self.headers, timeout=self.timeout)
+                            article_response = self._get_request(article_url, timeout=self.timeout)
                             article_soup = BeautifulSoup(article_response.content, 'html.parser')
 
                             # Prima cerca immagini con caratteristiche di articolo (es. Questura con ?art=)
@@ -281,7 +314,7 @@ class HTMLScraper(BaseScraper):
         try:
             self.logger.info(f"Parsing JSON from page: {url}")
 
-            response = requests.get(url, headers=self.headers, timeout=self.timeout)
+            response = self._get_request(url, timeout=self.timeout)
             response.raise_for_status()
 
             soup = BeautifulSoup(response.content, 'html.parser')
@@ -571,7 +604,7 @@ class HTMLScraper(BaseScraper):
         """Scarica contenuto completo da pagina HTML"""
         try:
             self.logger.debug(f"[DEBUG get_full_content] Downloading: {article_url}")
-            response = requests.get(article_url, headers=self.headers, timeout=self.timeout)
+            response = self._get_request(article_url, timeout=self.timeout)
             response.raise_for_status()
 
             # Log encoding info
@@ -634,9 +667,9 @@ class WordPressAPIScraper(BaseScraper):
         per_page = self.config.config.get('per_page', 10)
         
         self.logger.info(f"Scraping standard WordPress API: {api_url}")
-        
+
         api_headers = {**self.headers, 'Accept': 'application/json'}
-        response = requests.get(f"{api_url}?per_page={per_page}", 
+        response = self._get_request(f"{api_url}?per_page={per_page}",
                               headers=api_headers, timeout=15)
         response.raise_for_status()
         
@@ -658,9 +691,9 @@ class WordPressAPIScraper(BaseScraper):
         api_url = f"{self.config.base_url.rstrip('/')}{endpoint}"
         
         self.logger.info(f"Scraping custom API: {api_url}")
-        
+
         api_headers = {**self.headers, 'Accept': 'application/json'}
-        response = requests.get(api_url, headers=api_headers, timeout=15)
+        response = self._get_request(api_url, headers=api_headers, timeout=15)
         response.raise_for_status()
         
         data = response.json()
@@ -778,7 +811,7 @@ class WordPressAPIScraper(BaseScraper):
         featured_media_id = post.get('featured_media', 0)
         if featured_media_id > 0:
             try:
-                media_response = requests.get(
+                media_response = self._get_request(
                     f"{self.config.base_url}wp-json/wp/v2/media/{featured_media_id}",
                     headers=api_headers, timeout=10
                 )
@@ -2554,7 +2587,7 @@ class UniversalNewsMonitor:
             if article_data.get('_fetch_image_from_article', False):
                 self.logger.debug(f"[DEBUG] fetch_image_from_article attivo, scarico immagine da articolo")
                 try:
-                    response = requests.get(article_data['url'], headers=self.headers, timeout=15)
+                    response = self.scraper._get_request(article_data['url'], timeout=15)
                     soup = BeautifulSoup(response.content, 'html.parser')
 
                     # Cerca og:image

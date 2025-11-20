@@ -44,7 +44,10 @@ CARPI_CALCIO_CONFIG = SiteConfig(
     
     # Approvazione automatica per Carpi Calcio
     auto_approve=False,
-    
+
+    # Modalità incognito: sessione pulita ad ogni richiesta (evita blocchi anti-bot)
+    incognito_mode=True,
+
     # Generazione AI con ricerca web
     use_ai_generation=True,
     enable_web_search=True,  # Abilita ricerca web per arricchire gli articoli di calcio
@@ -83,6 +86,10 @@ COMUNE_CARPI_CONFIG = SiteConfig(
     # Non servono selettori per WordPress API
     selectors=None,
     content_selectors=None,
+
+    # Modalità incognito: sessione pulita ad ogni richiesta (evita blocchi anti-bot)
+    incognito_mode=True,
+
     # Generazione AI
     use_ai_generation=True,
     enable_web_search=True,  # Abilita ricerca web per arricchire articoli
@@ -125,6 +132,9 @@ YOUTUBE_PLAYLIST_CONFIG = SiteConfig(
 
     # Gestione dirette live
     live_stream_retry_delay=3600,  # 1 ora di attesa prima di riprovare una diretta
+
+    # Modalità incognito: sessione pulita ad ogni richiesta (evita blocchi anti-bot)
+    incognito_mode=True,
 
     # Generazione AI per articoli da video con ricerca web
     use_ai_generation=True,
@@ -169,6 +179,9 @@ YOUTUBE_PLAYLIST_2_CONFIG = SiteConfig(
     # Gestione dirette live
     live_stream_retry_delay=3600,  # 1 ora di attesa prima di riprovare una diretta
 
+    # Modalità incognito: sessione pulita ad ogni richiesta (evita blocchi anti-bot)
+    incognito_mode=True,
+
     # Generazione AI per articoli da video con ricerca web
     use_ai_generation=True,
     enable_web_search=True,  # Abilita ricerca web per arricchire articoli da YouTube
@@ -208,7 +221,10 @@ COMUNE_CARPI_GRAPHQL_CONFIG = SiteConfig(
         'api_url': 'https://www.comune.carpi.mo.it/wp-json/wp/v2/posts',
         'per_page': 10
     },
-    
+
+    # Modalità incognito: sessione pulita ad ogni richiesta (evita blocchi anti-bot)
+    incognito_mode=True,
+
     # Generazione AI
     use_ai_generation=True,
     enable_web_search=True,  # Abilita ricerca web per arricchire articoli
@@ -270,7 +286,10 @@ ANSA_CONFIG = SiteConfig(
     
     # Filtro per articoli riguardanti Carpi (case insensitive)
     content_filter_keywords=['Carpi', 'CARPI', 'Gregorio Paltrinieri', 'Aimag', 'Hera'],
-    
+
+    # Modalità incognito: sessione pulita ad ogni richiesta (evita blocchi anti-bot)
+    incognito_mode=True,
+
     # Generazione AI per uniformare lo stile
     use_ai_generation=True,
     enable_web_search=True,  # Abilita ricerca web per arricchire articoli
@@ -339,7 +358,11 @@ EVENTI_CARPI_GRAPHQL_CONFIG = SiteConfig(
         }
     }""",
     graphql_operation_name="getVivereIlComune",
-    
+
+
+    # Modalità incognito: sessione pulita ad ogni richiesta (evita blocchi anti-bot)
+    incognito_mode=True,
+
     # Generazione AI
     use_ai_generation=True,
     enable_web_search=True,  # Abilita ricerca web per arricchire articoli
@@ -388,6 +411,9 @@ VOCE_CARPI_CONFIG = SiteConfig(
         'article',
         '.entry-content'
     ],
+
+    # Modalità incognito: sessione pulita ad ogni richiesta (evita blocchi anti-bot)
+    incognito_mode=True,
 
     # Generazione AI
     use_ai_generation=True,
@@ -445,6 +471,9 @@ VOCE_CARPI_SPORT_CONFIG = SiteConfig(
         '.entry-content'
     ],
 
+    # Modalità incognito: sessione pulita ad ogni richiesta (evita blocchi anti-bot)
+    incognito_mode=True,
+
     # Generazione AI
     use_ai_generation=True,
     enable_web_search=True,  # Abilita ricerca web per arricchire articoli
@@ -492,7 +521,11 @@ TEMPO_CARPI_CONFIG = SiteConfig(
         '.td-post-content',
         'article'
     ],
-    
+
+
+    # Modalità incognito: sessione pulita ad ogni richiesta (evita blocchi anti-bot)
+    incognito_mode=True,
+
     # Generazione AI
     use_ai_generation=True,
     enable_web_search=True,  # Abilita ricerca web per arricchire articoli
@@ -532,7 +565,11 @@ TERRE_ARGINE_CONFIG = SiteConfig(
     # Non servono selettori per WordPress API
     selectors=None,
     content_selectors=None,
-    
+
+
+    # Modalità incognito: sessione pulita ad ogni richiesta (evita blocchi anti-bot)
+    incognito_mode=True,
+
     # Generazione AI
     use_ai_generation=True,
     enable_web_search=True,  # Abilita ricerca web per arricchire articoli
@@ -580,6 +617,10 @@ NOVI_MODENA_CONFIG = SiteConfig(
 
     # Download delle immagini
     download_images=True,
+
+    # Modalità incognito: sessione pulita ad ogni richiesta (evita blocchi anti-bot)
+    incognito_mode=True,
+
     # Generazione AI
     use_ai_generation=True,
     enable_web_search=True,  # Abilita ricerca web per arricchire articoli
@@ -626,6 +667,9 @@ SOLIERA_CONFIG = SiteConfig(
     # Download delle immagini
     download_images=True,
 
+    # Modalità incognito: sessione pulita ad ogni richiesta (evita blocchi anti-bot)
+    incognito_mode=True,
+
     # Generazione AI
     use_ai_generation=True,
     enable_web_search=True,  # Riabilitato con gestione errori robusta
@@ -670,6 +714,9 @@ CAMPOGALLIANO_CONFIG = SiteConfig(
 
     # Download delle immagini
     download_images=True,
+
+    # Modalità incognito: sessione pulita ad ogni richiesta (evita blocchi anti-bot)
+    incognito_mode=True,
 
     # Generazione AI
     use_ai_generation=True,
