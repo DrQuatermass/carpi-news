@@ -61,57 +61,24 @@ class HomeConfig(AppConfig):
 
         if auto_start_enabled and (is_production or is_dev) and not should_skip:
             print("[DEBUG] Entro nel blocco auto_start", flush=True)
-            # Avvia i monitor automaticamente con un piccolo ritardo per evitare conflitti
-            import threading
-            import time
-            from pathlib import Path
-
-            print("[DEBUG] Definisco delayed_start", flush=True)
-            def delayed_start():
-                print("[DEBUG] delayed_start() thread avviato", flush=True)
-                logger.info("[DEBUG] delayed_start() thread avviato")
-                time.sleep(5)  # Aspetta 5 secondi per evitare conflitti
-                try:
-                    print("[DEBUG] Avvio start_universal_monitors_improved()", flush=True)
-                    logger.info("[DEBUG] Avvio start_universal_monitors_improved()")
-                    self.start_universal_monitors_improved()
-                    print("[DEBUG] Avvio start_editorial_scheduler()", flush=True)
-                    logger.info("[DEBUG] Avvio start_editorial_scheduler()")
-                    self.start_editorial_scheduler()
-                    print("[DEBUG] Avvio start_cosa_fare_oggi_scheduler()", flush=True)
-                    logger.info("[DEBUG] Avvio start_cosa_fare_oggi_scheduler()")
-                    self.start_cosa_fare_oggi_scheduler()
-                    print("[DEBUG] delayed_start() completato", flush=True)
-                    logger.info("[DEBUG] delayed_start() completato")
-                except Exception as e:
-                    print(f"[DEBUG] Errore delayed_start: {e}", flush=True)
-                    logger.error(f"Errore nell'avvio ritardato dei monitor: {e}")
-
-            # Solo se non sono già stati programmati - usa lock file persistente
-            startup_lock_file = Path('locks') / '.delayed_start.lock'
-            startup_lock_file.parent.mkdir(exist_ok=True)
-
-            # Controlla se il lock esiste ed è recente (meno di 30 secondi)
-            if startup_lock_file.exists():
-                lock_age = time.time() - startup_lock_file.stat().st_mtime
-                if lock_age < 30:
-                    print(f"[DEBUG] Skip: delayed_start già programmato (lock età: {lock_age:.1f}s)", flush=True)
-                    logger.info(f"Monitor automatici già programmati (lock età: {lock_age:.1f}s), skip")
-                else:
-                    # Lock vecchio, rimuovilo
-                    print(f"[DEBUG] Rimozione lock vecchio ({lock_age:.1f}s)", flush=True)
-                    startup_lock_file.unlink()
-
-            # Se non c'è lock (o è stato rimosso), avvia
-            if not startup_lock_file.exists():
-                print("[DEBUG] Creo lock e avvio thread delayed_start", flush=True)
-                startup_lock_file.write_text(str(os.getpid()))
-                thread = threading.Thread(target=delayed_start, daemon=True)
-                print("[DEBUG] Avvio thread", flush=True)
-                thread.start()
-                HomeConfig._delayed_start_scheduled = True
-                print("[DEBUG] Thread avviato", flush=True)
-                logger.info("Monitor automatici programmati per l'avvio con ritardo di 5 secondi")
+            # Avvia i monitor direttamente (senza thread daemon che muore troppo presto)
+            try:
+                print("[DEBUG] Avvio immediato monitor (no daemon thread)", flush=True)
+                logger.info("[DEBUG] Avvio immediato monitor (no daemon thread)")
+                self.start_universal_monitors_improved()
+                print("[DEBUG] Avvio start_editorial_scheduler()", flush=True)
+                logger.info("[DEBUG] Avvio start_editorial_scheduler()")
+                self.start_editorial_scheduler()
+                print("[DEBUG] Avvio start_cosa_fare_oggi_scheduler()", flush=True)
+                logger.info("[DEBUG] Avvio start_cosa_fare_oggi_scheduler()")
+                self.start_cosa_fare_oggi_scheduler()
+                print("[DEBUG] Avvio monitor completato", flush=True)
+                logger.info("[DEBUG] Avvio monitor completato")
+            except Exception as e:
+                print(f"[DEBUG] Errore avvio monitor: {e}", flush=True)
+                logger.error(f"Errore nell'avvio monitor: {e}")
+                import traceback
+                logger.error(f"Traceback: {traceback.format_exc()}")
         elif (is_production or is_dev) and not should_skip and not auto_start_enabled:
             logger.info("Auto-start monitor disabilitato (AUTO_START_MONITORS=False). Usa 'python manage.py start_monitors' per avviarli manualmente.")
     
