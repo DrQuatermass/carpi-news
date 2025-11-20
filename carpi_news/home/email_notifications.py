@@ -41,6 +41,22 @@ def send_article_approval_notification(articolo):
                         <td style="padding: 8px 0;"><a href="{fonte_escaped}" target="_blank" style="color: #007cba; word-break: break-all;">{fonte_display}</a></td>
                     </tr>'''
 
+        # Prepara info modello AI se presente
+        ai_model_html = ''
+        if articolo.ai_model_used:
+            # Traduci nome modello in forma leggibile
+            model_display = articolo.ai_model_used
+            if 'claude' in model_display.lower():
+                model_display = f'Anthropic Claude ({articolo.ai_model_used})'
+            elif 'gpt' in model_display.lower():
+                model_display = f'OpenAI GPT ({articolo.ai_model_used})'
+
+            ai_model_html = f'''
+                    <tr>
+                        <td style="padding: 8px 0;"><strong>Modello AI:</strong></td>
+                        <td style="padding: 8px 0;">{model_display}</td>
+                    </tr>'''
+
         # Oggetto email
         subject = f'[Ombra del Portico] Nuovo articolo da approvare: {articolo.titolo[:50]}...'
         
@@ -68,6 +84,7 @@ def send_article_approval_notification(articolo):
                         <td style="padding: 8px 0;">{articolo.id}</td>
                     </tr>
                     {fonte_html}
+                    {ai_model_html}
                 </table>
 
                 <div style="margin: 20px 0;">
@@ -103,6 +120,7 @@ def send_article_approval_notification(articolo):
         """
         
         # Versione testo semplice
+        ai_model_text = f"Modello AI: {articolo.ai_model_used}\n" if articolo.ai_model_used else ""
         plain_message = f"""
 NUOVO ARTICOLO DA APPROVARE
 
@@ -111,7 +129,7 @@ Categoria: {articolo.categoria}
 Data: {articolo.data_creazione.strftime('%d/%m/%Y alle %H:%M')}
 ID: {articolo.id}
 {"Fonte: " + articolo.fonte if articolo.fonte else ""}
-
+{ai_model_text}
 Sommario:
 {articolo.sommario if articolo.sommario else articolo.contenuto[:300] + '...'}
 

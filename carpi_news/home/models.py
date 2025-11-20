@@ -24,6 +24,7 @@ class Articolo(models.Model):
     foto_upload = models.ImageField(upload_to='images/uploaded/', blank=True, null=True, help_text="Upload di un'immagine per l'articolo")
     richieste_modifica = models.TextField(blank=True, null=True, help_text="Richieste specifiche per la rigenerazione AI dell'articolo")
     fonti_web = models.JSONField(blank=True, null=True, help_text="Fonti web utilizzate durante la generazione AI con ricerca web")
+    ai_model_used = models.CharField(max_length=50, blank=True, null=True, help_text="Modello AI utilizzato per generare l'articolo (es. claude-3-7-sonnet, gpt-4-turbo)")
     views = models.PositiveIntegerField(default=0, help_text="Numero di visualizzazioni dell'articolo")
     data_creazione = models.DateTimeField(auto_now_add=True)
     data_pubblicazione = models.DateTimeField(blank=True, null=True,default=timezone.now)

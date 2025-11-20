@@ -43,6 +43,23 @@ class APIUsageTracker:
         },
     }
 
+    # Prezzi OpenAI (USD per million tokens)
+    # https://openai.com/api/pricing/
+    OPENAI_PRICING = {
+        'gpt-4-turbo-2024-04-09': {
+            'input': 10.00,   # $10 per MTok
+            'output': 30.00   # $30 per MTok
+        },
+        'gpt-4o': {
+            'input': 2.50,    # $2.50 per MTok
+            'output': 10.00   # $10 per MTok
+        },
+        'gpt-4o-mini': {
+            'input': 0.15,    # $0.15 per MTok
+            'output': 0.60    # $0.60 per MTok
+        },
+    }
+
     # Prezzo Google Custom Search API
     # https://developers.google.com/custom-search/v1/overview
     # 100 query gratuite al giorno, poi $5 per 1000 queries
@@ -107,6 +124,64 @@ class APIUsageTracker:
 
         except Exception as e:
             logger.error(f"Errore nel tracciare utilizzo API Anthropic: {e}", exc_info=True)
+            return None
+
+    @classmethod
+    def track_openai(cls, operation, model, input_tokens, output_tokens,
+                    related_article=None, success=True, error_message=''):
+        """
+        Traccia una chiamata API OpenAI e calcola i costi
+
+        Args:
+            operation: Nome dell'operazione (es. 'openai_fallback')
+            model: Modello OpenAI utilizzato
+            input_tokens: Numero di token di input
+            output_tokens: Numero di token di output
+            related_article: Istanza di Articolo correlato (opzionale)
+            success: Se la chiamata è riuscita
+            error_message: Messaggio di errore se fallita
+
+        Returns:
+            Istanza APIUsage creata
+        """
+        try:
+            from home.models import APIUsage
+
+            # Calcola i costi
+            pricing = cls.OPENAI_PRICING.get(model, cls.OPENAI_PRICING['gpt-4-turbo-2024-04-09'])
+
+            # Costo = (tokens / 1,000,000) * prezzo_per_MTok
+            input_cost = Decimal(str((input_tokens / 1_000_000) * pricing['input']))
+            output_cost = Decimal(str((output_tokens / 1_000_000) * pricing['output']))
+
+            # Arrotonda a 6 decimali
+            input_cost = input_cost.quantize(Decimal('0.000001'))
+            output_cost = output_cost.quantize(Decimal('0.000001'))
+
+            # Crea il record
+            usage = APIUsage.objects.create(
+                api_type='openai',
+                operation=operation,
+                model=model,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                input_cost=input_cost,
+                output_cost=output_cost,
+                cost_total=input_cost + output_cost,
+                related_article=related_article,
+                success=success,
+                error_message=error_message
+            )
+
+            logger.info(f"API OpenAI tracciata: {operation} - {model} - "
+                       f"Input: {input_tokens} tok (${input_cost}) - "
+                       f"Output: {output_tokens} tok (${output_cost}) - "
+                       f"Totale: ${usage.cost_total}")
+
+            return usage
+
+        except Exception as e:
+            logger.error(f"Errore nel tracciare utilizzo API OpenAI: {e}", exc_info=True)
             return None
 
     @classmethod
@@ -232,6 +307,25 @@ class APIUsageTracker:
                 'cost': float(anthropic_stats['total_cost'] or 0)
             }
 
+            # Stats OpenAI
+            openai_stats = APIUsage.objects.filter(
+                api_type='openai',
+                timestamp__gte=start_datetime,
+                timestamp__lt=end_datetime
+            ).aggregate(
+                total_calls=Count('id'),
+                total_input_tokens=Sum('input_tokens'),
+                total_output_tokens=Sum('output_tokens'),
+                total_cost=Sum('cost_total')
+            )
+
+            stats['openai'] = {
+                'calls': openai_stats['total_calls'] or 0,
+                'input_tokens': openai_stats['total_input_tokens'] or 0,
+                'output_tokens': openai_stats['total_output_tokens'] or 0,
+                'cost': float(openai_stats['total_cost'] or 0)
+            }
+
             # Stats Google Search
             google_stats = APIUsage.objects.filter(
                 api_type='google_search',
@@ -251,7 +345,7 @@ class APIUsageTracker:
 
             # Totale
             stats['total'] = {
-                'cost': stats['anthropic']['cost'] + stats['google_search']['cost']
+                'cost': stats['anthropic']['cost'] + stats['openai']['cost'] + stats['google_search']['cost']
             }
 
             return stats

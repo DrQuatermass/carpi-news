@@ -2752,10 +2752,19 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
             except Exception as e:
                 self.logger.warning(f"Errore nel tracciare utilizzo API: {e}")
 
+            # Modello AI usato (di default Anthropic)
+            ai_model_used = api_params["model"]
+
             # Processa risposta e gestisci tool use conversazionale
-            articolo_testo, used_sources = self._process_conversational_response(
+            response_data = self._process_conversational_response(
                 client, message, system_prompt, user_content, tools, web_sources
             )
+
+            # Gestisci tuple di 2 o 3 elementi (fallback OpenAI aggiunge modello)
+            if len(response_data) == 3:
+                articolo_testo, used_sources, ai_model_used = response_data
+            else:
+                articolo_testo, used_sources = response_data
 
             if not articolo_testo:
                 raise Exception("Nessun contenuto ricevuto dalla conversazione AI")
@@ -2819,6 +2828,7 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
                     fonte=article_data['url'],
                     foto=article_data.get('image_url'),
                     fonti_web=used_sources if used_sources else None,  # Salva fonti web utilizzate
+                    ai_model_used=ai_model_used,  # Modello AI usato (Anthropic o OpenAI fallback)
                     data_evento=data_evento,  # Imposta data evento se disponibile
                     approvato=auto_approve,  # Auto-approva se configurato
                     data_pubblicazione=timezone.now()
@@ -2832,8 +2842,12 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
             return f"Errore nella generazione AI: {e}"
 
     def _process_conversational_response(self, client, message, system_prompt: str,
-                                       initial_user_content: str, tools, web_sources: List) -> tuple[str, List[Dict]]:
-        """Processa la risposta conversazionale di Anthropic gestendo tool use"""
+                                       initial_user_content: str, tools, web_sources: List):
+        """Processa la risposta conversazionale di Anthropic gestendo tool use
+
+        Returns:
+            tuple: (content, sources) oppure (content, sources, model_name) se fallback OpenAI
+        """
         try:
             conversation = [{"role": "user", "content": initial_user_content}]
             current_message = message
@@ -3014,9 +3028,11 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
             if "529" in error_str or "overloaded" in error_str.lower():
                 self.logger.warning(f"Anthropic API sovraccarica (529), fallback a OpenAI...")
                 try:
-                    return self._generate_with_openai_fallback(
+                    content, sources, openai_model = self._generate_with_openai_fallback(
                         article_data, system_prompt, web_search_tool_def
                     )
+                    # Ritorna tuple estesa con modello OpenAI
+                    return content, sources, openai_model
                 except Exception as openai_error:
                     self.logger.error(f"Anche fallback OpenAI fallito: {openai_error}")
             else:
@@ -3032,8 +3048,12 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
             except:
                 return "", web_sources
 
-    def _generate_with_openai_fallback(self, article_data: Dict[str, Any], system_prompt: str, web_search_tool_def: Dict = None) -> tuple[str, list]:
-        """Fallback a OpenAI GPT-4 Turbo quando Anthropic è sovraccarico"""
+    def _generate_with_openai_fallback(self, article_data: Dict[str, Any], system_prompt: str, web_search_tool_def: Dict = None) -> tuple[str, list, str]:
+        """Fallback a OpenAI GPT-4 Turbo quando Anthropic è sovraccarico
+
+        Returns:
+            tuple: (contenuto, web_sources, model_name)
+        """
         from openai import OpenAI
         from django.conf import settings
 
@@ -3075,11 +3095,25 @@ Rielabora questa notizia seguendo le istruzioni del sistema. Rispondi SOLO con l
 
         content = response.choices[0].message.content
 
+        # Traccia utilizzo API
+        try:
+            from home.api_usage_tracker import APIUsageTracker
+            APIUsageTracker.track_openai(
+                operation='openai_fallback',
+                model='gpt-4-turbo-2024-04-09',
+                input_tokens=response.usage.prompt_tokens,
+                output_tokens=response.usage.completion_tokens,
+                related_article=None,
+                success=True
+            )
+        except Exception as tracker_error:
+            self.logger.warning(f"Errore nel tracciare utilizzo OpenAI: {tracker_error}")
+
         # Log utilizzo
         self.logger.info(f"OpenAI fallback completato: {response.usage.total_tokens} tokens")
 
         # Nessuna fonte web (OpenAI non ha tool use in questo fallback)
-        return content, []
+        return content, [], 'gpt-4-turbo-2024-04-09'
 
     def save_article_directly(self, article_data: Dict[str, Any]):
         """Salva articolo direttamente senza AI con protezione race condition"""
