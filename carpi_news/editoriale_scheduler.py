@@ -12,13 +12,12 @@ import sys
 import os
 import django
 
-# Setup Django (solo se non già inizializzato)
+# Setup Django (solo se eseguito come script standalone)
 sys.path.append(os.path.dirname(__file__))
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "carpi_news.settings")
 
-# Controlla se Django è già inizializzato (apps.py già chiamato)
-if not django.apps.apps.ready:
-    django.setup()
+# NON chiamare django.setup() qui - causa "populate() isn't reentrant"
+# quando importato da apps.py. Django è già inizializzato in quel contesto.
 
 from home.logger_config import setup_centralized_logger
 
