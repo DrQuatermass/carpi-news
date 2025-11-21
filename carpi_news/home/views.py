@@ -38,32 +38,43 @@ def home(request):
     # Ordina per data di pubblicazione
     articoli_list = articoli_query.order_by('-data_pubblicazione')
 
-    # Paginazione: 10 articoli per pagina
-    paginator = Paginator(articoli_list, 10)
+    # Paginazione: 8 articoli per pagina (4 righe x 3 colonne = 12 slot, 8 articoli + 4 banner)
+    paginator = Paginator(articoli_list, 8)
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
 
-    # LOGICA BANNER: 2 banner tra le card, mai contigui
-    # Posizioni possibili: 1, 2, 3, 4 (tra gli articoli, mai prima o dopo)
-    # Combina posizioni valide (non contigue)
+    # LOGICA BANNER: 1 banner per riga, mai in posizione 0 o 11, mai adiacenti
+    # Riga 1 (0,1,2): banner in 1 o 2
+    # Riga 2 (3,4,5): banner in 3, 4 o 5
+    # Riga 3 (6,7,8): banner in 6, 7 o 8
+    # Riga 4 (9,10,11): banner in 9 o 10
     from admin_panel.models import Banner
     from admin_panel.templatetags.banner_tags import weighted_random_choice, reset_shown_users
 
     # Reset cache utenti mostrati per questa pagina
     reset_shown_users()
 
-    # Con 12 posizioni (0-11): banner mai in pos 0 o 11, mai contigui
-    valid_combinations = [
-        [2, 6],   # Banner in pos 2 e 6
-        [2, 7],   # Banner in pos 2 e 7
-        [3, 7],   # Banner in pos 3 e 7
-        [3, 8],   # Banner in pos 3 e 8
-        [4, 8],   # Banner in pos 4 e 8
-        [4, 9],   # Banner in pos 4 e 9
-        [5, 9],   # Banner in pos 5 e 9
-        [3, 9],   # Banner in pos 3 e 9
-    ]
-    banner_positions = random.choice(valid_combinations)
+    # Genera posizioni random per ogni riga, evitando adiacenze tra righe
+    def get_banner_positions():
+        row1_options = [1, 2]
+        row2_options = [3, 4, 5]
+        row3_options = [6, 7, 8]
+        row4_options = [9, 10]
+
+        pos1 = random.choice(row1_options)
+        # Riga 2: evita adiacenza con riga 1 (pos1+1 se pos1=2 -> evita 3)
+        row2_valid = [p for p in row2_options if p != pos1 + 1]
+        pos2 = random.choice(row2_valid) if row2_valid else random.choice(row2_options)
+        # Riga 3: evita adiacenza con riga 2
+        row3_valid = [p for p in row3_options if p != pos2 + 1]
+        pos3 = random.choice(row3_valid) if row3_valid else random.choice(row3_options)
+        # Riga 4: evita adiacenza con riga 3
+        row4_valid = [p for p in row4_options if p != pos3 + 1]
+        pos4 = random.choice(row4_valid) if row4_valid else random.choice(row4_options)
+
+        return [pos1, pos2, pos3, pos4]
+
+    banner_positions = get_banner_positions()
 
     # Ottieni tutti i banner attivi per la posizione 'between_articles'
     all_banners = list(Banner.objects.filter(
@@ -79,37 +90,22 @@ def home(request):
     bot_keywords = ['bot', 'crawler', 'spider', 'scraper', 'curl', 'wget', 'python-requests']
     is_bot = any(keyword in user_agent for keyword in bot_keywords)
 
-    # Selezione randomica pesata dei 2 banner
+    # Selezione randomica pesata di 4 banner (uno per riga)
     active_banners = []
     if all_banners:
-        # Primo banner
-        banner1 = weighted_random_choice(all_banners)
-        if banner1:
-            active_banners.append(banner1)
-            # Incrementa impressions solo se non bot e non già mostrato in questa sessione
-            session_key = f'banner_impression_{banner1.id}_{page_number}'
-            if not is_bot and not request.session.get(session_key, False):
-                banner1.impressions += 1
-                banner1.save(update_fields=['impressions'])
-                request.session[session_key] = True
-                logger.debug(f"Impression unica banner: {banner1.title} (pag {page_number})")
-            elif is_bot:
-                logger.debug(f"Bot rilevato, impression non contata per banner: {banner1.title}")
-
-        # Secondo banner (se ci sono abbastanza banner)
-        if len(all_banners) >= 2:
-            banner2 = weighted_random_choice(all_banners)
-            if banner2:
-                active_banners.append(banner2)
+        for slot_num in range(4):
+            banner = weighted_random_choice(all_banners)
+            if banner:
+                active_banners.append(banner)
                 # Incrementa impressions solo se non bot e non già mostrato in questa sessione
-                session_key = f'banner_impression_{banner2.id}_{page_number}'
+                session_key = f'banner_impression_{banner.id}_{page_number}_{slot_num}'
                 if not is_bot and not request.session.get(session_key, False):
-                    banner2.impressions += 1
-                    banner2.save(update_fields=['impressions'])
+                    banner.impressions += 1
+                    banner.save(update_fields=['impressions'])
                     request.session[session_key] = True
-                    logger.debug(f"Impression unica banner: {banner2.title} (pag {page_number})")
+                    logger.debug(f"Impression unica banner: {banner.title} (pag {page_number}, slot {slot_num})")
                 elif is_bot:
-                    logger.debug(f"Bot rilevato, impression non contata per banner: {banner2.title}")
+                    logger.debug(f"Bot rilevato, impression non contata per banner: {banner.title}")
     
     # Log per debugging
     if categoria:
@@ -131,7 +127,7 @@ def home(request):
             categorie_disponibili.append(cat)
     
     # Crea la griglia mescolando articoli e banner/placeholder
-    # Posizioni 0-5: sempre 4 articoli + 2 slot banner
+    # 12 posizioni totali: 8 articoli + 4 banner (1 per riga)
     grid_items = []
     article_index = 0
     banner_index = 0
@@ -597,14 +593,14 @@ def chatbot_results(request):
         else:
             categorie_disponibili.append(cat)
 
-    # Paginazione: 10 articoli per pagina (come homepage)
-    # Con 2 banner in posizioni fisse, avremo 12 elementi totali
-    paginator = Paginator(articles, 10)
+    # Paginazione: 8 articoli per pagina (come homepage)
+    # Con 4 banner in posizioni fisse, avremo 12 elementi totali
+    paginator = Paginator(articles, 8)
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
 
-    # Posizioni fisse dei banner (stesse della homepage)
-    banner_positions = [3, 8]  # Banner in posizioni non contigue, mai prima/ultima
+    # Posizioni fisse dei banner (1 per riga, mai in pos 0 o 11)
+    banner_positions = [1, 4, 7, 10]  # Banner in posizioni non contigue
 
     # Serializza intent per template
     intent_str = json.dumps(intent)
