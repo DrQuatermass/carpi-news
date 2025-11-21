@@ -209,6 +209,105 @@
             display: block;
         }
     }
+
+    /* Articoli correlati */
+    .related-articles {
+        margin-top: 50px;
+        padding-top: 30px;
+        border-top: 1px solid rgba(150, 108, 66, 0.2);
+    }
+
+    .related-title {
+        font-family: 'Playfair Display', serif;
+        font-size: 1.5rem;
+        color: #2C2C2C;
+        margin-bottom: 25px;
+        font-weight: 600;
+    }
+
+    .related-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 20px;
+    }
+
+    .related-card {
+        text-decoration: none;
+        color: inherit;
+        background: #fff;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+        transition: all 0.3s ease;
+    }
+
+    .related-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+    }
+
+    .related-image {
+        aspect-ratio: 16/9;
+        overflow: hidden;
+    }
+
+    .related-image img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        transition: transform 0.3s ease;
+    }
+
+    .related-card:hover .related-image img {
+        transform: scale(1.05);
+    }
+
+    .related-content {
+        padding: 15px;
+    }
+
+    .related-content time {
+        font-size: 0.75rem;
+        color: #966C42;
+        display: block;
+        margin-bottom: 8px;
+    }
+
+    .related-content h4 {
+        font-family: 'Playfair Display', serif;
+        font-size: 0.95rem;
+        font-weight: 600;
+        color: #2C2C2C;
+        line-height: 1.4;
+        margin: 0;
+    }
+
+    @media (max-width: 768px) {
+        .related-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+
+        .related-content h4 {
+            font-size: 0.85rem;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .related-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .related-content h4 {
+            font-size: 0.9rem;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: visible;
+            text-overflow: unset;
+            white-space: normal;
+        }
+    }
 </style>
 {% endblock %}
 
@@ -217,7 +316,7 @@
         <article class="article-detail">
             <div class="article-meta">
                 <a href="{% url 'home' %}" class="back-link">← Home</a>
-                <span class="category-tag">{{ articolo.categoria }}</span>
+                <a href="{% url 'home' %}?categoria={{ articolo.categoria|urlencode }}" class="category-tag" style="text-decoration: none;">{{ articolo.categoria }}</a>
                 <time datetime="{{ articolo.data_pubblicazione|date:'Y-m-d' }}">
                        {{ articolo.data_pubblicazione|italian_date }}
                 </time>
@@ -311,6 +410,26 @@
                     </button>
                 </div>
            <!-- </div>-->
+
+            {% if articoli_correlati %}
+            <!-- Articoli correlati -->
+            <section class="related-articles">
+                <h3 class="related-title">Altri articoli in {{ articolo.categoria }}</h3>
+                <div class="related-grid">
+                    {% for related in articoli_correlati %}
+                    <a href="{% url 'dettaglio_articolo' related.slug %}" class="related-card">
+                        <div class="related-image">
+                            <img src="{{ related.get_image_url }}" alt="{{ related.titolo }}" loading="lazy">
+                        </div>
+                        <div class="related-content">
+                            <time datetime="{{ related.data_pubblicazione|date:'Y-m-d' }}">{{ related.data_pubblicazione|italian_date:'short' }}</time>
+                            <h4>{{ related.titolo|truncatewords:12 }}</h4>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+            </section>
+            {% endif %}
         </article>
     </div>
 {% endblock %}

@@ -1124,6 +1124,11 @@ footer {
     color: #2C2C2C !important;
     line-height: 1.3 !important;
     margin-bottom: 1.5rem !important;
+    overflow: visible !important;
+    text-overflow: unset !important;
+    white-space: normal !important;
+    -webkit-line-clamp: unset !important;
+    display: block !important;
 }
 
 /* Article Image Styles */
@@ -1268,25 +1273,35 @@ footer {
 
 /* Responsive adjustments for article images */
 @media (max-width: 768px) {
+    .article-title {
+        font-size: 1.8rem !important;
+        overflow: visible !important;
+        text-overflow: unset !important;
+        white-space: normal !important;
+        -webkit-line-clamp: unset !important;
+        display: block !important;
+        word-wrap: break-word !important;
+    }
+
     .article-image {
         float: none;
         width: 100%;
         margin: 1.5rem 0;
     }
-    
+
     .article-image img {
         max-height: 250px;
         object-fit: cover;
     }
-    
+
     .article-content {
         text-align: left;
     }
-    
+
     .news-image {
         height: 150px;
     }
-    
+
     .news-content {
         padding: 1rem;
     }

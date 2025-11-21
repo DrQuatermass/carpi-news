@@ -6,7 +6,7 @@
     {% if position == 'header' or position == 'article_top' or position == 'article_middle' or position == 'article_bottom' %}
         <div class="banner-header-slot has-active-banner">
             <div class="advertisement-banner" data-banner-id="{{ banner.id }}" style="width: 100%;">
-                <a href="{% url 'admin_panel:banner_click' banner.id %}" target="_blank" rel="noopener noreferrer sponsored" style="display: block; width: 100%;">
+                <a href="{% url 'admin_panel:banner_click' banner.id %}" target="_blank" rel="noopener noreferrer nofollow sponsored" style="display: block; width: 100%;">
                     <img src="{{ banner.image.url }}" alt="{{ banner.alt_text }}" width="728" height="90" style="width: 100%; height: auto; border-radius: 10px; display: block; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);" {% if position == 'header' %}fetchpriority="high"{% endif %}>
                 </a>
                 <div style="font-size: 10px; color: #999; text-align: center; margin-top: 5px;">Pubblicità</div>
@@ -15,7 +15,7 @@
     {% elif position == 'footer' %}
         <div class="banner-footer-slot has-active-banner" style="grid-column: 1 / -1;">
             <div class="advertisement-banner" data-banner-id="{{ banner.id }}" style="width: 100%;">
-                <a href="{% url 'admin_panel:banner_click' banner.id %}" target="_blank" rel="noopener noreferrer sponsored" style="display: block; width: 100%;">
+                <a href="{% url 'admin_panel:banner_click' banner.id %}" target="_blank" rel="noopener noreferrer nofollow sponsored" style="display: block; width: 100%;">
                     <img src="{{ banner.image.url }}" alt="{{ banner.alt_text }}" width="728" height="90" style="width: 100%; height: auto; border-radius: 10px; display: block; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);">
                 </a>
                 <div style="font-size: 10px; color: #999; text-align: center; margin-top: 5px;">Pubblicità</div>
@@ -24,7 +24,7 @@
     {% else %}
         {# Banner verticali (300×250) #}
         <div class="advertisement-banner" data-banner-id="{{ banner.id }}" style="width: 100%; max-width: 100%;">
-            <a href="{% url 'admin_panel:banner_click' banner.id %}" target="_blank" rel="noopener noreferrer sponsored" style="display: block; width: 100%;">
+            <a href="{% url 'admin_panel:banner_click' banner.id %}" target="_blank" rel="noopener noreferrer nofollow sponsored" style="display: block; width: 100%;">
                 <img src="{{ banner.image.url }}" alt="{{ banner.alt_text }}" width="300" height="250" style="width: 100%; height: auto; border-radius: 10px; display: block; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1); max-width: 100%;">
             </a>
             <div style="font-size: 10px; color: #999; text-align: center; margin-top: 5px;">Pubblicità</div>
@@ -33,15 +33,15 @@
 {% else %}
     {# Nessun banner - mostra placeholder #}
     {% if position == 'header' or position == 'article_top' or position == 'article_middle' or position == 'article_bottom' %}
-        <a href="{% url 'admin_panel:dashboard' %}" class="banner-header-slot" style="text-decoration: none;">
+        <a href="{% url 'admin_panel:dashboard' %}" class="banner-header-slot" rel="nofollow" style="text-decoration: none;">
             {# Placeholder gestito da CSS ::before e ::after #}
         </a>
     {% elif position == 'footer' %}
-        <a href="{% url 'admin_panel:dashboard' %}" class="banner-footer-slot" style="grid-column: 1 / -1; text-decoration: none;">
+        <a href="{% url 'admin_panel:dashboard' %}" class="banner-footer-slot" rel="nofollow" style="grid-column: 1 / -1; text-decoration: none;">
             {# Placeholder gestito da CSS ::before e ::after #}
         </a>
     {% elif position == 'between_articles' or position == 'sidebar_top' or position == 'sidebar_middle' or position == 'sidebar_bottom' %}
-        <a href="{% url 'admin_panel:dashboard' %}" class="banner-card-slot" style="text-decoration: none;">
+        <a href="{% url 'admin_panel:dashboard' %}" class="banner-card-slot" rel="nofollow" style="text-decoration: none;">
             {# Placeholder gestito da CSS ::before e ::after #}
         </a>
     {% endif %}

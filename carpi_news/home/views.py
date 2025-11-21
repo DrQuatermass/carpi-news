@@ -38,8 +38,8 @@ def home(request):
     # Ordina per data di pubblicazione
     articoli_list = articoli_query.order_by('-data_pubblicazione')
 
-    # Paginazione: 4 articoli per pagina
-    paginator = Paginator(articoli_list, 4)
+    # Paginazione: 10 articoli per pagina
+    paginator = Paginator(articoli_list, 10)
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
 
@@ -52,10 +52,16 @@ def home(request):
     # Reset cache utenti mostrati per questa pagina
     reset_shown_users()
 
+    # Con 12 posizioni (0-11): banner mai in pos 0 o 11, mai contigui
     valid_combinations = [
-        [1, 3],  # Banner in pos 1 e 3
-        [1, 4],  # Banner in pos 1 e 4
-        [2, 4],  # Banner in pos 2 e 4
+        [2, 6],   # Banner in pos 2 e 6
+        [2, 7],   # Banner in pos 2 e 7
+        [3, 7],   # Banner in pos 3 e 7
+        [3, 8],   # Banner in pos 3 e 8
+        [4, 8],   # Banner in pos 4 e 8
+        [4, 9],   # Banner in pos 4 e 9
+        [5, 9],   # Banner in pos 5 e 9
+        [3, 9],   # Banner in pos 3 e 9
     ]
     banner_positions = random.choice(valid_combinations)
 
@@ -130,7 +136,7 @@ def home(request):
     article_index = 0
     banner_index = 0
 
-    for i in range(6):  # 6 posizioni totali (0-5)
+    for i in range(12):  # 12 posizioni totali (0-11)
         if i in banner_positions:
             # Slot banner: mostra banner attivo o placeholder
             banner_data = active_banners[banner_index] if banner_index < len(active_banners) else None
@@ -240,8 +246,15 @@ def dettaglio_articolo(request, slug):
         else:
             categorie_disponibili.append(cat)
     
+    # Articoli correlati: ultimi 6 della stessa categoria (escluso quello corrente)
+    articoli_correlati = Articolo.objects.filter(
+        approvato=True,
+        categoria=articolo.categoria
+    ).exclude(pk=articolo.pk).order_by('-data_pubblicazione')[:6]
+
     context = {
         'articolo': articolo,
+        'articoli_correlati': articoli_correlati,
         'categorie_disponibili': list(categorie_disponibili),
         'categoria_attiva': None,  # Nessuna categoria attiva nel dettaglio
         'current_year': 2025,
@@ -584,14 +597,14 @@ def chatbot_results(request):
         else:
             categorie_disponibili.append(cat)
 
-    # Paginazione: 4 articoli per pagina (come homepage)
-    # Con 2 banner in posizioni fisse, avremo 6 elementi totali
-    paginator = Paginator(articles, 4)
+    # Paginazione: 10 articoli per pagina (come homepage)
+    # Con 2 banner in posizioni fisse, avremo 12 elementi totali
+    paginator = Paginator(articles, 10)
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
 
     # Posizioni fisse dei banner (stesse della homepage)
-    banner_positions = [2, 4]  # Dopo il 2° articolo e dopo il 4° articolo
+    banner_positions = [3, 8]  # Banner in posizioni non contigue, mai prima/ultima
 
     # Serializza intent per template
     intent_str = json.dumps(intent)

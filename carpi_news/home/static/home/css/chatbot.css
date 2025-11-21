@@ -17,6 +17,18 @@
     justify-content: center;
     transition: all 0.3s ease;
     z-index: 999;
+    animation: chatbotPulse 2s ease-in-out infinite;
+}
+
+@keyframes chatbotPulse {
+    0%, 100% {
+        transform: scale(1);
+        box-shadow: 0 4px 20px rgba(150, 108, 66, 0.4);
+    }
+    50% {
+        transform: scale(1.05);
+        box-shadow: 0 6px 25px rgba(150, 108, 66, 0.5);
+    }
 }
 
 .chatbot-toggle:hover {
