@@ -423,7 +423,7 @@
                         </div>
                         <div class="related-content">
                             <time datetime="{{ related.data_pubblicazione|date:'Y-m-d' }}">{{ related.data_pubblicazione|italian_date:'short' }}</time>
-                            <h4>{{ related.titolo|truncatewords:12 }}</h4>
+                            <h4>{{ related.titolo }}</h4>
                         </div>
                     </a>
                     {% endfor %}

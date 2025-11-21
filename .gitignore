@@ -65,4 +65,4 @@ optimize_*.py
 archive/
 
 # Facebook credentials (sensitive)
-get_facebook_*.py
+get_facebook_*.pycarpi_news/home/management/commands/send_emails_ses.py
