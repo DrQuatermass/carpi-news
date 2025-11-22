@@ -158,9 +158,17 @@ def home(request):
                     first_article_added = True
                 article_index += 1
 
+    # Trova la prima immagine articolo per preload LCP
+    first_article_image = None
+    for item in grid_items:
+        if item['type'] == 'article':
+            first_article_image = item['data'].get_image_url()
+            break
+
     context = {
         'articoli': page_obj,
         'grid_items': grid_items,  # Griglia con articoli e banner/placeholder
+        'first_article_image': first_article_image,  # Per preload LCP
         'current_page': page_obj.number,
         'total_pages': paginator.num_pages,
         'has_prev': page_obj.has_previous(),

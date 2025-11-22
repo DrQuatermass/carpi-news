@@ -11,8 +11,8 @@
 <link rel="canonical" href="{{ canonical_url }}">
 
 <!-- Preload prima immagine articolo per LCP -->
-{% if page_obj.object_list.0 %}
-    <link rel="preload" as="image" href="{{ page_obj.object_list.0.get_image_url }}" fetchpriority="high">
+{% if first_article_image %}
+    <link rel="preload" as="image" href="{{ first_article_image }}" fetchpriority="high">
 {% endif %}
 
 <!-- Open Graph meta tags per homepage -->
