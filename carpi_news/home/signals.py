@@ -269,26 +269,37 @@ def _notify_search_engines_background(instance):
     Notifica i motori di ricerca (Google, Bing, Yandex) della pubblicazione dell'articolo.
     Eseguito in background per non bloccare il salvataggio.
     """
+    logger.warning(f"[SIGNAL] Avvio notifica indicizzazione per: {instance.titolo}")
+
     def _notify():
         try:
             from django.conf import settings
+            import sys
             article_url = f"{settings.SITE_URL}/articolo/{instance.slug}/"
+
+            logger.warning(f"[SIGNAL] Chiamata API per: {article_url}")
+            sys.stdout.flush()
 
             results = notifier.notify_article_published(article_url)
 
-            # Log risultati
+            # Log risultati con WARNING per visibilità
             if results['indexnow']['success']:
-                logger.info(f"✓ IndexNow notificato per: {instance.titolo}")
+                logger.warning(f"[SIGNAL INDEXING] IndexNow OK: {instance.titolo}")
             else:
-                logger.warning(f"✗ IndexNow fallito per {instance.titolo}: {results['indexnow']['message']}")
+                logger.warning(f"[SIGNAL INDEXING] IndexNow FAIL: {instance.titolo} - {results['indexnow']['message'][:100]}")
 
             if results['google']['success']:
-                logger.info(f"✓ Google Indexing API notificato per: {instance.titolo}")
+                logger.warning(f"[SIGNAL INDEXING] Google OK: {instance.titolo}")
             else:
-                logger.warning(f"✗ Google Indexing API fallito per {instance.titolo}: {results['google']['message']}")
+                logger.warning(f"[SIGNAL INDEXING] Google FAIL: {instance.titolo} - {results['google']['message'][:100]}")
+
+            sys.stdout.flush()
 
         except Exception as e:
-            logger.error(f"Errore notifica motori di ricerca per {instance.titolo}: {e}")
+            logger.error(f"[SIGNAL] Errore notifica motori ricerca: {instance.titolo} - {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            sys.stdout.flush()
 
     # Avvia thread
     thread = threading.Thread(target=_notify)

@@ -265,46 +265,6 @@ class ArticoloAdmin(admin.ModelAdmin):
             return base_readonly + ['interview_data']
         return base_readonly
 
-    def save_model(self, request, obj, form, change):
-        """Override save to trigger search engine indexing when articles are approved"""
-        # Track old approval state before saving
-        was_approved = False
-        if change and obj.pk:
-            try:
-                old_obj = Articolo.objects.get(pk=obj.pk)
-                was_approved = old_obj.approvato
-            except Articolo.DoesNotExist:
-                pass
-
-        # Save the object
-        super().save_model(request, obj, form, change)
-
-        # If approval status changed to True, trigger indexing notification
-        if not was_approved and obj.approvato:
-            from .indexing_notifier import notifier
-            from django.conf import settings
-            import threading
-            import logging
-
-            logger = logging.getLogger(__name__)
-
-            def notify_search_engines():
-                try:
-                    article_url = f"{settings.SITE_URL}/articolo/{obj.slug}/"
-                    results = notifier.notify_article_published(article_url)
-                    logger.warning(
-                        f"[ADMIN INDEXING] Articolo '{obj.titolo}' approvato - "
-                        f"Google: {results['google']['success']}, "
-                        f"IndexNow: {results['indexnow']['success']}"
-                    )
-                except Exception as e:
-                    logger.error(f"[ADMIN INDEXING] Errore notifica per '{obj.titolo}': {e}")
-
-            # Run notification in background thread
-            thread = threading.Thread(target=notify_search_engines)
-            thread.daemon = True
-            thread.start()
-
     def payment_status_display(self, obj):
         """Mostra stato pagamento"""
         if not obj.is_pubbliredazionale or not obj.payment_status:

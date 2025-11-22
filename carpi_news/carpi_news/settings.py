@@ -216,6 +216,11 @@ LOGGING = {
             'level': 'INFO',
             'propagate': False,
         },
+        'home.signals': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
         'home.playlist_monitor': {
             'handlers': ['console', 'playlist_file'],
             'level': 'INFO',
