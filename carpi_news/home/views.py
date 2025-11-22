@@ -197,7 +197,7 @@ def home(request):
             'has_next': page_obj.has_next(),
             'categoria_attiva': categoria,
             'banner_positions': banner_positions,
-            'num_banner_slots': num_banner_slots,
+            'num_banner_slots': len(banner_positions),
         })
     
     return render(request, "homepage.html", context)
