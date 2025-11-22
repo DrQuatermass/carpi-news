@@ -24,9 +24,11 @@ def home(request):
     # Filtro per categoria (opzionale)
     categoria = request.GET.get('categoria', None)
     
-    # Query base: solo articoli approvati
-    articoli_query = Articolo.objects.filter(approvato=True)
-    
+    # Query base: solo articoli approvati (ottimizzata con only per ridurre memoria)
+    articoli_query = Articolo.objects.filter(approvato=True).only(
+        'id', 'titolo', 'sommario', 'categoria', 'slug', 'foto', 'foto_upload', 'data_pubblicazione'
+    )
+
     # Applica filtro categoria se specificato
     if categoria and categoria != 'tutti':
         if categoria.lower() == 'rubriche':
@@ -34,7 +36,7 @@ def home(request):
             articoli_query = articoli_query.filter(categoria__in=['Editoriale', "L'Eco del Consiglio"])
         else:
             articoli_query = articoli_query.filter(categoria__iexact=categoria)
-    
+
     # Ordina per data di pubblicazione
     articoli_list = articoli_query.order_by('-data_pubblicazione')
 

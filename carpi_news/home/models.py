@@ -16,9 +16,9 @@ class Articolo(models.Model):
     titolo = models.CharField(max_length=200)
     contenuto = models.TextField()
     sommario = models.TextField(max_length=5000, blank=True)
-    categoria = models.CharField(max_length=100, default='Generale')
+    categoria = models.CharField(max_length=100, default='Generale', db_index=True)
     slug = models.SlugField(max_length=200, unique=True, blank=True)
-    approvato = models.BooleanField(default=False)
+    approvato = models.BooleanField(default=False, db_index=True)
     fonte = models.URLField(max_length=500, blank=True, null=True)
     foto = models.TextField(blank=True, null=True)
     foto_upload = models.ImageField(upload_to='images/uploaded/', blank=True, null=True, help_text="Upload di un'immagine per l'articolo")
@@ -26,8 +26,8 @@ class Articolo(models.Model):
     fonti_web = models.JSONField(blank=True, null=True, help_text="Fonti web utilizzate durante la generazione AI con ricerca web")
     ai_model_used = models.CharField(max_length=50, blank=True, null=True, help_text="Modello AI utilizzato per generare l'articolo (es. claude-3-7-sonnet, gpt-4-turbo)")
     views = models.PositiveIntegerField(default=0, help_text="Numero di visualizzazioni dell'articolo")
-    data_creazione = models.DateTimeField(auto_now_add=True)
-    data_pubblicazione = models.DateTimeField(blank=True, null=True,default=timezone.now)
+    data_creazione = models.DateTimeField(auto_now_add=True, db_index=True)
+    data_pubblicazione = models.DateTimeField(blank=True, null=True, default=timezone.now, db_index=True)
     data_evento = models.DateField(blank=True, null=True, help_text="Data dell'evento per articoli di categoria Cultura ed Eventi")
 
     # CAMPI PUBBLIREDAZIONALE
@@ -195,18 +195,19 @@ class Articolo(models.Model):
             return validated_url if cached_result else fallback_image
 
         try:
-            # Controlla se l'URL è raggiungibile
-            response = requests.head(validated_url, timeout=3, allow_redirects=True)
+            # Controlla se l'URL è raggiungibile (timeout ridotto a 1 sec per produzione)
+            response = requests.head(validated_url, timeout=1, allow_redirects=True)
             is_valid = response.status_code == 200
 
-            # Cache il risultato per 1 ora
-            cache.set(cache_key, is_valid, 3600)
+            # Cache il risultato per 24 ore (riduce carico DB)
+            cache.set(cache_key, is_valid, 86400)
 
             return validated_url if is_valid else fallback_image
         except:
-            # Se c'è qualsiasi errore, cache fallimento e usa il fallback
-            cache.set(cache_key, False, 1800)  # Cache errori per 30 min
-            return fallback_image
+            # Se c'è qualsiasi errore, usa fallback senza bloccare (assume valido)
+            # Cache errori per 6 ore invece di 30min
+            cache.set(cache_key, True, 21600)
+            return validated_url  # Restituisci comunque l'URL, il browser gestirà errori
 
     def get_social_image_url(self):
         """
@@ -316,13 +317,13 @@ class Articolo(models.Model):
             return validated_url if cached_result else fallback_image
 
         try:
-            response = requests.head(validated_url, timeout=3, allow_redirects=True)
+            response = requests.head(validated_url, timeout=1, allow_redirects=True)
             is_valid = response.status_code == 200
-            cache.set(cache_key, is_valid, 3600)
+            cache.set(cache_key, is_valid, 86400)
             return validated_url if is_valid else fallback_image
         except:
-            cache.set(cache_key, False, 1800)
-            return fallback_image
+            cache.set(cache_key, True, 21600)
+            return validated_url
 
     def can_proceed_to_payment(self):
         """Verifica se il pubbliredazionale può procedere al pagamento"""
@@ -379,6 +380,15 @@ Ombra del Portico - Sistema pubbliredazionali
             )
         except Exception as e:
             logger.error(f"Errore invio email notifica pubbliredazionale {self.pk}: {str(e)}")
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['approvato', '-data_pubblicazione']),  # Query homepage
+            models.Index(fields=['categoria', 'approvato', '-data_pubblicazione']),  # Filtro categoria
+            models.Index(fields=['slug']),  # Detail view (già unique, ma esplicito)
+        ]
+        verbose_name = "Articolo"
+        verbose_name_plural = "Articoli"
 
     def __str__(self):
         if self.is_pubbliredazionale:
