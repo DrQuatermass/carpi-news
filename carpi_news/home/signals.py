@@ -162,21 +162,18 @@ def track_approval_change(sender, instance, **kwargs):
             # Ottieni lo stato precedente dall'oggetto esistente
             old_instance = Articolo.objects.get(pk=instance.pk)
             # Salva lo stato precedente in cache per il post_save
-            logger.info(f"[PRE_SAVE] Articolo {instance.pk}: was_approved={old_instance.approvato}, is_approved={instance.approvato}")
             cache.set(f'article_approval_state_{instance.pk}', {
                 'was_approved': old_instance.approvato,
                 'is_approved': instance.approvato
             }, 60)  # Cache per 1 minuto
         except Articolo.DoesNotExist:
             # Caso edge: pk esiste ma oggetto non trovato
-            logger.warning(f"[PRE_SAVE] Articolo {instance.pk} non trovato in DB")
             cache.set(f'article_approval_state_{instance.pk}', {
                 'was_approved': False,
                 'is_approved': instance.approvato
             }, 60)
     else:
         # Nuovo articolo (pk è None) - usa l'id dell'oggetto Python temporaneamente
-        logger.info(f"[PRE_SAVE] Nuovo articolo: is_approved={instance.approvato}")
         cache.set(f'article_approval_state_new_{id(instance)}', {
             'was_approved': False,
             'is_approved': instance.approvato
@@ -215,7 +212,6 @@ def handle_article_approval(sender, instance, created, **kwargs):
     """
     # Recupera lo stato di approvazione dalla cache
     approval_state = cache.get(f'article_approval_state_{instance.pk}')
-    logger.info(f"[POST_SAVE] Articolo {instance.pk} '{instance.titolo[:50]}': created={created}, approval_state={approval_state}")
 
     # Per articoli nuovi, controlla anche la cache temporanea
     if not approval_state and created:
@@ -227,11 +223,9 @@ def handle_article_approval(sender, instance, created, **kwargs):
         # Se non c'è cache, assumiamo sia un nuovo articolo
         was_approved = False
         is_approved = instance.approvato
-        logger.info(f"[POST_SAVE] Nessuna cache trovata: was_approved=False, is_approved={is_approved}")
     else:
         was_approved = approval_state['was_approved']
         is_approved = approval_state['is_approved']
-        logger.info(f"[POST_SAVE] Cache trovata: was_approved={was_approved}, is_approved={is_approved}")
         # Pulizia cache
         if instance.pk:
             cache.delete(f'article_approval_state_{instance.pk}')
@@ -239,10 +233,7 @@ def handle_article_approval(sender, instance, created, **kwargs):
     # Condividi se:
     # 1. L'articolo è passato da non approvato ad approvato (approvazione manuale)
     # 2. L'articolo è nuovo e già approvato (auto-approvazione)
-    should_notify = (not was_approved and is_approved) or (created and is_approved)
-    logger.info(f"[POST_SAVE] Should notify? {should_notify} (not {was_approved} and {is_approved}) or ({created} and {is_approved})")
-
-    if should_notify:
+    if (not was_approved and is_approved) or (created and is_approved):
         logger.info(f"Articolo '{instance.titolo}' appena approvato, aggiorno feed RSS e avvio condivisione automatica")
 
         # Invia email al cliente se è un pubbliredazionale
