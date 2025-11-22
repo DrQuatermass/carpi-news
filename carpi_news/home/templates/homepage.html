@@ -11,12 +11,9 @@
 <link rel="canonical" href="{{ canonical_url }}">
 
 <!-- Preload prima immagine articolo per LCP -->
-{% for item in grid_items %}
-    {% if item.type == 'article' %}
-        <link rel="preload" as="image" href="{{ item.data.get_image_url }}" fetchpriority="high">
-        {% break %}
-    {% endif %}
-{% endfor %}
+{% if page_obj.object_list.0 %}
+    <link rel="preload" as="image" href="{{ page_obj.object_list.0.get_image_url }}" fetchpriority="high">
+{% endif %}
 
 <!-- Open Graph meta tags per homepage -->
 <meta property="og:title" content="Ombra del Portico - Notizie di Carpi">
