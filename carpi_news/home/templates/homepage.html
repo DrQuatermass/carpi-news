@@ -327,8 +327,8 @@
                                 <a href="{% url 'dettaglio_articolo' item.data.slug %}" class="news-card-link">
                                     <article class="news-card loading">
                                         <div class="news-image">
-                                            {% if forloop.counter0 == 0 %}
-                                                {# Prima card: eager loading senza WebP per massima velocità LCP #}
+                                            {% if item.is_first_article %}
+                                                {# PRIMA card articolo: eager loading senza WebP per massima velocità LCP #}
                                                 <img src="{{ item.data.get_image_url }}" alt="{{ item.data.titolo }}" class="card-img" width="616" height="347" fetchpriority="high" loading="eager">
                                             {% else %}
                                                 {# Altre card: lazy loading con WebP #}

@@ -133,6 +133,7 @@ def home(request):
     grid_items = []
     article_index = 0
     banner_index = 0
+    first_article_added = False
 
     for i in range(12):  # 12 posizioni totali (0-11)
         if i in banner_positions:
@@ -147,10 +148,14 @@ def home(request):
         else:
             # Slot articolo
             if article_index < len(page_obj):
+                is_first = not first_article_added
                 grid_items.append({
                     'type': 'article',
-                    'data': page_obj[article_index]
+                    'data': page_obj[article_index],
+                    'is_first_article': is_first  # Flag per LCP optimization
                 })
+                if is_first:
+                    first_article_added = True
                 article_index += 1
 
     context = {
