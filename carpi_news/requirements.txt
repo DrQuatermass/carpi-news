@@ -37,3 +37,7 @@ schedule==1.2.1
 
 # PayPal Payments (per banner)
 paypalrestsdk==1.13.3
+
+# Search Engine Indexing
+google-auth==2.23.0
+google-auth-httplib2==0.1.1

@@ -8,6 +8,7 @@ from django.core.files.base import ContentFile
 from .models import Articolo
 from .email_notifications import send_article_approval_notification
 from .social_sharing import social_manager
+from .indexing_notifier import notifier
 from PIL import Image
 import io
 from pathlib import Path
@@ -257,7 +258,42 @@ def handle_article_approval(sender, instance, created, **kwargs):
         thread.daemon = True
         thread.start()
 
+        # Notifica motori di ricerca dell'articolo pubblicato
+        _notify_search_engines_background(instance)
+
         logger.info(f"Feed RSS aggiornato e thread di condivisione avviato per articolo: {instance.titolo}")
+
+
+def _notify_search_engines_background(instance):
+    """
+    Notifica i motori di ricerca (Google, Bing, Yandex) della pubblicazione dell'articolo.
+    Eseguito in background per non bloccare il salvataggio.
+    """
+    def _notify():
+        try:
+            from django.conf import settings
+            article_url = f"{settings.SITE_URL}/articolo/{instance.slug}/"
+
+            results = notifier.notify_article_published(article_url)
+
+            # Log risultati
+            if results['indexnow']['success']:
+                logger.info(f"✓ IndexNow notificato per: {instance.titolo}")
+            else:
+                logger.warning(f"✗ IndexNow fallito per {instance.titolo}: {results['indexnow']['message']}")
+
+            if results['google']['success']:
+                logger.info(f"✓ Google Indexing API notificato per: {instance.titolo}")
+            else:
+                logger.warning(f"✗ Google Indexing API fallito per {instance.titolo}: {results['google']['message']}")
+
+        except Exception as e:
+            logger.error(f"Errore notifica motori di ricerca per {instance.titolo}: {e}")
+
+    # Avvia thread
+    thread = threading.Thread(target=_notify)
+    thread.daemon = True
+    thread.start()
 
 
 def _share_article_background(article_id, article_title):
