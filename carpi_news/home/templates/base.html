@@ -32,9 +32,9 @@
     <meta name="twitter:description" content="{% block twitter_description %}{% block meta_description_for_twitter %}Ombra del Portico: il tuo giornale online per le notizie di Carpi. Cronaca, cultura, eventi e sport della città.{% endblock %}{% endblock %}">
     <meta name="twitter:image" content="{% block twitter_image %}https://ombradelportico.it{% static 'home/images/portico_logo_nopayoff.png' %}{% endblock %}">
 
-    <!-- Preload risorse critiche -->
+    <!-- Preload risorse critiche per LCP -->
     <link rel="preload" href="{% static 'home/css/style.min.css' %}?v=6" as="style">
-    <link rel="preload" href="{% static 'home/images/portico_logo_nopayoff.svg' %}" as="image">
+    <link rel="preload" href="{% static 'home/images/portico_logo.svg' %}" as="image" type="image/svg+xml" fetchpriority="high">
     <link rel="preload" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" as="style">
 
     <!-- Preconnect per performance -->

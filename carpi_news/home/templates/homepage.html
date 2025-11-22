@@ -10,6 +10,14 @@
 <!-- Canonical URL -->
 <link rel="canonical" href="{{ canonical_url }}">
 
+<!-- Preload prima immagine articolo per LCP -->
+{% for item in grid_items %}
+    {% if item.type == 'article' %}
+        <link rel="preload" as="image" href="{{ item.data.get_image_url }}" fetchpriority="high">
+        {% break %}
+    {% endif %}
+{% endfor %}
+
 <!-- Open Graph meta tags per homepage -->
 <meta property="og:title" content="Ombra del Portico - Notizie di Carpi">
 <meta property="og:description" content="Portale di informazione locale della città di Carpi e dintorni. Notizie, eventi e tutto quello che accade nella nostra comunità.">
@@ -306,7 +314,7 @@
                                     <div class="banner-card-slot has-active-banner">
                                         <div class="advertisement-banner" data-banner-id="{{ item.banner.id }}" style="width: 100%;">
                                             <a href="{% url 'admin_panel:banner_click' item.banner.id %}" target="_blank" rel="noopener noreferrer nofollow sponsored" style="display: block; width: 100%;">
-                                                <img src="{{ item.banner.image.url }}" alt="{{ item.banner.alt_text }}" style="width: 100%; height: auto; border-radius: 10px; display: block; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);">
+                                                <img src="{{ item.banner.image.url }}" alt="{{ item.banner.alt_text }}" loading="lazy" style="width: 100%; height: auto; border-radius: 10px; display: block; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);">
                                             </a>
                                             <div style="font-size: 10px; color: #999; text-align: center; margin-top: 5px;">Pubblicità</div>
                                         </div>
@@ -318,14 +326,20 @@
                                     </a>
                                 {% endif %}
                             {% elif item.type == 'article' %}
-                                {# Articolo #}
+                                {# Articolo - prima immagine con fetchpriority high #}
                                 <a href="{% url 'dettaglio_articolo' item.data.slug %}" class="news-card-link">
                                     <article class="news-card loading">
                                         <div class="news-image">
-                                            <picture>
-                                                <source srcset="{{ item.data.get_image_url|to_webp }}" type="image/webp">
-                                                <img src="{{ item.data.get_image_url }}" alt="{{ item.data.titolo }}" class="card-img" width="616" height="347" {% if forloop.first %}fetchpriority="high" loading="eager"{% else %}loading="lazy"{% endif %}>
-                                            </picture>
+                                            {% if forloop.counter0 == 0 %}
+                                                {# Prima card: eager loading senza WebP per massima velocità LCP #}
+                                                <img src="{{ item.data.get_image_url }}" alt="{{ item.data.titolo }}" class="card-img" width="616" height="347" fetchpriority="high" loading="eager">
+                                            {% else %}
+                                                {# Altre card: lazy loading con WebP #}
+                                                <picture>
+                                                    <source srcset="{{ item.data.get_image_url|to_webp }}" type="image/webp">
+                                                    <img src="{{ item.data.get_image_url }}" alt="{{ item.data.titolo }}" class="card-img" width="616" height="347" loading="lazy">
+                                                </picture>
+                                            {% endif %}
                                         </div>
                                         <div class="news-content">
                                             <div class="news-meta">
