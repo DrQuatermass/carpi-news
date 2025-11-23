@@ -47,15 +47,22 @@ class IndexingNotifier:
         else:
             results['indexnow']['message'] = 'INDEXNOW_KEY non configurata'
 
-        # Google Indexing API
-        if self.google_credentials_path and os.path.exists(self.google_credentials_path):
-            try:
-                results['google'] = self._notify_google_indexing_api(article_url)
-            except Exception as e:
-                logger.error(f"Errore Google Indexing API: {e}")
-                results['google']['message'] = str(e)
-        else:
-            results['google']['message'] = 'Credentials Google non configurate'
+        # Google Indexing API - DISABILITATA per contenuti news
+        # Documentazione ufficiale Google (sett 2025): API supporta SOLO JobPosting e BroadcastEvent
+        # Per news usare: IndexNow (già attivo), Google News Sitemap, NewsArticle schema markup
+        # Fonte: https://developers.google.com/search/apis/indexing-api/v3/quota-pricing
+        results['google']['message'] = 'API non supportata per news (solo JobPosting/BroadcastEvent) - usa IndexNow'
+        results['google']['success'] = False
+
+        # Codice disabilitato per evitare penalizzazioni:
+        # if self.google_credentials_path and os.path.exists(self.google_credentials_path):
+        #     try:
+        #         results['google'] = self._notify_google_indexing_api(article_url)
+        #     except Exception as e:
+        #         logger.error(f"Errore Google Indexing API: {e}")
+        #         results['google']['message'] = str(e)
+        # else:
+        #     results['google']['message'] = 'Credentials Google non configurate'
 
         # Log risultati
         success_count = sum(1 for r in results.values() if r['success'])
