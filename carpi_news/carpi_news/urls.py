@@ -46,6 +46,9 @@ urlpatterns = [
     path('robots.txt', TemplateView.as_view(template_name='robots.txt', content_type='text/plain'), name='robots'),
     path('ads.txt', TemplateView.as_view(template_name='ads.txt', content_type='text/plain'), name='ads'),
 
+    # IndexNow verification key
+    path('6a01617c502be60a3fb719998c057c18.txt', views.indexnow_key, name='indexnow_key'),
+
     # Sitemap URLs (SEO ottimizzato)
     path('sitemap_index.xml', views.sitemap_index, name='sitemap_index'),
     path('sitemap.xml', views.sitemap, name='sitemap'),

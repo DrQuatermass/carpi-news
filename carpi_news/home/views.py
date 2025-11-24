@@ -632,3 +632,10 @@ def chatbot_results(request):
     }
 
     return render(request, "chatbot_results.html", context)
+
+
+def indexnow_key(request):
+    """Serve IndexNow verification key file"""
+    from django.conf import settings
+    key = settings.INDEXNOW_KEY if hasattr(settings, 'INDEXNOW_KEY') else os.getenv('INDEXNOW_KEY', '')
+    return HttpResponse(key, content_type='text/plain')
