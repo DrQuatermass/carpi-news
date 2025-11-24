@@ -5,6 +5,8 @@ from django.templatetags.static import static
 from django.core.cache import cache
 from django.conf import settings
 from urllib.parse import quote
+from django.db.models.signals import post_save
+from django.dispatch import receiver
 import re
 import requests
 import json
@@ -567,6 +569,32 @@ class ChatbotConversation(models.Model):
 
     def __str__(self):
         return f"{self.timestamp.strftime('%Y-%m-%d %H:%M')} - {self.user_message[:50]}..."
+
+
+# WebSub Notification Signal
+@receiver(post_save, sender=Articolo)
+def notify_websub_on_approval(sender, instance, created, **kwargs):
+    """
+    Invia notifica WebSub a Google quando un articolo viene approvato
+
+    NOTA: Invia SOLO notifiche push, non modifica il feed RSS.
+    Invia notifica per ogni articolo approvato (sia nuovi che aggiornati).
+    """
+    # Invia notifica solo se l'articolo è approvato
+    if instance.approvato:
+        # Importa la funzione WebSub e invia notifica in modo asincrono
+        try:
+            from home.websub import notify_google_websub
+            import threading
+
+            # Esegui in thread separato per non bloccare il salvataggio
+            thread = threading.Thread(target=notify_google_websub)
+            thread.daemon = True
+            thread.start()
+
+            logger.info(f"WebSub: avviata notifica per articolo '{instance.titolo}'")
+        except Exception as e:
+            logger.error(f"WebSub: errore nell'avvio notifica per articolo '{instance.titolo}': {str(e)}")
 
 
 # Create your models here.
