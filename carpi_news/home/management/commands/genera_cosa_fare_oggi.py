@@ -111,7 +111,7 @@ class Command(BaseCommand):
             contenuto=contenuto,
             sommario=sommario,
             categoria='Cosa fare oggi',
-            foto='/static/home/images/Oggi.png',
+            foto='/static/home/images/Oggi.webp',
             approvato=True,
             data_pubblicazione=timezone.now()
         )

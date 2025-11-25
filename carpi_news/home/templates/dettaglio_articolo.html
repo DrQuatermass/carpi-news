@@ -329,7 +329,7 @@
             {% show_banner 'article_top' %}
 
             <div class="article-image">
-                <img src="{{ articolo.get_image_url }}" alt="{{ articolo.titolo }}" class="img-responsive" loading="eager">
+                <img src="{{ articolo.get_image_url }}" alt="Immagine dell'articolo su {{ articolo.categoria }}" class="img-responsive" loading="eager">
             </div>
 
             <div class="article-content" id="article-content">
@@ -419,7 +419,7 @@
                     {% for related in articoli_correlati %}
                     <a href="{% url 'dettaglio_articolo' related.slug %}" class="related-card">
                         <div class="related-image">
-                            <img src="{{ related.get_image_url }}" alt="{{ related.titolo }}" loading="lazy">
+                            <img src="{{ related.get_image_url }}" alt="Anteprima articolo correlato" loading="lazy">
                         </div>
                         <div class="related-content">
                             <time datetime="{{ related.data_pubblicazione|date:'Y-m-d' }}">{{ related.data_pubblicazione|italian_date:'short' }}</time>

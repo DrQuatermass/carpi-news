@@ -537,10 +537,22 @@ ISTRUZIONI:
                 )
             except Exception as e:
                 logger.warning(f"Errore nel tracciare utilizzo API: {e}")
-            
+
             if contenuto_rigenerato and contenuto_rigenerato != articolo.contenuto:
-                # Salva il contenuto rigenerato
-                articolo.contenuto = contenuto_rigenerato
+                # Applica formattazione HTML e link interni con content_polisher
+                from home.content_polisher import content_polisher
+
+                contenuto_pulito = content_polisher.clean_content(contenuto_rigenerato)
+                contenuto_formattato = content_polisher.format_article_structure(contenuto_pulito)
+                contenuto_finale = content_polisher.add_internal_links(
+                    contenuto_formattato,
+                    article_title=articolo.titolo,
+                    current_article_slug=articolo.slug,
+                    current_article_date=articolo.data_pubblicazione
+                )
+
+                # Salva il contenuto formattato
+                articolo.contenuto = contenuto_finale
                 # Rigenera anche il sommario
                 articolo.sommario = ""  # Così verrà rigenerato automaticamente nel save()
                 # Imposta come non approvato per revisione
