@@ -54,6 +54,22 @@ def to_webp(image_url):
     return get_webp_url(image_url)
 
 
+@register.filter
+def image_srcset(image_url):
+    """
+    Genera attributo srcset per immagini responsive
+
+    Usage:
+        <img src="{{ article.foto }}" srcset="{{ article.foto|image_srcset }}">
+    """
+    if not image_url or 'Oggi.webp' not in image_url:
+        return ""
+
+    # Per Oggi.webp, abbiamo versioni multiple
+    base_url = image_url.replace('Oggi.webp', '')
+    return f"{base_url}Oggi-400w.webp 400w, {base_url}Oggi-600w.webp 600w, {base_url}Oggi-800w.webp 800w"
+
+
 def get_webp_url(image_url):
     """Helper per convertire URL in WebP solo per immagini locali"""
     if not image_url:
