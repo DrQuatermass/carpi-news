@@ -130,8 +130,16 @@ class Banner(models.Model):
         return f"{self.title} - {self.get_position_display()}"
 
     def save(self, *args, **kwargs):
-        # Verifica se è un nuovo banner
+        # Verifica se è un nuovo banner o se l'immagine è cambiata
         is_new = self.pk is None
+        image_changed = False
+
+        if not is_new:
+            try:
+                old_instance = Banner.objects.get(pk=self.pk)
+                image_changed = old_instance.image != self.image
+            except Banner.DoesNotExist:
+                pass
 
         # Calcola il prezzo totale automaticamente
         if self.duration_days and self.price_per_day:
@@ -147,9 +155,60 @@ class Banner(models.Model):
         if is_new and self.status == 'draft':
             self.status = 'pending_payment'
 
+        # Ottimizza immagine se è nuova o cambiata
+        if (is_new or image_changed) and self.image:
+            self._optimize_image()
+
         super().save(*args, **kwargs)
 
         # Email verrà inviata dopo il pagamento, non alla creazione
+
+    def _optimize_image(self):
+        """Ottimizza automaticamente l'immagine banner in WebP"""
+        try:
+            from PIL import Image
+            from django.core.files.base import ContentFile
+            import io
+            import os
+
+            # Apri immagine
+            img = Image.open(self.image)
+
+            # Converti in RGB se necessario
+            if img.mode in ('RGBA', 'LA', 'P'):
+                # Per immagini con trasparenza, mantieni RGBA
+                if img.mode == 'P':
+                    img = img.convert('RGBA')
+            elif img.mode != 'RGB':
+                img = img.convert('RGB')
+
+            # Determina dimensioni target basate sulla posizione
+            if self.position:
+                target_width, target_height = self.get_recommended_size(self.position)
+
+                # Ridimensiona solo se necessario (troppo grande)
+                if img.width > target_width * 1.2:  # 20% tolleranza
+                    ratio = target_width / img.width
+                    new_height = int(img.height * ratio)
+                    img = img.resize((target_width, new_height), Image.Resampling.LANCZOS)
+
+            # Salva come WebP ottimizzato
+            output = io.BytesIO()
+            img.save(output, format='WEBP', quality=80, method=6)
+            output.seek(0)
+
+            # Genera nome file WebP
+            original_name = os.path.splitext(os.path.basename(self.image.name))[0]
+            webp_name = f"{original_name}.webp"
+
+            # Sostituisci l'immagine con la versione ottimizzata
+            self.image.save(webp_name, ContentFile(output.read()), save=False)
+
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"Errore ottimizzazione immagine banner {self.pk}: {str(e)}")
+            # Non bloccare il salvataggio se l'ottimizzazione fallisce
 
     def send_admin_notification(self):
         """Invia email di notifica all'amministratore per nuovo banner"""
