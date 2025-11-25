@@ -24,8 +24,11 @@ def home(request):
     # Filtro per categoria (opzionale)
     categoria = request.GET.get('categoria', None)
     
-    # Query base: solo articoli approvati (ottimizzata con only per ridurre memoria)
-    articoli_query = Articolo.objects.filter(approvato=True).only(
+    # Query base: solo articoli approvati e pubblicati (non futuri)
+    articoli_query = Articolo.objects.filter(
+        approvato=True,
+        data_pubblicazione__lte=timezone.now()
+    ).only(
         'id', 'titolo', 'sommario', 'categoria', 'slug', 'foto', 'foto_upload', 'data_pubblicazione'
     )
 
@@ -257,9 +260,10 @@ def dettaglio_articolo(request, slug):
         else:
             categorie_disponibili.append(cat)
     
-    # Articoli correlati: ultimi 6 della stessa categoria (escluso quello corrente)
+    # Articoli correlati: ultimi 6 della stessa categoria (escluso quello corrente, solo pubblicati)
     articoli_correlati = Articolo.objects.filter(
         approvato=True,
+        data_pubblicazione__lte=timezone.now(),
         categoria=articolo.categoria
     ).exclude(pk=articolo.pk).order_by('-data_pubblicazione')[:6]
 
@@ -329,10 +333,11 @@ def sitemap(request):
     now = timezone.now()
     cutoff_date = now - timedelta(days=30)
 
-    # Articoli ultimi 30 giorni
+    # Articoli ultimi 30 giorni (solo pubblicati, non futuri)
     articles = Articolo.objects.filter(
         approvato=True,
-        data_pubblicazione__gte=cutoff_date
+        data_pubblicazione__gte=cutoff_date,
+        data_pubblicazione__lte=now
     ).order_by('-data_pubblicazione')
 
     # Aggiungi campo days_old per priorità dinamiche
@@ -373,11 +378,13 @@ def sitemap_archive(request):
 
 def news_sitemap(request):
     """Vista per la sitemap Google News (ultimi 2 giorni)"""
-    # Solo articoli approvati degli ultimi 2 giorni
-    cutoff_date = timezone.now() - timedelta(days=2)
+    # Solo articoli approvati degli ultimi 2 giorni (non futuri)
+    now = timezone.now()
+    cutoff_date = now - timedelta(days=2)
     articles = Articolo.objects.filter(
         approvato=True,
-        data_pubblicazione__gte=cutoff_date
+        data_pubblicazione__gte=cutoff_date,
+        data_pubblicazione__lte=now
     ).exclude(
         titolo__istartswith='test'  # Escludi articoli di test
     ).exclude(

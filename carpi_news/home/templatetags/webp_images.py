@@ -62,12 +62,16 @@ def image_srcset(image_url):
     Usage:
         <img src="{{ article.foto }}" srcset="{{ article.foto|image_srcset }}">
     """
-    if not image_url or 'Oggi.webp' not in image_url:
+    if not image_url:
         return ""
 
-    # Per Oggi.webp, abbiamo versioni multiple
-    base_url = image_url.replace('Oggi.webp', '')
-    return f"{base_url}Oggi-400w.webp 400w, {base_url}Oggi-600w.webp 600w, {base_url}Oggi-800w.webp 800w"
+    # Supporta sia Oggi.png che Oggi.webp
+    if 'Oggi.webp' in image_url or 'Oggi.png' in image_url:
+        # Rimuovi Oggi.webp o Oggi.png per ottenere base URL
+        base_url = image_url.replace('Oggi.webp', '').replace('Oggi.png', '')
+        return f"{base_url}Oggi-400w.webp 400w, {base_url}Oggi-600w.webp 600w, {base_url}Oggi-800w.webp 800w"
+
+    return ""
 
 
 def get_webp_url(image_url):

@@ -3,8 +3,9 @@ from django.urls import reverse
 from django.utils.feedgenerator import Rss201rev2Feed
 from django.conf import settings
 from django.core.cache import cache
+from django.utils import timezone
 from .models import Articolo
-from datetime import datetime
+from datetime import datetime, timedelta
 import requests
 import logging
 
@@ -77,16 +78,20 @@ class ArticoliFeedRSS(Feed):
     ttl = 1  # Time to live ridotto a 1 minuto per aggiornamenti rapidi
     
     def items(self):
-        """Restituisce gli ultimi 10 articoli approvati"""
+        """Restituisce gli ultimi 10 articoli approvati e pubblicati (non futuri)"""
         return Articolo.objects.filter(
-            approvato=True
+            approvato=True,
+            data_pubblicazione__lte=timezone.now()
         ).order_by('-data_pubblicazione')[:10]
-    
+
     def feed_extra_kwargs(self, obj):
         """Aggiungi metadati extra al feed basati sull'ultimo articolo approvato"""
         # Usa la data dell'ultimo articolo approvato come lastBuildDate
         # invece di datetime.now() per evitare falsi aggiornamenti
-        latest_article = Articolo.objects.filter(approvato=True).order_by('-data_pubblicazione').first()
+        latest_article = Articolo.objects.filter(
+            approvato=True,
+            data_pubblicazione__lte=timezone.now()
+        ).order_by('-data_pubblicazione').first()
         last_build = latest_article.data_pubblicazione if latest_article else datetime.now()
         
         return {
@@ -177,7 +182,8 @@ class ArticoliFeedAtom(Feed):
     
     def items(self):
         return Articolo.objects.filter(
-            approvato=True
+            approvato=True,
+            data_pubblicazione__lte=timezone.now()
         ).order_by('-data_pubblicazione')[:10]
     
     def item_title(self, item):
@@ -204,12 +210,13 @@ class ArticoliRecentiFeed(Feed):
     ttl = 1  # Aggiornamento ogni minuto
     
     def items(self):
-        from datetime import datetime, timedelta
-        ieri = datetime.now() - timedelta(days=1)
-        
+        now = timezone.now()
+        ieri = now - timedelta(days=1)
+
         return Articolo.objects.filter(
             approvato=True,
-            data_pubblicazione__gte=ieri
+            data_pubblicazione__gte=ieri,
+            data_pubblicazione__lte=now
         ).order_by('-data_pubblicazione')
     
     def feed_extra_kwargs(self, obj):
