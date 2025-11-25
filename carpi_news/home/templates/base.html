@@ -40,7 +40,7 @@
     <!-- Preconnect per performance -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="dns-prefetch" href="https://www.googletagmanager.com">
+    <link rel="preconnect" href="https://www.googletagmanager.com" crossorigin>
     <link rel="dns-prefetch" href="https://pagead2.googlesyndication.com">
     <link rel="dns-prefetch" href="https://fundingchoicesmessages.google.com">
 
@@ -50,8 +50,9 @@
     <!-- CSS principale -->
     <link rel="stylesheet" href="{% static 'home/css/style.min.css' %}?v=6">
 
-    <!-- Chatbot CSS -->
-    <link rel="stylesheet" href="{% static 'home/css/chatbot.css' %}?v=2">
+    <!-- Chatbot CSS - caricamento differito (non critico per LCP) -->
+    <link rel="preload" href="{% static 'home/css/chatbot.css' %}?v=2" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript><link rel="stylesheet" href="{% static 'home/css/chatbot.css' %}?v=2"></noscript>
 
     <!-- Favicon -->
     <link rel="icon" type="image/png" sizes="32x32" href="{% static 'home/images/portico_logo_nopayoff.png' %}">
@@ -402,8 +403,8 @@
         document.head.appendChild(style);
     </script>
 
-    <!-- Chatbot JavaScript -->
-    <script src="{% static 'home/js/chatbot.js' %}?v=2025110502"></script>
+    <!-- Chatbot JavaScript - caricamento differito (non critico per LCP) -->
+    <script src="{% static 'home/js/chatbot.js' %}?v=2025110502" defer></script>
 
     <!-- Google Analytics - Deferred -->
     <script>
