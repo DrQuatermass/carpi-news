@@ -79,10 +79,39 @@ class ArticoliFeedRSS(Feed):
     
     def items(self):
         """Restituisce gli ultimi 10 articoli approvati e pubblicati (non futuri)"""
-        return Articolo.objects.filter(
+        articoli = Articolo.objects.filter(
             approvato=True,
             data_pubblicazione__lte=timezone.now()
         ).order_by('-data_pubblicazione')[:10]
+
+        # Notifica Telegram per articoli non ancora notificati
+        self._notify_telegram_for_new_articles(articoli)
+
+        return articoli
+
+    def _notify_telegram_for_new_articles(self, articoli):
+        """Notifica su Telegram gli articoli che appaiono nel feed per la prima volta"""
+        from .social_sharing import social_manager
+        import logging
+        logger = logging.getLogger(__name__)
+
+        for articolo in articoli:
+            # Salta se già notificato
+            if articolo.telegram_notified:
+                continue
+
+            # Notifica su Telegram
+            try:
+                results = social_manager.share_article_on_approval(articolo)
+                if results.get('telegram'):
+                    # Segna come notificato
+                    articolo.telegram_notified = True
+                    articolo.save(update_fields=['telegram_notified'])
+                    logger.info(f"[FEED] Articolo notificato su Telegram: {articolo.titolo}")
+                else:
+                    logger.warning(f"[FEED] Notifica Telegram fallita per: {articolo.titolo}")
+            except Exception as e:
+                logger.error(f"[FEED] Errore notifica Telegram per {articolo.titolo}: {e}")
 
     def feed_extra_kwargs(self, obj):
         """Aggiungi metadati extra al feed basati sull'ultimo articolo approvato"""

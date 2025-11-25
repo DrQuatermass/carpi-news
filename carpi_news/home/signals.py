@@ -250,18 +250,19 @@ def handle_article_approval(sender, instance, created, **kwargs):
         # Invalida immediatamente la cache RSS per IFTTT
         invalidate_rss_feeds()
 
-        # Avvia la condivisione in background per non bloccare la request
-        thread = threading.Thread(
-            target=_share_article_background,
-            args=(instance.pk, instance.titolo)
-        )
-        thread.daemon = True
-        thread.start()
+        # NOTA: Condivisione Telegram spostata nei feed RSS per evitare notifiche di articoli futuri
+        # La notifica viene inviata solo quando l'articolo appare effettivamente nel feed (data_pubblicazione <= now)
+        # thread = threading.Thread(
+        #     target=_share_article_background,
+        #     args=(instance.pk, instance.titolo)
+        # )
+        # thread.daemon = True
+        # thread.start()
 
         # Notifica motori di ricerca dell'articolo pubblicato
         _notify_search_engines_background(instance)
 
-        logger.info(f"Feed RSS aggiornato e thread di condivisione avviato per articolo: {instance.titolo}")
+        logger.info(f"Feed RSS aggiornato per articolo: {instance.titolo}")
 
 
 def _notify_search_engines_background(instance):

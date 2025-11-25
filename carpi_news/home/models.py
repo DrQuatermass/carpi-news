@@ -31,6 +31,7 @@ class Articolo(models.Model):
     data_creazione = models.DateTimeField(auto_now_add=True, db_index=True)
     data_pubblicazione = models.DateTimeField(blank=True, null=True, default=timezone.now, db_index=True)
     data_evento = models.DateField(blank=True, null=True, help_text="Data dell'evento per articoli di categoria Cultura ed Eventi")
+    telegram_notified = models.BooleanField(default=False, db_index=True, help_text="Indica se l'articolo è stato notificato su Telegram")
 
     # CAMPI PUBBLIREDAZIONALE
     is_pubbliredazionale = models.BooleanField(default=False, help_text="È un articolo pubbliredazionale", db_index=True)
