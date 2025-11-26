@@ -460,6 +460,60 @@ Il cliente ha scelto di salvare il banner senza pagamento immediato.
                 print(f"[DEBUG] Codice promozionale {promo_code_str} non trovato")
                 promo_obj = None
 
+        # Se il prezzo finale è 0 (banner gratuito con sconto 100%), non serve PayPal
+        if final_price == 0:
+            print(f"[DEBUG] Banner {banner.id} gratuito con codice promo '{promo_code_str}'")
+
+            # Applica il codice promo
+            if promo_obj:
+                banner.promo_code = promo_obj
+                banner.discount_amount = discount_amount
+                promo_obj.increment_uses()
+
+            # Marca come completato senza pagamento
+            banner.payment_status = 'completed'
+            banner.payment_method = 'Codice Promo 100%'
+            banner.payment_date = timezone.now()
+            banner.payment_transaction_id = f'PROMO-FREE-{promo_code_str}'
+
+            # Se già approvato, attivalo; altrimenti in attesa approvazione
+            if banner.approved:
+                banner.status = 'active'
+            else:
+                banner.status = 'pending_approval'
+
+            banner.save()
+
+            # Invia notifica all'admin
+            from django.core.mail import send_mail
+            admin_email = settings.ADMINS[0][1] if settings.ADMINS else settings.DEFAULT_FROM_EMAIL
+            subject = f'Nuovo Banner Gratuito da Approvare: {banner.title}'
+            message = f'''Un nuovo banner è stato acquisito gratuitamente con codice promo e richiede approvazione.
+
+Titolo: {banner.title}
+Utente: {request.user.username} ({request.user.email})
+Posizione: {banner.get_position_display()}
+Durata: {banner.duration_days} giorni
+Periodo: {banner.start_date.strftime("%d/%m/%Y")} - {banner.end_date.strftime("%d/%m/%Y")}
+Codice Promo: {promo_code_str} (sconto 100%)
+
+Link per approvare: {settings.SITE_URL}/admin/admin_panel/banner/{banner.id}/change/
+'''
+
+            try:
+                send_mail(
+                    subject,
+                    message,
+                    settings.DEFAULT_FROM_EMAIL,
+                    [admin_email],
+                    fail_silently=False,
+                )
+            except Exception as e:
+                logger.error(f"Errore invio email admin: {e}")
+
+            messages.success(request, 'Banner gratuito acquisito con successo! Il tuo banner è ora in attesa di approvazione da parte dell\'amministratore.')
+            return redirect('admin_panel:dashboard')
+
         # Verifica credenziali PayPal
         if not settings.PAYPAL_CLIENT_ID or not settings.PAYPAL_CLIENT_SECRET:
             messages.error(request, 'Configurazione PayPal mancante. Contatta l\'amministratore.')
