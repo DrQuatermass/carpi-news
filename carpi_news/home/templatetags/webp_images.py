@@ -46,11 +46,27 @@ def webp_image(image_url, alt_text="", css_class="", fetchpriority="", loading="
 @register.filter
 def to_webp(image_url):
     """
-    Converte un URL immagine in URL WebP
+    Converte un URL immagine in URL WebP o usa il proxy per immagini esterne
 
     Usage:
         {{ article.foto|to_webp }}
     """
+    if not image_url:
+        return ""
+
+    # Per immagini esterne, usa il proxy
+    # Escludi immagini locali (localhost, 127.0.0.1) e del nostro dominio
+    if image_url.startswith('http'):
+        is_external = (
+            'ombradelportico.it' not in image_url and
+            'localhost' not in image_url and
+            '127.0.0.1' not in image_url
+        )
+        if is_external:
+            from urllib.parse import quote
+            encoded_url = quote(image_url, safe='')
+            return f"/image-proxy/?url={encoded_url}&w=800"
+
     return get_webp_url(image_url)
 
 
@@ -58,6 +74,7 @@ def to_webp(image_url):
 def image_srcset(image_url):
     """
     Genera attributo srcset per immagini responsive
+    Usa il proxy per immagini esterne, versioni multiple per immagini interne
 
     Usage:
         <img src="{{ article.foto }}" srcset="{{ article.foto|image_srcset }}">
@@ -70,6 +87,38 @@ def image_srcset(image_url):
         # Rimuovi Oggi.webp o Oggi.png per ottenere base URL
         base_url = image_url.replace('Oggi.webp', '').replace('Oggi.png', '')
         return f"{base_url}Oggi-400w.webp 400w, {base_url}Oggi-600w.webp 600w, {base_url}Oggi-800w.webp 800w"
+
+    # Per immagini esterne, usa il proxy per diverse dimensioni
+    if image_url.startswith('http') and not 'ombradelportico.it' in image_url:
+        from urllib.parse import quote
+        encoded_url = quote(image_url, safe='')
+        # Genera srcset con proxy per diverse larghezze
+        return (
+            f"/image-proxy/?url={encoded_url}&w=400 400w, "
+            f"/image-proxy/?url={encoded_url}&w=600 600w, "
+            f"/image-proxy/?url={encoded_url}&w=800 800w"
+        )
+
+    # Per immagini interne, cerca versioni responsive esistenti
+    if '/media/' in image_url or '/static/' in image_url:
+        from pathlib import Path
+        from django.conf import settings
+
+        # Estrai nome file senza estensione
+        import re
+        match = re.search(r'(.+/)([^/]+)\.(webp|png|jpg|jpeg)$', image_url, re.IGNORECASE)
+        if match:
+            base_path = match.group(1)
+            filename = match.group(2)
+
+            # Verifica se esistono versioni responsive
+            srcset_parts = []
+            for width in [400, 600, 800]:
+                responsive_url = f"{base_path}{filename}-{width}w.webp"
+                srcset_parts.append(f"{responsive_url} {width}w")
+
+            if srcset_parts:
+                return ", ".join(srcset_parts)
 
     return ""
 

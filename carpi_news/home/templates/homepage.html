@@ -318,7 +318,7 @@
                                     </div>
                                 {% else %}
                                     {# Placeholder #}
-                                    <a href="{% url 'admin_panel:dashboard' %}" class="banner-card-slot" rel="nofollow">
+                                    <a href="{% url 'admin_panel:dashboard' %}" class="banner-card-slot" rel="nofollow" aria-label="Spazio pubblicitario disponibile - Clicca per acquistare">
                                         {# Il placeholder è gestito dal CSS con ::before e ::after #}
                                     </a>
                                 {% endif %}
@@ -332,7 +332,7 @@
                                                 <img src="{{ item.data.get_image_url }}"
                                                      srcset="{{ item.data.get_image_url|image_srcset }}"
                                                      sizes="(max-width: 640px) 100vw, 616px"
-                                                     alt="Immagine di anteprima articolo"
+                                                     alt="{{ item.data.titolo }}"
                                                      class="card-img"
                                                      width="616"
                                                      height="347"
@@ -345,7 +345,7 @@
                                                     <img src="{{ item.data.get_image_url }}"
                                                          srcset="{{ item.data.get_image_url|image_srcset }}"
                                                          sizes="(max-width: 640px) 100vw, 616px"
-                                                         alt="Immagine di anteprima articolo"
+                                                         alt="{{ item.data.titolo }}"
                                                          class="card-img"
                                                          width="616"
                                                          height="347"
@@ -550,7 +550,7 @@
                 const bannerPositions = data.banner_positions || [];
                 const numBannerSlots = data.num_banner_slots || 0;
                 const bannerHTML = `
-                    <a href="{% url 'admin_panel:dashboard' %}" class="news-card-link banner-card-slot">
+                    <a href="{% url 'admin_panel:dashboard' %}" class="news-card-link banner-card-slot" aria-label="Spazio pubblicitario disponibile - Clicca per acquistare">
                     </a>
                 `;
 
@@ -618,8 +618,7 @@
                     <img src="${imageUrl}"
                          alt="${articolo.titolo}"
                          class="card-img"
-                         loading="eager"
-                         fetchpriority="high"
+                         loading="lazy"
                          onerror="this.onerror=null; this.src='${DEFAULT_IMAGE}';">
                 </div>
                 <div class="news-content">

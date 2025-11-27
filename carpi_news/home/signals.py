@@ -16,6 +16,72 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 
+def generate_responsive_versions(image_path, widths=[400, 600, 800], quality=75):
+    """
+    Genera versioni responsive di un'immagine
+
+    Args:
+        image_path: Path assoluto dell'immagine
+        widths: Lista di larghezze per le versioni responsive
+        quality: Qualità WebP (0-100)
+
+    Returns:
+        List di path creati
+    """
+    from django.conf import settings
+
+    created_files = []
+
+    try:
+        source_path = Path(image_path)
+
+        # Apri immagine originale
+        with Image.open(source_path) as img:
+            original_width, original_height = img.size
+
+            for width in widths:
+                # Salta se l'immagine è già più piccola
+                if original_width <= width:
+                    continue
+
+                # Nome file output
+                output_stem = f"{source_path.stem}-{width}w"
+                output_path = source_path.parent / f"{output_stem}.webp"
+
+                # Salta se esiste già
+                if output_path.exists():
+                    logger.debug(f"Versione {width}w già esistente: {output_path.name}")
+                    continue
+
+                # Ridimensiona
+                ratio = width / original_width
+                new_height = int(original_height * ratio)
+                img_resized = img.resize((width, new_height), Image.Resampling.LANCZOS)
+
+                # Converti in RGB se necessario
+                if img_resized.mode in ('RGBA', 'LA', 'P'):
+                    background = Image.new('RGB', img_resized.size, (255, 255, 255))
+                    if img_resized.mode == 'P':
+                        img_resized = img_resized.convert('RGBA')
+                    if img_resized.mode in ('RGBA', 'LA'):
+                        background.paste(img_resized, mask=img_resized.split()[-1])
+                    else:
+                        background.paste(img_resized)
+                    img_resized = background
+
+                # Salva come WebP
+                img_resized.save(output_path, 'WebP', quality=quality, method=6)
+
+                created_files.append(str(output_path))
+                logger.info(f"Versione responsive creata: {output_path.name} ({width}x{new_height})")
+
+        return created_files
+
+    except Exception as e:
+        logger.error(f"Errore generazione versioni responsive: {e}")
+        return []
+
+
 def convert_uploaded_image_to_webp(image_field, quality=65, max_width=800):
     """
     Converte un'immagine caricata in WebP ottimizzato
@@ -121,6 +187,42 @@ def convert_foto_upload_to_webp(sender, instance, **kwargs):
         logger.info(f"Immagine convertita e salvata come: {webp_name}")
     else:
         logger.warning(f"Impossibile convertire {instance.foto_upload.name} in WebP, mantengo originale")
+
+
+@receiver(post_save, sender=Articolo)
+def generate_responsive_images_on_save(sender, instance, created, **kwargs):
+    """
+    Genera automaticamente versioni responsive dopo il salvataggio dell'articolo
+    Solo se ha un'immagine caricata (foto_upload)
+    """
+    from django.conf import settings
+    import threading
+
+    # Solo se c'è un'immagine caricata
+    if not instance.foto_upload:
+        return
+
+    # Percorso assoluto dell'immagine
+    image_path = instance.foto_upload.path
+
+    # Verifica che il file esista
+    if not Path(image_path).exists():
+        return
+
+    # Esegui in background per non bloccare il salvataggio
+    def generate_in_background():
+        try:
+            logger.info(f"Generazione versioni responsive per: {image_path}")
+            created_files = generate_responsive_versions(image_path, widths=[400, 600, 800], quality=75)
+            if created_files:
+                logger.info(f"Generate {len(created_files)} versioni responsive per {instance.titolo}")
+        except Exception as e:
+            logger.error(f"Errore generazione responsive in background: {e}")
+
+    # Avvia thread in background
+    thread = threading.Thread(target=generate_in_background)
+    thread.daemon = True
+    thread.start()
 
 
 def invalidate_rss_feeds():

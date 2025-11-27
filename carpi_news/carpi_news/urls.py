@@ -21,6 +21,7 @@ from django.conf.urls.static import static
 from django.views.generic import TemplateView, RedirectView
 from home import views
 from home.feeds import ArticoliFeedRSS, ArticoliFeedAtom, ArticoliRecentiFeed
+from home.image_proxy import image_proxy_view
 
 urlpatterns = [
     path('',views.home, name='home'),
@@ -33,6 +34,9 @@ urlpatterns = [
     # Chatbot API
     path('api/chatbot/', views.chatbot_api, name='chatbot_api'),
     path('chatbot/risultati/', views.chatbot_results, name='chatbot_results'),
+
+    # Image Proxy per ottimizzazione immagini esterne
+    path('image-proxy/', image_proxy_view, name='image_proxy'),
 
     # RSS Feeds per IFTTT e social sharing
     path('feed/rss/', ArticoliFeedRSS(), name='rss-feed'),

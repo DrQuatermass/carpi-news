@@ -290,7 +290,7 @@
                     <a href="{% url 'dettaglio_articolo' articoli.0.slug %}" class="news-card-link">
                         <article class="news-card">
                             <div class="news-image">
-                                <img src="{{ articoli.0.foto|default:'/static/home/images/portico_logo_nopayoff.png' }}" alt="Immagine di anteprima articolo" class="card-img" width="616" height="347" loading="lazy" onerror="this.src='{% static 'home/images/portico_logo_nopayoff.png' %}'">
+                                <img src="{{ articoli.0.foto|default:'/static/home/images/portico_logo_nopayoff.png' }}" alt="{{ articoli.0.titolo }}" class="card-img" width="616" height="347" loading="lazy" onerror="this.src='{% static 'home/images/portico_logo_nopayoff.png' %}'">
                             </div>
                             <div class="news-content">
                                 <div class="news-meta">
@@ -310,7 +310,7 @@
                     <a href="{% url 'dettaglio_articolo' articoli.1.slug %}" class="news-card-link">
                         <article class="news-card">
                             <div class="news-image">
-                                <img src="{{ articoli.1.foto|default:'/static/home/images/portico_logo_nopayoff.png' }}" alt="Immagine di anteprima articolo" class="card-img" width="616" height="347" loading="lazy" onerror="this.src='{% static 'home/images/portico_logo_nopayoff.png' %}'">
+                                <img src="{{ articoli.1.foto|default:'/static/home/images/portico_logo_nopayoff.png' }}" alt="{{ articoli.1.titolo }}" class="card-img" width="616" height="347" loading="lazy" onerror="this.src='{% static 'home/images/portico_logo_nopayoff.png' %}'">
                             </div>
                             <div class="news-content">
                                 <div class="news-meta">
@@ -333,7 +333,7 @@
                     <a href="{% url 'dettaglio_articolo' articoli.2.slug %}" class="news-card-link">
                         <article class="news-card">
                             <div class="news-image">
-                                <img src="{{ articoli.2.foto|default:'/static/home/images/portico_logo_nopayoff.png' }}" alt="Immagine di anteprima articolo" class="card-img" width="616" height="347" loading="lazy" onerror="this.src='{% static 'home/images/portico_logo_nopayoff.png' %}'">
+                                <img src="{{ articoli.2.foto|default:'/static/home/images/portico_logo_nopayoff.png' }}" alt="{{ articoli.2.titolo }}" class="card-img" width="616" height="347" loading="lazy" onerror="this.src='{% static 'home/images/portico_logo_nopayoff.png' %}'">
                             </div>
                             <div class="news-content">
                                 <div class="news-meta">
@@ -356,7 +356,7 @@
                     <a href="{% url 'dettaglio_articolo' articoli.3.slug %}" class="news-card-link">
                         <article class="news-card">
                             <div class="news-image">
-                                <img src="{{ articoli.3.foto|default:'/static/home/images/portico_logo_nopayoff.png' }}" alt="Immagine di anteprima articolo" class="card-img" width="616" height="347" loading="lazy" onerror="this.src='{% static 'home/images/portico_logo_nopayoff.png' %}'">
+                                <img src="{{ articoli.3.foto|default:'/static/home/images/portico_logo_nopayoff.png' }}" alt="{{ articoli.3.titolo }}" class="card-img" width="616" height="347" loading="lazy" onerror="this.src='{% static 'home/images/portico_logo_nopayoff.png' %}'">
                             </div>
                             <div class="news-content">
                                 <div class="news-meta">

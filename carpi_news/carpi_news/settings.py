@@ -50,6 +50,7 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'home.middleware.SEOMiddleware',  # Redirect HTTP→HTTPS e www→non-www
     'home.middleware.SecurityHeadersMiddleware',  # CSP e security headers
+    'home.middleware.cache_headers.StaticMediaCacheMiddleware',  # Cache headers per static/media
     'django.middleware.gzip.GZipMiddleware',  # Compressione GZIP per performance
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
