@@ -72,10 +72,13 @@ class IndexingNotifier:
 
     def _notify_indexnow(self, url: str) -> Dict[str, Any]:
         """
-        Notifica IndexNow (Google, Bing, Yandex).
+        Notifica IndexNow tramite Yandex (condiviso con Bing e altri motori).
+        Yandex endpoint funziona senza pre-verifica, Bing richiede Webmaster Tools.
         Docs: https://www.indexnow.org/documentation
         """
-        endpoint = "https://api.indexnow.org/indexnow"
+        # Usa Yandex come endpoint primario (funziona senza verifica preventiva)
+        # Le notifiche vengono condivise con tutti i motori IndexNow (Bing, etc)
+        endpoint = "https://yandex.com/indexnow"
 
         payload = {
             "host": self.site_url.replace('https://', '').replace('http://', ''),
@@ -92,8 +95,8 @@ class IndexingNotifier:
         )
 
         if response.status_code in [200, 202]:
-            logger.info(f"IndexNow: URL {url} notificato con successo")
-            return {'success': True, 'message': 'Notificato a IndexNow (Google, Bing, Yandex)'}
+            logger.info(f"IndexNow: URL {url} notificato con successo via Yandex")
+            return {'success': True, 'message': 'Notificato a IndexNow (Yandex, Bing, altri motori)'}
         else:
             error_msg = f"HTTP {response.status_code}: {response.text}"
             logger.warning(f"IndexNow fallito: {error_msg}")
