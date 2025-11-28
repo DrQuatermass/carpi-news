@@ -192,21 +192,30 @@ def convert_foto_upload_to_webp(sender, instance, **kwargs):
 @receiver(post_save, sender=Articolo)
 def generate_responsive_images_on_save(sender, instance, created, **kwargs):
     """
-    Genera automaticamente versioni responsive dopo il salvataggio dell'articolo
-    Solo se ha un'immagine caricata (foto_upload)
+    Genera automaticamente versioni responsive dopo il salvataggio dell'articolo.
+    Supporta sia foto_upload (upload manuale) che foto (URL da monitor).
     """
     from django.conf import settings
     import threading
 
-    # Solo se c'è un'immagine caricata
-    if not instance.foto_upload:
-        return
+    image_path = None
 
-    # Percorso assoluto dell'immagine
-    image_path = instance.foto_upload.path
+    # Priorità 1: foto_upload (upload manuale)
+    if instance.foto_upload:
+        image_path = instance.foto_upload.path
+    # Priorità 2: foto che punta a /media/images/uploaded/ (scaricata dai monitor)
+    elif instance.foto and instance.foto.startswith('/media/images/uploaded/'):
+        # Converti URL relativo in path assoluto
+        relative_path = instance.foto.replace('/media/', '')
+        image_path = str(Path(settings.MEDIA_ROOT) / relative_path)
+
+    # Se non c'è immagine locale, esci
+    if not image_path:
+        return
 
     # Verifica che il file esista
     if not Path(image_path).exists():
+        logger.debug(f"Immagine non trovata per generazione responsive: {image_path}")
         return
 
     # Esegui in background per non bloccare il salvataggio
