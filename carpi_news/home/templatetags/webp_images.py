@@ -103,6 +103,7 @@ def image_srcset(image_url):
     if '/media/' in image_url or '/static/' in image_url:
         from pathlib import Path
         from django.conf import settings
+        import os
 
         # Estrai nome file senza estensione
         import re
@@ -111,14 +112,27 @@ def image_srcset(image_url):
             base_path = match.group(1)
             filename = match.group(2)
 
-            # Verifica se esistono versioni responsive
+            # Verifica se esistono versioni responsive sul filesystem
             srcset_parts = []
             for width in [400, 600, 800]:
-                responsive_url = f"{base_path}{filename}-{width}w.webp"
-                srcset_parts.append(f"{responsive_url} {width}w")
+                responsive_filename = f"{filename}-{width}w.webp"
+
+                # Converti URL in path filesystem
+                if '/media/' in image_url:
+                    file_path = Path(settings.MEDIA_ROOT) / base_path.replace('/media/', '') / responsive_filename
+                else:  # /static/
+                    file_path = Path(settings.BASE_DIR) / 'home' / 'static' / base_path.replace('/static/', '') / responsive_filename
+
+                # Aggiungi solo se il file esiste
+                if file_path.exists():
+                    responsive_url = f"{base_path}{responsive_filename}"
+                    srcset_parts.append(f"{responsive_url} {width}w")
 
             if srcset_parts:
                 return ", ".join(srcset_parts)
+
+            # Fallback: se nessuna versione responsive esiste, usa l'immagine originale
+            return f"{image_url} 800w"
 
     return ""
 
