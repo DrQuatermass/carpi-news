@@ -34,6 +34,59 @@
 <meta name="description" content="Portale di informazione locale della città di Carpi e dintorni. Notizie, eventi e tutto quello che accade nella nostra comunità.">
 
 <style>
+    /* Breadcrumb styling */
+    nav[aria-label="breadcrumb"] {
+        margin-bottom: 20px;
+    }
+
+    .breadcrumb-list {
+        display: flex;
+        flex-wrap: wrap;
+        padding: 0;
+        margin: 0;
+        list-style: none;
+        font-size: 0.9rem;
+        color: #6c757d;
+    }
+
+    .breadcrumb-list li {
+        display: flex;
+        align-items: center;
+    }
+
+    .breadcrumb-list li + li::before {
+        content: "›";
+        padding: 0 8px;
+        color: #966C42;
+        font-weight: bold;
+    }
+
+    .breadcrumb-list a {
+        color: #966C42;
+        text-decoration: none;
+        transition: color 0.2s ease;
+    }
+
+    .breadcrumb-list a:hover {
+        color: #B8956A;
+        text-decoration: underline;
+    }
+
+    .breadcrumb-list .active {
+        color: #495057;
+        font-weight: 500;
+    }
+
+    @media (max-width: 768px) {
+        .breadcrumb-list {
+            font-size: 0.85rem;
+        }
+
+        .breadcrumb-list li + li::before {
+            padding: 0 5px;
+        }
+    }
+
     /* Banner slot tra le card - PLACEHOLDER */
     .banner-card-slot {
         display: flex;
@@ -293,6 +346,24 @@
 
                 </div>
             </section>
+
+            <!-- Breadcrumb per categorie -->
+            {% if categoria_attiva and categoria_attiva != 'tutti' %}
+            <nav aria-label="breadcrumb" itemscope itemtype="https://schema.org/BreadcrumbList" style="margin: 20px 0;">
+                <ol class="breadcrumb-list">
+                    <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+                        <a itemprop="item" href="{% url 'home' %}">
+                            <span itemprop="name">Home</span>
+                        </a>
+                        <meta itemprop="position" content="1" />
+                    </li>
+                    <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem" class="active">
+                        <span itemprop="name">{{ categoria_attiva }}</span>
+                        <meta itemprop="position" content="2" />
+                    </li>
+                </ol>
+            </nav>
+            {% endif %}
 
             <!-- Main News Grid -->
             <section class="news-section">
