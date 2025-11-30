@@ -390,7 +390,6 @@
             </nav>
 
             <div class="article-meta">
-                <a href="{% url 'home' %}?categoria={{ articolo.categoria|urlencode }}" class="category-tag" style="text-decoration: none;">{{ articolo.categoria }}</a>
                 <time datetime="{{ articolo.data_pubblicazione|date:'Y-m-d' }}">
                        {{ articolo.data_pubblicazione|italian_date }}
                 </time>
