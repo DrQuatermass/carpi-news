@@ -206,7 +206,18 @@ def home(request):
                 'slug': articolo.slug,
                 'foto': articolo.get_image_url(),
             })
-        
+
+        # Prepara dati banner attivi per JSON
+        banners_data = []
+        for i, banner in enumerate(active_banners):
+            if banner:
+                banners_data.append({
+                    'id': banner.id,
+                    'image_url': banner.image.url,
+                    'alt_text': banner.alt_text,
+                    'position_index': i  # Indice nello slot (0-3)
+                })
+
         return JsonResponse({
             'articoli': articoli_data,
             'current_page': page_obj.number,
@@ -216,6 +227,7 @@ def home(request):
             'categoria_attiva': categoria,
             'banner_positions': banner_positions,
             'num_banner_slots': len(banner_positions),
+            'active_banners': banners_data,  # Banner attivi con dati
         })
     
     return render(request, "homepage.html", context)

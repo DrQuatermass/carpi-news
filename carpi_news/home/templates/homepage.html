@@ -549,23 +549,35 @@
                 // Usa le posizioni dei banner dal server
                 const bannerPositions = data.banner_positions || [];
                 const numBannerSlots = data.num_banner_slots || 0;
-                const bannerHTML = `
-                    <a href="{% url 'admin_panel:dashboard' %}" class="news-card-link banner-card-slot" aria-label="Spazio pubblicitario disponibile - Clicca per acquistare">
-                    </a>
-                `;
+                const activeBanners = data.active_banners || [];
 
                 let articleIndex = 0;
+                let bannerSlotIndex = 0;
                 const footerBanner = newsGrid.querySelector('.banner-footer-slot');
                 const totalSlots = 8 + numBannerSlots;  // 8 articoli + 4 banner slots = 12 totali
 
                 // Inserisci elementi (articoli + banner)
                 for (let position = 0; position < totalSlots; position++) {
                     if (bannerPositions.includes(position)) {
-                        // Inserisci banner
-                        const tempDiv = document.createElement('div');
-                        tempDiv.innerHTML = bannerHTML;
-                        const bannerElement = tempDiv.firstElementChild;
-                        newsGrid.insertBefore(bannerElement, footerBanner);
+                        // Trova il banner attivo per questo slot (se esiste)
+                        const activeBanner = activeBanners.find(b => b.position_index === bannerSlotIndex);
+
+                        if (activeBanner) {
+                            // Inserisci banner attivo
+                            const bannerElement = createActiveBanner(activeBanner);
+                            newsGrid.insertBefore(bannerElement, footerBanner);
+                        } else {
+                            // Inserisci placeholder
+                            const placeholderHTML = `
+                                <a href="{% url 'admin_panel:dashboard' %}" class="banner-card-slot" rel="nofollow" aria-label="Spazio pubblicitario disponibile - Clicca per acquistare">
+                                </a>
+                            `;
+                            const tempDiv = document.createElement('div');
+                            tempDiv.innerHTML = placeholderHTML;
+                            const bannerElement = tempDiv.firstElementChild;
+                            newsGrid.insertBefore(bannerElement, footerBanner);
+                        }
+                        bannerSlotIndex++;
                     } else {
                         // Inserisci articolo
                         if (articleIndex < data.articoli.length) {
@@ -602,15 +614,32 @@
             return foto;
         }
 
+        // Funzione per creare un banner attivo
+        function createActiveBanner(banner) {
+            const bannerSlot = document.createElement('div');
+            bannerSlot.className = 'banner-card-slot has-active-banner';
+
+            bannerSlot.innerHTML = `
+                <div class="advertisement-banner" data-banner-id="${banner.id}" style="width: 100%;">
+                    <a href="/admin-panel/banner/${banner.id}/click/" target="_blank" rel="noopener noreferrer nofollow sponsored" style="display: block; width: 100%;">
+                        <img src="${banner.image_url}" alt="${banner.alt_text}" loading="lazy" style="width: 100%; height: auto; border-radius: 10px; display: block; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);">
+                    </a>
+                    <div style="font-size: 10px; color: #999; text-align: center; margin-top: 5px;">Pubblicità</div>
+                </div>
+            `;
+
+            return bannerSlot;
+        }
+
         // Funzione per creare una card di notizia
         function createNewsCard(articolo) {
             const cardLink = document.createElement('a');
             cardLink.href = `/articolo/${articolo.slug}/`;
             cardLink.className = 'news-card-link';
-            
+
             const card = document.createElement('article');
             card.className = 'news-card';
-            
+
             const imageUrl = buildImageUrl(articolo.foto);
 
             card.innerHTML = `
