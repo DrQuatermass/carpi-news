@@ -215,6 +215,8 @@ def home(request):
                     'id': banner.id,
                     'image_url': banner.image.url,
                     'alt_text': banner.alt_text,
+                    'image_width': banner.image.width,
+                    'image_height': banner.image.height,
                     'position_index': i  # Indice nello slot (0-3)
                 })
 

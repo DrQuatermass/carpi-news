@@ -192,9 +192,9 @@ class Banner(models.Model):
                     new_height = int(img.height * ratio)
                     img = img.resize((target_width, new_height), Image.Resampling.LANCZOS)
 
-            # Salva come WebP ottimizzato
+            # Salva come WebP ottimizzato (quality=70 per migliori prestazioni)
             output = io.BytesIO()
-            img.save(output, format='WEBP', quality=80, method=6)
+            img.save(output, format='WEBP', quality=70, method=6)
             output.seek(0)
 
             # Genera nome file WebP

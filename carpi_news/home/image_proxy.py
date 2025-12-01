@@ -119,7 +119,7 @@ def download_and_optimize_image(url, width=None, quality=WEBP_QUALITY):
 
 
 @require_GET
-@cache_control(public=True, max_age=86400)  # Cache 24 ore
+@cache_control(public=True, max_age=604800)  # Cache 7 giorni
 def image_proxy_view(request):
     """
     View per proxy immagini esterne con ottimizzazione e cache
@@ -175,11 +175,11 @@ def image_proxy_view(request):
     if image_data is None:
         return HttpResponseServerError("Failed to process image")
 
-    # Salva in cache (24 ore)
-    cache.set(cache_key, (image_data, content_type), timeout=86400)
+    # Salva in cache (7 giorni)
+    cache.set(cache_key, (image_data, content_type), timeout=604800)
 
     # Ritorna immagine ottimizzata
     response = HttpResponse(image_data, content_type=content_type)
     response['X-Cache'] = 'MISS'
-    response['Cache-Control'] = 'public, max-age=86400'  # 24 ore browser cache
+    response['Cache-Control'] = 'public, max-age=604800, immutable'  # 7 giorni browser cache
     return response
