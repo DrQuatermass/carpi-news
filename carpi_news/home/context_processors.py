@@ -10,17 +10,10 @@ def canonical_url(request):
     # Dominio canonico
     canonical_domain = 'ombradelportico.it'
 
-    # Path pulito
+    # Path pulito (sempre senza query params)
     path = request.path
 
-    # Per homepage con filtri categoria, includi il parametro
-    if path == '/' and request.GET.get('categoria'):
-        categoria = request.GET.get('categoria')
-        return {
-            'canonical_url': f"https://{canonical_domain}/?categoria={categoria}"
-        }
-
-    # URL canonico standard (senza query params)
+    # URL canonico standard (senza query params, anche per filtri categoria)
     return {
         'canonical_url': f"https://{canonical_domain}{path}"
     }

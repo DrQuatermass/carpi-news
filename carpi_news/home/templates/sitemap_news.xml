@@ -3,7 +3,7 @@
         xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">
 {% for article in articles %}
   <url>
-    <loc>{{ request.scheme }}://{{ request.get_host }}{% url 'dettaglio_articolo' article.slug %}</loc>
+    <loc>https://ombradelportico.it{% url 'dettaglio_articolo' article.slug %}</loc>
     <news:news>
       <news:publication>
         <news:name>Ombra del Portico</news:name>

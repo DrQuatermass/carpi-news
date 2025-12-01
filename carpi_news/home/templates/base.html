@@ -74,11 +74,11 @@
             
             <!-- Menu desktop -->
             <ul class="nav-links desktop-nav">
-                <li><a href="{% url 'home' %}?categoria=tutti" {% if not categoria_attiva or categoria_attiva == 'Home' %}class="active"{% endif %}>Home</a></li>
+                <li><a href="{% url 'home' %}?categoria=tutti" rel="nofollow" {% if not categoria_attiva or categoria_attiva == 'Home' %}class="active"{% endif %}>Home</a></li>
 
                 {% for categoria in categorie_disponibili %}
                     {% if categoria != 'Rubriche' and categoria != 'Cosa fare oggi' %}
-                    <li><a href="{% url 'home' %}?categoria={{ categoria|urlencode }}" {% if categoria_attiva == categoria %}class="active"{% endif %}>{{ categoria }}</a></li>
+                    <li><a href="{% url 'home' %}?categoria={{ categoria|urlencode }}" rel="nofollow" {% if categoria_attiva == categoria %}class="active"{% endif %}>{{ categoria }}</a></li>
                     {% endif %}
                 {% endfor %}
 
@@ -86,9 +86,9 @@
                 <li class="dropdown">
                     <a href="#" class="dropdown-toggle" aria-expanded="false" aria-haspopup="true">Rubriche</a>
                     <ul class="dropdown-menu" role="menu">
-                        <li role="none"><a href="{% url 'home' %}?categoria=Cosa fare oggi" role="menuitem">Cosa fare oggi</a></li>
-                        <li role="none"><a href="{% url 'home' %}?categoria=L'Eco del Consiglio" role="menuitem">L'Eco del consiglio</a></li>
-                        <li role="none"><a href="{% url 'home' %}?categoria=Editoriale" role="menuitem">Editoriale</a></li>
+                        <li role="none"><a href="{% url 'home' %}?categoria=Cosa fare oggi" rel="nofollow" role="menuitem">Cosa fare oggi</a></li>
+                        <li role="none"><a href="{% url 'home' %}?categoria=L'Eco del Consiglio" rel="nofollow" role="menuitem">L'Eco del consiglio</a></li>
+                        <li role="none"><a href="{% url 'home' %}?categoria=Editoriale" rel="nofollow" role="menuitem">Editoriale</a></li>
                         <li role="none"><a href="/caplet/" role="menuitem">Caplet</a></li>
                     </ul>
                 </li>
@@ -105,11 +105,11 @@
                 <!-- Dropdown menu mobile -->
                 <div class="mobile-dropdown" id="mobileDropdown">
                     <ul class="mobile-nav-links">
-                        <li><a href="{% url 'home' %}?categoria=tutti" {% if not categoria_attiva or categoria_attiva == 'Home' %}class="active"{% endif %}>Home</a></li>
+                        <li><a href="{% url 'home' %}?categoria=tutti" rel="nofollow" {% if not categoria_attiva or categoria_attiva == 'Home' %}class="active"{% endif %}>Home</a></li>
 
                         {% for categoria in categorie_disponibili %}
                             {% if categoria != 'Rubriche' and categoria != 'Cosa fare oggi' %}
-                            <li><a href="{% url 'home' %}?categoria={{ categoria|urlencode }}" {% if categoria_attiva == categoria %}class="active"{% endif %}>{{ categoria }}</a></li>
+                            <li><a href="{% url 'home' %}?categoria={{ categoria|urlencode }}" rel="nofollow" {% if categoria_attiva == categoria %}class="active"{% endif %}>{{ categoria }}</a></li>
                             {% endif %}
                         {% endfor %}
 
@@ -117,9 +117,9 @@
                         <li class="mobile-dropdown-item">
                             <span class="mobile-dropdown-header">Rubriche</span>
                             <ul class="mobile-submenu">
-                                <li><a href="{% url 'home' %}?categoria=Cosa fare oggi">Cosa fare oggi</a></li>
-                                <li><a href="{% url 'home' %}?categoria=L'Eco del Consiglio">L'Eco del consiglio</a></li>
-                                <li><a href="{% url 'home' %}?categoria=Editoriale">Editoriale</a></li>
+                                <li><a href="{% url 'home' %}?categoria=Cosa fare oggi" rel="nofollow">Cosa fare oggi</a></li>
+                                <li><a href="{% url 'home' %}?categoria=L'Eco del Consiglio" rel="nofollow">L'Eco del consiglio</a></li>
+                                <li><a href="{% url 'home' %}?categoria=Editoriale" rel="nofollow">Editoriale</a></li>
                                 <li><a href="/caplet/">Caplet</a></li>
                             </ul>
                         </li>

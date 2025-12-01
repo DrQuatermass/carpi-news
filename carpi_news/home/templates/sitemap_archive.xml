@@ -3,7 +3,7 @@
   <!-- Articoli archivio (più vecchi di 30 giorni) -->
   {% for article in articles %}
   <url>
-    <loc>{{ request.scheme }}://{{ request.get_host }}{% url 'dettaglio_articolo' article.slug %}</loc>
+    <loc>https://ombradelportico.it{% url 'dettaglio_articolo' article.slug %}</loc>
     <lastmod>{{ article.data_pubblicazione|date:"c" }}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.3</priority>

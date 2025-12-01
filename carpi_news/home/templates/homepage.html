@@ -10,6 +10,11 @@
 <!-- Canonical URL -->
 <link rel="canonical" href="{{ canonical_url }}">
 
+<!-- Meta robots: noindex per pagine con filtri categoria -->
+{% if request.GET.categoria %}
+<meta name="robots" content="noindex, follow">
+{% endif %}
+
 <!-- Preload prima immagine articolo per LCP -->
 {% if first_article_image %}
     <link rel="preload" as="image" href="{{ first_article_image }}" fetchpriority="high">

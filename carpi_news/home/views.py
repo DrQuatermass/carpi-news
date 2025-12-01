@@ -356,9 +356,6 @@ def sitemap(request):
     for article in articles:
         article.days_old = (now - article.data_pubblicazione).days
 
-    # Categorie disponibili
-    categorie = Articolo.objects.filter(approvato=True).values_list('categoria', flat=True).distinct()
-
     # Data ultimo aggiornamento
     last_update = articles.first().data_pubblicazione if articles else now
 
@@ -367,7 +364,6 @@ def sitemap(request):
     template = loader.get_template('sitemap.xml')
     context = {
         'articles': articles,
-        'categorie': categorie,
         'last_update': last_update
     }
     return HttpResponse(template.render(context, request), content_type='application/xml')
