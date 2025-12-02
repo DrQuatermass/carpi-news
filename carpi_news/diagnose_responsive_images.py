@@ -58,10 +58,11 @@ def diagnose():
 
     # 5. Verifica esistenza file per campione di articoli
     print(f"\n[5] Verifica esistenza file (campione ultimi 20 articoli)...")
-    recent_articles = Articolo.objects.filter(
+    recent_articles_query = Articolo.objects.filter(
         foto_upload__isnull=False,
         foto_upload__gt=''
-    ).order_by('-data_creazione')[:20]
+    ).order_by('-data_creazione')
+    recent_articles = list(recent_articles_query[:20])
 
     existing_files = 0
     missing_files = 0
@@ -112,13 +113,18 @@ def diagnose():
         if 'responsive' in receiver_name.lower():
             found_signal = True
             print(f"    [OK] Trovato signal: {receiver_name}")
+            break
 
-    if not found_signal:
+    if found_signal:
+        # Mostra tutti i signal registrati
+        all_receivers = [r.__name__ if hasattr(r, '__name__') else str(r) for r in receivers]
+        print(f"    [INFO] Altri signal registrati: {', '.join(all_receivers)}")
+    else:
         print(f"    [WARNING] Signal 'generate_responsive_images_on_save' non trovato!")
 
     # 7. Test manuale generazione versioni responsive
     print(f"\n[7] Test generazione manuale su un file...")
-    test_article = recent_articles.filter(foto_upload__isnull=False).first()
+    test_article = recent_articles[0] if recent_articles else None
     if test_article and test_article.foto_upload:
         test_path = Path(test_article.foto_upload.path)
         if test_path.exists():
