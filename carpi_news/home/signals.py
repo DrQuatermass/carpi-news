@@ -50,7 +50,7 @@ def generate_responsive_versions(image_path, widths=[400, 600, 800], quality=75)
 
                 # Salta se esiste già
                 if output_path.exists():
-                    logger.debug(f"Versione {width}w già esistente: {output_path.name}")
+                    logger.info(f"Versione {width}w già esistente: {output_path.name}")
                     continue
 
                 # Ridimensiona
@@ -215,7 +215,7 @@ def generate_responsive_images_on_save(sender, instance, created, **kwargs):
 
     # Verifica che il file esista
     if not Path(image_path).exists():
-        logger.debug(f"Immagine non trovata per generazione responsive: {image_path}")
+        logger.warning(f"Immagine non trovata per generazione responsive: {image_path}")
         return
 
     # Esegui in background per non bloccare il salvataggio
@@ -225,8 +225,10 @@ def generate_responsive_images_on_save(sender, instance, created, **kwargs):
             created_files = generate_responsive_versions(image_path, widths=[400, 600, 800], quality=75)
             if created_files:
                 logger.info(f"Generate {len(created_files)} versioni responsive per {instance.titolo}")
+            else:
+                logger.warning(f"Nessuna versione responsive creata per: {instance.titolo} (possibile immagine troppo piccola o versioni già esistenti)")
         except Exception as e:
-            logger.error(f"Errore generazione responsive in background: {e}")
+            logger.error(f"Errore generazione responsive in background per {instance.titolo}: {e}", exc_info=True)
 
     # Avvia thread in background
     thread = threading.Thread(target=generate_in_background)
