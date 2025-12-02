@@ -101,7 +101,6 @@ def diagnose():
     # 6. Verifica segnali Django
     print(f"\n[6] Verifica segnali Django...")
     from django.db.models.signals import post_save
-    from home.models import Articolo
 
     receivers = post_save._live_receivers(Articolo)
     print(f"    Segnali post_save registrati per Articolo: {len(receivers)}")
