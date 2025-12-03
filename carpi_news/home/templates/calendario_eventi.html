@@ -285,42 +285,83 @@
             font-size: 1.8rem;
         }
 
+        .eventi-header p {
+            font-size: 1rem;
+        }
+
         .calendar-navigation {
             flex-direction: column;
-            gap: 15px;
+            gap: 10px;
+            padding: 10px;
         }
 
         .calendar-navigation h2 {
-            font-size: 1.4rem;
+            font-size: 1.2rem;
+        }
+
+        .nav-buttons {
+            flex-direction: row;
+            width: 100%;
+            justify-content: space-between;
+        }
+
+        .nav-btn {
+            padding: 8px 12px;
+            font-size: 0.85rem;
+        }
+
+        .calendar-container {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .calendar-weekdays {
+            min-width: 700px;
         }
 
         .calendar-weekdays div {
-            padding: 8px;
-            font-size: 0.8rem;
+            padding: 6px 4px;
+            font-size: 0.7rem;
+        }
+
+        .calendar-weeks {
+            min-width: 700px;
         }
 
         .calendar-day {
-            min-height: 80px;
-            padding: 5px;
-        }
-
-        .event-item a {
-            flex-direction: column;
-            padding: 3px 4px;
-        }
-
-        .event-thumbnail {
-            width: 100%;
-            height: auto;
-            max-height: 60px;
-        }
-
-        .event-title {
-            font-size: 0.65rem;
+            min-height: 70px;
+            padding: 4px;
+            font-size: 0.75rem;
         }
 
         .day-number {
-            font-size: 0.9rem;
+            font-size: 0.85rem;
+            margin-bottom: 3px;
+        }
+
+        .event-item {
+            margin: 2px 0;
+        }
+
+        .event-item a {
+            padding: 3px;
+            gap: 4px;
+        }
+
+        .event-thumbnail {
+            width: 30px;
+            height: 30px;
+        }
+
+        .event-title {
+            font-size: 0.6rem;
+            line-height: 1.1;
+            -webkit-line-clamp: 2;
+        }
+
+        .event-count {
+            font-size: 0.85rem;
+            padding: 0 10px;
         }
     }
 </style>
