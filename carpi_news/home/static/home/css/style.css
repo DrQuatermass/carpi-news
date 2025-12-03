@@ -745,6 +745,20 @@ footer {
     margin-top: 4rem;
 }
 
+/* Reset link styles in footer */
+footer a {
+    color: rgba(255, 255, 255, 0.8);
+    text-decoration: none;
+}
+
+footer a:visited {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+footer a:hover {
+    color: #B8956A;
+}
+
 .footer-content {
     display: grid;
     grid-template-columns: 2fr 1fr 1fr;
@@ -770,6 +784,36 @@ footer {
     color: rgba(255, 255, 255, 0.7) !important;
     font-size: 0.95rem;
     font-style: italic;
+}
+
+/* Useful Links Section */
+footer .footer-section.footer-links-section .footer-useful-links {
+    list-style: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+footer .footer-section.footer-links-section .footer-useful-links li {
+    margin-bottom: 0.8rem;
+    list-style: none !important;
+    list-style-type: none !important;
+}
+
+footer .footer-section.footer-links-section .footer-useful-links a,
+footer .footer-section.footer-links-section .footer-useful-links a:link,
+footer .footer-section.footer-links-section .footer-useful-links a:visited,
+footer .footer-section.footer-links-section .footer-useful-links a:active {
+    color: rgba(255, 255, 255, 0.8) !important;
+    text-decoration: none !important;
+    transition: all 0.3s ease;
+    font-size: 0.95rem;
+    display: inline-block;
+}
+
+footer .footer-section.footer-links-section .footer-useful-links a:hover {
+    color: #B8956A !important;  /* Color oro/beige del brand */
+    transform: translateX(3px);
+    text-decoration: none !important;
 }
 
 /* Contact Section */

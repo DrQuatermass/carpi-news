@@ -1,0 +1,401 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load banner_tags %}
+
+{% block title %}Calendario Eventi - {{ month_name }} {{ year }} - Ombra del Portico{% endblock %}
+
+{% block extra_css %}
+<meta name="description" content="Calendario degli eventi a Carpi - {{ month_name }} {{ year }}. Scopri tutti gli eventi in programma nella tua città.">
+<link rel="canonical" href="https://ombradelportico.it/eventi/">
+
+<style>
+    /* Stili Banner Placeholder */
+    .banner-header-slot,
+    .banner-footer-slot {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        background: linear-gradient(135deg, rgba(150, 108, 66, 0.03) 0%, rgba(184, 149, 106, 0.05) 100%);
+        border-radius: 12px;
+        min-height: 120px;
+        position: relative;
+        overflow: hidden;
+        margin: 15px 0;
+        border: 1px solid rgba(150, 108, 66, 0.15);
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+    .banner-header-slot:hover,
+    .banner-footer-slot:hover {
+        border-color: rgba(150, 108, 66, 0.3);
+        box-shadow: 0 4px 20px rgba(150, 108, 66, 0.08);
+        background: linear-gradient(135deg, rgba(150, 108, 66, 0.05) 0%, rgba(184, 149, 106, 0.08) 100%);
+    }
+
+    .banner-header-slot::before {
+        content: 'SPAZIO PUBBLICITARIO';
+        position: absolute;
+        top: 40%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 1rem;
+        font-weight: 600;
+        color: rgba(150, 108, 66, 0.6);
+        text-align: center;
+        width: 100%;
+        letter-spacing: 3px;
+        z-index: 1;
+        font-family: 'Georgia', serif;
+        pointer-events: none;
+    }
+
+    .banner-header-slot::after {
+        content: 'Clicca qui per acquistare';
+        position: absolute;
+        bottom: 15px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 0.85rem;
+        color: rgba(150, 108, 66, 0.7);
+        text-align: center;
+        letter-spacing: 1px;
+        z-index: 1;
+        pointer-events: none;
+        font-weight: 600;
+        text-decoration: underline;
+    }
+
+    .banner-header-slot:has(.advertisement-banner)::before,
+    .banner-header-slot:has(.advertisement-banner)::after {
+        display: none !important;
+    }
+
+    .banner-header-slot:has(.advertisement-banner),
+    .banner-footer-slot:has(.advertisement-banner) {
+        background: transparent !important;
+        padding: 0 !important;
+        min-height: auto !important;
+        margin: 20px 0 !important;
+        border: none !important;
+        cursor: default !important;
+    }
+
+    .banner-header-slot .advertisement-banner,
+    .banner-footer-slot .advertisement-banner {
+        position: relative;
+        z-index: 10;
+        margin: 0 !important;
+        width: 100%;
+        max-width: 100%;
+    }
+
+    /* Stili Eventi */
+    .eventi-header {
+        background: linear-gradient(135deg, #966C42 0%, #B8956A 100%);
+        color: white;
+        padding: 40px 20px;
+        text-align: center;
+        margin-bottom: 30px;
+        border-radius: 8px;
+    }
+
+    .eventi-header h1 {
+        margin: 0;
+        font-size: 2.5rem;
+        font-weight: bold;
+    }
+
+    .eventi-header p {
+        margin: 10px 0 0 0;
+        font-size: 1.1rem;
+        opacity: 0.9;
+    }
+
+    .calendar-navigation {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 20px;
+        padding: 15px;
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+
+    .calendar-navigation h2 {
+        margin: 0;
+        color: #966C42;
+        font-size: 1.8rem;
+    }
+
+    .nav-buttons {
+        display: flex;
+        gap: 10px;
+    }
+
+    .nav-btn {
+        padding: 8px 16px;
+        background: #966C42;
+        color: white;
+        text-decoration: none;
+        border-radius: 5px;
+        transition: background 0.2s;
+    }
+
+    .nav-btn:hover {
+        background: #B8956A;
+    }
+
+    .calendar-container {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        overflow: hidden;
+    }
+
+    .calendar-weekdays {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        background: #f8f9fa;
+        border-bottom: 2px solid #966C42;
+    }
+
+    .calendar-weekdays div {
+        padding: 15px;
+        text-align: center;
+        font-weight: bold;
+        color: #966C42;
+    }
+
+    .calendar-weeks {
+        display: grid;
+        grid-template-rows: repeat(auto-fit, minmax(120px, 1fr));
+    }
+
+    .calendar-week {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        border-bottom: 1px solid #e0e0e0;
+    }
+
+    .calendar-week:last-child {
+        border-bottom: none;
+    }
+
+    .calendar-day {
+        min-height: 120px;
+        padding: 10px;
+        border-right: 1px solid #e0e0e0;
+        position: relative;
+        transition: background 0.2s;
+    }
+
+    .calendar-day:last-child {
+        border-right: none;
+    }
+
+    .calendar-day.empty {
+        background: #f8f9fa;
+    }
+
+    .calendar-day.today {
+        background: #fff8f0;
+    }
+
+    .calendar-day:hover:not(.empty) {
+        background: #f5f5f5;
+    }
+
+    .day-number {
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 5px;
+    }
+
+    .calendar-day.today .day-number {
+        color: #966C42;
+        font-size: 1.2rem;
+    }
+
+    .event-item {
+        background: white;
+        border: 1px solid #e0e0e0;
+        border-left: 3px solid #966C42;
+        margin: 3px 0;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.2s;
+        overflow: hidden;
+    }
+
+    .event-item:hover {
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        border-left-color: #B8956A;
+        transform: translateX(2px);
+    }
+
+    .event-item a {
+        color: #333;
+        text-decoration: none;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 6px;
+    }
+
+    .event-thumbnail {
+        width: 40px;
+        height: 40px;
+        object-fit: cover;
+        border-radius: 3px;
+        flex-shrink: 0;
+    }
+
+    .event-title {
+        flex: 1;
+        font-size: 0.75rem;
+        line-height: 1.2;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+    }
+
+    .no-eventi {
+        padding: 40px 20px;
+        text-align: center;
+        color: #999;
+        background: white;
+        border-radius: 8px;
+        margin-top: 20px;
+    }
+
+    .event-count {
+        text-align: center;
+        color: #666;
+        margin-top: 20px;
+        font-size: 0.9rem;
+    }
+
+    @media (max-width: 768px) {
+        .eventi-header h1 {
+            font-size: 1.8rem;
+        }
+
+        .calendar-navigation {
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .calendar-navigation h2 {
+            font-size: 1.4rem;
+        }
+
+        .calendar-weekdays div {
+            padding: 8px;
+            font-size: 0.8rem;
+        }
+
+        .calendar-day {
+            min-height: 80px;
+            padding: 5px;
+        }
+
+        .event-item a {
+            flex-direction: column;
+            padding: 3px 4px;
+        }
+
+        .event-thumbnail {
+            width: 100%;
+            height: auto;
+            max-height: 60px;
+        }
+
+        .event-title {
+            font-size: 0.65rem;
+        }
+
+        .day-number {
+            font-size: 0.9rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container" style="margin-top: 30px;">
+    <div class="eventi-header">
+        <h1>Calendario Eventi</h1>
+        <p>Tutti gli eventi in programma a Carpi</p>
+    </div>
+
+    <!-- Banner Header -->
+    {% show_banner 'header' %}
+
+    <div class="calendar-navigation">
+        <div class="nav-buttons">
+            <a href="?month={{ prev_month }}&year={{ prev_year }}" class="nav-btn">← {{ prev_month }}/{{ prev_year }}</a>
+        </div>
+        <h2>{{ month_name }} {{ year }}</h2>
+        <div class="nav-buttons">
+            <a href="?month={{ next_month }}&year={{ next_year }}" class="nav-btn">{{ next_month }}/{{ next_year }} →</a>
+        </div>
+    </div>
+
+    <div class="calendar-container">
+        <div class="calendar-weekdays">
+            <div>Lunedì</div>
+            <div>Martedì</div>
+            <div>Mercoledì</div>
+            <div>Giovedì</div>
+            <div>Venerdì</div>
+            <div>Sabato</div>
+            <div>Domenica</div>
+        </div>
+
+        <div class="calendar-weeks">
+            {% for week in calendario %}
+            <div class="calendar-week">
+                {% for day_data in week %}
+                    {% if day_data.day %}
+                    <div class="calendar-day {% if day_data.is_today %}today{% endif %}">
+                        <div class="day-number">{{ day_data.day }}</div>
+                        {% for evento in day_data.events %}
+                        <div class="event-item" title="{{ evento.titolo }}">
+                            <a href="{% url 'dettaglio_articolo' evento.slug %}">
+                                {% if evento.foto %}
+                                <img src="{{ evento.foto }}" alt="{{ evento.titolo }}" class="event-thumbnail" loading="lazy">
+                                {% endif %}
+                                <span class="event-title">{{ evento.titolo }}</span>
+                            </a>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="calendar-day empty"></div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="event-count">
+        Totale eventi nel mese: <strong>{{ total_eventi }}</strong>
+    </div>
+
+    {% if total_eventi == 0 %}
+    <div class="no-eventi">
+        <p>Nessun evento in programma per questo mese</p>
+        <p><small>Controlla gli altri mesi o torna più tardi</small></p>
+    </div>
+    {% endif %}
+
+    <!-- Banner Footer -->
+    {% show_banner 'footer' %}
+</div>
+{% endblock %}

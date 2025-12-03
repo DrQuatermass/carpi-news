@@ -1,0 +1,286 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load banner_tags %}
+
+{% block title %}Programmazione Cinema a Carpi - Ombra del Portico{% endblock %}
+
+{% block extra_css %}
+<meta name="description" content="Programmazione aggiornata dei cinema di Carpi: Cinema Eden, Cinema Corso e Cinema Ariston. Film in sala e orari.">
+<link rel="canonical" href="https://ombradelportico.it/cinema/">
+
+<style>
+    /* Stili Banner Placeholder */
+    .banner-header-slot,
+    .banner-footer-slot {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        background: linear-gradient(135deg, rgba(150, 108, 66, 0.03) 0%, rgba(184, 149, 106, 0.05) 100%);
+        border-radius: 12px;
+        min-height: 120px;
+        position: relative;
+        overflow: hidden;
+        margin: 15px 0;
+        border: 1px solid rgba(150, 108, 66, 0.15);
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+
+    .banner-header-slot:hover,
+    .banner-footer-slot:hover {
+        border-color: rgba(150, 108, 66, 0.3);
+        box-shadow: 0 4px 20px rgba(150, 108, 66, 0.08);
+        background: linear-gradient(135deg, rgba(150, 108, 66, 0.05) 0%, rgba(184, 149, 106, 0.08) 100%);
+    }
+
+    .banner-header-slot::before {
+        content: 'SPAZIO PUBBLICITARIO';
+        position: absolute;
+        top: 40%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        font-size: 1rem;
+        font-weight: 600;
+        color: rgba(150, 108, 66, 0.6);
+        text-align: center;
+        width: 100%;
+        letter-spacing: 3px;
+        z-index: 1;
+        font-family: 'Georgia', serif;
+        pointer-events: none;
+    }
+
+    .banner-header-slot::after {
+        content: 'Clicca qui per acquistare';
+        position: absolute;
+        bottom: 15px;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: 0.85rem;
+        color: rgba(150, 108, 66, 0.7);
+        text-align: center;
+        letter-spacing: 1px;
+        z-index: 1;
+        pointer-events: none;
+        font-weight: 600;
+        text-decoration: underline;
+    }
+
+    .banner-header-slot:has(.advertisement-banner)::before,
+    .banner-header-slot:has(.advertisement-banner)::after {
+        display: none !important;
+    }
+
+    .banner-header-slot:has(.advertisement-banner),
+    .banner-footer-slot:has(.advertisement-banner) {
+        background: transparent !important;
+        padding: 0 !important;
+        min-height: auto !important;
+        margin: 20px 0 !important;
+        border: none !important;
+        cursor: default !important;
+    }
+
+    .banner-header-slot .advertisement-banner,
+    .banner-footer-slot .advertisement-banner {
+        position: relative;
+        z-index: 10;
+        margin: 0 !important;
+        width: 100%;
+        max-width: 100%;
+    }
+
+    /* Stili Cinema */
+    .cinema-header {
+        background: linear-gradient(135deg, #966C42 0%, #B8956A 100%);
+        color: white;
+        padding: 40px 20px;
+        text-align: center;
+        margin-bottom: 30px;
+        border-radius: 8px;
+    }
+
+    .cinema-header h1 {
+        margin: 0;
+        font-size: 2.5rem;
+        font-weight: bold;
+    }
+
+    .cinema-header p {
+        margin: 10px 0 0 0;
+        font-size: 1.1rem;
+        opacity: 0.9;
+    }
+
+    .cinema-section {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        margin-bottom: 30px;
+        overflow: hidden;
+    }
+
+    .cinema-title {
+        background: #f8f9fa;
+        padding: 20px;
+        border-bottom: 3px solid #966C42;
+    }
+
+    .cinema-title h2 {
+        margin: 0 0 5px 0;
+        color: #966C42;
+        font-size: 1.8rem;
+    }
+
+    .cinema-info {
+        font-size: 0.9rem;
+        color: #666;
+        margin: 5px 0;
+    }
+
+    .cinema-info a {
+        color: #966C42;
+        text-decoration: none;
+    }
+
+    .cinema-info a:hover {
+        text-decoration: underline;
+    }
+
+    .films-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 20px;
+        padding: 20px;
+    }
+
+    .film-card {
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        overflow: hidden;
+        transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .film-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+
+    .film-image {
+        width: 100%;
+        height: 400px;
+        object-fit: cover;
+        background: #f0f0f0;
+    }
+
+    .film-info {
+        padding: 15px;
+    }
+
+    .film-title {
+        font-size: 1.2rem;
+        font-weight: bold;
+        color: #333;
+        margin: 0 0 10px 0;
+    }
+
+    .film-details {
+        font-size: 0.9rem;
+        color: #666;
+        line-height: 1.5;
+    }
+
+    .no-films {
+        padding: 40px 20px;
+        text-align: center;
+        color: #999;
+    }
+
+    .update-info {
+        text-align: center;
+        color: #999;
+        font-size: 0.85rem;
+        padding: 20px;
+        background: #f8f9fa;
+        margin-top: 30px;
+        border-radius: 8px;
+    }
+
+    @media (max-width: 768px) {
+        .cinema-header h1 {
+            font-size: 1.8rem;
+        }
+
+        .films-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container" style="margin-top: 30px;">
+    <div class="cinema-header">
+        <h1>Cinema a Carpi</h1>
+        <p>Programmazione aggiornata in tempo reale</p>
+    </div>
+
+    {% if cinema_data %}
+        {% for cinema in cinema_data %}
+        <div class="cinema-section">
+            <div class="cinema-title">
+                <h2>{{ cinema.name }}</h2>
+                <p class="cinema-info">
+                    {{ cinema.address }}<br>
+                    <a href="{{ cinema.website }}" target="_blank" rel="noopener">Visita il sito</a>
+                </p>
+            </div>
+
+            {% if cinema.films %}
+            <div class="films-grid">
+                {% for film in cinema.films %}
+                <div class="film-card">
+                    {% if film.image %}
+                    <img src="{{ film.image }}" alt="{{ film.title }}" class="film-image" loading="lazy">
+                    {% else %}
+                    <div class="film-image" style="display: flex; align-items: center; justify-content: center; background: #e0e0e0; color: #999;">
+                        <span style="font-size: 1.2rem;">Immagine non disponibile</span>
+                    </div>
+                    {% endif %}
+                    <div class="film-info">
+                        <h3 class="film-title">{{ film.title }}</h3>
+                        <p class="film-details">{{ film.info }}</p>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="no-films">
+                <p>Programmazione non disponibile al momento</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Banner orizzontale tra i cinema (728×270 Leaderboard) -->
+        {% if not forloop.last %}
+        <div style="margin: 30px 0;">
+            {% show_banner 'header' %}
+        </div>
+        {% endif %}
+
+        {% endfor %}
+    {% else %}
+    <div class="cinema-section">
+        <div class="no-films">
+            <p>Impossibile recuperare la programmazione al momento. Riprova più tardi.</p>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="update-info">
+        Ultimo aggiornamento: {{ last_update|date:"d/m/Y H:i" }}<br>
+        <small>La programmazione viene aggiornata in tempo reale dai siti ufficiali dei cinema</small>
+    </div>
+</div>
+{% endblock %}

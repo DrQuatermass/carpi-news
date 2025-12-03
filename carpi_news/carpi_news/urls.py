@@ -30,6 +30,8 @@ urlpatterns = [
     path('privacy-policy/', views.privacy_policy, name='privacy-policy'),
     path('about/', views.about, name='about'),
     path('caplet/', views.caplet, name='caplet'),
+    path('cinema/', views.programmazione_cinema, name='programmazione_cinema'),
+    path('eventi/', views.calendario_eventi, name='calendario_eventi'),
 
     # Chatbot API
     path('api/chatbot/', views.chatbot_api, name='chatbot_api'),

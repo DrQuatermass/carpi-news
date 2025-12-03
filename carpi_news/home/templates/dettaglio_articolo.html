@@ -417,7 +417,19 @@
             <!-- Banner fine articolo -->
             {% show_banner 'article_bottom' %}
 
-            {% if articolo.fonte or articolo.fonti_web %}
+            {% if articolo.categoria == "Cosa fare oggi" %}
+            <div class="article-sources-link">
+                <a href="{% url 'calendario_eventi' %}" class="sources-button">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V9h14v10zm0-12H5V5h14v2zM7 11h5v5H7z"/>
+                    </svg>
+                    <span>Vedi tutti gli eventi nel calendario</span>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/>
+                    </svg>
+                </a>
+            </div>
+            {% elif articolo.fonte or articolo.fonti_web %}
             <div class="article-sources-link">
                 <a href="{% url 'fonti_articolo' articolo.slug %}" class="sources-button">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">

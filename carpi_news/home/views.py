@@ -656,3 +656,529 @@ def indexnow_key(request):
     from django.conf import settings
     key = settings.INDEXNOW_KEY if hasattr(settings, 'INDEXNOW_KEY') else os.getenv('INDEXNOW_KEY', '')
     return HttpResponse(key, content_type='text/plain')
+
+
+def programmazione_cinema(request):
+    """
+    Vista per mostrare la programmazione aggiornata dei cinema locali
+    Effettua scraping in tempo reale dei siti dei cinema di Carpi
+    Mostra SOLO i film con proiezioni OGGI
+    """
+    import requests
+    from bs4 import BeautifulSoup
+    from datetime import datetime
+    import re
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
+    cinema_data = []
+
+    # Calcola la data di oggi in vari formati
+    today = datetime.now()
+    today_day = today.day
+    today_day_padded = f"{today_day:02d}"  # Giorno con zero iniziale (es: "03")
+    today_month_it = ['', 'gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno',
+                      'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'][today.month]
+    today_month_num = f"{today.month:02d}"  # Mese con zero iniziale (es: "12")
+    weekdays_it = ['lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato', 'domenica']
+    today_weekday = weekdays_it[today.weekday()]
+
+    # Pattern per trovare la data di oggi nel testo
+    # Es: "Martedì 3", "3 dicembre", "mercoledì 3 dicembre", "03/12/2025"
+    # Usa word boundary \b per evitare match parziali (es: "3" in "31")
+    today_patterns = [
+        f"{today_weekday}\\s+\\b{today_day}\\b",  # "mercoledì 3"
+        f"{today_weekday}\\s+\\b{today_day_padded}\\b",  # "mercoledì 03"
+        f"\\b{today_day}\\b\\s+{today_month_it}",  # "3 dicembre" (non "31 dicembre")
+        f"\\b{today_day_padded}\\b\\s+{today_month_it}",  # "03 dicembre"
+        f"{today_weekday}\\s+\\b{today_day}\\b\\s+{today_month_it}",  # "mercoledì 3 dicembre"
+        f"{today_day_padded}/{today_month_num}/",  # "03/12/2025" (Space City format)
+    ]
+
+    # Cinema Eden
+    try:
+        response = requests.get('https://www.cinemaedencarpi.it/', timeout=10)
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.content, 'html.parser')
+
+            films = []
+            film_cards = soup.find_all('div', class_='tmb')
+
+            for card in film_cards:
+                try:
+                    title_elem = card.find('h2', class_='t-entry-title') or card.find('h3')
+                    title = title_elem.get_text(strip=True) if title_elem else None
+
+                    if not title:
+                        continue
+
+                    # Cerca le informazioni del film (orari, date)
+                    text_elem = card.find('div', class_='t-entry-text')
+                    if not text_elem:
+                        continue
+
+                    info_text = text_elem.get_text(separator=' ', strip=True).lower()
+
+                    # Verifica se il film ha proiezioni OGGI
+                    has_today = False
+                    today_showtimes = []
+
+                    for pattern in today_patterns:
+                        if re.search(pattern, info_text, re.IGNORECASE):
+                            has_today = True
+                            # Cerca orari dopo la data di oggi
+                            # Pattern orari: 15:00, 21:30, etc
+                            time_pattern = r'\b(\d{1,2}[:.]\d{2})\b'
+                            # Cerca il testo dopo la data di oggi
+                            match = re.search(pattern, info_text, re.IGNORECASE)
+                            if match:
+                                text_after_date = info_text[match.end():match.end()+100]
+                                times = re.findall(time_pattern, text_after_date)
+                                today_showtimes.extend(times[:3])  # Max 3 orari
+                            break
+
+                    if not has_today:
+                        continue
+
+                    # Cerca l'immagine
+                    img_elem = card.find('img')
+                    image = ''
+                    if img_elem:
+                        image = img_elem.get('data-src') or img_elem.get('src') or img_elem.get('data-lazy-src', '')
+                        if 'placeholder' in image.lower() or 'default' in image.lower():
+                            image = ''
+
+                    # Formatta info
+                    info = f"Oggi {today_weekday} {today_day} {today_month_it}"
+                    if today_showtimes:
+                        info += f" - Orari: {', '.join(today_showtimes)}"
+
+                    films.append({
+                        'title': title,
+                        'image': image if image else '',
+                        'info': info
+                    })
+                except Exception as e:
+                    logger.error(f"Errore parsing film Cinema Eden: {e}")
+                    continue
+
+            if films:
+                cinema_data.append({
+                    'name': 'Cinema Eden',
+                    'address': 'Via Santa Chiara 22, Carpi',
+                    'website': 'https://www.cinemaedencarpi.it/',
+                    'films': films
+                })
+    except Exception as e:
+        logger.error(f"Errore scraping Cinema Eden: {e}")
+
+    # Cinema Ariston - Cerca nella sezione id="movie"
+    try:
+        # User-Agent necessario: Ariston blocca richieste senza header browser
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+        response = requests.get('https://www.aristoncinemacarpi.it/', headers=headers, timeout=10)
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.content, 'html.parser')
+
+            films = []
+
+            # Cerca la sezione con id="movie"
+            movie_section = soup.find('section', id='movie')
+
+            if movie_section:
+                # Trova tutti gli article (la classe è 'list-article' non 'news-item')
+                articles = movie_section.find_all('article')
+
+                logger.info(f"Cinema Ariston - Trovati {len(articles)} articoli in sezione #movie")
+
+                for article in articles:
+                    try:
+                        # Titolo in h2.entry-title > a
+                        title_elem = article.find('h2', class_='entry-title')
+                        if not title_elem:
+                            continue
+
+                        title_link = title_elem.find('a')
+                        title = title_link.get_text(strip=True) if title_link else title_elem.get_text(strip=True)
+
+                        if not title or len(title) < 3:
+                            continue
+
+                        # Programmazione in div.entry-excerpt
+                        excerpt = article.find('div', class_='entry-excerpt')
+                        if not excerpt:
+                            continue
+
+                        # Analizza le righe della programmazione
+                        lines = excerpt.get_text(separator='\n').split('\n')
+                        has_today = False
+                        today_showtimes = []
+
+                        for line in lines:
+                            line_lower = line.strip().lower()
+                            if not line_lower:
+                                continue
+
+                            # Verifica se questa riga contiene la data di oggi
+                            for pattern in today_patterns:
+                                if re.search(pattern, line_lower, re.IGNORECASE):
+                                    has_today = True
+                                    # Estrai orario da questa riga (formato: "Lunedì 3 Dicembre 2025 – Ore 21:00")
+                                    time_match = re.search(r'ore\s*(\d{1,2}:\d{2})', line_lower, re.IGNORECASE)
+                                    if time_match:
+                                        today_showtimes.append(time_match.group(1))
+                                    break
+
+                        if not has_today:
+                            continue
+
+                        # Immagine in div.list-article-thumb > a > img
+                        image = ''
+                        thumb = article.find('div', class_='list-article-thumb')
+                        if thumb:
+                            img_elem = thumb.find('img')
+                            if img_elem:
+                                image = img_elem.get('src', '')
+                                # Fallback: prova data-src se src è vuoto
+                                if not image:
+                                    image = img_elem.get('data-src', '')
+
+                        # Formatta info
+                        info = f"Oggi {today_weekday} {today_day} {today_month_it}"
+                        if today_showtimes:
+                            info += f" - Orari: {', '.join(set(today_showtimes))}"
+
+                        films.append({
+                            'title': title,
+                            'image': image if image else '',
+                            'info': info
+                        })
+
+                        logger.info(f"Cinema Ariston - Film trovato: {title}")
+
+                    except Exception as e:
+                        logger.error(f"Errore parsing articolo Ariston: {e}")
+                        continue
+            else:
+                logger.warning("Cinema Ariston - Sezione #movie non trovata")
+
+            if films:
+                cinema_data.append({
+                    'name': 'Cinema Ariston',
+                    'address': 'Via Ernesto Boccaletti 3, San Marino di Carpi',
+                    'website': 'https://www.aristoncinemacarpi.it/',
+                    'films': films
+                })
+            else:
+                logger.warning("Cinema Ariston: nessun film per oggi")
+
+    except Exception as e:
+        logger.error(f"Errore scraping Cinema Ariston: {e}")
+
+    # Cinema Corso (stessa struttura di Cinema Eden)
+    try:
+        response = requests.get('https://www.cinemacorsocarpi.it/', timeout=10)
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.content, 'html.parser')
+
+            films = []
+            film_cards = soup.find_all('div', class_='tmb')
+
+            for card in film_cards:
+                try:
+                    title_elem = card.find('h2', class_='t-entry-title') or card.find('h3')
+                    title = title_elem.get_text(strip=True) if title_elem else None
+
+                    if not title:
+                        continue
+
+                    # Cerca le informazioni del film
+                    text_elem = card.find('div', class_='t-entry-text')
+                    if not text_elem:
+                        continue
+
+                    info_text = text_elem.get_text(separator=' ', strip=True).lower()
+
+                    # Verifica se il film ha proiezioni OGGI
+                    has_today = False
+                    today_showtimes = []
+
+                    for pattern in today_patterns:
+                        if re.search(pattern, info_text, re.IGNORECASE):
+                            has_today = True
+                            time_pattern = r'\b(\d{1,2}[:.]\d{2})\b'
+                            match = re.search(pattern, info_text, re.IGNORECASE)
+                            if match:
+                                text_after_date = info_text[match.end():match.end()+100]
+                                times = re.findall(time_pattern, text_after_date)
+                                today_showtimes.extend(times[:3])
+                            break
+
+                    if not has_today:
+                        continue
+
+                    # Cerca l'immagine
+                    img_elem = card.find('img')
+                    image = ''
+                    if img_elem:
+                        image = img_elem.get('data-src') or img_elem.get('src', '')
+                        if 'placeholder' in image.lower():
+                            image = ''
+
+                    # Formatta info
+                    info = f"Oggi {today_weekday} {today_day} {today_month_it}"
+                    if today_showtimes:
+                        info += f" - Orari: {', '.join(today_showtimes)}"
+
+                    films.append({
+                        'title': title,
+                        'image': image if image else '',
+                        'info': info
+                    })
+                except Exception as e:
+                    logger.error(f"Errore parsing film Cinema Corso: {e}")
+                    continue
+
+            if films:
+                cinema_data.append({
+                    'name': 'Cinema Corso',
+                    'address': 'Corso M. Fanti 91, Carpi',
+                    'website': 'https://www.cinemacorsocarpi.it/',
+                    'films': films
+                })
+    except Exception as e:
+        logger.error(f"Errore scraping Cinema Corso: {e}")
+
+    # Space City Multisala
+    try:
+        # User-Agent per evitare blocchi
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+        response = requests.get('https://www.spacecity.it/', headers=headers, timeout=10)
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.content, 'html.parser')
+
+            films = []
+
+            # Cerca i div con class "movie movie--preview"
+            movie_divs = soup.find_all('div', class_='movie--preview')
+
+            for movie_div in movie_divs:
+                try:
+                    # Estrai il titolo dal link a.movie__title
+                    title_elem = movie_div.find('a', class_='movie__title')
+                    if not title_elem:
+                        continue
+
+                    title = title_elem.get_text(strip=True)
+                    if not title:
+                        continue
+
+                    # Estrai l'immagine
+                    image = ''
+                    img_elem = movie_div.find('img', class_='img-fluid')
+                    if img_elem:
+                        image = img_elem.get('src', '')
+
+                    # Cerca la sezione schedule per verificare la data
+                    schedule_section = movie_div.find('div', class_='schedule-section-show')
+                    if not schedule_section:
+                        continue
+
+                    schedule_text = schedule_section.get_text(separator=' ', strip=True).lower()
+
+                    # Verifica se ha proiezioni OGGI e estrai solo gli orari di oggi
+                    has_today = False
+                    today_showtimes = []
+
+                    # La schedule contiene tutti i giorni in un'unica riga
+                    # Devo estrarre solo gli orari tra la data di oggi e la data successiva
+                    schedule_full_text = schedule_section.get_text(separator=' ', strip=True)
+
+                    # Cerca la data di oggi nel testo
+                    for pattern in today_patterns:
+                        match = re.search(pattern, schedule_full_text, re.IGNORECASE)
+                        if match:
+                            has_today = True
+
+                            # Estrai il testo dopo la data di oggi
+                            text_after_today = schedule_full_text[match.end():]
+
+                            # Trova dove finisce la sezione di oggi (cerca la prossima data)
+                            # Pattern per trovare la prossima data (es: "Giovedì 04/12/2025")
+                            next_date_pattern = r'(luned[ìi]|marted[ìi]|mercoled[ìi]|gioved[ìi]|venerd[ìi]|sabato|domenica)\s+\d{2}/\d{2}/\d{4}'
+                            next_date_match = re.search(next_date_pattern, text_after_today, re.IGNORECASE)
+
+                            if next_date_match:
+                                # Prendi solo il testo fino alla prossima data
+                                today_section = text_after_today[:next_date_match.start()]
+                            else:
+                                # Non c'è una data successiva, prendi tutto
+                                today_section = text_after_today[:200]
+
+                            # Estrai tutti gli orari dalla sezione di oggi
+                            times = re.findall(r'\b(\d{1,2}:\d{2})\b', today_section)
+                            today_showtimes.extend(times)
+                            break
+
+                    if not has_today:
+                        continue
+
+                    # Formatta info - solo orari, no sale
+                    info = f"Oggi {today_weekday} {today_day} {today_month_it}"
+                    if today_showtimes:
+                        info += f" - Orari: {', '.join(today_showtimes)}"
+
+                    films.append({
+                        'title': title,
+                        'image': image if image else '',
+                        'info': info
+                    })
+
+                    logger.info(f"Space City - Trovato film: {title} - {info}")
+
+                except Exception as e:
+                    logger.error(f"Errore parsing film Space City: {e}")
+                    continue
+
+            if films:
+                cinema_data.insert(0, {  # Inserisci all'inizio
+                    'name': 'Space City Multisala',
+                    'address': 'Viale dell\'Industria 9, Carpi',
+                    'website': 'https://www.spacecity.it/',
+                    'films': films
+                })
+            else:
+                logger.warning("Space City: nessun film trovato per oggi")
+
+    except Exception as e:
+        logger.error(f"Errore scraping Space City: {e}")
+
+    # Ottieni categorie per il menu di navigazione
+    categorie_raw = Articolo.objects.filter(approvato=True).values_list('categoria', flat=True).distinct()
+    categorie_disponibili = []
+    has_rubriche = False
+
+    for cat in sorted(categorie_raw):
+        if cat in ['Editoriale', "L'Eco del Consiglio"]:
+            has_rubriche = True
+        else:
+            categorie_disponibili.append(cat)
+
+    if has_rubriche:
+        categorie_disponibili.append('Rubriche')
+
+    context = {
+        'cinema_data': cinema_data,
+        'last_update': datetime.now(),
+        'current_year': datetime.now().year,
+        'categorie_disponibili': categorie_disponibili,
+    }
+
+    return render(request, 'programmazione_cinema.html', context)
+
+
+def calendario_eventi(request):
+    """
+    Vista per mostrare il calendario degli eventi
+    Mostra gli articoli con data_evento in formato calendario mensile
+    """
+    from calendar import monthcalendar, month_name
+    from collections import defaultdict
+
+    # Ottieni mese e anno da parametri GET, default a mese corrente
+    now = timezone.now()
+    try:
+        year = int(request.GET.get('year', now.year))
+        month = int(request.GET.get('month', now.month))
+    except (ValueError, TypeError):
+        year = now.year
+        month = now.month
+
+    # Valida mese/anno
+    if month < 1 or month > 12:
+        month = now.month
+    if year < 2020 or year > 2030:
+        year = now.year
+
+    # Calcola mese precedente e successivo
+    prev_month = month - 1 if month > 1 else 12
+    prev_year = year if month > 1 else year - 1
+    next_month = month + 1 if month < 12 else 1
+    next_year = year if month < 12 else year + 1
+
+    # Ottieni eventi del mese
+    from datetime import date
+    start_date = date(year, month, 1)
+    if month == 12:
+        end_date = date(year + 1, 1, 1)
+    else:
+        end_date = date(year, month + 1, 1)
+
+    eventi = Articolo.objects.filter(
+        approvato=True,
+        data_evento__gte=start_date,
+        data_evento__lt=end_date
+    ).order_by('data_evento', 'data_pubblicazione')
+
+    # Organizza eventi per giorno
+    eventi_per_giorno = defaultdict(list)
+    for evento in eventi:
+        if evento.data_evento:
+            eventi_per_giorno[evento.data_evento.day].append(evento)
+
+    # Genera struttura calendario
+    cal = monthcalendar(year, month)
+    calendario_struttura = []
+
+    for week in cal:
+        week_data = []
+        for day in week:
+            if day == 0:
+                week_data.append({'day': None, 'events': []})
+            else:
+                week_data.append({
+                    'day': day,
+                    'events': eventi_per_giorno.get(day, []),
+                    'is_today': (day == now.day and month == now.month and year == now.year)
+                })
+        calendario_struttura.append(week_data)
+
+    # Ottieni nomi mesi in italiano
+    mesi_italiani = [
+        '', 'Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
+        'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'
+    ]
+
+    context = {
+        'calendario': calendario_struttura,
+        'month': month,
+        'year': year,
+        'month_name': mesi_italiani[month],
+        'prev_month': prev_month,
+        'prev_year': prev_year,
+        'next_month': next_month,
+        'next_year': next_year,
+        'current_year': now.year,
+        'total_eventi': eventi.count(),
+    }
+
+    # Ottieni categorie per il menu di navigazione
+    categorie_raw = Articolo.objects.filter(approvato=True).values_list('categoria', flat=True).distinct()
+    categorie_disponibili = []
+    has_rubriche = False
+
+    for cat in sorted(categorie_raw):
+        if cat in ['Editoriale', "L'Eco del Consiglio"]:
+            has_rubriche = True
+        else:
+            categorie_disponibili.append(cat)
+
+    if has_rubriche:
+        categorie_disponibili.append('Rubriche')
+
+    context['categorie_disponibili'] = categorie_disponibili
+
+    return render(request, 'calendario_eventi.html', context)
