@@ -316,7 +316,7 @@
         }
 
         .calendar-weekdays {
-            min-width: 700px;
+            grid-template-columns: repeat(7, minmax(100px, 1fr));
         }
 
         .calendar-weekdays div {
@@ -324,12 +324,13 @@
             font-size: 0.7rem;
         }
 
-        .calendar-weeks {
-            min-width: 700px;
+        .calendar-week {
+            grid-template-columns: repeat(7, minmax(100px, 1fr));
         }
 
         .calendar-day {
             min-height: 70px;
+            min-width: 100px;
             padding: 4px;
             font-size: 0.75rem;
         }
