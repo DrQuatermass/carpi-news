@@ -36,7 +36,7 @@
 
             {% if articolo.fonte %}
             <div class="fonte-item">
-                <a href="{{ articolo.fonte }}" target="_blank" rel="noopener noreferrer" class="fonte-link">
+                <a href="{{ articolo.fonte }}" target="_blank" rel="noopener noreferrer nofollow" class="fonte-link">
                     <div class="fonte-title">{{ articolo.fonte|truncatechars:80 }}</div>
                     <div class="fonte-url">{{ articolo.fonte }}</div>
                 </a>
@@ -47,7 +47,7 @@
                 {% for fonte in articolo.fonti_web %}
                     {% if fonte.hidden != True %}
                     <div class="fonte-item">
-                        <a href="{{ fonte.url }}" target="_blank" rel="noopener noreferrer" class="fonte-link">
+                        <a href="{{ fonte.url }}" target="_blank" rel="noopener noreferrer nofollow" class="fonte-link">
                             <div class="fonte-title">{{ fonte.title }}</div>
                             <div class="fonte-url">{{ fonte.url }}</div>
                         </a>
