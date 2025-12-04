@@ -17,20 +17,6 @@ class SEOMiddleware:
         self.canonical_domain = 'ombradelportico.it'
 
     def __call__(self, request):
-        # PRIORITÀ 1: Redirect parametri categoria → rimuovi query string
-        # DEVE essere controllato PRIMA di altri redirect per evitare contenuto duplicato
-        if request.GET.get('categoria'):
-            # Costruisci URL senza parametri categoria
-            path = request.path
-            # Mantieni altri parametri se presenti (es. preview_mode)
-            other_params = {k: v for k, v in request.GET.items() if k != 'categoria'}
-            if other_params:
-                query_string = '&'.join(f"{k}={v}" for k, v in other_params.items())
-                new_url = f"https://{self.canonical_domain}{path}?{query_string}"
-            else:
-                new_url = f"https://{self.canonical_domain}{path}"
-            return HttpResponsePermanentRedirect(new_url)
-
         # Ottieni host e schema
         host = request.get_host().lower()
         scheme = 'https' if request.is_secure() else 'http'
