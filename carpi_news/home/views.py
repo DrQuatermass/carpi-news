@@ -375,12 +375,13 @@ def sitemap_archive(request):
     cutoff_date = timezone.now() - timedelta(days=30)
 
     # Articoli più vecchi di 30 giorni, limitati a 10.000 per performance
+    # Usa only() per caricare solo i campi necessari e ridurre memoria
     articles = Articolo.objects.filter(
         approvato=True,
         data_pubblicazione__lt=cutoff_date
-    ).order_by('-data_pubblicazione')[:10000]
+    ).only('slug', 'data_pubblicazione').order_by('-data_pubblicazione')[:10000]
 
-    logger.info(f"Generata sitemap archivio con {len(articles)} articoli")
+    logger.info(f"Generata sitemap archivio con {articles.count()} articoli")
 
     template = loader.get_template('sitemap_archive.xml')
     context = {'articles': articles}
