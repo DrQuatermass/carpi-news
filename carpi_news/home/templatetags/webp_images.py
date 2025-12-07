@@ -105,9 +105,18 @@ def image_srcset(image_url):
         from django.conf import settings
         import os
 
+        # Se l'URL contiene il dominio, rimuovilo per avere solo il path
+        clean_url = image_url
+        if 'ombradelportico.it' in image_url:
+            # Estrai solo il path dopo il dominio
+            import re
+            domain_match = re.search(r'ombradelportico\.it(/.+)$', image_url)
+            if domain_match:
+                clean_url = domain_match.group(1)
+
         # Estrai nome file senza estensione
         import re
-        match = re.search(r'(.+/)([^/]+)\.(webp|png|jpg|jpeg)$', image_url, re.IGNORECASE)
+        match = re.search(r'(.+/)([^/]+)\.(webp|png|jpg|jpeg)$', clean_url, re.IGNORECASE)
         if match:
             base_path = match.group(1)
             filename = match.group(2)
