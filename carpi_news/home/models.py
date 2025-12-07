@@ -132,7 +132,7 @@ class Articolo(models.Model):
 
     def get_image_url(self):
         """Restituisce l'URL dell'immagine o il fallback se non disponibile/raggiungibile"""
-        fallback_image = static('home/images/portico_logo_nopayoff.png')
+        fallback_image = static('home/images/portico_logo_nopayoff.webp')
 
         # Priorità: foto_upload prima di foto URL
         if self.foto_upload:
