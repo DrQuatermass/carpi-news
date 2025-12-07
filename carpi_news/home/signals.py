@@ -203,8 +203,8 @@ def generate_responsive_images_on_save(sender, instance, created, **kwargs):
     # Priorità 1: foto_upload (upload manuale)
     if instance.foto_upload:
         image_path = instance.foto_upload.path
-    # Priorità 2: foto che punta a /media/images/uploaded/ (scaricata dai monitor)
-    elif instance.foto and instance.foto.startswith('/media/images/uploaded/'):
+    # Priorità 2: foto che punta a /media/images/ (scaricata dai monitor)
+    elif instance.foto and instance.foto.startswith('/media/images/'):
         # Converti URL relativo in path assoluto
         relative_path = instance.foto.replace('/media/', '')
         image_path = str(Path(settings.MEDIA_ROOT) / relative_path)
