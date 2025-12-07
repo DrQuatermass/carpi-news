@@ -119,9 +119,13 @@ def image_srcset(image_url):
 
                 # Converti URL in path filesystem
                 if '/media/' in image_url:
-                    file_path = Path(settings.MEDIA_ROOT) / base_path.replace('/media/', '') / responsive_filename
+                    # Rimuovi /media/ e lo slash finale da base_path
+                    relative_path = base_path.replace('/media/', '').rstrip('/')
+                    file_path = Path(settings.MEDIA_ROOT) / relative_path / responsive_filename
                 else:  # /static/
-                    file_path = Path(settings.BASE_DIR) / 'home' / 'static' / base_path.replace('/static/', '') / responsive_filename
+                    # Rimuovi /static/ e lo slash finale da base_path
+                    relative_path = base_path.replace('/static/', '').rstrip('/')
+                    file_path = Path(settings.BASE_DIR) / 'home' / 'static' / relative_path / responsive_filename
 
                 # Aggiungi solo se il file esiste
                 if file_path.exists():
