@@ -168,10 +168,18 @@ def home(request):
             first_article_image = item['data'].get_image_url()
             break
 
+    # Trova il primo banner per preload (se in posizione 0-2)
+    first_banner_image = None
+    for i, item in enumerate(grid_items[:3]):  # Solo primi 3 slot
+        if item['type'] == 'banner' and item.get('banner'):
+            first_banner_image = item['banner'].image.url
+            break
+
     context = {
         'articoli': page_obj,
         'grid_items': grid_items,  # Griglia con articoli e banner/placeholder
         'first_article_image': first_article_image,  # Per preload LCP
+        'first_banner_image': first_banner_image,  # Per preload banner
         'current_page': page_obj.number,
         'total_pages': paginator.num_pages,
         'has_prev': page_obj.has_previous(),
