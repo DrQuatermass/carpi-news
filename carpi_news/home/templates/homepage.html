@@ -420,18 +420,15 @@
                                                      fetchpriority="high"
                                                      loading="eager">
                                             {% else %}
-                                                {# Altre card: lazy loading con WebP #}
-                                                <picture>
-                                                    <source srcset="{{ item.data.get_image_url|to_webp }}" type="image/webp">
-                                                    <img src="{{ item.data.get_image_url }}"
-                                                         srcset="{{ item.data.get_image_url|image_srcset }}"
-                                                         sizes="(max-width: 640px) 100vw, 616px"
-                                                         alt="{{ item.data.titolo }}"
-                                                         class="card-img"
-                                                         width="616"
-                                                         height="347"
-                                                         loading="lazy">
-                                                </picture>
+                                                {# Altre card: lazy loading con WebP responsive #}
+                                                <img src="{{ item.data.get_image_url }}"
+                                                     srcset="{{ item.data.get_image_url|image_srcset }}"
+                                                     sizes="(max-width: 640px) 100vw, 616px"
+                                                     alt="{{ item.data.titolo }}"
+                                                     class="card-img"
+                                                     width="616"
+                                                     height="347"
+                                                     loading="lazy">
                                             {% endif %}
                                         </div>
                                         <div class="news-content">
