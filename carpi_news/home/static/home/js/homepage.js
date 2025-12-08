@@ -293,5 +293,5 @@ function updateNavigationButtons(hasPrev, hasNext) {
     nextBtn.disabled = !hasNext;
 }
 
-// La funzione initPageSpecific viene chiamata da base.html dopo DOMContentLoaded
-// per garantire che sia chiamata al momento giusto
+// Esporta la funzione globalmente per permettere a base.html di chiamarla
+window.initPageSpecific = initPageSpecific;
