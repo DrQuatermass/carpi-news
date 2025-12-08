@@ -11,7 +11,7 @@
       </news:publication>
       <news:publication_date>{{ article.data_pubblicazione|date:"c" }}</news:publication_date>
       <news:title>{{ article.titolo|escape }}</news:title>
-      <news:keywords>{{ article.keywords|escape }}</news:keywords>
+      {% if article.keywords %}<news:keywords>{{ article.keywords|escape }}</news:keywords>{% endif %}
     </news:news>
   </url>
 {% endfor %}

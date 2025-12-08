@@ -419,7 +419,8 @@ def news_sitemap(request):
         # Filtra stopwords e parole corte (<3 caratteri)
         keywords = [w.capitalize() for w in words if w not in stopwords_it and len(w) >= 3]
         # Limita a prime 5 keywords + categoria + "Carpi"
-        article.keywords = ', '.join(keywords[:5] + [article.categoria, 'Carpi'])
+        keyword_list = keywords[:5] + [article.categoria, 'Carpi']
+        article.keywords = ', '.join(filter(None, keyword_list))  # Filtra valori None/vuoti
 
     logger.info(f"Generata sitemap news con {len(articles)} articoli")
 
