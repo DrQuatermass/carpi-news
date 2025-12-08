@@ -293,9 +293,5 @@ function updateNavigationButtons(hasPrev, hasNext) {
     nextBtn.disabled = !hasNext;
 }
 
-// Inizializza quando il DOM è pronto
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initPageSpecific);
-} else {
-    initPageSpecific();
-}
+// La funzione initPageSpecific viene chiamata da base.html dopo DOMContentLoaded
+// per garantire che sia chiamata al momento giusto
