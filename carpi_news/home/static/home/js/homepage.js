@@ -1,12 +1,20 @@
 // Homepage JavaScript - Navigation and Page Transitions
-// Variabili globali minime - leggono i dati dall'elemento page-data
-const pageData = document.getElementById('page-data');
-let currentPage = parseInt(pageData?.dataset.currentPage || '1');
-let totalPages = parseInt(pageData?.dataset.totalPages || '1');
+// Variabili globali
+let currentPage = 1;
+let totalPages = 1;
 let isTransitioning = false;
 let parallaxHandler = null;
 let keyboardHandler = null;
 let isInitialized = false;
+
+// Inizializza i valori di pagina dal DOM
+function initPageValues() {
+    const pageData = document.getElementById('page-data');
+    if (pageData) {
+        currentPage = parseInt(pageData.dataset.currentPage || '1');
+        totalPages = parseInt(pageData.dataset.totalPages || '1');
+    }
+}
 
 // Helper function per calcolo parallasse
 function updateParallax(hero) {
@@ -20,6 +28,9 @@ function initPageSpecific() {
     // Evita inizializzazioni multiple
     if (isInitialized) return;
     isInitialized = true;
+
+    // Carica valori di pagina
+    initPageValues();
 
     // Animazione al caricamento
     const loadingElements = document.querySelectorAll('.loading');
