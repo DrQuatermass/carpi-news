@@ -46,8 +46,8 @@
   "datePublished": "{{ articolo.data_pubblicazione|date:'c' }}",
   "dateModified": "{{ articolo.data_creazione|date:'c' }}",
   "author": {
-    "@type": "Organization",
-    "name": "Ombra del Portico",
+    "@type": "Person",
+    "name": "Sven Rinaldi",
     "url": "https://ombradelportico.it"
   },
   "publisher": {
@@ -68,11 +68,11 @@
     "@type": "WebPage",
     "@id": "{{ canonical_url }}"
   },
-  "isAccessibleForFree": "True",
+  "isAccessibleForFree": true,
   "isPartOf": {
     "@type": ["CreativeWork", "Product"],
     "name": "Ombra del Portico",
-    "productID": "CAowo7qiDA:openaccess"
+    "productID": "ombradelportico.it:openaccess"
   }
 }
 </script>
@@ -98,7 +98,7 @@
     {
       "@type": "ListItem",
       "position": 3,
-      "name": "{{ articolo.titolo|truncatechars:50 }}",
+      "name": "{{ articolo.titolo|escapejs }}",
       "item": "{{ canonical_url }}"
     }
   ]
@@ -384,7 +384,7 @@
                         <meta itemprop="position" content="2" />
                     </li>
                     <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem" class="active">
-                        <span itemprop="name">{{ articolo.titolo|truncatechars:50 }}</span>
+                        <span itemprop="name">{{ articolo.titolo }}</span>
                         <meta itemprop="position" content="3" />
                     </li>
                 </ol>
