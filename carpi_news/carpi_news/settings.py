@@ -336,3 +336,15 @@ YOUTUBE_PLAYLIST_ID = os.getenv('YOUTUBE_PLAYLIST_ID', '')
 TELEGRAM_AUTO_SHARE = os.getenv('TELEGRAM_AUTO_SHARE', 'False').lower() in ['true', '1', 'yes']
 TELEGRAM_BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '')
 TELEGRAM_CHAT_ID = os.getenv('TELEGRAM_CHAT_ID', '')
+
+# Facebook (condivisione diretta tramite Graph API)
+FACEBOOK_AUTO_SHARE = os.getenv('FACEBOOK_AUTO_SHARE', 'False').lower() in ['true', '1', 'yes']
+FACEBOOK_PAGE_ID = os.getenv('FACEBOOK_PAGE_ID', '')
+FACEBOOK_ACCESS_TOKEN = os.getenv('FACEBOOK_ACCESS_TOKEN', '')
+FACEBOOK_APP_ID = os.getenv('FACEBOOK_APP_ID', '')
+FACEBOOK_APP_SECRET = os.getenv('FACEBOOK_APP_SECRET', '')
+
+# Instagram (condivisione diretta tramite Instagram Graph API)
+# Richiede account Instagram Business/Creator collegato alla pagina Facebook
+INSTAGRAM_AUTO_SHARE = os.getenv('INSTAGRAM_AUTO_SHARE', 'False').lower() in ['true', '1', 'yes']
+INSTAGRAM_ACCOUNT_ID = os.getenv('INSTAGRAM_ACCOUNT_ID', '')
