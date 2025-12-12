@@ -3,6 +3,8 @@ import requests
 import time
 from typing import Dict, Optional
 from django.conf import settings
+from PIL import Image
+from io import BytesIO
 
 
 logger = logging.getLogger(__name__)
@@ -64,7 +66,40 @@ class SocialMediaManager:
             
         # Fallback: aggiungi il dominio
         return f"https://ombradelportico.it{foto_field}"
-    
+
+    def _validate_instagram_image(self, image_url: str) -> bool:
+        """
+        Valida che l'immagine rispetti i requisiti di Instagram per aspect ratio.
+        Instagram accetta aspect ratio tra 4:5 (0.8) e 1.91:1
+
+        Args:
+            image_url: URL assoluto dell'immagine
+
+        Returns:
+            True se l'immagine è compatibile, False altrimenti
+        """
+        try:
+            response = requests.get(image_url, timeout=10)
+            if response.status_code != 200:
+                logger.error(f"Impossibile scaricare immagine per validazione: {response.status_code}")
+                return False
+
+            img = Image.open(BytesIO(response.content))
+            width, height = img.size
+            aspect_ratio = width / height
+
+            # Instagram accetta aspect ratio tra 0.8 (4:5 verticale) e 1.91 (orizzontale)
+            if 0.8 <= aspect_ratio <= 1.91:
+                logger.info(f"Instagram: Immagine valida - {width}x{height} (aspect ratio: {aspect_ratio:.2f})")
+                return True
+            else:
+                logger.warning(f"Instagram: Immagine NON valida - {width}x{height} (aspect ratio: {aspect_ratio:.2f}, richiesto 0.8-1.91)")
+                return False
+
+        except Exception as e:
+            logger.error(f"Errore validazione immagine Instagram: {str(e)}")
+            return False
+
     def share_article_on_approval(self, articolo) -> Dict[str, bool]:
         """
         Condivide automaticamente un articolo su Telegram, Facebook e Instagram quando viene approvato
@@ -312,6 +347,11 @@ class SocialMediaManager:
             image_url = self._get_absolute_image_url(articolo.foto)
             if not image_url:
                 logger.error(f"URL immagine non valido: {articolo.foto}")
+                return False
+
+            # Verifica aspect ratio Instagram (deve essere tra 0.8 e 1.91)
+            if not self._validate_instagram_image(image_url):
+                logger.error(f"Immagine non compatibile con Instagram (aspect ratio fuori range 0.8-1.91): {image_url}")
                 return False
 
             # FASE 1: Crea container media
