@@ -363,14 +363,14 @@ def handle_article_approval(sender, instance, created, **kwargs):
         # Invalida immediatamente la cache RSS per IFTTT
         invalidate_rss_feeds()
 
-        # NOTA: Condivisione Telegram spostata nei feed RSS per evitare notifiche di articoli futuri
-        # La notifica viene inviata solo quando l'articolo appare effettivamente nel feed (data_pubblicazione <= now)
-        # thread = threading.Thread(
-        #     target=_share_article_background,
-        #     args=(instance.pk, instance.titolo)
-        # )
-        # thread.daemon = True
-        # thread.start()
+        # Condivisione automatica su Telegram, Facebook e Instagram
+        from .social_sharing import social_manager
+        try:
+            results = social_manager.share_article_on_approval(instance)
+            success_count = sum(1 for success in results.values() if success)
+            logger.info(f"Condivisione completata: {success_count}/{len(results)} piattaforme")
+        except Exception as e:
+            logger.error(f"Errore condivisione social per articolo ID {instance.id}: {e}")
 
         # Notifica motori di ricerca dell'articolo pubblicato
         _notify_search_engines_background(instance)
