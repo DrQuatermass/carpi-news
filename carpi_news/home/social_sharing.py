@@ -67,38 +67,90 @@ class SocialMediaManager:
         # Fallback: aggiungi il dominio
         return f"https://ombradelportico.it{foto_field}"
 
-    def _validate_instagram_image(self, image_url: str) -> bool:
+    def _prepare_instagram_image(self, image_url: str, articolo_slug: str) -> Optional[str]:
         """
-        Valida che l'immagine rispetti i requisiti di Instagram per aspect ratio.
+        Prepara l'immagine per Instagram, croppando se necessario per rispettare aspect ratio.
         Instagram accetta aspect ratio tra 4:5 (0.8) e 1.91:1
 
         Args:
-            image_url: URL assoluto dell'immagine
+            image_url: URL assoluto dell'immagine originale
+            articolo_slug: Slug dell'articolo per naming file
 
         Returns:
-            True se l'immagine è compatibile, False altrimenti
+            URL dell'immagine pronta (originale o croppata), None se errore
         """
         try:
             response = requests.get(image_url, timeout=10)
             if response.status_code != 200:
-                logger.error(f"Impossibile scaricare immagine per validazione: {response.status_code}")
-                return False
+                logger.error(f"Impossibile scaricare immagine: {response.status_code}")
+                return None
 
             img = Image.open(BytesIO(response.content))
-            width, height = img.size
-            aspect_ratio = width / height
+            original_width, original_height = img.size
+            aspect_ratio = original_width / original_height
 
             # Instagram accetta aspect ratio tra 0.8 (4:5 verticale) e 1.91 (orizzontale)
             if 0.8 <= aspect_ratio <= 1.91:
-                logger.info(f"Instagram: Immagine valida - {width}x{height} (aspect ratio: {aspect_ratio:.2f})")
-                return True
+                logger.info(f"Instagram: Immagine già compatibile - {original_width}x{original_height} (aspect ratio: {aspect_ratio:.2f})")
+                return image_url
+
+            # Immagine troppo larga o troppo alta - crop al centro
+            logger.info(f"Instagram: Crop necessario - {original_width}x{original_height} (aspect ratio: {aspect_ratio:.2f})")
+
+            if aspect_ratio > 1.91:
+                # Troppo larga - usa aspect ratio 1.91:1 (massimo orizzontale Instagram)
+                target_aspect = 1.91
+                new_width = int(original_height * target_aspect)
+                new_height = original_height
+                logger.info(f"Instagram: Crop orizzontale a 1.91:1 -> {new_width}x{new_height}")
             else:
-                logger.warning(f"Instagram: Immagine NON valida - {width}x{height} (aspect ratio: {aspect_ratio:.2f}, richiesto 0.8-1.91)")
-                return False
+                # Troppo alta - usa aspect ratio 0.8 (4:5, massimo verticale Instagram)
+                target_aspect = 0.8
+                new_width = original_width
+                new_height = int(original_width / target_aspect)
+                logger.info(f"Instagram: Crop verticale a 4:5 -> {new_width}x{new_height}")
+
+            # Crop al centro
+            left = (original_width - new_width) // 2
+            top = (original_height - new_height) // 2
+            right = left + new_width
+            bottom = top + new_height
+
+            cropped_img = img.crop((left, top, right, bottom))
+
+            # Salva immagine croppata temporaneamente
+            import os
+            from django.conf import settings
+
+            media_root = settings.MEDIA_ROOT
+            instagram_dir = os.path.join(media_root, 'images', 'instagram_temp')
+            os.makedirs(instagram_dir, exist_ok=True)
+
+            # Nome file basato su slug articolo
+            filename = f"{articolo_slug}_ig.jpg"
+            filepath = os.path.join(instagram_dir, filename)
+
+            # Salva come JPEG (più compatibile di WebP per Instagram)
+            if cropped_img.mode in ('RGBA', 'LA', 'P'):
+                # Converti trasparenza in bianco
+                background = Image.new('RGB', cropped_img.size, (255, 255, 255))
+                if cropped_img.mode == 'P':
+                    cropped_img = cropped_img.convert('RGBA')
+                background.paste(cropped_img, mask=cropped_img.split()[-1] if cropped_img.mode == 'RGBA' else None)
+                cropped_img = background
+
+            cropped_img.save(filepath, 'JPEG', quality=95, optimize=True)
+
+            # Ritorna URL assoluto dell'immagine croppata
+            cropped_url = f"https://ombradelportico.it/media/images/instagram_temp/{filename}"
+            logger.info(f"Instagram: Immagine croppata salvata -> {cropped_url}")
+            return cropped_url
 
         except Exception as e:
-            logger.error(f"Errore validazione immagine Instagram: {str(e)}")
-            return False
+            logger.error(f"Errore preparazione immagine Instagram: {str(e)}")
+            import traceback
+            logger.error(traceback.format_exc())
+            return None
 
     def share_article_on_approval(self, articolo) -> Dict[str, bool]:
         """
@@ -344,14 +396,15 @@ class SocialMediaManager:
                 caption = caption[:2197] + "..."
 
             # URL immagine assoluto
-            image_url = self._get_absolute_image_url(articolo.foto)
-            if not image_url:
+            original_image_url = self._get_absolute_image_url(articolo.foto)
+            if not original_image_url:
                 logger.error(f"URL immagine non valido: {articolo.foto}")
                 return False
 
-            # Verifica aspect ratio Instagram (deve essere tra 0.8 e 1.91)
-            if not self._validate_instagram_image(image_url):
-                logger.error(f"Immagine non compatibile con Instagram (aspect ratio fuori range 0.8-1.91): {image_url}")
+            # Prepara immagine per Instagram (crop automatico se necessario)
+            image_url = self._prepare_instagram_image(original_image_url, articolo.slug)
+            if not image_url:
+                logger.error(f"Impossibile preparare immagine per Instagram")
                 return False
 
             # FASE 1: Crea container media
