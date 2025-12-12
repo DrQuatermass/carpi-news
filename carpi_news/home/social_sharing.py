@@ -67,7 +67,117 @@ class SocialMediaManager:
         # Fallback: aggiungi il dominio
         return f"https://ombradelportico.it{foto_field}"
 
-    def _prepare_instagram_image(self, image_url: str, articolo_slug: str) -> Optional[str]:
+    def _add_title_overlay(self, img: Image.Image, title: str) -> Image.Image:
+        """
+        Aggiunge overlay con titolo all'immagine per Instagram.
+        Fascia grigia semi-trasparente in basso con titolo in Playfair Display.
+
+        Args:
+            img: Immagine PIL già processata
+            title: Titolo dell'articolo
+
+        Returns:
+            Immagine con overlay
+        """
+        from PIL import ImageDraw, ImageFont
+        import textwrap
+
+        width, height = img.size
+
+        # Crea un layer trasparente per l'overlay
+        overlay = Image.new('RGBA', img.size, (0, 0, 0, 0))
+        draw = ImageDraw.Draw(overlay)
+
+        # Fascia grigia semi-trasparente in basso (20% altezza immagine)
+        overlay_height = int(height * 0.2)
+        overlay_y = height - overlay_height
+
+        # Rettangolo grigio semi-trasparente
+        draw.rectangle(
+            [(0, overlay_y), (width, height)],
+            fill=(50, 50, 50, 180)  # Grigio scuro con 70% opacità
+        )
+
+        # Carica font Playfair Display (prova diverse posizioni)
+        font_size = int(width * 0.045)  # Font size proporzionale alla larghezza
+        font = None
+
+        try:
+            # Prova a caricare Playfair Display
+            font = ImageFont.truetype("/usr/share/fonts/truetype/playfair-display/PlayfairDisplay-Bold.ttf", font_size)
+        except:
+            try:
+                # Fallback: Prova path alternativo
+                font = ImageFont.truetype("C:\\Windows\\Fonts\\PlayfairDisplay-Bold.ttf", font_size)
+            except:
+                try:
+                    # Fallback: Usa Georgia (simile a Playfair)
+                    font = ImageFont.truetype("/usr/share/fonts/truetype/liberation/LiberationSerif-Bold.ttf", font_size)
+                except:
+                    try:
+                        # Ultimo fallback: Times New Roman
+                        font = ImageFont.truetype("C:\\Windows\\Fonts\\timesbd.ttf", font_size)
+                    except:
+                        # Default font
+                        font = ImageFont.load_default()
+                        logger.warning("Instagram: Font Playfair Display non trovato, uso font default")
+
+        # Wrappa il testo per farlo stare nella larghezza
+        max_chars = int(width / (font_size * 0.6))  # Stima caratteri per riga
+        wrapped_text = textwrap.fill(title, width=max_chars)
+        lines = wrapped_text.split('\n')
+
+        # Limita a massimo 3 righe
+        if len(lines) > 3:
+            lines = lines[:3]
+            lines[2] = lines[2][:max_chars-3] + '...'
+
+        # Calcola posizione verticale centrata nell'overlay
+        line_height = font_size * 1.2
+        total_text_height = len(lines) * line_height
+        text_y = overlay_y + (overlay_height - total_text_height) // 2
+
+        # Disegna ogni riga di testo
+        for i, line in enumerate(lines):
+            # Calcola larghezza testo per centrarlo
+            bbox = draw.textbbox((0, 0), line, font=font)
+            text_width = bbox[2] - bbox[0]
+            text_x = (width - text_width) // 2
+
+            y_position = text_y + (i * line_height)
+
+            # Ombra nera per maggiore leggibilità
+            for offset_x, offset_y in [(2, 2), (-2, 2), (2, -2), (-2, -2)]:
+                draw.text(
+                    (text_x + offset_x, y_position + offset_y),
+                    line,
+                    font=font,
+                    fill=(0, 0, 0, 255)
+                )
+
+            # Testo bianco principale
+            draw.text(
+                (text_x, y_position),
+                line,
+                font=font,
+                fill=(255, 255, 255, 255)
+            )
+
+        # Converti immagine originale in RGBA
+        if img.mode != 'RGBA':
+            img = img.convert('RGBA')
+
+        # Componi overlay su immagine
+        img_with_overlay = Image.alpha_composite(img, overlay)
+
+        # Converti a RGB per JPEG
+        final_img = Image.new('RGB', img_with_overlay.size, (255, 255, 255))
+        final_img.paste(img_with_overlay, (0, 0), img_with_overlay)
+
+        logger.info(f"Instagram: Overlay titolo aggiunto ({len(lines)} righe)")
+        return final_img
+
+    def _prepare_instagram_image(self, image_url: str, articolo_slug: str, title: str = "") -> Optional[str]:
         """
         Prepara l'immagine per Instagram, croppando se necessario per rispettare aspect ratio.
         Instagram accetta aspect ratio tra 4:5 (0.8) e 1.91:1
@@ -154,6 +264,19 @@ class SocialMediaManager:
 
             cropped_img = img.crop((left, top, right, bottom))
 
+            # Converti in RGB se necessario
+            if cropped_img.mode in ('RGBA', 'LA', 'P'):
+                background = Image.new('RGB', cropped_img.size, (255, 255, 255))
+                if cropped_img.mode == 'P':
+                    cropped_img = cropped_img.convert('RGBA')
+                background.paste(cropped_img, mask=cropped_img.split()[-1] if cropped_img.mode == 'RGBA' else None)
+                cropped_img = background
+
+            # Aggiungi overlay con titolo (se fornito)
+            if title:
+                cropped_img = self._add_title_overlay(cropped_img, title)
+                logger.info(f"Instagram: Overlay titolo applicato")
+
             # Salva immagine croppata temporaneamente
             import os
             from django.conf import settings
@@ -165,15 +288,6 @@ class SocialMediaManager:
             # Nome file basato su slug articolo
             filename = f"{articolo_slug}_ig.jpg"
             filepath = os.path.join(instagram_dir, filename)
-
-            # Salva come JPEG (più compatibile di WebP per Instagram)
-            if cropped_img.mode in ('RGBA', 'LA', 'P'):
-                # Converti trasparenza in bianco
-                background = Image.new('RGB', cropped_img.size, (255, 255, 255))
-                if cropped_img.mode == 'P':
-                    cropped_img = cropped_img.convert('RGBA')
-                background.paste(cropped_img, mask=cropped_img.split()[-1] if cropped_img.mode == 'RGBA' else None)
-                cropped_img = background
 
             cropped_img.save(filepath, 'JPEG', quality=95, optimize=True)
 
@@ -437,8 +551,8 @@ class SocialMediaManager:
                 logger.error(f"URL immagine non valido: {articolo.foto}")
                 return False
 
-            # Prepara immagine per Instagram (crop automatico se necessario)
-            image_url = self._prepare_instagram_image(original_image_url, articolo.slug)
+            # Prepara immagine per Instagram (crop automatico e overlay titolo)
+            image_url = self._prepare_instagram_image(original_image_url, articolo.slug, articolo.titolo)
             if not image_url:
                 logger.error(f"Impossibile preparare immagine per Instagram")
                 return False
