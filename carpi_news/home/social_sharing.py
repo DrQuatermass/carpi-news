@@ -236,48 +236,53 @@ class SocialMediaManager:
             aspect_ratio = original_width / original_height
 
             # Instagram accetta aspect ratio tra 0.8 (4:5 verticale) e 1.91 (orizzontale)
-            if 0.8 <= aspect_ratio <= 1.91:
-                logger.info(f"Instagram: Immagine già compatibile - {original_width}x{original_height} (aspect ratio: {aspect_ratio:.2f})")
-                return image_url
+            needs_crop = not (0.8 <= aspect_ratio <= 1.91)
 
-            # Immagine troppo larga o troppo alta - crop al centro
-            logger.info(f"Instagram: Crop necessario - {original_width}x{original_height} (aspect ratio: {aspect_ratio:.2f})")
-
-            if aspect_ratio > 1.91:
-                # Troppo larga - usa aspect ratio 1.91:1 (massimo orizzontale Instagram)
-                target_aspect = 1.91
-                new_width = int(original_height * target_aspect)
-                new_height = original_height
-                logger.info(f"Instagram: Crop orizzontale a 1.91:1 -> {new_width}x{new_height}")
+            if needs_crop:
+                # Immagine troppo larga o troppo alta - crop al centro
+                logger.info(f"Instagram: Crop necessario - {original_width}x{original_height} (aspect ratio: {aspect_ratio:.2f})")
             else:
-                # Troppo alta - usa aspect ratio 0.8 (4:5, massimo verticale Instagram)
-                target_aspect = 0.8
-                new_width = original_width
-                new_height = int(original_width / target_aspect)
-                logger.info(f"Instagram: Crop verticale a 4:5 -> {new_width}x{new_height}")
+                logger.info(f"Instagram: Immagine già compatibile - {original_width}x{original_height} (aspect ratio: {aspect_ratio:.2f})")
 
-            # Crop al centro
-            left = (original_width - new_width) // 2
-            top = (original_height - new_height) // 2
-            right = left + new_width
-            bottom = top + new_height
+            if needs_crop:
+                if aspect_ratio > 1.91:
+                    # Troppo larga - usa aspect ratio 1.91:1 (massimo orizzontale Instagram)
+                    target_aspect = 1.91
+                    new_width = int(original_height * target_aspect)
+                    new_height = original_height
+                    logger.info(f"Instagram: Crop orizzontale a 1.91:1 -> {new_width}x{new_height}")
+                else:
+                    # Troppo alta - usa aspect ratio 0.8 (4:5, massimo verticale Instagram)
+                    target_aspect = 0.8
+                    new_width = original_width
+                    new_height = int(original_width / target_aspect)
+                    logger.info(f"Instagram: Crop verticale a 4:5 -> {new_width}x{new_height}")
 
-            cropped_img = img.crop((left, top, right, bottom))
+                # Crop al centro
+                left = (original_width - new_width) // 2
+                top = (original_height - new_height) // 2
+                right = left + new_width
+                bottom = top + new_height
+
+                processed_img = img.crop((left, top, right, bottom))
+            else:
+                # Nessun crop necessario, usa immagine originale
+                processed_img = img
 
             # Converti in RGB se necessario
-            if cropped_img.mode in ('RGBA', 'LA', 'P'):
-                background = Image.new('RGB', cropped_img.size, (255, 255, 255))
-                if cropped_img.mode == 'P':
-                    cropped_img = cropped_img.convert('RGBA')
-                background.paste(cropped_img, mask=cropped_img.split()[-1] if cropped_img.mode == 'RGBA' else None)
-                cropped_img = background
+            if processed_img.mode in ('RGBA', 'LA', 'P'):
+                background = Image.new('RGB', processed_img.size, (255, 255, 255))
+                if processed_img.mode == 'P':
+                    processed_img = processed_img.convert('RGBA')
+                background.paste(processed_img, mask=processed_img.split()[-1] if processed_img.mode == 'RGBA' else None)
+                processed_img = background
 
             # Aggiungi overlay con titolo (se fornito)
             if title:
-                cropped_img = self._add_title_overlay(cropped_img, title)
+                processed_img = self._add_title_overlay(processed_img, title)
                 logger.info(f"Instagram: Overlay titolo applicato")
 
-            # Salva immagine croppata temporaneamente
+            # Salva immagine processata temporaneamente
             import os
             from django.conf import settings
 
@@ -289,12 +294,12 @@ class SocialMediaManager:
             filename = f"{articolo_slug}_ig.jpg"
             filepath = os.path.join(instagram_dir, filename)
 
-            cropped_img.save(filepath, 'JPEG', quality=95, optimize=True)
+            processed_img.save(filepath, 'JPEG', quality=95, optimize=True)
 
-            # Ritorna URL assoluto dell'immagine croppata
-            cropped_url = f"https://ombradelportico.it/media/images/instagram_temp/{filename}"
-            logger.info(f"Instagram: Immagine croppata salvata -> {cropped_url}")
-            return cropped_url
+            # Ritorna URL assoluto dell'immagine processata
+            final_url = f"https://ombradelportico.it/media/images/instagram_temp/{filename}"
+            logger.info(f"Instagram: Immagine salvata -> {final_url}")
+            return final_url
 
         except Exception as e:
             logger.error(f"Errore preparazione immagine Instagram: {str(e)}")
