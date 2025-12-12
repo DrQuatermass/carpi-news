@@ -79,11 +79,47 @@ class SocialMediaManager:
         Returns:
             URL dell'immagine pronta (originale o croppata), None se errore
         """
+        # Retry con backoff esponenziale per gestire problemi di rete temporanei
+        max_retries = 3
+
+        for attempt in range(max_retries):
+            try:
+                # Headers HTTP completi per evitare blocchi anti-bot
+                headers = {
+                    'User-Agent': 'Mozilla/5.0 (compatible; OmbraDelPortico/1.0; +https://ombradelportico.it)',
+                    'Accept': 'image/webp,image/jpeg,image/png,image/*,*/*',
+                    'Accept-Encoding': 'gzip, deflate',
+                }
+
+                timeout = 30  # Aumentato timeout per immagini grandi o server lenti
+                logger.info(f"Instagram: Download immagine (tentativo {attempt + 1}/{max_retries}): {image_url}")
+
+                response = requests.get(image_url, timeout=timeout, headers=headers)
+
+                if response.status_code != 200:
+                    logger.warning(f"HTTP {response.status_code} - tentativo {attempt + 1}/{max_retries}")
+                    if attempt < max_retries - 1:
+                        delay = 2 ** attempt  # 1s, 2s, 4s
+                        time.sleep(delay)
+                        continue
+                    else:
+                        logger.error(f"Download immagine fallito dopo {max_retries} tentativi: HTTP {response.status_code}")
+                        return None
+
+                # Download riuscito, prosegui con il processing
+                break
+
+            except requests.exceptions.RequestException as e:
+                if attempt < max_retries - 1:
+                    delay = 2 ** attempt  # 1s, 2s, 4s
+                    logger.warning(f"Errore download (tentativo {attempt + 1}/{max_retries}): {str(e)[:100]}. Retry tra {delay}s...")
+                    time.sleep(delay)
+                    continue
+                else:
+                    logger.error(f"Download immagine fallito dopo {max_retries} tentativi: {str(e)[:200]}")
+                    return None
+
         try:
-            response = requests.get(image_url, timeout=10)
-            if response.status_code != 200:
-                logger.error(f"Impossibile scaricare immagine: {response.status_code}")
-                return None
 
             img = Image.open(BytesIO(response.content))
             original_width, original_height = img.size
