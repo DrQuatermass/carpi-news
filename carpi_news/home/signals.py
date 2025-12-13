@@ -439,21 +439,36 @@ def _share_article_background(article_id, article_title):
         import time
         time.sleep(1)
 
-        logger.info(f"[Background Thread] Inizio condivisione social per: {article_title}")
+        # Lock distribuito per evitare che più worker Gunicorn eseguano la condivisione contemporaneamente
+        from django.core.cache import cache
+        lock_key = f'share_article_lock_{article_id}'
+        lock_timeout = 120  # 2 minuti (più del tempo massimo per Instagram retry)
 
-        # Ricarica l'articolo dal database per sicurezza
-        from .models import Articolo
-        from .social_sharing import social_manager
-
-        articolo = Articolo.objects.get(pk=article_id)
-
-        # Verifica che sia ancora approvato (doppio controllo)
-        if not articolo.approvato:
-            logger.warning(f"[Background Thread] Articolo '{article_title}' non più approvato, annullo condivisione")
+        # Tenta di acquisire il lock (atomic operation)
+        if not cache.add(lock_key, 'locked', lock_timeout):
+            logger.info(f"[Background Thread] Condivisione già in corso per articolo {article_id} (altro worker), skip")
             return
 
-        # Esegui la condivisione (con retry automatico Instagram)
-        results = social_manager.share_article_on_approval(articolo)
+        try:
+            logger.info(f"[Background Thread] Lock acquisito, inizio condivisione social per: {article_title}")
+
+            # Ricarica l'articolo dal database per sicurezza
+            from .models import Articolo
+            from .social_sharing import social_manager
+
+            articolo = Articolo.objects.get(pk=article_id)
+
+            # Verifica che sia ancora approvato (doppio controllo)
+            if not articolo.approvato:
+                logger.warning(f"[Background Thread] Articolo '{article_title}' non più approvato, annullo condivisione")
+                return
+
+            # Esegui la condivisione (con retry automatico Instagram)
+            results = social_manager.share_article_on_approval(articolo)
+        finally:
+            # Rilascia il lock
+            cache.delete(lock_key)
+            logger.info(f"[Background Thread] Lock rilasciato per articolo {article_id}")
 
         # Log dei risultati
         successful_platforms = [platform for platform, success in results.items() if success]
