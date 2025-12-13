@@ -399,6 +399,33 @@ Ombra del Portico - Sistema pubbliredazionali
         return self.titolo
 
 
+class SocialPublicationLog(models.Model):
+    """Log delle pubblicazioni social per evitare duplicati"""
+    PLATFORM_CHOICES = [
+        ('telegram', 'Telegram'),
+        ('facebook', 'Facebook'),
+        ('instagram', 'Instagram'),
+    ]
+
+    articolo = models.ForeignKey(Articolo, on_delete=models.CASCADE, related_name='social_publications')
+    platform = models.CharField(max_length=20, choices=PLATFORM_CHOICES, db_index=True)
+    success = models.BooleanField(help_text="Pubblicazione riuscita")
+    published_at = models.DateTimeField(auto_now_add=True)
+    error_message = models.TextField(blank=True, null=True, help_text="Messaggio di errore se fallita")
+
+    class Meta:
+        verbose_name = "Log Pubblicazione Social"
+        verbose_name_plural = "Log Pubblicazioni Social"
+        ordering = ['-published_at']
+        indexes = [
+            models.Index(fields=['articolo', 'platform', 'success']),
+        ]
+
+    def __str__(self):
+        status = "✓" if self.success else "✗"
+        return f"{status} {self.platform} - {self.articolo.titolo[:50]} ({self.published_at.strftime('%Y-%m-%d %H:%M')})"
+
+
 class MonitorConfig(models.Model):
     """Configurazione per i monitor di notizie"""
 

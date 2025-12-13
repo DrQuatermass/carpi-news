@@ -310,6 +310,7 @@ class SocialMediaManager:
     def share_article_on_approval(self, articolo) -> Dict[str, bool]:
         """
         Condivide automaticamente un articolo su Telegram, Facebook e Instagram quando viene approvato
+        Con tracking per evitare duplicati - controlla se già pubblicato prima di condividere
         Twitter è ora gestito automaticamente via RSS + IFTTT
 
         Args:
@@ -318,6 +319,8 @@ class SocialMediaManager:
         Returns:
             Dict con il risultato della condivisione (Telegram, Facebook, Instagram)
         """
+        from .models import SocialPublicationLog
+
         results = {}
         article_url = f"https://ombradelportico.it/articolo/{articolo.slug}/"
 
@@ -325,35 +328,184 @@ class SocialMediaManager:
 
         # Telegram
         if self.platforms['telegram']['enabled']:
-            results['telegram'] = self._share_to_telegram(articolo, article_url)
+            # Controlla se già pubblicato con successo
+            already_published = SocialPublicationLog.objects.filter(
+                articolo=articolo,
+                platform='telegram',
+                success=True
+            ).exists()
+
+            if already_published:
+                logger.info(f"Telegram: Articolo '{articolo.titolo}' già pubblicato, skip")
+                results['telegram'] = True
+            else:
+                success = self._share_to_telegram(articolo, article_url)
+                results['telegram'] = success
+                # Log risultato
+                SocialPublicationLog.objects.create(
+                    articolo=articolo,
+                    platform='telegram',
+                    success=success,
+                    error_message=None if success else "Errore condivisione Telegram"
+                )
         else:
             logger.info("Condivisione Telegram disabilitata")
 
         # Facebook
         if self.platforms['facebook']['enabled']:
-            results['facebook'] = self._share_to_facebook(articolo, article_url)
+            # Controlla se già pubblicato con successo
+            already_published = SocialPublicationLog.objects.filter(
+                articolo=articolo,
+                platform='facebook',
+                success=True
+            ).exists()
+
+            if already_published:
+                logger.info(f"Facebook: Articolo '{articolo.titolo}' già pubblicato, skip")
+                results['facebook'] = True
+            else:
+                success = self._share_to_facebook(articolo, article_url)
+                results['facebook'] = success
+                # Log risultato
+                SocialPublicationLog.objects.create(
+                    articolo=articolo,
+                    platform='facebook',
+                    success=success,
+                    error_message=None if success else "Errore condivisione Facebook"
+                )
         else:
             logger.info("Condivisione Facebook disabilitata")
 
         # Instagram (solo se c'è un'immagine)
         if self.platforms['instagram']['enabled']:
             if articolo.foto:
-                results['instagram'] = self._share_to_instagram(articolo, article_url)
+                # Controlla se già pubblicato con successo
+                already_published = SocialPublicationLog.objects.filter(
+                    articolo=articolo,
+                    platform='instagram',
+                    success=True
+                ).exists()
+
+                if already_published:
+                    logger.info(f"Instagram: Articolo '{articolo.titolo}' già pubblicato, skip")
+                    results['instagram'] = True
+                else:
+                    success = self._share_to_instagram(articolo, article_url)
+                    results['instagram'] = success
+                    # Log risultato
+                    SocialPublicationLog.objects.create(
+                        articolo=articolo,
+                        platform='instagram',
+                        success=success,
+                        error_message=None if success else "Errore condivisione Instagram"
+                    )
             else:
                 logger.warning(f"Condivisione Instagram saltata per '{articolo.titolo}': immagine obbligatoria")
                 results['instagram'] = False
         else:
             logger.info("Condivisione Instagram disabilitata")
 
-        # Log risultati
-        for platform, success in results.items():
-            if success:
-                logger.info(f"Articolo '{articolo.titolo}' condiviso con successo su {platform.capitalize()}")
-            else:
-                logger.warning(f"Condivisione {platform.capitalize()} fallita per articolo '{articolo.titolo}'")
+        # Log risultati finali
+        success_count = sum(1 for success in results.values() if success)
+        total_count = len(results)
+        logger.info(f"Condivisione completata: {success_count}/{total_count} piattaforme per '{articolo.titolo}'")
 
         return results
-    
+
+    def retry_failed_platforms_only(self, articolo) -> Dict[str, bool]:
+        """
+        Riprova la condivisione SOLO sulle piattaforme che non hanno avuto successo.
+        Utile quando Instagram fallisce temporaneamente e serve un retry manuale.
+
+        Args:
+            articolo: Istanza del modello Articolo
+
+        Returns:
+            Dict con il risultato del retry per le piattaforme fallite
+        """
+        from .models import SocialPublicationLog
+
+        results = {}
+        article_url = f"https://ombradelportico.it/articolo/{articolo.slug}/"
+
+        logger.info(f"Retry condivisione solo piattaforme fallite per: {articolo.titolo}")
+
+        # Telegram - retry solo se non pubblicato con successo
+        if self.platforms['telegram']['enabled']:
+            already_published = SocialPublicationLog.objects.filter(
+                articolo=articolo,
+                platform='telegram',
+                success=True
+            ).exists()
+
+            if already_published:
+                logger.info(f"Telegram: già pubblicato con successo, skip retry")
+                results['telegram'] = True
+            else:
+                logger.info(f"Telegram: tentativo retry...")
+                success = self._share_to_telegram(articolo, article_url)
+                results['telegram'] = success
+                SocialPublicationLog.objects.create(
+                    articolo=articolo,
+                    platform='telegram',
+                    success=success,
+                    error_message=None if success else "Retry fallito"
+                )
+
+        # Facebook - retry solo se non pubblicato con successo
+        if self.platforms['facebook']['enabled']:
+            already_published = SocialPublicationLog.objects.filter(
+                articolo=articolo,
+                platform='facebook',
+                success=True
+            ).exists()
+
+            if already_published:
+                logger.info(f"Facebook: già pubblicato con successo, skip retry")
+                results['facebook'] = True
+            else:
+                logger.info(f"Facebook: tentativo retry...")
+                success = self._share_to_facebook(articolo, article_url)
+                results['facebook'] = success
+                SocialPublicationLog.objects.create(
+                    articolo=articolo,
+                    platform='facebook',
+                    success=success,
+                    error_message=None if success else "Retry fallito"
+                )
+
+        # Instagram - retry solo se non pubblicato con successo
+        if self.platforms['instagram']['enabled']:
+            if articolo.foto:
+                already_published = SocialPublicationLog.objects.filter(
+                    articolo=articolo,
+                    platform='instagram',
+                    success=True
+                ).exists()
+
+                if already_published:
+                    logger.info(f"Instagram: già pubblicato con successo, skip retry")
+                    results['instagram'] = True
+                else:
+                    logger.info(f"Instagram: tentativo retry...")
+                    success = self._share_to_instagram(articolo, article_url)
+                    results['instagram'] = success
+                    SocialPublicationLog.objects.create(
+                        articolo=articolo,
+                        platform='instagram',
+                        success=success,
+                        error_message=None if success else "Retry fallito"
+                    )
+            else:
+                logger.warning(f"Instagram: immagine obbligatoria, skip retry")
+                results['instagram'] = False
+
+        success_count = sum(1 for success in results.values() if success)
+        total_count = len(results)
+        logger.info(f"Retry completato: {success_count}/{total_count} piattaforme")
+
+        return results
+
     def _share_to_telegram(self, articolo, article_url: str) -> bool:
         """Condivide su Telegram tramite Bot API con foto se disponibile"""
         try:

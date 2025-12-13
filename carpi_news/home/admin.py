@@ -7,7 +7,7 @@ from django.shortcuts import redirect, render
 from django.contrib import messages
 from django.contrib.admin import SimpleListFilter
 from django import forms
-from .models import Articolo, MonitorConfig, APIUsage, ChatbotConversation
+from .models import Articolo, MonitorConfig, APIUsage, ChatbotConversation, SocialPublicationLog
 import threading
 import urllib.parse
 import subprocess
@@ -1299,6 +1299,37 @@ class ChatbotConversationAdmin(admin.ModelAdmin):
     def has_delete_permission(self, request, obj=None):
         """Permetti solo agli admin di eliminare"""
         return request.user.is_superuser
+
+
+@admin.register(SocialPublicationLog)
+class SocialPublicationLogAdmin(admin.ModelAdmin):
+    """Admin per il log delle pubblicazioni social"""
+    list_display = ['status_icon', 'platform', 'articolo_title', 'published_at']
+    list_filter = ['platform', 'success', 'published_at']
+    search_fields = ['articolo__titolo', 'articolo__slug']
+    readonly_fields = ['articolo', 'platform', 'success', 'published_at', 'error_message']
+    date_hierarchy = 'published_at'
+    ordering = ['-published_at']
+
+    def status_icon(self, obj):
+        """Icona di stato"""
+        if obj.success:
+            return format_html('<span style="color: green; font-size: 16px;">✓</span>')
+        return format_html('<span style="color: red; font-size: 16px;">✗</span>')
+    status_icon.short_description = 'Stato'
+
+    def articolo_title(self, obj):
+        """Titolo articolo con link"""
+        return format_html(
+            '<a href="/admin/home/articolo/{}/change/">{}</a>',
+            obj.articolo.id,
+            obj.articolo.titolo[:50] + ('...' if len(obj.articolo.titolo) > 50 else '')
+        )
+    articolo_title.short_description = 'Articolo'
+
+    def has_add_permission(self, request):
+        """Non permettere creazione manuale"""
+        return False
 
 
 # Aggiungi link alla dashboard nella lista APIUsage
