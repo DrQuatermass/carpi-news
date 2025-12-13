@@ -39,33 +39,102 @@ class SocialMediaManager:
             }
         }
     
+    def _normalize_url(self, url: str) -> str:
+        """
+        Normalizza URL rimuovendo doppi slash e altri problemi comuni
+
+        Args:
+            url: URL da normalizzare
+
+        Returns:
+            URL normalizzato
+        """
+        if not url:
+            return url
+
+        # Separa protocollo dal resto
+        if '://' in url:
+            protocol, rest = url.split('://', 1)
+            # Rimuovi doppi slash dal path (ma non dal protocollo)
+            while '//' in rest:
+                rest = rest.replace('//', '/')
+            url = f"{protocol}://{rest}"
+
+        return url
+
     def _get_absolute_image_url(self, foto_field: str) -> Optional[str]:
         """
         Converte il campo foto in URL assoluto utilizzabile dalle API social
-        
+
         Args:
             foto_field: Il contenuto del campo foto dell'articolo
-            
+
         Returns:
-            URL assoluto dell'immagine o None se non valido
+            URL assoluto dell'immagine normalizzato o None se non valido
         """
         if not foto_field:
             return None
-            
-        # Se è già un URL assoluto, ritornalo così com'è
+
+        # Se è già un URL assoluto, normalizzalo e ritornalo
         if foto_field.startswith('http://') or foto_field.startswith('https://'):
-            return foto_field
-            
+            return self._normalize_url(foto_field)
+
         # Se è un percorso relativo (es. /media/images/downloaded/...)
         if foto_field.startswith('/media/'):
-            return f"https://ombradelportico.it{foto_field}"
-            
+            url = f"https://ombradelportico.it{foto_field}"
+            return self._normalize_url(url)
+
         # Se non inizia con /, aggiungi il prefisso completo
         if not foto_field.startswith('/'):
-            return f"https://ombradelportico.it/media/{foto_field}"
-            
+            url = f"https://ombradelportico.it/media/{foto_field}"
+            return self._normalize_url(url)
+
         # Fallback: aggiungi il dominio
-        return f"https://ombradelportico.it{foto_field}"
+        url = f"https://ombradelportico.it{foto_field}"
+        return self._normalize_url(url)
+
+    def _validate_image_url(self, image_url: str, timeout: int = 10) -> bool:
+        """
+        Valida che un URL immagine sia accessibile e contenga un'immagine valida
+
+        Args:
+            image_url: URL dell'immagine da validare
+            timeout: Timeout in secondi per la richiesta HEAD
+
+        Returns:
+            True se l'immagine è accessibile e valida, False altrimenti
+        """
+        try:
+            logger.info(f"Validazione immagine: {image_url}")
+
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (compatible; OmbraDelPortico/1.0; +https://ombradelportico.it)',
+                'Accept': 'image/*',
+            }
+
+            response = requests.head(image_url, timeout=timeout, headers=headers, allow_redirects=True)
+
+            if response.status_code == 200:
+                content_type = response.headers.get('Content-Type', '').lower()
+                if 'image' in content_type:
+                    logger.info(f"Immagine valida: {content_type}")
+                    return True
+                else:
+                    logger.warning(f"URL non è un'immagine: Content-Type={content_type}")
+                    return False
+            else:
+                logger.warning(f"Immagine non accessibile: HTTP {response.status_code}")
+                return False
+
+        except requests.exceptions.Timeout:
+            logger.error(f"Timeout validazione immagine ({timeout}s): {image_url}")
+            return False
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Errore validazione immagine: {str(e)[:200]}")
+            return False
+        except Exception as e:
+            logger.error(f"Errore imprevisto validazione: {str(e)[:200]}")
+            return False
 
     def _add_title_overlay(self, img: Image.Image, title: str) -> Image.Image:
         """
@@ -390,14 +459,15 @@ class SocialMediaManager:
                     logger.info(f"Instagram: Articolo '{articolo.titolo}' già pubblicato, skip")
                     results['instagram'] = True
                 else:
-                    success = self._share_to_instagram(articolo, article_url)
+                    # Usa retry automatico con delay crescente
+                    success, error_msg = self._share_to_instagram_with_retry(articolo, article_url)
                     results['instagram'] = success
-                    # Log risultato
+                    # Log risultato con messaggio errore dettagliato
                     SocialPublicationLog.objects.create(
                         articolo=articolo,
                         platform='instagram',
                         success=success,
-                        error_message=None if success else "Errore condivisione Instagram"
+                        error_message=None if success else error_msg[:1000]  # Limita a 1000 char
                     )
             else:
                 logger.warning(f"Condivisione Instagram saltata per '{articolo.titolo}': immagine obbligatoria")
@@ -487,14 +557,15 @@ class SocialMediaManager:
                     logger.info(f"Instagram: già pubblicato con successo, skip retry")
                     results['instagram'] = True
                 else:
-                    logger.info(f"Instagram: tentativo retry...")
-                    success = self._share_to_instagram(articolo, article_url)
+                    logger.info(f"Instagram: tentativo retry con delay...")
+                    # Usa retry automatico anche per retry manuali
+                    success, error_msg = self._share_to_instagram_with_retry(articolo, article_url)
                     results['instagram'] = success
                     SocialPublicationLog.objects.create(
                         articolo=articolo,
                         platform='instagram',
                         success=success,
-                        error_message=None if success else "Retry fallito"
+                        error_message=None if success else error_msg[:1000]
                     )
             else:
                 logger.warning(f"Instagram: immagine obbligatoria, skip retry")
@@ -657,7 +728,47 @@ class SocialMediaManager:
             logger.error(f"Errore condivisione Facebook per articolo '{articolo.titolo}': {str(e)}")
             return False
 
-    def _share_to_instagram(self, articolo, article_url: str) -> bool:
+    def _share_to_instagram_with_retry(self, articolo, article_url: str, max_retries: int = 3) -> tuple[bool, str]:
+        """
+        Wrapper per _share_to_instagram con retry automatico e delay crescente
+
+        Args:
+            articolo: Istanza del modello Articolo
+            article_url: URL completo dell'articolo
+            max_retries: Numero massimo di tentativi (default 3)
+
+        Returns:
+            Tuple (success: bool, error_message: str)
+        """
+        delays = [0, 30, 60]  # Delay in secondi: immediato, +30s, +60s
+
+        for attempt in range(max_retries):
+            # Delay prima del tentativo (eccetto il primo)
+            if attempt > 0:
+                delay = delays[min(attempt, len(delays) - 1)]
+                logger.info(f"Instagram: Tentativo {attempt + 1}/{max_retries} in {delay}s...")
+                time.sleep(delay)
+            else:
+                logger.info(f"Instagram: Tentativo {attempt + 1}/{max_retries}...")
+
+            success, error_msg = self._share_to_instagram(articolo, article_url)
+
+            if success:
+                if attempt > 0:
+                    logger.info(f"Instagram: Successo al tentativo {attempt + 1}/{max_retries}")
+                return True, ""
+            else:
+                logger.warning(f"Instagram: Tentativo {attempt + 1}/{max_retries} fallito: {error_msg[:200]}")
+
+                # Se è l'ultimo tentativo, ritorna l'errore
+                if attempt == max_retries - 1:
+                    final_error = f"Fallito dopo {max_retries} tentativi. Ultimo errore: {error_msg}"
+                    logger.error(f"Instagram: {final_error}")
+                    return False, final_error
+
+        return False, f"Fallito dopo {max_retries} tentativi"
+
+    def _share_to_instagram(self, articolo, article_url: str) -> tuple[bool, str]:
         """
         Condivide su Instagram tramite Instagram Graph API (processo in 2 fasi)
 
@@ -665,17 +776,22 @@ class SocialMediaManager:
         Fase 2: Pubblica il container
 
         IMPORTANTE: Instagram richiede SEMPRE un'immagine. Post solo testo non supportati.
+
+        Returns:
+            Tuple (success: bool, error_message: str)
         """
         try:
             config = self.platforms['instagram']
             if not config['access_token'] or not config['account_id']:
-                logger.warning("Configurazione Instagram incompleta")
-                return False
+                error = "Configurazione Instagram incompleta"
+                logger.warning(error)
+                return False, error
 
             # Verifica che ci sia un'immagine
             if not articolo.foto:
-                logger.error("Instagram richiede un'immagine - post saltato")
-                return False
+                error = "Instagram richiede un'immagine - post saltato"
+                logger.error(error)
+                return False, error
 
             # Ottieni Page Access Token (necessario per Instagram)
             page_token = self._get_page_access_token(
@@ -683,8 +799,9 @@ class SocialMediaManager:
                 getattr(settings, 'FACEBOOK_PAGE_ID', '')
             )
             if not page_token:
-                logger.error("Impossibile ottenere Page Access Token per Instagram")
-                return False
+                error = "Impossibile ottenere Page Access Token per Instagram"
+                logger.error(error)
+                return False, error
 
             # Prepara caption (max 2200 caratteri)
             caption = f"{articolo.titolo}\n\n{articolo.sommario[:450]}"
@@ -705,14 +822,16 @@ class SocialMediaManager:
             # URL immagine assoluto
             original_image_url = self._get_absolute_image_url(articolo.foto)
             if not original_image_url:
-                logger.error(f"URL immagine non valido: {articolo.foto}")
-                return False
+                error = f"URL immagine non valido: {articolo.foto}"
+                logger.error(error)
+                return False, error
 
             # Prepara immagine per Instagram (crop automatico e overlay titolo)
             image_url = self._prepare_instagram_image(original_image_url, articolo.slug, articolo.titolo)
             if not image_url:
-                logger.error(f"Impossibile preparare immagine per Instagram")
-                return False
+                error = f"Impossibile preparare immagine per Instagram"
+                logger.error(error)
+                return False, error
 
             # FASE 1: Crea container media
             logger.info(f"Instagram: Creazione container media per '{articolo.titolo}'...")
@@ -727,13 +846,15 @@ class SocialMediaManager:
             logger.info(f"Instagram container response: {create_response.status_code} - {create_response.text}")
 
             if create_response.status_code != 200:
-                logger.error(f"Errore creazione container Instagram: {create_response.text}")
-                return False
+                error = f"Errore creazione container Instagram: {create_response.text}"
+                logger.error(error)
+                return False, error
 
             container_id = create_response.json().get('id')
             if not container_id:
-                logger.error("Container ID non ricevuto da Instagram")
-                return False
+                error = "Container ID non ricevuto da Instagram"
+                logger.error(error)
+                return False, error
 
             logger.info(f"Instagram: Container creato con ID {container_id}")
 
@@ -756,16 +877,18 @@ class SocialMediaManager:
                 post_id = publish_response.json().get('id')
                 logger.info(f"Articolo condiviso su Instagram (Post ID: {post_id}): {articolo.titolo}")
                 logger.info("Instagram: Ricordati di mantenere il link del sito nella bio per gli utenti")
-                return True
+                return True, ""
             else:
-                logger.error(f"Errore pubblicazione Instagram: {publish_response.text}")
-                return False
+                error = f"Errore pubblicazione Instagram: {publish_response.text}"
+                logger.error(error)
+                return False, error
 
         except Exception as e:
-            logger.error(f"Errore condivisione Instagram per articolo '{articolo.titolo}': {str(e)}")
+            error = f"Errore condivisione Instagram per articolo '{articolo.titolo}': {str(e)}"
+            logger.error(error)
             import traceback
             logger.error(traceback.format_exc())
-            return False
+            return False, error
 
     def _get_instagram_hashtags(self, categoria: str) -> str:
         """Genera hashtags appropriati basati sulla categoria dell'articolo"""
