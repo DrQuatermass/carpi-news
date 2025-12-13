@@ -360,19 +360,23 @@ def handle_article_approval(sender, instance, created, **kwargs):
         # I link interni sono già stati aggiunti durante la generazione (polish_article)
         # Non è necessario riaggiungerli qui
 
-        # Invalida immediatamente la cache RSS per IFTTT
+        # Invalida immediatamente la cache RSS per IFTTT (veloce, sincrono)
         invalidate_rss_feeds()
 
-        # Condivisione automatica su Telegram, Facebook e Instagram
-        from .social_sharing import social_manager
-        try:
-            results = social_manager.share_article_on_approval(instance)
-            success_count = sum(1 for success in results.values() if success)
-            logger.info(f"Condivisione completata: {success_count}/{len(results)} piattaforme")
-        except Exception as e:
-            logger.error(f"Errore condivisione social per articolo ID {instance.id}: {e}")
+        # Condivisione automatica in background thread per evitare timeout
+        # Instagram con retry può impiegare fino a 90 secondi
+        import threading
+        thread = threading.Thread(
+            target=_share_article_background,
+            args=(instance.id, instance.titolo),
+            name=f"ShareArticle-{instance.id}"
+        )
+        thread.daemon = True  # Thread termina quando il main process termina
+        thread.start()
 
-        # Notifica motori di ricerca dell'articolo pubblicato
+        logger.info(f"Condivisione social avviata in background per: {instance.titolo}")
+
+        # Notifica motori di ricerca dell'articolo pubblicato (già in background)
         _notify_search_engines_background(instance)
 
         logger.info(f"Feed RSS aggiornato per articolo: {instance.titolo}")
@@ -423,35 +427,55 @@ def _notify_search_engines_background(instance):
 
 def _share_article_background(article_id, article_title):
     """
-    Esegue la condivisione sui social in background
+    Esegue la condivisione sui social in background thread.
+    Utilizzato per evitare timeout HTTP quando Instagram impiega molto tempo (retry con delay fino a 90s).
+
+    Args:
+        article_id: ID dell'articolo da condividere
+        article_title: Titolo dell'articolo (per logging)
     """
     try:
         # Piccolo ritardo per evitare race conditions con la transazione di approvazione
         import time
         time.sleep(1)
-        
+
+        logger.info(f"[Background Thread] Inizio condivisione social per: {article_title}")
+
         # Ricarica l'articolo dal database per sicurezza
+        from .models import Articolo
+        from .social_sharing import social_manager
+
         articolo = Articolo.objects.get(pk=article_id)
-        
+
         # Verifica che sia ancora approvato (doppio controllo)
         if not articolo.approvato:
-            logger.warning(f"Articolo {article_title} non più approvato, annullo condivisione. Controllare signals, potrebbe essere un race condition.")
+            logger.warning(f"[Background Thread] Articolo '{article_title}' non più approvato, annullo condivisione")
             return
-        
-        # Esegui la condivisione
+
+        # Esegui la condivisione (con retry automatico Instagram)
         results = social_manager.share_article_on_approval(articolo)
-        
+
         # Log dei risultati
         successful_platforms = [platform for platform, success in results.items() if success]
         failed_platforms = [platform for platform, success in results.items() if not success]
-        
-        if successful_platforms:
-            logger.info(f"Condivisione completata con successo per '{article_title}' su: {', '.join(successful_platforms)}")
-        
-        if failed_platforms:
-            logger.warning(f"Condivisione fallita per '{article_title}' su: {', '.join(failed_platforms)}")
-            
+
+        success_count = len(successful_platforms)
+        total_count = len(results)
+
+        if success_count == total_count:
+            logger.info(f"[Background Thread] ✓ Condivisione completata: {success_count}/{total_count} piattaforme per '{article_title}'")
+            logger.info(f"[Background Thread] Piattaforme: {', '.join(successful_platforms)}")
+        elif success_count > 0:
+            logger.warning(f"[Background Thread] ⚠ Condivisione parziale: {success_count}/{total_count} piattaforme per '{article_title}'")
+            logger.info(f"[Background Thread] Successo: {', '.join(successful_platforms)}")
+            logger.warning(f"[Background Thread] Fallito: {', '.join(failed_platforms)}")
+        else:
+            logger.error(f"[Background Thread] ✗ Condivisione fallita su tutte le piattaforme per '{article_title}'")
+            logger.error(f"[Background Thread] Piattaforme fallite: {', '.join(failed_platforms)}")
+
     except Articolo.DoesNotExist:
-        logger.error(f"Articolo con ID {article_id} non trovato durante condivisione")
+        logger.error(f"[Background Thread] Articolo ID {article_id} non trovato durante condivisione")
     except Exception as e:
-        logger.error(f"Errore durante condivisione background per articolo '{article_title}': {str(e)}")
+        logger.error(f"[Background Thread] Errore durante condivisione per '{article_title}': {str(e)}")
+        import traceback
+        logger.error(f"[Background Thread] Traceback: {traceback.format_exc()}")
