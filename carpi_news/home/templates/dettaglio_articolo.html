@@ -7,13 +7,13 @@
 {% block title %}{{ articolo.titolo }} - Ombra del Portico{% endblock %}
 
 {% block og_type %}article{% endblock %}
-{% block og_url %}{{ request.build_absolute_uri }}{% endblock %}
+{% block og_url %}https://ombradelportico.it{{ request.path }}{% endblock %}
 {% block og_title %}{{ articolo.titolo }}{% endblock %}
 {% block og_description %}{{ articolo.sommario|truncatechars:300|striptags }}{% endblock %}
 {% block og_image %}{{ articolo.get_social_image_url }}{% endblock %}
 
 {% block twitter_card %}summary_large_image{% endblock %}
-{% block twitter_url %}{{ request.build_absolute_uri }}{% endblock %}
+{% block twitter_url %}https://ombradelportico.it{{ request.path }}{% endblock %}
 {% block twitter_title %}{{ articolo.titolo }}{% endblock %}
 {% block twitter_description %}{{ articolo.sommario|truncatechars:200|striptags }}{% endblock %}
 {% block twitter_image %}{{ articolo.get_social_image_url }}{% endblock %}
