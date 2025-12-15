@@ -441,8 +441,9 @@ def _share_article_background(article_id, article_title):
 
         # Lock distribuito per evitare che più worker Gunicorn eseguano la condivisione contemporaneamente
         from django.core.cache import cache
+        from .models import SocialPublicationLog
         lock_key = f'share_article_lock_{article_id}'
-        lock_timeout = 120  # 2 minuti (più del tempo massimo per Instagram retry)
+        lock_timeout = 180  # 3 minuti (tempo massimo stimato per condivisione completa)
 
         # Tenta di acquisire il lock (atomic operation)
         if not cache.add(lock_key, 'locked', lock_timeout):
@@ -463,7 +464,23 @@ def _share_article_background(article_id, article_title):
                 logger.warning(f"[Background Thread] Articolo '{article_title}' non più approvato, annullo condivisione")
                 return
 
-            # Esegui la condivisione (con retry automatico Instagram)
+            # Doppio controllo: verifica se è già stato condiviso su TUTTE le piattaforme
+            # Questo previene duplicati anche se il lock scade prematuramente
+            platforms = ['telegram', 'facebook', 'instagram']
+            already_shared_all = all(
+                SocialPublicationLog.objects.filter(
+                    articolo=articolo,
+                    platform=platform,
+                    success=True
+                ).exists()
+                for platform in platforms if articolo.foto or platform != 'instagram'
+            )
+
+            if already_shared_all:
+                logger.info(f"[Background Thread] Articolo '{article_title}' già condiviso su tutte le piattaforme, skip completo")
+                return
+
+            # Esegui la condivisione (con retry automatico Instagram e protezione duplicati interna)
             results = social_manager.share_article_on_approval(articolo)
         finally:
             # Rilascia il lock

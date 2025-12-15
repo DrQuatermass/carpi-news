@@ -389,6 +389,7 @@ class SocialMediaManager:
             Dict con il risultato della condivisione (Telegram, Facebook, Instagram)
         """
         from .models import SocialPublicationLog
+        from django.db import transaction
 
         results = {}
         article_url = f"https://ombradelportico.it/articolo/{articolo.slug}/"
@@ -397,23 +398,42 @@ class SocialMediaManager:
 
         # Telegram
         if self.platforms['telegram']['enabled']:
-            # Controlla se già pubblicato con successo
-            already_published = SocialPublicationLog.objects.filter(
-                articolo=articolo,
-                platform='telegram',
-                success=True
-            ).exists()
-
-            if already_published:
-                logger.info(f"Telegram: Articolo '{articolo.titolo}' già pubblicato, skip")
-                results['telegram'] = True
-            else:
-                success = self._share_to_telegram(articolo, article_url)
-                results['telegram'] = success
-                # Log risultato
-                SocialPublicationLog.objects.create(
+            should_share = False
+            with transaction.atomic():
+                # Controlla se già pubblicato con successo (lock a livello DB per prevenire race conditions)
+                already_published = SocialPublicationLog.objects.select_for_update().filter(
                     articolo=articolo,
                     platform='telegram',
+                    success=True
+                ).exists()
+
+                if already_published:
+                    logger.info(f"Telegram: Articolo '{articolo.titolo}' già pubblicato, skip")
+                    results['telegram'] = True
+                else:
+                    # Crea un record "in progress" per prevenire condivisioni parallele
+                    log_entry, created = SocialPublicationLog.objects.get_or_create(
+                        articolo=articolo,
+                        platform='telegram',
+                        defaults={'success': False, 'error_message': 'In progress...'}
+                    )
+
+                    # Se il record esisteva già, un altro worker sta gestendo questa condivisione
+                    if not created:
+                        logger.info(f"Telegram: Condivisione in corso da altro worker, skip")
+                        results['telegram'] = log_entry.success
+                    else:
+                        should_share = True
+
+            # Esegui condivisione fuori dalla transazione per evitare lock lunghi
+            if should_share:
+                success = self._share_to_telegram(articolo, article_url)
+                results['telegram'] = success
+                # Aggiorna il record
+                SocialPublicationLog.objects.filter(
+                    articolo=articolo,
+                    platform='telegram'
+                ).update(
                     success=success,
                     error_message=None if success else "Errore condivisione Telegram"
                 )
@@ -422,23 +442,42 @@ class SocialMediaManager:
 
         # Facebook
         if self.platforms['facebook']['enabled']:
-            # Controlla se già pubblicato con successo
-            already_published = SocialPublicationLog.objects.filter(
-                articolo=articolo,
-                platform='facebook',
-                success=True
-            ).exists()
-
-            if already_published:
-                logger.info(f"Facebook: Articolo '{articolo.titolo}' già pubblicato, skip")
-                results['facebook'] = True
-            else:
-                success = self._share_to_facebook(articolo, article_url)
-                results['facebook'] = success
-                # Log risultato
-                SocialPublicationLog.objects.create(
+            should_share = False
+            with transaction.atomic():
+                # Controlla se già pubblicato con successo (lock a livello DB per prevenire race conditions)
+                already_published = SocialPublicationLog.objects.select_for_update().filter(
                     articolo=articolo,
                     platform='facebook',
+                    success=True
+                ).exists()
+
+                if already_published:
+                    logger.info(f"Facebook: Articolo '{articolo.titolo}' già pubblicato, skip")
+                    results['facebook'] = True
+                else:
+                    # Crea un record "in progress" per prevenire condivisioni parallele
+                    log_entry, created = SocialPublicationLog.objects.get_or_create(
+                        articolo=articolo,
+                        platform='facebook',
+                        defaults={'success': False, 'error_message': 'In progress...'}
+                    )
+
+                    # Se il record esisteva già, un altro worker sta gestendo questa condivisione
+                    if not created:
+                        logger.info(f"Facebook: Condivisione in corso da altro worker, skip")
+                        results['facebook'] = log_entry.success
+                    else:
+                        should_share = True
+
+            # Esegui condivisione fuori dalla transazione per evitare lock lunghi
+            if should_share:
+                success = self._share_to_facebook(articolo, article_url)
+                results['facebook'] = success
+                # Aggiorna il record
+                SocialPublicationLog.objects.filter(
+                    articolo=articolo,
+                    platform='facebook'
+                ).update(
                     success=success,
                     error_message=None if success else "Errore condivisione Facebook"
                 )
@@ -448,24 +487,43 @@ class SocialMediaManager:
         # Instagram (solo se c'è un'immagine)
         if self.platforms['instagram']['enabled']:
             if articolo.foto:
-                # Controlla se già pubblicato con successo
-                already_published = SocialPublicationLog.objects.filter(
-                    articolo=articolo,
-                    platform='instagram',
-                    success=True
-                ).exists()
+                should_share = False
+                with transaction.atomic():
+                    # Controlla se già pubblicato con successo (lock a livello DB per prevenire race conditions)
+                    already_published = SocialPublicationLog.objects.select_for_update().filter(
+                        articolo=articolo,
+                        platform='instagram',
+                        success=True
+                    ).exists()
 
-                if already_published:
-                    logger.info(f"Instagram: Articolo '{articolo.titolo}' già pubblicato, skip")
-                    results['instagram'] = True
-                else:
+                    if already_published:
+                        logger.info(f"Instagram: Articolo '{articolo.titolo}' già pubblicato, skip")
+                        results['instagram'] = True
+                    else:
+                        # Crea un record "in progress" per prevenire condivisioni parallele
+                        log_entry, created = SocialPublicationLog.objects.get_or_create(
+                            articolo=articolo,
+                            platform='instagram',
+                            defaults={'success': False, 'error_message': 'In progress...'}
+                        )
+
+                        # Se il record esisteva già, un altro worker sta gestendo questa condivisione
+                        if not created:
+                            logger.info(f"Instagram: Condivisione in corso da altro worker, skip")
+                            results['instagram'] = log_entry.success
+                        else:
+                            should_share = True
+
+                # Esegui condivisione fuori dalla transazione per evitare lock lunghi
+                if should_share:
                     # Usa retry automatico con delay crescente
                     success, error_msg = self._share_to_instagram_with_retry(articolo, article_url)
                     results['instagram'] = success
-                    # Log risultato con messaggio errore dettagliato
-                    SocialPublicationLog.objects.create(
+                    # Aggiorna il record con messaggio errore dettagliato
+                    SocialPublicationLog.objects.filter(
                         articolo=articolo,
-                        platform='instagram',
+                        platform='instagram'
+                    ).update(
                         success=success,
                         error_message=None if success else error_msg[:1000]  # Limita a 1000 char
                     )
