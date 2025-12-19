@@ -44,8 +44,9 @@ def home(request):
     # ARTICOLI SPOTLIGHT: massimo 4 articoli in evidenza (SOLO in homepage senza filtri)
     if not categoria or categoria == 'tutti':
         articoli_spotlight = articoli_query.filter(spotlight=True).order_by('-data_pubblicazione')[:4]
-        # ARTICOLI NORMALI: escludi gli spotlight dalla griglia principale
-        articoli_list = articoli_query.filter(spotlight=False).order_by('-data_pubblicazione')
+        # ARTICOLI NORMALI: escludi i 4 spotlight mostrati, includi eventuali spotlight in eccesso
+        spotlight_ids = [a.id for a in articoli_spotlight]
+        articoli_list = articoli_query.exclude(id__in=spotlight_ids).order_by('-data_pubblicazione')
     else:
         # Con filtro categoria: nessuno spotlight, mostra tutti come card normali
         articoli_spotlight = []
