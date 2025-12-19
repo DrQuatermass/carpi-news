@@ -382,6 +382,7 @@
                             <a href="{% url 'dettaglio_articolo' articolo.slug %}" class="spotlight-card spotlight-main">
                                 <article>
                                     <div class="spotlight-image">
+                                        <span class="category-badge">{{ articolo.categoria }}</span>
                                         <img src="{{ articolo.get_image_url }}"
                                              alt="{{ articolo.titolo }}"
                                              loading="eager"
@@ -389,7 +390,6 @@
                                     </div>
                                     <div class="spotlight-content">
                                         <div class="spotlight-meta">
-                                            <span class="category-tag">{{ articolo.categoria }}</span>
                                             <time datetime="{{ articolo.data_pubblicazione|date:'Y-m-d' }}">{{ articolo.data_pubblicazione|italian_date:'short' }}</time>
                                         </div>
                                         <h2 class="spotlight-title">{{ articolo.titolo }}</h2>
@@ -409,14 +409,12 @@
                                 <a href="{% url 'dettaglio_articolo' articolo.slug %}" class="spotlight-card spotlight-secondary">
                                     <article>
                                         <div class="spotlight-image">
+                                            <span class="category-badge">{{ articolo.categoria }}</span>
                                             <img src="{{ articolo.get_image_url }}"
                                                  alt="{{ articolo.titolo }}"
                                                  loading="eager">
                                         </div>
                                         <div class="spotlight-content">
-                                            <div class="spotlight-meta">
-                                                <span class="category-tag">{{ articolo.categoria }}</span>
-                                            </div>
                                             <h3 class="spotlight-title">{{ articolo.titolo }}</h3>
                                         </div>
                                     </article>

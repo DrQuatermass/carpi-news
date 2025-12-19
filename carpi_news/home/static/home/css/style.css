@@ -2946,20 +2946,20 @@ footer .footer-section.footer-links-section .footer-useful-links a:hover {
     font-weight: 400;
 }
 
-/* Badge "IN EVIDENZA" per l'articolo principale */
-.spotlight-main::after {
-    content: '⭐ IN EVIDENZA';
+/* Badge categoria sull'immagine */
+.spotlight-image .category-badge {
     position: absolute;
-    top: 20px;
-    right: 20px;
-    background: linear-gradient(135deg, #FFD700, #FFA500);
-    color: #333;
-    padding: 8px 16px;
+    top: 15px;
+    left: 15px;
+    background: linear-gradient(135deg, #966C42, #B8956A);
+    color: white;
+    padding: 6px 14px;
     border-radius: 25px;
     font-size: 0.7rem;
     font-weight: 700;
-    letter-spacing: 1px;
-    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    box-shadow: 0 2px 8px rgba(150, 108, 66, 0.3);
     z-index: 10;
 }
 
@@ -2986,18 +2986,6 @@ footer .footer-section.footer-links-section .footer-useful-links a:hover {
     align-items: center;
     gap: 12px;
     flex-wrap: wrap;
-}
-
-.spotlight-meta .category-tag {
-    background: linear-gradient(135deg, #966C42, #B8956A);
-    color: white;
-    padding: 6px 14px;
-    border-radius: 25px;
-    font-size: 0.7rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-    box-shadow: 0 2px 8px rgba(150, 108, 66, 0.3);
 }
 
 .spotlight-meta time {
@@ -3028,11 +3016,11 @@ footer .footer-section.footer-links-section .footer-useful-links a:hover {
         font-size: 1rem;
     }
 
-    .spotlight-main::after {
-        top: 15px;
-        right: 15px;
+    .spotlight-image .category-badge {
+        top: 12px;
+        left: 12px;
         font-size: 0.65rem;
-        padding: 6px 12px;
+        padding: 5px 12px;
     }
 
     .spotlight-secondary .spotlight-image {
