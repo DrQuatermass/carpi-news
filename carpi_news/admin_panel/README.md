@@ -21,9 +21,10 @@ Sistema di gestione banner pubblicitari per Ombra del Portico.
 - Prezzo base: €1/giorno
 - Moltiplicatori priorità:
   - Priorità 1 (Massima): ×5
-  - Priorità 2 (Alta): ×3
-  - Priorità 3 (Media): ×2
-  - Priorità 4 (Normale): ×1
+  - Priorità 2 (Alta): ×4
+  - Priorità 3 (Media): ×3
+  - Priorità 4 (Bassa): ×2
+  - Priorità 5 (Minima): ×1
 
 ### 💳 Integrazione PayPal
 - Pagamenti sicuri tramite PayPal

@@ -23,14 +23,15 @@ def get_priority_weight(priority, user_already_shown=False):
     Calcola il peso per la selezione randomica basato sulla priorità
 
     Priorità 1 (Massima): peso 5
-    Priorità 2 (Alta): peso 3
-    Priorità 3 (Media): peso 2
-    Priorità 4 (Normale): peso 1
+    Priorità 2 (Alta): peso 4
+    Priorità 3 (Media): peso 3
+    Priorità 4 (Bassa): peso 2
+    Priorità 5 (Minima): peso 1
 
     Se l'utente è già mostrato nella pagina, il peso viene ridotto del 75%
     """
-    weight_map = {1: 5, 2: 3, 3: 2, 4: 1}
-    weight = weight_map.get(priority, 1)
+    weight_map = {1: 5, 2: 4, 3: 3, 4: 2, 5: 1}
+    weight = weight_map.get(priority, 3)
 
     # Penalizzazione per utenti già presenti nella pagina
     if user_already_shown:

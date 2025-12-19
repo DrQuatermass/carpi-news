@@ -67,8 +67,8 @@ class Banner(models.Model):
 
     # Posizionamento e durata
     position = models.CharField('Posizione', max_length=50, choices=POSITION_CHOICES)
-    priority = models.IntegerField('Priorità', default=1, validators=[MinValueValidator(1)],
-                                   help_text='Priorità di visualizzazione (1=bassa, 10=alta)')
+    priority = models.IntegerField('Priorità', default=3, validators=[MinValueValidator(1)],
+                                   help_text='Priorità di visualizzazione (1=massima, 5=minima)')
 
     # Date e durata
     start_date = models.DateTimeField('Data inizio', default=timezone.now)
