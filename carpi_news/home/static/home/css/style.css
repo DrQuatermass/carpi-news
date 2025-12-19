@@ -216,6 +216,9 @@ nav {
     list-style: none;
     padding: 0;
     background: rgba(250, 247, 240, 0.5);
+    max-height: 60vh;
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 .mobile-submenu li {
