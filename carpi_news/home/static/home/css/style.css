@@ -2823,3 +2823,232 @@ footer .footer-section.footer-links-section .footer-useful-links a:hover {
     }
 }
 
+/* ============================================
+   SPOTLIGHT SECTION (4 articoli in evidenza)
+   1 grande in alto + 3 sotto in orizzontale
+   ============================================ */
+.spotlight-section {
+    margin: 40px 0;
+    width: 100%;
+}
+
+.spotlight-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    width: 100%;
+}
+
+.spotlight-row-secondary {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+}
+
+/* Card Spotlight - Stile generale */
+.spotlight-card {
+    display: block;
+    background: #fff;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.1);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    text-decoration: none;
+    color: inherit;
+    position: relative;
+}
+
+.spotlight-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(150, 108, 66, 0.05) 0%, transparent 100%);
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    z-index: 1;
+    pointer-events: none;
+}
+
+.spotlight-card:hover::before {
+    opacity: 1;
+}
+
+.spotlight-card:hover {
+    box-shadow: 0 12px 40px rgba(150, 108, 66, 0.2);
+    transform: translateY(-8px);
+}
+
+.spotlight-image {
+    width: 100%;
+    overflow: hidden;
+    position: relative;
+}
+
+.spotlight-image::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 100px;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.3), transparent);
+    opacity: 0;
+    transition: opacity 0.4s ease;
+}
+
+.spotlight-card:hover .spotlight-image::after {
+    opacity: 1;
+}
+
+.spotlight-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.spotlight-card:hover .spotlight-image img {
+    transform: scale(1.08);
+}
+
+/* Articolo principale (grande) */
+.spotlight-main {
+    position: relative;
+}
+
+.spotlight-main .spotlight-image {
+    height: 500px;
+}
+
+.spotlight-main .spotlight-content {
+    padding: 35px;
+    position: relative;
+    z-index: 2;
+}
+
+.spotlight-main .spotlight-title {
+    font-size: 2.2rem;
+    font-weight: 800;
+    line-height: 1.2;
+    margin: 15px 0;
+    color: #2C2C2C;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
+}
+
+.spotlight-main .spotlight-excerpt {
+    font-size: 1.1rem;
+    line-height: 1.7;
+    color: #555;
+    margin-top: 15px;
+    font-weight: 400;
+}
+
+/* Badge "IN EVIDENZA" per l'articolo principale */
+.spotlight-main::after {
+    content: '⭐ IN EVIDENZA';
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: linear-gradient(135deg, #FFD700, #FFA500);
+    color: #333;
+    padding: 8px 16px;
+    border-radius: 25px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+    box-shadow: 0 4px 15px rgba(255, 215, 0, 0.4);
+    z-index: 10;
+}
+
+/* Articoli secondari (piccoli) */
+.spotlight-secondary .spotlight-image {
+    height: 220px;
+}
+
+.spotlight-secondary .spotlight-content {
+    padding: 20px;
+}
+
+.spotlight-secondary .spotlight-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    line-height: 1.4;
+    margin-top: 12px;
+    color: #2C2C2C;
+}
+
+/* Meta info */
+.spotlight-meta {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.spotlight-meta .category-tag {
+    background: linear-gradient(135deg, #966C42, #B8956A);
+    color: white;
+    padding: 6px 14px;
+    border-radius: 25px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    box-shadow: 0 2px 8px rgba(150, 108, 66, 0.3);
+}
+
+.spotlight-meta time {
+    font-size: 0.9rem;
+    color: #999;
+    font-weight: 500;
+}
+
+/* Responsive mobile per spotlight */
+@media (max-width: 768px) {
+    .spotlight-row-secondary {
+        grid-template-columns: 1fr;
+    }
+
+    .spotlight-main .spotlight-image {
+        height: 300px;
+    }
+
+    .spotlight-main .spotlight-content {
+        padding: 25px;
+    }
+
+    .spotlight-main .spotlight-title {
+        font-size: 1.6rem;
+    }
+
+    .spotlight-main .spotlight-excerpt {
+        font-size: 1rem;
+    }
+
+    .spotlight-main::after {
+        top: 15px;
+        right: 15px;
+        font-size: 0.65rem;
+        padding: 6px 12px;
+    }
+
+    .spotlight-secondary .spotlight-image {
+        height: 180px;
+    }
+
+    .spotlight-secondary .spotlight-title {
+        font-size: 1.05rem;
+    }
+}
+
+/* ============================================
+   BANNER ORIZZONTALE SECTION
+   ============================================ */
+.banner-horizontal-section {
+    margin: 30px 0;
+    width: 100%;
+}
+

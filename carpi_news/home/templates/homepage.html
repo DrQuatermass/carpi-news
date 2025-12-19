@@ -344,9 +344,6 @@
 
 {% block content %}
     <div class="container">
-            <!-- Banner Header -->
-            {% show_banner 'header' %}
-
             <!-- Hero Section -->
             <section class="hero">
                 <div class="hero-content">
@@ -373,6 +370,73 @@
                     </li>
                 </ol>
             </nav>
+            {% endif %}
+
+            <!-- Spotlight Section (4 articoli in evidenza: 1 grande in alto + 3 sotto) -->
+            {% if articoli_spotlight %}
+            <section class="spotlight-section">
+                <div class="spotlight-grid">
+                    {% for articolo in articoli_spotlight %}
+                        {% if forloop.first %}
+                            <!-- Articolo principale (grande) -->
+                            <a href="{% url 'dettaglio_articolo' articolo.slug %}" class="spotlight-card spotlight-main">
+                                <article>
+                                    <div class="spotlight-image">
+                                        <img src="{{ articolo.get_image_url }}"
+                                             alt="{{ articolo.titolo }}"
+                                             loading="eager"
+                                             fetchpriority="high">
+                                    </div>
+                                    <div class="spotlight-content">
+                                        <div class="spotlight-meta">
+                                            <span class="category-tag">{{ articolo.categoria }}</span>
+                                            <time datetime="{{ articolo.data_pubblicazione|date:'Y-m-d' }}">{{ articolo.data_pubblicazione|italian_date:'short' }}</time>
+                                        </div>
+                                        <h2 class="spotlight-title">{{ articolo.titolo }}</h2>
+                                        <p class="spotlight-excerpt">{{ articolo.sommario|truncatewords:35 }}</p>
+                                    </div>
+                                </article>
+                            </a>
+                        {% endif %}
+                    {% endfor %}
+
+                    <!-- Riga con 3 articoli secondari -->
+                    {% if articoli_spotlight|length > 1 %}
+                    <div class="spotlight-row-secondary">
+                        {% for articolo in articoli_spotlight %}
+                            {% if not forloop.first %}
+                                <!-- Articoli secondari (piccoli) -->
+                                <a href="{% url 'dettaglio_articolo' articolo.slug %}" class="spotlight-card spotlight-secondary">
+                                    <article>
+                                        <div class="spotlight-image">
+                                            <img src="{{ articolo.get_image_url }}"
+                                                 alt="{{ articolo.titolo }}"
+                                                 loading="eager">
+                                        </div>
+                                        <div class="spotlight-content">
+                                            <div class="spotlight-meta">
+                                                <span class="category-tag">{{ articolo.categoria }}</span>
+                                            </div>
+                                            <h3 class="spotlight-title">{{ articolo.titolo }}</h3>
+                                        </div>
+                                    </article>
+                                </a>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+            </section>
+            {% endif %}
+
+            <!-- Banner Header (spostato dopo spotlight) -->
+            {% show_banner 'header' %}
+
+            <!-- Banner Orizzontale -->
+            {% if banner_orizzontale %}
+            <section class="banner-horizontal-section">
+                {% include 'banner_orizzontale.html' with banner=banner_orizzontale %}
+            </section>
             {% endif %}
 
             <!-- Main News Grid -->

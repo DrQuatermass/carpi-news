@@ -28,6 +28,7 @@ class Articolo(models.Model):
     fonti_web = models.JSONField(blank=True, null=True, help_text="Fonti web utilizzate durante la generazione AI con ricerca web")
     ai_model_used = models.CharField(max_length=50, blank=True, null=True, help_text="Modello AI utilizzato per generare l'articolo (es. claude-3-7-sonnet, gpt-4-turbo)")
     views = models.PositiveIntegerField(default=0, help_text="Numero di visualizzazioni dell'articolo")
+    spotlight = models.BooleanField(default=False, db_index=True, help_text="Articolo in evidenza nella sezione spotlight (max 4)")
     data_creazione = models.DateTimeField(auto_now_add=True, db_index=True)
     data_pubblicazione = models.DateTimeField(blank=True, null=True, default=timezone.now, db_index=True)
     data_evento = models.DateField(blank=True, null=True, help_text="Data dell'evento per articoli di categoria Cultura ed Eventi")
@@ -73,7 +74,7 @@ class Articolo(models.Model):
     payment_method = models.CharField('Metodo di pagamento', max_length=50, blank=True)
     payment_transaction_id = models.CharField('ID transazione', max_length=200, blank=True)
     payment_date = models.DateTimeField('Data pagamento', blank=True, null=True)
-    total_price = models.DecimalField('Prezzo totale (€)', max_digits=10, decimal_places=2, default=50.00)
+    total_price = models.DecimalField('Prezzo totale (€)', max_digits=10, decimal_places=2, default=150.00)
 
     # Codice promozionale
     promo_code = models.ForeignKey(

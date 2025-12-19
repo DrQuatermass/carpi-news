@@ -24,13 +24,13 @@ logger = logging.getLogger(__name__)
 def home(request):
     # Filtro per categoria (opzionale)
     categoria = request.GET.get('categoria', None)
-    
+
     # Query base: solo articoli approvati e pubblicati (non futuri)
     articoli_query = Articolo.objects.filter(
         approvato=True,
         data_pubblicazione__lte=timezone.now()
     ).only(
-        'id', 'titolo', 'sommario', 'categoria', 'slug', 'foto', 'foto_upload', 'data_pubblicazione'
+        'id', 'titolo', 'sommario', 'categoria', 'slug', 'foto', 'foto_upload', 'data_pubblicazione', 'spotlight'
     )
 
     # Applica filtro categoria se specificato
@@ -41,8 +41,11 @@ def home(request):
         else:
             articoli_query = articoli_query.filter(categoria__iexact=categoria)
 
-    # Ordina per data di pubblicazione
-    articoli_list = articoli_query.order_by('-data_pubblicazione')
+    # ARTICOLI SPOTLIGHT: massimo 4 articoli in evidenza
+    articoli_spotlight = articoli_query.filter(spotlight=True).order_by('-data_pubblicazione')[:4]
+
+    # ARTICOLI NORMALI: escludi gli spotlight
+    articoli_list = articoli_query.filter(spotlight=False).order_by('-data_pubblicazione')
 
     # Paginazione: 8 articoli per pagina (4 righe x 3 colonne = 12 slot, 8 articoli + 4 banner)
     paginator = Paginator(articoli_list, 8)
@@ -176,8 +179,20 @@ def home(request):
             first_banner_image = item['banner'].image.url
             break
 
+    # Ottieni banner orizzontale dalla tabella Banner (posizione 'horizontal')
+    from admin_panel.models import Banner
+    banner_orizzontale = Banner.objects.filter(
+        position='horizontal',
+        status='active',
+        payment_status='completed',
+        start_date__lte=timezone.now(),
+        end_date__gte=timezone.now()
+    ).first()
+
     context = {
         'articoli': page_obj,
+        'articoli_spotlight': articoli_spotlight,  # 4 articoli in evidenza
+        'banner_orizzontale': banner_orizzontale,  # Banner orizzontale dopo spotlight
         'grid_items': grid_items,  # Griglia con articoli e banner/placeholder
         'first_article_image': first_article_image,  # Per preload LCP
         'first_banner_image': first_banner_image,  # Per preload banner

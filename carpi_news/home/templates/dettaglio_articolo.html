@@ -429,6 +429,15 @@
             <!-- Banner fine articolo -->
             {% show_banner 'article_bottom' %}
 
+            <!-- Dicitura contenuto sponsorizzato per pubbliredazionali -->
+            {% if articolo.is_pubbliredazionale %}
+            <div style="margin: 30px 0; padding: 15px; background: #f8f9fa; border-left: 4px solid #966C42; border-radius: 8px;">
+                <p style="margin: 0; color: #6c757d; font-size: 0.9rem; font-style: italic;">
+                    📢 <strong>Contenuto sponsorizzato</strong>
+                </p>
+            </div>
+            {% endif %}
+
             {% if articolo.categoria == "Cosa fare oggi" %}
             <div class="article-sources-link">
                 <a href="{% url 'calendario_eventi' %}" class="sources-button">

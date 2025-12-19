@@ -214,16 +214,16 @@ class MonitorConfigForm(forms.ModelForm):
 
 @admin.register(Articolo)
 class ArticoloAdmin(admin.ModelAdmin):
-    list_display = ("titolo", "categoria", "is_pubbliredazionale", "payment_status_display", "approvato", "data_pubblicazione", "views", "fonti_web_count")
-    list_filter = ['approvato', 'categoria', IsPubbliredazionaleFilter, 'payment_status', HasWebSourcesFilter]
-    search_fields = ['titolo', 'nome_azienda', 'sito_web', 'pubbliredazionale_user__username']
+    list_display = ("titolo", "categoria", "spotlight_display", "is_pubbliredazionale", "payment_status_display", "approvato", "data_pubblicazione", "views", "fonti_web_count")
+    list_filter = ['approvato', 'spotlight', 'categoria', IsPubbliredazionaleFilter, 'payment_status', HasWebSourcesFilter]
+    search_fields = ['titolo', 'slug', 'nome_azienda', 'sito_web', 'pubbliredazionale_user__username']
 
     def get_fieldsets(self, request, obj=None):
         """Fieldsets dinamici: diversi per pubbliredazionali e articoli normali"""
         if obj and obj.is_pubbliredazionale:
             return (
                 ('Informazioni Base', {
-                    'fields': ('titolo', 'contenuto', 'sommario', 'categoria', 'foto', 'foto_upload')
+                    'fields': ('titolo', 'slug', 'contenuto', 'sommario', 'categoria', 'foto', 'foto_upload')
                 }),
                 ('Pubbliredazionale - Informazioni Azienda', {
                     'fields': ('nome_azienda', 'sito_web', 'pubbliredazionale_user')
@@ -248,10 +248,10 @@ class ArticoloAdmin(admin.ModelAdmin):
         else:
             return (
                 ('Informazioni Base', {
-                    'fields': ('titolo', 'contenuto', 'sommario', 'categoria', 'data_evento', 'foto', 'foto_upload')
+                    'fields': ('titolo', 'slug', 'contenuto', 'sommario', 'categoria', 'data_evento', 'foto', 'foto_upload')
                 }),
                 ('Pubblicazione', {
-                    'fields': ('approvato', 'fonte', 'data_pubblicazione', 'views')
+                    'fields': ('approvato', 'spotlight', 'fonte', 'data_pubblicazione', 'views')
                 }),
                 ('Rigenerazione AI', {
                     'fields': ('richieste_modifica', 'fonti_web_display', 'rigenera_button')
@@ -264,6 +264,16 @@ class ArticoloAdmin(admin.ModelAdmin):
         if obj and obj.is_pubbliredazionale:
             return base_readonly + ['interview_data']
         return base_readonly
+
+    def spotlight_display(self, obj):
+        """Mostra se l'articolo è in spotlight"""
+        if obj.spotlight:
+            return format_html(
+                '<span style="background: #FFD700; color: #333; padding: 4px 8px; '
+                'border-radius: 12px; font-size: 11px; font-weight: bold;">⭐ SPOTLIGHT</span>'
+            )
+        return '-'
+    spotlight_display.short_description = 'In Evidenza'
 
     def payment_status_display(self, obj):
         """Mostra stato pagamento"""
