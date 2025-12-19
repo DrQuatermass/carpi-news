@@ -2906,7 +2906,8 @@ footer .footer-section.footer-links-section .footer-useful-links a:hover {
 .spotlight-image img {
     width: 100%;
     height: 100%;
-    object-fit: cover;
+    object-fit: contain;
+    background: #f8f8f8;
     transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -3038,5 +3039,16 @@ footer .footer-section.footer-links-section .footer-useful-links a:hover {
 .banner-horizontal-section {
     margin: 30px 0;
     width: 100%;
+}
+
+.banner-horizontal-section img,
+.banner-header-slot img {
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+    max-height: 270px;
+    background: #f8f8f8;
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
 }
 
