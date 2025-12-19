@@ -384,7 +384,7 @@
                                     <div class="spotlight-image">
                                         <span class="category-badge">{{ articolo.categoria }}</span>
                                         <img src="{{ articolo.get_image_url }}"
-                                             srcset="{{ articolo.get_image_url|image_srcset }}"
+                                             srcset="{{ articolo.get_image_url|image_srcset:'large' }}"
                                              sizes="(max-width: 768px) 100vw, 1200px"
                                              alt="{{ articolo.titolo }}"
                                              width="1200"

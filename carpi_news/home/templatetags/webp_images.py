@@ -71,33 +71,38 @@ def to_webp(image_url):
 
 
 @register.filter
-def image_srcset(image_url):
+def image_srcset(image_url, sizes="default"):
     """
     Genera attributo srcset per immagini responsive
     Usa il proxy per immagini esterne, versioni multiple per immagini interne
 
     Usage:
         <img src="{{ article.foto }}" srcset="{{ article.foto|image_srcset }}">
+        <img src="{{ article.foto }}" srcset="{{ article.foto|image_srcset:'large' }}">
+
+    Args:
+        sizes: 'default' (400/600/800) o 'large' (400/600/800/1200)
     """
     if not image_url:
         return ""
+
+    # Determina le larghezze da generare
+    widths = [400, 600, 800, 1200] if sizes == "large" else [400, 600, 800]
 
     # Supporta sia Oggi.png che Oggi.webp
     if 'Oggi.webp' in image_url or 'Oggi.png' in image_url:
         # Rimuovi Oggi.webp o Oggi.png per ottenere base URL
         base_url = image_url.replace('Oggi.webp', '').replace('Oggi.png', '')
-        return f"{base_url}Oggi-400w.webp 400w, {base_url}Oggi-600w.webp 600w, {base_url}Oggi-800w.webp 800w"
+        srcset_parts = [f"{base_url}Oggi-{w}w.webp {w}w" for w in widths]
+        return ", ".join(srcset_parts)
 
     # Per immagini esterne, usa il proxy per diverse dimensioni
     if image_url.startswith('http') and not 'ombradelportico.it' in image_url:
         from urllib.parse import quote
         encoded_url = quote(image_url, safe='')
         # Genera srcset con proxy per diverse larghezze
-        return (
-            f"/image-proxy/?url={encoded_url}&w=400 400w, "
-            f"/image-proxy/?url={encoded_url}&w=600 600w, "
-            f"/image-proxy/?url={encoded_url}&w=800 800w"
-        )
+        srcset_parts = [f"/image-proxy/?url={encoded_url}&w={w} {w}w" for w in widths]
+        return ", ".join(srcset_parts)
 
     # Per immagini interne, cerca versioni responsive esistenti
     if '/media/' in image_url or '/static/' in image_url:
@@ -123,7 +128,7 @@ def image_srcset(image_url):
 
             # Verifica se esistono versioni responsive sul filesystem
             srcset_parts = []
-            for width in [400, 600, 800]:
+            for width in widths:
                 responsive_filename = f"{filename}-{width}w.webp"
 
                 # Converti URL in path filesystem
@@ -145,7 +150,7 @@ def image_srcset(image_url):
                 return ", ".join(srcset_parts)
 
             # Fallback: se nessuna versione responsive esiste, usa l'immagine originale
-            return f"{image_url} 800w"
+            return f"{image_url} {max(widths)}w"
 
     return ""
 
