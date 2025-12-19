@@ -384,7 +384,11 @@
                                     <div class="spotlight-image">
                                         <span class="category-badge">{{ articolo.categoria }}</span>
                                         <img src="{{ articolo.get_image_url }}"
+                                             srcset="{{ articolo.get_image_url|image_srcset }}"
+                                             sizes="(max-width: 768px) 100vw, 1200px"
                                              alt="{{ articolo.titolo }}"
+                                             width="1200"
+                                             height="400"
                                              loading="eager"
                                              fetchpriority="high">
                                     </div>
@@ -411,8 +415,12 @@
                                         <div class="spotlight-image">
                                             <span class="category-badge">{{ articolo.categoria }}</span>
                                             <img src="{{ articolo.get_image_url }}"
+                                                 srcset="{{ articolo.get_image_url|image_srcset }}"
+                                                 sizes="(max-width: 768px) 100vw, 380px"
                                                  alt="{{ articolo.titolo }}"
-                                                 loading="eager">
+                                                 width="380"
+                                                 height="220"
+                                                 loading="lazy">
                                         </div>
                                         <div class="spotlight-content">
                                             <h3 class="spotlight-title">{{ articolo.titolo }}</h3>
