@@ -116,17 +116,12 @@
                         {% endfor %}
 
                         <!-- Rubriche nel menu mobile -->
-                        <li class="mobile-dropdown-item">
-                            <span class="mobile-dropdown-header">Rubriche</span>
-                            <ul class="mobile-submenu">
-                                <li><a href="{% url 'home' %}?categoria=Cosa fare oggi" rel="nofollow">Cosa fare oggi</a></li>
-                                <li><a href="{% url 'calendario_eventi' %}">Calendario Eventi</a></li>
-                                <li><a href="{% url 'programmazione_cinema' %}">Cinema</a></li>
-                                <li><a href="{% url 'home' %}?categoria=L'Eco del Consiglio" rel="nofollow">L'Eco del consiglio</a></li>
-                                <li><a href="{% url 'home' %}?categoria=Editoriale" rel="nofollow">Editoriale</a></li>
-                                <li><a href="/caplet/">Caplet</a></li>
-                            </ul>
-                        </li>
+                        <li><a href="{% url 'home' %}?categoria=Cosa fare oggi" rel="nofollow">Cosa fare oggi</a></li>
+                        <li><a href="{% url 'calendario_eventi' %}">Calendario Eventi</a></li>
+                        <li><a href="{% url 'programmazione_cinema' %}">Cinema</a></li>
+                        <li><a href="{% url 'home' %}?categoria=L'Eco del Consiglio" rel="nofollow">L'Eco del consiglio</a></li>
+                        <li><a href="{% url 'home' %}?categoria=Editoriale" rel="nofollow">Editoriale</a></li>
+                        <li><a href="/caplet/">Caplet</a></li>
                     </ul>
                 </div>
             </div>
