@@ -986,6 +986,9 @@ footer .footer-section.footer-links-section .footer-useful-links a:hover {
     box-shadow: 0 8px 25px rgba(44, 44, 44, 0.15);
     border: 1px solid rgba(150, 108, 66, 0.2);
     min-width: 200px;
+    max-height: 80vh;
+    overflow-y: auto;
+    overflow-x: hidden;
     opacity: 0;
     visibility: hidden;
     transform: translateY(-10px);
