@@ -5,9 +5,9 @@
     {# Banner attivo - determina la classe del wrapper in base alla POSIZIONE DELLO SLOT (non del banner) #}
     {# TUTTI i banner orizzontali (728×90) usano le stesse classi header/footer in base allo slot #}
     {% if position == 'header' or position == 'article_top' or position == 'article_middle' or position == 'article_bottom' or position == 'horizontal' %}
-        <div class="banner-header-slot has-active-banner">
-            <div class="advertisement-banner" data-banner-id="{{ banner.id }}" style="width: 100%;">
-                <a href="{% url 'admin_panel:banner_click' banner.id %}" target="_blank" rel="noopener noreferrer nofollow sponsored" style="display: block; width: 100%;">
+        <div class="banner-header-slot has-active-banner" style="padding: 0 !important;">
+            <div class="advertisement-banner" data-banner-id="{{ banner.id }}" style="width: 100%; padding: 0; margin: 0;">
+                <a href="{% url 'admin_panel:banner_click' banner.id %}" target="_blank" rel="noopener noreferrer nofollow sponsored" style="display: block; width: 100%; padding: 0; margin: 0;">
                     <img src="{{ banner.image.url }}"
                          srcset="{{ banner.image.url|image_srcset }}"
                          sizes="(max-width: 768px) 100vw, 728px"
@@ -21,9 +21,9 @@
             </div>
         </div>
     {% elif position == 'footer' %}
-        <div class="banner-footer-slot has-active-banner" style="grid-column: 1 / -1;">
-            <div class="advertisement-banner" data-banner-id="{{ banner.id }}" style="width: 100%;">
-                <a href="{% url 'admin_panel:banner_click' banner.id %}" target="_blank" rel="noopener noreferrer nofollow sponsored" style="display: block; width: 100%;">
+        <div class="banner-footer-slot has-active-banner" style="grid-column: 1 / -1; padding: 0 !important;">
+            <div class="advertisement-banner" data-banner-id="{{ banner.id }}" style="width: 100%; padding: 0; margin: 0;">
+                <a href="{% url 'admin_panel:banner_click' banner.id %}" target="_blank" rel="noopener noreferrer nofollow sponsored" style="display: block; width: 100%; padding: 0; margin: 0;">
                     <img src="{{ banner.image.url }}"
                          srcset="{{ banner.image.url|image_srcset }}"
                          sizes="(max-width: 768px) 100vw, 728px"
