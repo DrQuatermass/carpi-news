@@ -55,6 +55,9 @@ debug_prompt.txt
 # Local settings
 local_settings.py
 
+# Files with credentials
+home/management/commands/send_emails_ses.py
+
 # Virtual environment
 venv/
 env/
