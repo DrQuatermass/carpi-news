@@ -3036,7 +3036,12 @@ footer .footer-section.footer-links-section .footer-useful-links a:hover {
    ============================================ */
 .banner-horizontal-section {
     margin: 30px 0;
-    width: 100%;
+    width: 100vw;
+    position: relative;
+    left: 50%;
+    right: 50%;
+    margin-left: -50vw;
+    margin-right: -50vw;
 }
 
 .banner-horizontal-section img,
@@ -3060,7 +3065,9 @@ footer .footer-section.footer-links-section .footer-useful-links a:hover {
     justify-content: center;
     overflow: hidden;
     padding: 0 !important;
-    margin: 0 !important;
+    margin: 0 auto !important;
+    max-width: 1200px;
+    width: 100%;
 }
 
 .banner-header-slot {
