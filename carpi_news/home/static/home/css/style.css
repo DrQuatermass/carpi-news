@@ -2958,8 +2958,6 @@ footer .footer-section.footer-links-section .footer-useful-links a:hover {
     border-radius: 25px;
     font-size: 0.7rem;
     font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
     box-shadow: 0 2px 8px rgba(150, 108, 66, 0.3);
     z-index: 10;
 }
@@ -3068,6 +3066,7 @@ footer .footer-section.footer-links-section .footer-useful-links a:hover {
 .banner-header-slot {
     min-height: 150px;
     max-height: 220px;
+    padding: 0 !important;
 }
 
 .banner-footer-slot {
