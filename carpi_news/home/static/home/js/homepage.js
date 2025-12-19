@@ -85,19 +85,6 @@ function changePage(direction) {
     if (newPage >= 1 && newPage <= totalPages) {
         isTransitioning = true;
 
-        // Scroll smooth alla sezione articoli (non in cima alla pagina)
-        const newsSection = document.getElementById('news-section');
-        if (newsSection) {
-            const headerHeight = document.querySelector('header')?.offsetHeight || 80;
-            const offset = headerHeight + 20; // Header + padding
-            const elementPosition = newsSection.getBoundingClientRect().top + window.pageYOffset;
-            const offsetPosition = elementPosition - offset;
-            window.scrollTo({ top: offsetPosition, behavior: 'smooth' });
-        } else {
-            // Fallback se l'elemento non esiste
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
         // Determina la direzione dell'animazione
         const slideOutClass = direction > 0 ? 'slide-out-left' : 'slide-out-right';
         const slideInClass = direction > 0 ? 'slide-in-right' : 'slide-in-left';
@@ -229,6 +216,18 @@ function updatePageContent(data) {
 
         newsGrid.classList.remove('transitioning');
         isTransitioning = false;
+
+        // Scroll alla sezione articoli DOPO che tutto è stato caricato
+        setTimeout(() => {
+            const newsSection = document.getElementById('news-section');
+            if (newsSection) {
+                const headerHeight = document.querySelector('header')?.offsetHeight || 80;
+                const offset = headerHeight + 20;
+                const elementPosition = newsSection.getBoundingClientRect().top + window.pageYOffset;
+                const offsetPosition = elementPosition - offset;
+                window.scrollTo({ top: offsetPosition, behavior: 'smooth' });
+            }
+        }, 100);
     }, 250);
 }
 
