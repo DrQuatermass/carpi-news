@@ -3085,9 +3085,21 @@ footer .footer-section.footer-links-section .footer-useful-links a:hover {
     overflow: hidden;
     padding: 0 !important;
     margin: 15px 0 !important;
+    width: 100vw;
+    position: relative;
+    left: 50%;
+    right: 50%;
+    margin-left: -50vw;
+    margin-right: -50vw;
 }
 
-.banner-footer-slot .advertisement-banner,
+.banner-footer-slot .advertisement-banner {
+    width: 100% !important;
+    padding: 0 !important;
+    margin: 0 auto !important;
+    max-width: 1200px;
+}
+
 .banner-horizontal-section .advertisement-banner {
     width: 100% !important;
     padding: 0 !important;
