@@ -85,8 +85,17 @@ function changePage(direction) {
     if (newPage >= 1 && newPage <= totalPages) {
         isTransitioning = true;
 
-        // Scroll smooth in alto
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        // Scroll smooth alla sezione articoli (non in cima alla pagina)
+        const newsSection = document.getElementById('news-section');
+        if (newsSection) {
+            const offset = 20; // Padding dall'alto
+            const elementPosition = newsSection.getBoundingClientRect().top + window.pageYOffset;
+            const offsetPosition = elementPosition - offset;
+            window.scrollTo({ top: offsetPosition, behavior: 'smooth' });
+        } else {
+            // Fallback se l'elemento non esiste
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
 
         // Determina la direzione dell'animazione
         const slideOutClass = direction > 0 ? 'slide-out-left' : 'slide-out-right';
