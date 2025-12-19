@@ -41,11 +41,15 @@ def home(request):
         else:
             articoli_query = articoli_query.filter(categoria__iexact=categoria)
 
-    # ARTICOLI SPOTLIGHT: massimo 4 articoli in evidenza
-    articoli_spotlight = articoli_query.filter(spotlight=True).order_by('-data_pubblicazione')[:4]
-
-    # ARTICOLI NORMALI: escludi gli spotlight
-    articoli_list = articoli_query.filter(spotlight=False).order_by('-data_pubblicazione')
+    # ARTICOLI SPOTLIGHT: massimo 4 articoli in evidenza (SOLO in homepage senza filtri)
+    if not categoria or categoria == 'tutti':
+        articoli_spotlight = articoli_query.filter(spotlight=True).order_by('-data_pubblicazione')[:4]
+        # ARTICOLI NORMALI: escludi gli spotlight dalla griglia principale
+        articoli_list = articoli_query.filter(spotlight=False).order_by('-data_pubblicazione')
+    else:
+        # Con filtro categoria: nessuno spotlight, mostra tutti come card normali
+        articoli_spotlight = []
+        articoli_list = articoli_query.order_by('-data_pubblicazione')
 
     # Paginazione: 8 articoli per pagina (4 righe x 3 colonne = 12 slot, 8 articoli + 4 banner)
     paginator = Paginator(articoli_list, 8)
