@@ -4,7 +4,7 @@
 {% if banner %}
     {# Banner attivo - determina la classe del wrapper in base alla POSIZIONE DELLO SLOT (non del banner) #}
     {# TUTTI i banner orizzontali (728×90) usano le stesse classi header/footer in base allo slot #}
-    {% if position == 'header' or position == 'article_top' or position == 'article_middle' or position == 'article_bottom' %}
+    {% if position == 'header' or position == 'article_top' or position == 'article_middle' or position == 'article_bottom' or position == 'horizontal' %}
         <div class="banner-header-slot has-active-banner">
             <div class="advertisement-banner" data-banner-id="{{ banner.id }}" style="width: 100%;">
                 <a href="{% url 'admin_panel:banner_click' banner.id %}" target="_blank" rel="noopener noreferrer nofollow sponsored" style="display: block; width: 100%;">
@@ -46,7 +46,7 @@
     {% endif %}
 {% else %}
     {# Nessun banner - mostra placeholder #}
-    {% if position == 'header' or position == 'article_top' or position == 'article_middle' or position == 'article_bottom' %}
+    {% if position == 'header' or position == 'article_top' or position == 'article_middle' or position == 'article_bottom' or position == 'horizontal' %}
         <a href="{% url 'admin_panel:dashboard' %}" class="banner-header-slot" rel="nofollow" style="text-decoration: none;">
             {# Placeholder gestito da CSS ::before e ::after #}
         </a>
