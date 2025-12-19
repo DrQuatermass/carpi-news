@@ -88,7 +88,8 @@ function changePage(direction) {
         // Scroll smooth alla sezione articoli (non in cima alla pagina)
         const newsSection = document.getElementById('news-section');
         if (newsSection) {
-            const offset = 20; // Padding dall'alto
+            const headerHeight = document.querySelector('header')?.offsetHeight || 80;
+            const offset = headerHeight + 20; // Header + padding
             const elementPosition = newsSection.getBoundingClientRect().top + window.pageYOffset;
             const offsetPosition = elementPosition - offset;
             window.scrollTo({ top: offsetPosition, behavior: 'smooth' });
