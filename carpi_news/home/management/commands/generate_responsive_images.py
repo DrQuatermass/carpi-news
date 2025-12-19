@@ -18,8 +18,8 @@ class Command(BaseCommand):
         parser.add_argument(
             '--quality',
             type=int,
-            default=75,
-            help='Qualità WebP (0-100, default 75)'
+            default=85,
+            help='Qualità WebP (0-100, default 85)'
         )
         parser.add_argument(
             '--force',
@@ -45,8 +45,8 @@ class Command(BaseCommand):
             self.stdout.write(self.style.ERROR(f"MEDIA_ROOT non trovato: {media_root}"))
             return
 
-        # Dimensioni responsive
-        widths = [400, 600, 800]
+        # Dimensioni responsive (incluso 1200w per spotlight)
+        widths = [400, 600, 800, 1200]
 
         # Trova tutte le immagini
         image_extensions = ['.jpg', '.jpeg', '.png', '.webp']

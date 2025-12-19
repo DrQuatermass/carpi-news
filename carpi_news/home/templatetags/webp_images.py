@@ -128,7 +128,9 @@ def image_srcset(image_url, sizes="default"):
 
             # Verifica se esistono versioni responsive sul filesystem
             srcset_parts = []
-            for width in widths:
+            # Limita alle larghezze disponibili (non cercare 1200w se sizes='default')
+            available_widths = widths
+            for width in available_widths:
                 responsive_filename = f"{filename}-{width}w.webp"
 
                 # Converti URL in path filesystem
