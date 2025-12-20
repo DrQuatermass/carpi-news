@@ -363,9 +363,29 @@ def sitemap_index(request):
         if latest_archive:
             archive_lastmod = latest_archive.data_pubblicazione
 
+    # Data ultimo aggiornamento sitemap principale (ultimi 30 giorni)
+    main_lastmod = Articolo.objects.filter(
+        approvato=True,
+        data_pubblicazione__gte=archive_cutoff,
+        data_pubblicazione__lte=now
+    ).aggregate(max_date=models.Max('data_pubblicazione'))['max_date'] or now
+
+    # Data ultimo aggiornamento sitemap news (ultimi 2 giorni)
+    news_cutoff = now - timedelta(days=2)
+    news_lastmod = Articolo.objects.filter(
+        approvato=True,
+        data_pubblicazione__gte=news_cutoff,
+        data_pubblicazione__lte=now
+    ).exclude(
+        titolo__istartswith='test'
+    ).exclude(
+        categoria__in=['Editoriale', 'Cosa fare oggi']
+    ).aggregate(max_date=models.Max('data_pubblicazione'))['max_date'] or now
+
     template = loader.get_template('sitemap_index.xml')
     context = {
-        'now': now,
+        'main_lastmod': main_lastmod,
+        'news_lastmod': news_lastmod,
         'has_archive': has_archive,
         'archive_lastmod': archive_lastmod
     }

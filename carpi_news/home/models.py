@@ -31,6 +31,7 @@ class Articolo(models.Model):
     spotlight = models.BooleanField(default=False, db_index=True, help_text="Articolo in evidenza nella sezione spotlight (max 4)")
     data_creazione = models.DateTimeField(auto_now_add=True, db_index=True)
     data_pubblicazione = models.DateTimeField(blank=True, null=True, default=timezone.now, db_index=True)
+    data_modifica = models.DateTimeField(auto_now=True, db_index=True, help_text="Data ultima modifica dell'articolo")
     data_evento = models.DateField(blank=True, null=True, help_text="Data dell'evento per articoli di categoria Cultura ed Eventi")
     telegram_notified = models.BooleanField(default=False, db_index=True, help_text="Indica se l'articolo è stato notificato su Telegram")
 

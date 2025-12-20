@@ -12,7 +12,7 @@
   {% for article in articles %}
   <url>
     <loc>https://ombradelportico.it{% url 'dettaglio_articolo' article.slug %}</loc>
-    <lastmod>{{ article.data_pubblicazione|date:"c" }}</lastmod>
+    <lastmod>{{ article.data_modifica|date:"c" }}</lastmod>
     <changefreq>{% if article.days_old < 7 %}daily{% elif article.days_old < 30 %}weekly{% else %}monthly{% endif %}</changefreq>
     <priority>{% if article.days_old < 1 %}0.9{% elif article.days_old < 7 %}0.7{% elif article.days_old < 30 %}0.5{% else %}0.3{% endif %}</priority>
   </url>
