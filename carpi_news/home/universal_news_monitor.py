@@ -2764,7 +2764,7 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
 
             # Processa risposta e gestisci tool use conversazionale
             response_data = self._process_conversational_response(
-                client, message, system_prompt, user_content, tools, web_sources
+                client, message, system_prompt, user_content, tools, web_sources, article_data, web_search_tool_def
             )
 
             # Gestisci tuple di 2 o 3 elementi (fallback OpenAI aggiunge modello)
@@ -2849,7 +2849,7 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
             return f"Errore nella generazione AI: {e}"
 
     def _process_conversational_response(self, client, message, system_prompt: str,
-                                       initial_user_content: str, tools, web_sources: List):
+                                       initial_user_content: str, tools, web_sources: List, article_data: Dict[str, Any], web_search_tool_def: Dict = None):
         """Processa la risposta conversazionale di Anthropic gestendo tool use
 
         Returns:
