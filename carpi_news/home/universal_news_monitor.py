@@ -3048,7 +3048,7 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
             # Fallback finale: prova a estrarre il testo dalla risposta originale
             try:
                 fallback_content = ""
-                for content_block in message.content:
+                for content_block in current_message.content:
                     if content_block.type == "text":
                         fallback_content += content_block.text
                 return fallback_content, web_sources
