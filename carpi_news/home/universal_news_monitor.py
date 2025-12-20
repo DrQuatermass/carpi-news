@@ -2638,7 +2638,9 @@ class UniversalNewsMonitor:
     
     def generate_ai_article(self, article_data: Dict[str, Any]) -> str:
         """Genera articolo con AI con ricerca web conversazionale integrata"""
+        self.logger.warning(f"[DEBUG] generate_ai_article START per: {article_data.get('title', 'N/A')}")
         try:
+            self.logger.warning("[DEBUG] Import Anthropic...")
             from anthropic import Anthropic
             from django.conf import settings
 
@@ -2653,8 +2655,10 @@ class UniversalNewsMonitor:
             content_type = article_data.get('content_type', 'comunicato')
 
             # Aggiungi data corrente al contesto
+            self.logger.warning("[DEBUG] Creazione date_context...")
             today_date = datetime.now().strftime("%d/%m/%Y")
             date_context = f"\n\nIMPORTANTE: La data odierna è {today_date}. Usa questa data come riferimento per verificare fatti, nomi di cariche pubbliche e informazioni correnti e dare un valore cronologico alle informazioni che trovi online."
+            self.logger.warning(f"[DEBUG] date_context creato: {today_date}")
 
             if content_type == 'twitter':
                 base_prompt = self.config.config.get('ai_twitter_prompt',
@@ -2731,6 +2735,7 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
             tools = [web_search_tool_def] if web_search_tool_def else []
 
             self.logger.info(f"Inizio generazione AI articolo: '{article_data['title']}' (web search: {enable_web_search})")
+            self.logger.warning("[DEBUG] Preparazione chiamata API Anthropic...")
 
             # Prima chiamata ad Anthropic
             # Se tools è vuoto, non passarlo all'API
@@ -2743,7 +2748,9 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
             if tools:
                 api_params["tools"] = tools
 
+            self.logger.warning("[DEBUG] Chiamata client.messages.create...")
             message = client.messages.create(**api_params)
+            self.logger.warning("[DEBUG] Risposta API ricevuta")
 
             # Traccia utilizzo API (prima chiamata)
             try:
@@ -2763,9 +2770,11 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
             ai_model_used = api_params["model"]
 
             # Processa risposta e gestisci tool use conversazionale
+            self.logger.warning("[DEBUG] Inizio _process_conversational_response...")
             response_data = self._process_conversational_response(
                 client, message, system_prompt, user_content, tools, web_sources, article_data, web_search_tool_def
             )
+            self.logger.warning(f"[DEBUG] _process_conversational_response completato, response_data len: {len(response_data)}")
 
             # Gestisci tuple di 2 o 3 elementi (fallback OpenAI aggiunge modello)
             if len(response_data) == 3:
@@ -2777,7 +2786,9 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
                 raise Exception("Nessun contenuto ricevuto dalla conversazione AI")
 
             # Estrai titolo e contenuto usando il content polisher
+            self.logger.warning("[DEBUG] Estrazione titolo e contenuto...")
             titolo, contenuto = content_polisher.extract_clean_title_from_ai_response(articolo_testo)
+            self.logger.warning(f"[DEBUG] Titolo estratto: {titolo[:50] if titolo else 'None'}...")
 
             # Se l'estrazione fallisce, usa il metodo fallback
             if not titolo:
@@ -2792,10 +2803,12 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
             })
 
             # Salva nel database con protezione race condition
+            self.logger.warning("[DEBUG] Inizio salvataggio DB...")
             from django.db import transaction
 
             # Controllo atomico per prevenire duplicati da race condition
             with transaction.atomic():
+                self.logger.warning("[DEBUG] Transaction atomic block enter")
                 # Lock a livello DB: controlla se esiste già per URL fonte o titolo
                 # (per articoli senza fonte come editoriali usa il titolo)
                 if article_data.get('url'):
@@ -2828,6 +2841,7 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
                     except Exception as e:
                         self.logger.warning(f"Errore parsing data evento: {e}")
 
+                self.logger.warning("[DEBUG] Creazione oggetto Articolo...")
                 articolo = Articolo(
                     titolo=polished_data['titolo'],
                     contenuto=polished_data['contenuto'],
@@ -2840,12 +2854,15 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
                     approvato=auto_approve,  # Auto-approva se configurato
                     data_pubblicazione=timezone.now()
                 )
+                self.logger.warning("[DEBUG] Chiamata articolo.save()...")
                 articolo.save()
+                self.logger.warning(f"[DEBUG] Articolo salvato! ID: {articolo.id}")
 
                 search_status = f" (fonti web: {len(used_sources)})" if enable_web_search and used_sources else ""
                 return f"Articolo AI salvato con ID: {articolo.id}{search_status}"
 
         except Exception as e:
+            self.logger.error(f"[DEBUG] ECCEZIONE in generate_ai_article: {e}", exc_info=True)
             return f"Errore nella generazione AI: {e}"
 
     def _process_conversational_response(self, client, message, system_prompt: str,
