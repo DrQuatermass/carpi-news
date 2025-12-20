@@ -2831,7 +2831,6 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
                 data_evento = None
                 if article_data.get('event_start'):
                     try:
-                        from datetime import datetime
                         # Formato: "2025-10-28T10:00:00" o "2025-10-28"
                         event_start_str = article_data['event_start']
                         if 'T' in event_start_str:
