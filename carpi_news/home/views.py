@@ -370,8 +370,8 @@ def sitemap_index(request):
         data_pubblicazione__lte=now
     ).aggregate(max_date=models.Max('data_pubblicazione'))['max_date'] or now
 
-    # Data ultimo aggiornamento sitemap news (ultimi 2 giorni)
-    news_cutoff = now - timedelta(days=2)
+    # Data ultimo aggiornamento sitemap news (ultime 48 ore)
+    news_cutoff = now - timedelta(hours=48)
     news_lastmod = Articolo.objects.filter(
         approvato=True,
         data_pubblicazione__gte=news_cutoff,
@@ -437,10 +437,10 @@ def sitemap_archive(request):
     return HttpResponse(template.render(context, request), content_type='application/xml')
 
 def news_sitemap(request):
-    """Vista per la sitemap Google News (ultimi 2 giorni)"""
-    # Solo articoli approvati degli ultimi 2 giorni (non futuri)
+    """Vista per la sitemap Google News (ultime 48 ore)"""
+    # Solo articoli approvati delle ultime 48 ore (non futuri)
     now = timezone.now()
-    cutoff_date = now - timedelta(days=2)
+    cutoff_date = now - timedelta(hours=48)
     articles = Articolo.objects.filter(
         approvato=True,
         data_pubblicazione__gte=cutoff_date,
