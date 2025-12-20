@@ -11,6 +11,7 @@ from django.conf import settings
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
+from django.db import models
 from datetime import datetime, timedelta
 from .models import Articolo, ChatbotConversation
 from .chatbot_service import ChatbotService
