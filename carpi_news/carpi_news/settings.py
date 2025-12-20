@@ -100,7 +100,7 @@ else:
             'ENGINE': 'django.db.backends.sqlite3',
             'NAME': BASE_DIR / 'db.sqlite3',
             'OPTIONS': {
-                'timeout': 30,  # Timeout aumentato a 30 sec per alta concorrenza
+                'timeout': 60,  # Timeout aumentato a 60 sec per 22 monitor concorrenti
                 'init_command': (
                     'PRAGMA journal_mode=WAL;'       # Write-Ahead Logging: migliora concorrenza
                     'PRAGMA synchronous=NORMAL;'     # Bilanciamento velocità/sicurezza
