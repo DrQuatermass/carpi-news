@@ -52,8 +52,11 @@ class HomeConfig(AppConfig):
         # 1. sys.argv[0] contiene 'gunicorn'
         # 2. Variabile ambiente SERVER_SOFTWARE
         # 3. Processo parent è gunicorn
-        is_gunicorn = 'gunicorn' in sys.argv[0] if sys.argv else False
-        is_production = is_gunicorn or 'gunicorn' in os.environ.get('SERVER_SOFTWARE', '')
+        # 4. PATH del sys.argv[0] contiene 'gunicorn'
+        is_gunicorn = ('gunicorn' in sys.argv[0] if sys.argv else False) or \
+                      ('gunicorn' in str(sys.argv)) or \
+                      ('GUNICORN' in os.environ.get('SERVER_SOFTWARE', '').upper())
+        is_production = is_gunicorn
         is_dev = 'runserver' in sys.argv
 
         print(f"[DEBUG] Debug: auto_start={auto_start_enabled}, is_prod={is_production}, is_dev={is_dev}, should_skip={should_skip}", flush=True)
