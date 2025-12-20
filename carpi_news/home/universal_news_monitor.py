@@ -2651,13 +2651,20 @@ class UniversalNewsMonitor:
 
             # Scegli prompt in base al tipo di contenuto (MANTENIAMO IDENTICI)
             content_type = article_data.get('content_type', 'comunicato')
+
+            # Aggiungi data corrente al contesto
+            today_date = datetime.now().strftime("%d/%m/%Y")
+            date_context = f"\n\nIMPORTANTE: La data odierna è {today_date}. Usa questa data come riferimento per verificare fatti, nomi di cariche pubbliche e informazioni correnti e dare un valore cronologico alle informazioni che trovi online."
+
             if content_type == 'twitter':
-                system_prompt = self.config.config.get('ai_twitter_prompt',
+                base_prompt = self.config.config.get('ai_twitter_prompt',
                     self.config.config.get('ai_system_prompt',
                     """Sei un giornalista esperto. Rielabora questa notizia per il giornale locale."""))
+                system_prompt = base_prompt + date_context
             else:
-                system_prompt = self.config.config.get('ai_system_prompt',
+                base_prompt = self.config.config.get('ai_system_prompt',
                     """Sei un giornalista esperto. Rielabora questa notizia per il giornale locale.""")
+                system_prompt = base_prompt + date_context
 
             # Costruisci contenuto con eventuali link (MANTENIAMO)
             links_section = ""
