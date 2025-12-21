@@ -21,6 +21,12 @@ class Command(BaseCommand):
             action='store_true',
             help='Esegui in modalità daemon (continua in esecuzione)'
         )
+        parser.add_argument(
+            '--stagger',
+            type=int,
+            default=0,
+            help='Secondi di delay tra l\'avvio di ogni monitor (default: 0, consigliato: 5-10)'
+        )
 
     def handle(self, *args, **options):
         monitor_name = options.get('monitor')

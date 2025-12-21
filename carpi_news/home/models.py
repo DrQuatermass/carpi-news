@@ -75,7 +75,7 @@ class Articolo(models.Model):
     payment_method = models.CharField('Metodo di pagamento', max_length=50, blank=True)
     payment_transaction_id = models.CharField('ID transazione', max_length=200, blank=True)
     payment_date = models.DateTimeField('Data pagamento', blank=True, null=True)
-    total_price = models.DecimalField('Prezzo totale (€)', max_digits=10, decimal_places=2, default=150.00)
+    total_price = models.DecimalField('Prezzo totale (€)', max_digits=10, decimal_places=2, default=200.00)
 
     # Codice promozionale
     promo_code = models.ForeignKey(

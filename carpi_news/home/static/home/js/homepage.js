@@ -221,8 +221,14 @@ function updatePageContent(data) {
         setTimeout(() => {
             const newsSection = document.getElementById('news-section');
             if (newsSection) {
-                const headerHeight = document.querySelector('header')?.offsetHeight || 80;
-                const offset = headerHeight + 20;
+                const header = document.querySelector('header');
+                const headerHeight = header ? header.offsetHeight : (window.innerWidth <= 768 ? 65 : 80);
+
+                // Offset adattivo: mobile usa meno margine superiore
+                const isMobile = window.innerWidth <= 768;
+                const additionalOffset = isMobile ? 10 : 20;
+                const offset = headerHeight + additionalOffset;
+
                 const elementPosition = newsSection.getBoundingClientRect().top + window.pageYOffset;
                 const offsetPosition = elementPosition - offset;
                 window.scrollTo({ top: offsetPosition, behavior: 'smooth' });

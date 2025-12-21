@@ -102,12 +102,21 @@ Per mostrare banner nelle tue pagine, usa il template tag:
 
 ## Prezzi
 
-- **Prezzo base**: €5.00/giorno
-- **Calcolo automatico**: Giorni × €5.00
-- **Esempi**:
-  - 7 giorni = €35.00
-  - 30 giorni = €150.00
-  - 90 giorni = €450.00
+- **Prezzo base**: €1.70/giorno
+- **Moltiplicatore priorità**: La priorità (1-5) moltiplica il prezzo base
+- **Calcolo automatico**: Giorni × Prezzo giornaliero (€1.70 × priorità)
+- **Esempi con priorità 3** (€1.70 × 3 = €5.10/giorno):
+  - 7 giorni = €35.70
+  - 30 giorni = €153.00
+  - 90 giorni = €459.00
+- **Esempi con priorità 1** (€1.70 × 1 = €1.70/giorno):
+  - 7 giorni = €11.90
+  - 30 giorni = €51.00
+  - 90 giorni = €153.00
+- **Esempi con priorità 5** (€1.70 × 5 = €8.50/giorno):
+  - 7 giorni = €59.50
+  - 30 giorni = €255.00
+  - 90 giorni = €765.00
 
 ## Stati del Banner
 

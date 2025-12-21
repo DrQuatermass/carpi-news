@@ -198,8 +198,8 @@ def banner_create(request):
                 return render(request, 'admin_panel/banner_form.html', context)
 
             # Calcola il prezzo per giorno in base alla priorità
-            base_price_per_day = 1.00
-            multiplier = {1: 5, 2: 3, 3: 2, 4: 1}.get(priority, 1)
+            base_price_per_day = 1.70
+            multiplier = priority  # La priorità stessa è il moltiplicatore (1-5)
             price_per_day = base_price_per_day * multiplier
 
             # Crea il banner
@@ -296,8 +296,8 @@ def banner_edit(request, banner_id):
         priority = int(request.POST.get('priority', banner.priority))
 
         # Ricalcola il prezzo per giorno in base alla priorità
-        base_price_per_day = 1.00
-        multiplier = {1: 5, 2: 3, 3: 2, 4: 1}.get(priority, 1)
+        base_price_per_day = 1.70
+        multiplier = priority  # La priorità stessa è il moltiplicatore (1-5)
         banner.price_per_day = base_price_per_day * multiplier
         banner.priority = priority
 

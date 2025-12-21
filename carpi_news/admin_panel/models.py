@@ -77,7 +77,7 @@ class Banner(models.Model):
 
     # Pricing
     price_per_day = models.DecimalField('Prezzo al giorno (€)', max_digits=10, decimal_places=2,
-                                        validators=[MinValueValidator(0.01)], default=5.00)
+                                        validators=[MinValueValidator(0.01)], default=1.70)
     total_price = models.DecimalField('Prezzo totale (€)', max_digits=10, decimal_places=2,
                                       validators=[MinValueValidator(0)], editable=False)
 
