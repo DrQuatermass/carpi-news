@@ -319,7 +319,7 @@ Rispondi SOLO con saluto + domanda."""
             if questions_asked >= 8:
                 # Massimo 8 domande - chiudi comunque
                 logger.info(f"Raggiunto massimo 8 domande - chiudo intervista")
-                return self._complete_interview_deferred()
+                return self._complete_interview_request_photo()
 
             # Genera prossima domanda dinamica
             next_question = self._generate_next_question(conversation, interview_data)
@@ -329,7 +329,7 @@ Rispondi SOLO con saluto + domanda."""
             if next_question.get('complete') and questions_asked >= MIN_QUESTIONS:
                 # L'AI ha deciso che ha abbastanza materiale
                 logger.info(f"Intervista completata dopo {questions_asked} domande")
-                return self._complete_interview_deferred()
+                return self._complete_interview_request_photo()
             elif next_question.get('complete') and questions_asked < MIN_QUESTIONS:
                 # Troppo presto - forza continuazione
                 logger.warning(f"AI vuole chiudere dopo solo {questions_asked} domande - continuo (minimo {MIN_QUESTIONS})")
@@ -581,6 +581,56 @@ IMPORTANTE: Rispondi SOLO con il JSON, nient'altro."""
                 'error': str(e)
             }
 
+    def _complete_interview_request_photo(self):
+        """
+        Completa l'intervista e richiede il caricamento della foto.
+        NON genera l'articolo (sarà fatto dal management command dopo 107 minuti).
+
+        Flusso:
+        1. Salva dati intervista
+        2. Frontend mostra form upload foto
+        3. Utente carica foto → salva e invia email admin
+        4. Management command genera articolo dopo 107 minuti
+        """
+        try:
+            from datetime import timedelta
+
+            # Recupera dati intervista
+            interview_data = self.pubbliredazionale.interview_data or {}
+
+            # Assicurati che il website_content sia presente
+            if not interview_data.get('website_content'):
+                logger.warning("website_content mancante, eseguo scraping profondo...")
+                website_content = self._scrape_website_deep(self.pubbliredazionale.sito_web)
+                interview_data['website_content'] = website_content
+
+            # Ricerca web iniziale se manca
+            if 'web_research' not in interview_data:
+                logger.info("web_research mancante, eseguo ricerca...")
+                web_research = self._perform_web_research(interview_data.get('website_content', ''))
+                interview_data['web_research'] = web_research
+
+            # Salva i dati aggiornati
+            self.pubbliredazionale.interview_data = interview_data
+            self.pubbliredazionale.save()
+
+            logger.info(f"Intervista pubbliredazionale {self.pubbliredazionale.id} completata. Richiesta foto.")
+
+            # Ritorna success con flag per mostrare form foto (NON deferred)
+            return {
+                'success': True,
+                'interview_complete': True,
+                'deferred': False,  # Non differito - chiede foto
+                'message': 'Perfetto! Ho raccolto tutte le informazioni necessarie.'
+            }
+
+        except Exception as e:
+            logger.error(f"Errore complete_interview_request_photo: {e}", exc_info=True)
+            return {
+                'success': False,
+                'error': str(e)
+            }
+
     def _complete_interview_deferred(self):
         """
         Completa l'intervista SENZA generare l'articolo immediatamente.
@@ -588,6 +638,8 @@ IMPORTANTE: Rispondi SOLO con il JSON, nient'altro."""
 
         Questo approccio risolve il problema del timeout HTTP e migliora la UX
         creando la percezione di un lavoro editoriale umano.
+
+        NOTA: Questo metodo non è più usato - sostituito da _complete_interview_request_photo()
         """
         try:
             from datetime import timedelta

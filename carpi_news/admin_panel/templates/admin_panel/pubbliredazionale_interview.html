@@ -700,10 +700,10 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    addSystemMessage('✅ Foto caricata con successo! Reindirizzamento all\'anteprima...');
+                    addSystemMessage('✅ Foto caricata con successo! L\'amministratore riceverà una notifica.\n\nL\'articolo sarà generato nelle prossime ore e riceverai una email quando sarà pronto per la revisione.');
                     setTimeout(() => {
-                        window.location.href = `/gestionale/pubbliredazionale/${pubbliredazionaleId}/preview/`;
-                    }, 1500);
+                        window.location.href = '/gestionale/';
+                    }, 5000);
                 } else {
                     alert('Errore: ' + (data.error || 'Impossibile caricare la foto'));
                     button.disabled = false;

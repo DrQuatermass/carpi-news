@@ -849,6 +849,47 @@ def pubbliredazionale_interview(request, pubbliredazionale_id):
                 pubbliredazionale.save()
 
                 logger.info(f"Foto caricata per pubbliredazionale {pubbliredazionale_id}: {foto.name}")
+
+                # Invia email all'admin dopo upload foto
+                from django.core.mail import send_mail
+                from django.contrib.auth.models import User
+                try:
+                    admin_emails = User.objects.filter(is_superuser=True).values_list('email', flat=True)
+                    admin_emails = [email for email in admin_emails if email]
+
+                    if admin_emails:
+                        admin_url = f"{settings.SITE_URL}/admin/home/articolo/{pubbliredazionale.id}/change/"
+                        subject = f'📷 Intervista completata + foto caricata: {pubbliredazionale.nome_azienda}'
+                        message = f"""Ciao,
+
+un nuovo pubbliredazionale ha completato l'intervista e caricato la foto.
+
+Dettagli:
+- Azienda: {pubbliredazionale.nome_azienda}
+- Sito web: {pubbliredazionale.sito_web or 'N/A'}
+- Utente: {pubbliredazionale.pubbliredazionale_user.username} ({pubbliredazionale.pubbliredazionale_user.email})
+- Intervistato: {pubbliredazionale.intervistato_nome} {pubbliredazionale.intervistato_cognome}
+- Foto caricata: ✓
+
+L'articolo sarà generato automaticamente dal sistema tra circa 107 minuti (o domani mattina se fuori orario lavorativo).
+
+Dettagli pubbliredazionale: {admin_url}
+
+---
+Ombra del Portico - Sistema di gestione pubbliredazionali
+"""
+
+                        send_mail(
+                            subject=subject,
+                            message=message,
+                            from_email=settings.DEFAULT_FROM_EMAIL,
+                            recipient_list=admin_emails,
+                            fail_silently=False,
+                        )
+                        logger.info(f"Email admin inviata dopo upload foto per pubbliredazionale {pubbliredazionale_id}")
+                except Exception as e:
+                    logger.error(f"Errore invio email admin dopo upload foto: {e}")
+
                 return JsonResponse({'success': True, 'message': 'Foto caricata con successo'})
 
             # Altrimenti è una richiesta JSON (intervista)
