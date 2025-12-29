@@ -434,10 +434,20 @@
                     if (data.interview_complete) {
                         // Intervista completata
                         addAgentMessage(data.message);
-                        addSystemMessage('✅ Intervista completata! Reindirizzamento all\'anteprima...');
-                        setTimeout(() => {
-                            window.location.href = `/gestionale/pubbliredazionale/${pubbliredazionaleId}/preview/`;
-                        }, 2000);
+
+                        if (data.deferred) {
+                            // Generazione differita - NON redirect, mostra messaggio finale
+                            addSystemMessage('✅ Intervista completata! Riceverà una email quando l\'articolo sarà pronto.');
+                            setTimeout(() => {
+                                window.location.href = '/gestionale/';  // Torna alla dashboard
+                            }, 3000);
+                        } else {
+                            // Generazione immediata (vecchio comportamento, per compatibilità)
+                            addSystemMessage('✅ Intervista completata! Reindirizzamento all\'anteprima...');
+                            setTimeout(() => {
+                                window.location.href = `/gestionale/pubbliredazionale/${pubbliredazionaleId}/preview/`;
+                            }, 2000);
+                        }
                     } else {
                         // Prossima domanda
                         addAgentMessage(data.message);

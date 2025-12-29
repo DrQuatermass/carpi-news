@@ -320,7 +320,7 @@ Rispondi SOLO con saluto + domanda."""
             if questions_asked >= 8:
                 # Massimo 8 domande - chiudi comunque
                 logger.info(f"Raggiunto massimo 8 domande - chiudo intervista")
-                return self._complete_interview_and_generate()
+                return self._complete_interview_deferred()
 
             # Genera prossima domanda dinamica
             next_question = self._generate_next_question(conversation, interview_data)
@@ -330,7 +330,7 @@ Rispondi SOLO con saluto + domanda."""
             if next_question.get('complete') and questions_asked >= MIN_QUESTIONS:
                 # L'AI ha deciso che ha abbastanza materiale
                 logger.info(f"Intervista completata dopo {questions_asked} domande")
-                return self._complete_interview_and_generate()
+                return self._complete_interview_deferred()
             elif next_question.get('complete') and questions_asked < MIN_QUESTIONS:
                 # Troppo presto - forza continuazione
                 logger.warning(f"AI vuole chiudere dopo solo {questions_asked} domande - continuo (minimo {MIN_QUESTIONS})")
@@ -582,6 +582,86 @@ IMPORTANTE: Rispondi SOLO con il JSON, nient'altro."""
                 'success': False,
                 'error': str(e)
             }
+
+    def _complete_interview_deferred(self):
+        """
+        Completa l'intervista SENZA generare l'articolo immediatamente.
+        L'articolo verrà generato in background dal management command.
+
+        Questo approccio risolve il problema del timeout HTTP e migliora la UX
+        creando la percezione di un lavoro editoriale umano.
+        """
+        try:
+            from datetime import timedelta
+
+            # Recupera dati intervista
+            interview_data = self.pubbliredazionale.interview_data or {}
+
+            # Assicurati che il website_content sia presente
+            if not interview_data.get('website_content'):
+                logger.warning("website_content mancante, eseguo scraping profondo...")
+                website_content = self._scrape_website_deep(self.pubbliredazionale.sito_web)
+                interview_data['website_content'] = website_content
+
+            # Ricerca web iniziale se manca
+            if 'web_research' not in interview_data:
+                logger.info("web_research mancante, eseguo ricerca...")
+                web_research = self._perform_web_research(interview_data.get('website_content', ''))
+                interview_data['web_research'] = web_research
+
+            # Salva i dati aggiornati
+            self.pubbliredazionale.interview_data = interview_data
+            self.pubbliredazionale.status = 'interview_completed'
+            self.pubbliredazionale.save()
+
+            # Calcola quando l'articolo sarà pronto
+            ready_time = self._calculate_ready_time(self.pubbliredazionale.data_creazione)
+
+            # Formatta orario per messaggio
+            ready_str = ready_time.strftime("%d/%m/%Y alle ore %H:%M")
+
+            logger.info(f"Intervista pubbliredazionale {self.pubbliredazionale.id} completata. Articolo pronto: {ready_str}")
+
+            return {
+                'success': True,
+                'interview_complete': True,
+                'deferred': True,
+                'ready_time': ready_str,
+                'message': f'Grazie! La redazione sta elaborando il suo pubbliredazionale.\n\nRiceverà una email di notifica entro il {ready_str} con il link per visualizzare l\'anteprima dell\'articolo.'
+            }
+
+        except Exception as e:
+            logger.error(f"Errore complete_interview_deferred: {e}", exc_info=True)
+            return {
+                'success': False,
+                'error': str(e)
+            }
+
+    def _calculate_ready_time(self, created_at):
+        """
+        Calcola quando il pubbliredazionale dovrebbe essere pronto.
+
+        Logica per simulare lavoro editoriale umano:
+        - Intervista completata 08:00-12:00 → Pronto ore 18:00 stesso giorno
+        - Intervista completata 12:00-18:00 → Pronto ore 10:00 giorno dopo
+        - Intervista completata 18:00-08:00 → Pronto ore 14:00 giorno dopo
+        """
+        from datetime import timedelta
+
+        hour = created_at.hour
+
+        if 8 <= hour < 12:
+            # Mattina → Sera stesso giorno (18:00)
+            ready = created_at.replace(hour=18, minute=0, second=0, microsecond=0)
+        elif 12 <= hour < 18:
+            # Pomeriggio → Mattina giorno dopo (10:00)
+            ready = (created_at + timedelta(days=1)).replace(hour=10, minute=0, second=0, microsecond=0)
+        else:
+            # Sera/Notte → Pomeriggio giorno dopo (14:00)
+            next_day = created_at + timedelta(days=1)
+            ready = next_day.replace(hour=14, minute=0, second=0, microsecond=0)
+
+        return ready
 
     def _perform_web_research(self, website_content):
         """
