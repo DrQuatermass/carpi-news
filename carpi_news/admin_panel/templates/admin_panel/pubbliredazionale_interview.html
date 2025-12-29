@@ -284,6 +284,112 @@
             padding: 12px 30px;
             font-size: 16px;
         }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .navbar {
+                padding: 10px 15px;
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .navbar-brand {
+                font-size: 16px;
+            }
+
+            .navbar-user {
+                flex-direction: column;
+                gap: 8px;
+                font-size: 13px;
+            }
+
+            .container {
+                margin: 20px auto;
+                padding: 0 10px;
+            }
+
+            .chat-container {
+                height: 500px;
+            }
+
+            .chat-messages {
+                padding: 15px;
+            }
+
+            .message-content {
+                max-width: 85%;
+                font-size: 14px;
+            }
+
+            .message-avatar {
+                width: 32px;
+                height: 32px;
+                font-size: 16px;
+            }
+
+            .chat-input {
+                font-size: 14px;
+            }
+
+            .btn-send {
+                padding: 10px 15px;
+                font-size: 13px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .subtitle {
+                font-size: 14px;
+            }
+
+            /* Upload foto responsive */
+            .photo-upload-container {
+                padding: 20px 15px !important;
+            }
+
+            .photo-upload-container h3 {
+                font-size: 16px !important;
+            }
+
+            .photo-upload-container p {
+                font-size: 13px !important;
+            }
+
+            #confirmPhotoButton {
+                font-size: 14px !important;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .navbar-brand {
+                font-size: 14px;
+            }
+
+            .container {
+                padding: 0 5px;
+            }
+
+            .chat-container {
+                height: 450px;
+                border-radius: 8px;
+            }
+
+            .chat-messages {
+                padding: 10px;
+            }
+
+            .message-content {
+                max-width: 90%;
+                padding: 12px 15px;
+                font-size: 13px;
+            }
+
+            h1 {
+                font-size: 20px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -542,6 +648,12 @@
             messageDiv.style.textAlign = 'center';
             messageDiv.style.color = '#718096';
             messageDiv.style.padding = '20px';
+            messageDiv.style.fontSize = '15px';
+            messageDiv.style.lineHeight = '1.8';
+            messageDiv.style.whiteSpace = 'pre-wrap';  // Rispetta \n
+            messageDiv.style.background = '#f0f9ff';
+            messageDiv.style.borderRadius = '8px';
+            messageDiv.style.margin = '10px 0';
             messageDiv.innerHTML = text;
             messagesDiv.appendChild(messageDiv);
             scrollToBottom();
