@@ -61,9 +61,14 @@ class PubbliredazioneAgent:
             else:
                 logger.info(f"Preview contenuto estratto (primi 500 char): {website_content[:500]}")
 
-            # FASE 2: Ricerca web approfondita e analisi di mercato (con contenuto del sito)
-            # Salta la ricerca web se non c'è contenuto del sito
-            if website_content and len(website_content) > 100:
+            # FASE 2: Ricerca web approfondita e analisi di mercato
+            # Esegui SEMPRE la web research, anche se il sito è un profilo social
+            # Per profili social, la web research è fondamentale per raccogliere informazioni
+            is_social_profile = 'instagram.com' in self.pubbliredazionale.sito_web.lower() or \
+                               'facebook.com' in self.pubbliredazionale.sito_web.lower() or \
+                               'linkedin.com' in self.pubbliredazionale.sito_web.lower()
+
+            if website_content and len(website_content) > 100 or is_social_profile:
                 logger.info("Inizio ricerca web approfondita e analisi di mercato...")
                 web_research = self._perform_web_research(website_content)
                 logger.info(f"Ricerca completata: {len(web_research.get('findings', ''))} caratteri di analisi")
@@ -844,8 +849,34 @@ Rispondi in formato JSON:
     def _scrape_website_deep(self, url):
         """
         Estrae contenuto approfondito dal sito web per analisi completa
+        Riconosce profili social (Instagram, Facebook, LinkedIn) e li gestisce diversamente
         """
         try:
+            # Rileva se è un profilo social
+            social_platforms = {
+                'instagram.com': 'Instagram',
+                'facebook.com': 'Facebook',
+                'fb.com': 'Facebook',
+                'linkedin.com': 'LinkedIn',
+                'twitter.com': 'Twitter/X',
+                'x.com': 'Twitter/X',
+                'tiktok.com': 'TikTok'
+            }
+
+            is_social = False
+            platform_name = None
+            for platform_domain, name in social_platforms.items():
+                if platform_domain in url.lower():
+                    is_social = True
+                    platform_name = name
+                    break
+
+            if is_social:
+                logger.info(f"Rilevato profilo social ({platform_name}): {url}")
+                logger.info(f"I profili social non sono scrapabili - userò solo l'intervista e web research")
+                # Restituisci messaggio informativo invece di stringa vuota
+                return f"Profilo {platform_name}: {url}\n(Le informazioni saranno raccolte tramite intervista e ricerca web)"
+
             headers = {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',

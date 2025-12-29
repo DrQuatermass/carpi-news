@@ -19,7 +19,7 @@ class Articolo(models.Model):
     contenuto = models.TextField()
     sommario = models.TextField(max_length=5000, blank=True)
     categoria = models.CharField(max_length=100, default='Generale', db_index=True)
-    slug = models.SlugField(max_length=200, unique=True, blank=True)
+    slug = models.SlugField(max_length=50, unique=True, blank=True)
     approvato = models.BooleanField(default=False, db_index=True)
     fonte = models.URLField(max_length=500, blank=True, null=True)
     foto = models.TextField(blank=True, null=True)
@@ -108,7 +108,7 @@ class Articolo(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            base_slug = slugify(self.titolo)
+            base_slug = slugify(self.titolo)[:45]  # Limita a 45 per lasciare spazio al contatore
             slug = base_slug
             counter = 1
 
@@ -117,7 +117,7 @@ class Articolo(models.Model):
                 slug = f"{base_slug}-{counter}"
                 counter += 1
 
-            self.slug = slug
+            self.slug = slug[:50]  # Assicurati che non superi mai 50 caratteri
 
         if not self.sommario:
             # Rimuovi tag HTML dal contenuto per il sommario
