@@ -824,13 +824,34 @@ def pubbliredazionale_interview(request, pubbliredazionale_id):
     if pubbliredazionale.titolo and pubbliredazionale.contenuto and pubbliredazionale.interview_data:
         return redirect('admin_panel:pubbliredazionale_preview', pubbliredazionale_id=pubbliredazionale.id)
 
-    # Se POST, processa risposta utente
+    # Se POST, processa risposta utente o upload foto
     if request.method == 'POST':
         import json as json_lib
         import logging
         logger = logging.getLogger(__name__)
 
         try:
+            # Check se è FormData (upload foto)
+            if request.POST.get('action') == 'upload_photo' and request.FILES.get('foto'):
+                foto = request.FILES['foto']
+
+                # Validazione formato immagine
+                allowed_formats = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp']
+                if foto.content_type not in allowed_formats:
+                    return JsonResponse({'success': False, 'error': 'Formato immagine non valido. Usa JPG, PNG o WEBP.'})
+
+                # Validazione dimensione (max 5MB)
+                if foto.size > 5 * 1024 * 1024:
+                    return JsonResponse({'success': False, 'error': 'L\'immagine è troppo grande. Dimensione massima: 5MB.'})
+
+                # Salva immagine
+                pubbliredazionale.foto_upload = foto
+                pubbliredazionale.save()
+
+                logger.info(f"Foto caricata per pubbliredazionale {pubbliredazionale_id}: {foto.name}")
+                return JsonResponse({'success': True, 'message': 'Foto caricata con successo'})
+
+            # Altrimenti è una richiesta JSON (intervista)
             data = json_lib.loads(request.body)
             action = data.get('action')
 

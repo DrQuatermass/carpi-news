@@ -311,7 +311,6 @@
 
             <div class="action-buttons">
                 <button class="btn btn-secondary" onclick="regenerateArticle()">🔄 Rigenera Articolo</button>
-                <button class="btn btn-primary" onclick="saveArticle()" style="background: #10b981;">💾 Salva Articolo</button>
                 {% if pubbliredazionale.approved_by %}
                     <button class="btn btn-primary" onclick="proceedToPayment()">💳 Procedi al Pagamento (€200)</button>
                 {% else %}
@@ -410,49 +409,6 @@
                 console.error('Errore:', error);
                 alert('Errore di connessione. Riprova.');
             });
-        }
-
-        async function saveArticle() {
-            // Verifica che ci sia una foto
-            const fotoInput = document.getElementById('fotoInput');
-            const hasFoto = fotoInput.files.length > 0 || {% if pubbliredazionale.foto_upload %}true{% else %}false{% endif %};
-
-            if (!hasFoto) {
-                alert('Per favore, seleziona una foto prima di salvare l\'articolo.');
-                return;
-            }
-
-            if (!confirm('Salvare l\'articolo? Verrà inviata una notifica all\'amministratore per l\'approvazione.')) {
-                return;
-            }
-
-            // Crea FormData per inviare file + dati
-            const formData = new FormData();
-            formData.append('action', 'save');
-            if (fotoInput.files.length > 0) {
-                formData.append('foto', fotoInput.files[0]);
-            }
-
-            try {
-                const response = await fetch(`/gestionale/pubbliredazionale/${pubbliredazionaleId}/preview/`, {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRFToken': csrfToken
-                    },
-                    body: formData
-                });
-
-                const data = await response.json();
-                if (data.success) {
-                    alert('Articolo salvato! L\'amministratore riceverà una notifica per l\'approvazione.');
-                    window.location.href = data.redirect_url;
-                } else {
-                    alert('Errore: ' + (data.error || 'Impossibile salvare l\'articolo'));
-                }
-            } catch (error) {
-                console.error('Errore:', error);
-                alert('Errore di connessione. Riprova.');
-            }
         }
 
         async function proceedToPayment() {

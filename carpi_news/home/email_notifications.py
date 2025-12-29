@@ -165,7 +165,8 @@ Generato automaticamente dal sistema Ombra del Portico
 
 def send_pubbliredazionale_approved_notification(articolo):
     """
-    Invia email al cliente quando il pubbliredazionale viene approvato
+    Invia email al cliente quando il pubbliredazionale viene approvato dalla redazione
+    (Prima del pagamento - l'utente può ora procedere al pagamento)
     """
     try:
         if not articolo.is_pubbliredazionale or not articolo.pubbliredazionale_user:
@@ -177,38 +178,49 @@ def send_pubbliredazionale_approved_notification(articolo):
             logger.warning(f"Utente pubbliredazionale {articolo.pubbliredazionale_user.username} senza email")
             return False
 
-        # URL articolo pubblicato
+        # URL anteprima articolo (NON pubblicato ancora)
         protocol = 'https' if not getattr(settings, 'DEBUG', False) else 'http'
         domain = getattr(settings, 'SITE_URL', 'https://ombradelportico.it').replace('https://', '').replace('http://', '')
-        article_url = f"{protocol}://{domain}/articolo/{articolo.slug}/"
+        preview_url = f"{protocol}://{domain}/gestionale/pubbliredazionale/{articolo.id}/preview/"
+        payment_url = f"{protocol}://{domain}/gestionale/pubbliredazionale/{articolo.id}/payment/"
 
-        subject = f'✅ Il tuo pubbliredazionale "{articolo.nome_azienda}" è stato approvato!'
+        subject = f'✅ Pubbliredazionale "{articolo.nome_azienda}" approvato - Puoi procedere al pagamento'
 
         html_message = f"""
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
             <h2 style="color: #27ae60; border-bottom: 2px solid #27ae60; padding-bottom: 10px;">
-                🎉 Pubbliredazionale Approvato!
+                ✅ Pubbliredazionale Approvato dalla Redazione
             </h2>
 
             <p>Gentile <strong>{articolo.pubbliredazionale_user.get_full_name() or articolo.pubbliredazionale_user.username}</strong>,</p>
 
-            <p>Siamo lieti di informarti che il tuo pubbliredazionale è stato approvato ed è ora <strong>pubblicato</strong> su Ombra del Portico!</p>
+            <p>Siamo lieti di informarti che la redazione di Ombra del Portico ha <strong>approvato</strong> il tuo pubbliredazionale!</p>
 
             <div style="background-color: #f8f9fa; padding: 15px; border-left: 4px solid #27ae60; margin: 20px 0;">
                 <h3 style="margin-top: 0; color: #2c3e50;">Dettagli Pubbliredazionale:</h3>
                 <p><strong>Azienda:</strong> {articolo.nome_azienda}</p>
                 <p><strong>Titolo:</strong> {articolo.titolo}</p>
-                <p><strong>Data pubblicazione:</strong> {articolo.data_pubblicazione.strftime('%d/%m/%Y %H:%M') if articolo.data_pubblicazione else 'Ora'}</p>
+                <p><strong>Prezzo:</strong> €200</p>
+            </div>
+
+            <div style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0;">
+                <h3 style="margin-top: 0; color: #856404;">📢 Prossimo Passo: Pagamento</h3>
+                <p style="color: #856404; margin: 0;">
+                    Per procedere con la pubblicazione, completa il pagamento di <strong>€200</strong>.
+                    Una volta effettuato il pagamento, il tuo articolo sarà pubblicato e condiviso sui nostri canali social.
+                </p>
             </div>
 
             <p style="text-align: center; margin: 30px 0;">
-                <a href="{article_url}"
-                   style="background-color: #3498db; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
-                    📰 Visualizza il tuo articolo
+                <a href="{preview_url}"
+                   style="background-color: #3498db; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold; margin-right: 10px;">
+                    📰 Visualizza Anteprima
+                </a>
+                <a href="{payment_url}"
+                   style="background-color: #27ae60; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; display: inline-block; font-weight: bold;">
+                    💳 Procedi al Pagamento
                 </a>
             </p>
-
-            <p>Il tuo articolo è ora visibile a tutti i lettori di Ombra del Portico e verrà condiviso sui nostri canali social.</p>
 
             <p style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0; color: #7f8c8d; font-size: 12px;">
                 Grazie per aver scelto Ombra del Portico!<br>
@@ -218,20 +230,24 @@ def send_pubbliredazionale_approved_notification(articolo):
         """
 
         plain_message = f"""
-🎉 Pubbliredazionale Approvato!
+✅ Pubbliredazionale Approvato dalla Redazione
 
 Gentile {articolo.pubbliredazionale_user.get_full_name() or articolo.pubbliredazionale_user.username},
 
-Siamo lieti di informarti che il tuo pubbliredazionale è stato approvato ed è ora pubblicato su Ombra del Portico!
+Siamo lieti di informarti che la redazione di Ombra del Portico ha APPROVATO il tuo pubbliredazionale!
 
 Dettagli Pubbliredazionale:
 - Azienda: {articolo.nome_azienda}
 - Titolo: {articolo.titolo}
-- Data pubblicazione: {articolo.data_pubblicazione.strftime('%d/%m/%Y %H:%M') if articolo.data_pubblicazione else 'Ora'}
+- Prezzo: €200
 
-Visualizza il tuo articolo: {article_url}
+📢 PROSSIMO PASSO: PAGAMENTO
 
-Il tuo articolo è ora visibile a tutti i lettori di Ombra del Portico e verrà condiviso sui nostri canali social.
+Per procedere con la pubblicazione, completa il pagamento di €200.
+Una volta effettuato il pagamento, il tuo articolo sarà pubblicato e condiviso sui nostri canali social.
+
+Visualizza anteprima: {preview_url}
+Procedi al pagamento: {payment_url}
 
 Grazie per aver scelto Ombra del Portico!
 La Redazione

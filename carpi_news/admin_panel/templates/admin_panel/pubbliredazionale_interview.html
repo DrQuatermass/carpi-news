@@ -344,6 +344,28 @@
                 <input type="text" class="chat-input" id="userInput" placeholder="Scrivi la tua risposta..." disabled>
                 <button class="btn-send" id="sendButton" onclick="sendAnswer()" disabled>Invia</button>
             </div>
+
+            <!-- Upload Foto Finale (visibile solo a fine intervista) -->
+            <div class="photo-upload-container" id="photoUploadContainer" style="display: none; padding: 30px; background: #f0f9ff; border-top: 3px solid #0ea5e9;">
+                <h3 style="color: #0369a1; margin-bottom: 15px; font-size: 18px; text-align: center;">📷 Ultima cosa: Carica una foto per l'articolo</h3>
+                <p style="color: #0c4a6e; font-size: 14px; margin-bottom: 20px; text-align: center;">
+                    Seleziona un'immagine rappresentativa per l'articolo (JPG, PNG, WEBP - max 5MB)
+                </p>
+
+                <div style="max-width: 600px; margin: 0 auto;">
+                    <input type="file" id="fotoFinalInput" accept="image/jpeg,image/png,image/jpg,image/webp"
+                           style="display: block; margin-bottom: 15px; padding: 12px; border: 2px solid #0ea5e9; border-radius: 8px; width: 100%; background: white; cursor: pointer;">
+
+                    <div id="photoFinalPreview" style="margin: 20px 0; text-align: center; display: none;">
+                        <p style="color: #10b981; font-weight: 600; margin-bottom: 10px;">✓ Foto selezionata:</p>
+                        <img id="photoFinalPreviewImg" src="" alt="Preview" style="max-width: 100%; max-height: 300px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+                    </div>
+
+                    <button id="confirmPhotoButton" class="btn-send" style="width: 100%; padding: 15px; font-size: 16px; margin-top: 15px;" onclick="confirmPhotoAndProceed()" disabled>
+                        Conferma e vai all'anteprima →
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -442,11 +464,15 @@
                                 window.location.href = '/gestionale/';  // Torna alla dashboard
                             }, 6000);  // 6 secondi per leggere il messaggio finale
                         } else {
-                            // Generazione immediata (vecchio comportamento, per compatibilità)
-                            addSystemMessage('✅ Intervista completata! Reindirizzamento all\'anteprima...');
-                            setTimeout(() => {
-                                window.location.href = `/gestionale/pubbliredazionale/${pubbliredazionaleId}/preview/`;
-                            }, 2000);
+                            // Generazione immediata - mostra form upload foto
+                            addSystemMessage('✅ Intervista completata! Ora carica una foto per l\'articolo.');
+
+                            // Nascondi chat input
+                            document.getElementById('chatInputContainer').style.display = 'none';
+
+                            // Mostra form upload foto
+                            document.getElementById('photoUploadContainer').style.display = 'block';
+                            scrollToBottom();
                         }
                     } else {
                         // Prossima domanda
@@ -596,15 +622,100 @@
             messagesDiv.scrollTop = messagesDiv.scrollHeight;
         }
 
-        // Enter per inviare
+        // Gestione upload foto
         document.addEventListener('DOMContentLoaded', function() {
+            // Enter per inviare
             const input = document.getElementById('userInput');
             input.addEventListener('keypress', function(e) {
                 if (e.key === 'Enter' && !input.disabled) {
                     sendAnswer();
                 }
             });
+
+            // Preview foto quando selezionata
+            document.getElementById('fotoFinalInput').addEventListener('change', function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    // Validazione formato
+                    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
+                    if (!allowedTypes.includes(file.type)) {
+                        alert('Formato non valido. Usa JPG, PNG o WEBP.');
+                        e.target.value = '';
+                        document.getElementById('confirmPhotoButton').disabled = true;
+                        return;
+                    }
+
+                    // Validazione dimensione (max 5MB)
+                    if (file.size > 5 * 1024 * 1024) {
+                        alert('File troppo grande. Dimensione massima: 5MB.');
+                        e.target.value = '';
+                        document.getElementById('confirmPhotoButton').disabled = true;
+                        return;
+                    }
+
+                    // Mostra preview
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        document.getElementById('photoFinalPreviewImg').src = event.target.result;
+                        document.getElementById('photoFinalPreview').style.display = 'block';
+                        document.getElementById('confirmPhotoButton').disabled = false;
+                        scrollToBottom();
+                    };
+                    reader.readAsDataURL(file);
+                } else {
+                    document.getElementById('photoFinalPreview').style.display = 'none';
+                    document.getElementById('confirmPhotoButton').disabled = true;
+                }
+            });
         });
+
+        async function confirmPhotoAndProceed() {
+            const fotoInput = document.getElementById('fotoFinalInput');
+
+            if (!fotoInput.files.length) {
+                alert('Seleziona una foto prima di procedere.');
+                return;
+            }
+
+            // Crea FormData per inviare il file
+            const formData = new FormData();
+            formData.append('action', 'upload_photo');
+            formData.append('foto', fotoInput.files[0]);
+
+            // Disabilita pulsante e mostra loading
+            const button = document.getElementById('confirmPhotoButton');
+            const originalText = button.textContent;
+            button.disabled = true;
+            button.textContent = '⏳ Caricamento in corso...';
+
+            try {
+                const response = await fetch(`/gestionale/pubbliredazionale/${pubbliredazionaleId}/interview/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': csrfToken
+                    },
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    addSystemMessage('✅ Foto caricata con successo! Reindirizzamento all\'anteprima...');
+                    setTimeout(() => {
+                        window.location.href = `/gestionale/pubbliredazionale/${pubbliredazionaleId}/preview/`;
+                    }, 1500);
+                } else {
+                    alert('Errore: ' + (data.error || 'Impossibile caricare la foto'));
+                    button.disabled = false;
+                    button.textContent = originalText;
+                }
+            } catch (error) {
+                console.error('Errore:', error);
+                alert('Errore di connessione. Riprova.');
+                button.disabled = false;
+                button.textContent = originalText;
+            }
+        }
     </script>
 </body>
 </html>

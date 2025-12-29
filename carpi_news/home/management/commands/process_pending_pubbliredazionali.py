@@ -105,8 +105,11 @@ class Command(BaseCommand):
 
             self.stdout.write(self.style.SUCCESS(f'✅ Articolo generato: {pub.titolo}'))
 
-            # Invia email di notifica
+            # Invia email di notifica all'utente
             self.send_notification_email(pub)
+
+            # Invia email di notifica all'admin
+            self.send_admin_notification_email(pub)
 
         except Exception as e:
             logger.error(f"Errore processamento pubbliredazionale {pub.id}: {e}", exc_info=True)
@@ -155,3 +158,56 @@ Questo è un messaggio automatico. Per assistenza, risponda a questa email.
         except Exception as e:
             logger.error(f"Errore invio email per pubbliredazionale {pub.id}: {e}")
             self.stdout.write(self.style.WARNING(f'⚠️ Email non inviata: {str(e)}'))
+
+    def send_admin_notification_email(self, pub):
+        """Invia email all'admin per approvazione pubbliredazionale generato"""
+        try:
+            from django.contrib.auth.models import User
+
+            admin_emails = User.objects.filter(is_superuser=True).values_list('email', flat=True)
+            admin_emails = [email for email in admin_emails if email]
+
+            if not admin_emails:
+                logger.warning("Nessun admin con email configurata")
+                return
+
+            admin_url = f"{settings.SITE_URL}/admin/home/articolo/{pub.id}/change/"
+            preview_url = f"{settings.SITE_URL}/gestionale/pubbliredazionale/{pub.id}/preview/"
+
+            subject = f'🔔 Nuovo pubbliredazionale da approvare: {pub.nome_azienda}'
+
+            message = f"""Ciao,
+
+un nuovo pubbliredazionale è stato generato e richiede la tua approvazione prima che l'utente possa procedere al pagamento.
+
+Dettagli:
+- Azienda: {pub.nome_azienda}
+- Sito web: {pub.sito_web or 'N/A'}
+- Utente: {pub.pubbliredazionale_user.username} ({pub.pubbliredazionale_user.email})
+- Intervistato: {pub.intervistato_nome} {pub.intervistato_cognome}
+- Titolo articolo: {pub.titolo}
+
+Azioni richieste:
+1. Rivedi l'articolo in anteprima: {preview_url}
+2. Approva o rifiuta dal pannello admin: {admin_url}
+
+Una volta approvato, l'utente riceverà una email e potrà procedere al pagamento (€200).
+
+---
+Ombra del Portico - Sistema di gestione pubbliredazionali
+"""
+
+            send_mail(
+                subject=subject,
+                message=message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=admin_emails,
+                fail_silently=False,
+            )
+
+            logger.info(f"Email admin inviata per pubbliredazionale {pub.id} a {', '.join(admin_emails)}")
+            self.stdout.write(self.style.SUCCESS(f'📧 Email admin inviata a {", ".join(admin_emails)}'))
+
+        except Exception as e:
+            logger.error(f"Errore invio email admin per pubbliredazionale {pub.id}: {e}")
+            self.stdout.write(self.style.WARNING(f'⚠️ Email admin non inviata: {str(e)}'))
