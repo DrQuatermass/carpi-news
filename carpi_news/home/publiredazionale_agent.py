@@ -642,24 +642,20 @@ IMPORTANTE: Rispondi SOLO con il JSON, nient'altro."""
         Calcola quando il pubbliredazionale dovrebbe essere pronto.
 
         Logica per simulare lavoro editoriale umano:
-        - Intervista completata 08:00-12:00 → Pronto ore 18:00 stesso giorno
-        - Intervista completata 12:00-18:00 → Pronto ore 10:00 giorno dopo
-        - Intervista completata 18:00-08:00 → Pronto ore 14:00 giorno dopo
+        - Intervista completata 08:00-18:00 → Pronto dopo 107 minuti (1h 47min)
+        - Intervista completata 18:00-08:00 → Pronto ore 09:02 giorno dopo
         """
         from datetime import timedelta
 
         hour = created_at.hour
 
-        if 8 <= hour < 12:
-            # Mattina → Sera stesso giorno (18:00)
-            ready = created_at.replace(hour=18, minute=0, second=0, microsecond=0)
-        elif 12 <= hour < 18:
-            # Pomeriggio → Mattina giorno dopo (10:00)
-            ready = (created_at + timedelta(days=1)).replace(hour=10, minute=0, second=0, microsecond=0)
+        if 8 <= hour < 18:
+            # Orario lavorativo → Pronto dopo 107 minuti
+            ready = created_at + timedelta(minutes=107)
         else:
-            # Sera/Notte → Pomeriggio giorno dopo (14:00)
+            # Sera/Notte → Pronto alle 09:02 del giorno dopo
             next_day = created_at + timedelta(days=1)
-            ready = next_day.replace(hour=14, minute=0, second=0, microsecond=0)
+            ready = next_day.replace(hour=9, minute=2, second=0, microsecond=0)
 
         return ready
 
