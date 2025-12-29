@@ -331,12 +331,16 @@ class Articolo(models.Model):
             return validated_url
 
     def can_proceed_to_payment(self):
-        """Verifica se il pubbliredazionale può procedere al pagamento"""
+        """
+        Verifica se il pubbliredazionale può procedere al pagamento.
+        Richiede approvazione admin prima del pagamento.
+        """
         return (
             self.is_pubbliredazionale and
             self.titolo and
             self.contenuto and
             self.interview_data and  # Intervista completata se ci sono dati
+            self.approved_by is not None and  # DEVE essere approvato dall'admin
             self.payment_status != 'completed'  # Non ancora pagato
         )
 

@@ -249,6 +249,23 @@
                 <strong>Categoria:</strong> {{ pubbliredazionale.categoria }}
             </div>
 
+            {% if pubbliredazionale.approved_by %}
+                <div style="margin: 20px 0; padding: 15px; background: #d1fae5; border-left: 4px solid #10b981; border-radius: 8px;">
+                    <strong style="color: #065f46;">✓ ARTICOLO APPROVATO</strong>
+                    <p style="color: #047857; margin-top: 5px; font-size: 14px;">
+                        La redazione ha approvato il tuo pubbliredazionale. Puoi procedere al pagamento!
+                    </p>
+                </div>
+            {% else %}
+                <div style="margin: 20px 0; padding: 15px; background: #fef3c7; border-left: 4px solid #f59e0b; border-radius: 8px;">
+                    <strong style="color: #92400e;">⏳ IN ATTESA DI APPROVAZIONE</strong>
+                    <p style="color: #78350f; margin-top: 5px; font-size: 14px;">
+                        Il tuo pubbliredazionale è in fase di revisione da parte della redazione.
+                        Riceverai una email quando sarà approvato e potrai procedere al pagamento.
+                    </p>
+                </div>
+            {% endif %}
+
             <h1 class="article-title">{{ pubbliredazionale.titolo }}</h1>
 
             <div class="article-sommario">
@@ -295,7 +312,11 @@
             <div class="action-buttons">
                 <button class="btn btn-secondary" onclick="regenerateArticle()">🔄 Rigenera Articolo</button>
                 <button class="btn btn-primary" onclick="saveArticle()" style="background: #10b981;">💾 Salva Articolo</button>
-                <button class="btn btn-primary" onclick="proceedToPayment()">💳 Procedi al Pagamento (€200)</button>
+                {% if pubbliredazionale.approved_by %}
+                    <button class="btn btn-primary" onclick="proceedToPayment()">💳 Procedi al Pagamento (€200)</button>
+                {% else %}
+                    <button class="btn btn-primary" disabled style="opacity: 0.5; cursor: not-allowed;" title="Attendi approvazione redazione">💳 Procedi al Pagamento (€200)</button>
+                {% endif %}
             </div>
         </div>
     </div>
