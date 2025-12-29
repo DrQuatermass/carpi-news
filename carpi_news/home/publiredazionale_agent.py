@@ -95,7 +95,6 @@ class PubbliredazioneAgent:
 
             # Aggiorna stato
             self.pubbliredazionale.interview_data = interview_data
-            self.pubbliredazionale.status = 'interview_in_progress'
             self.pubbliredazionale.save()
             logger.info("Intervista iniziata con successo (con ricerca approfondita)")
 
@@ -566,7 +565,6 @@ IMPORTANTE: Rispondi SOLO con il JSON, nient'altro."""
             self.pubbliredazionale.titolo = article['titolo']
             self.pubbliredazionale.contenuto = article['contenuto']
             self.pubbliredazionale.sommario = article['sommario']
-            self.pubbliredazionale.status = 'interview_completed'
             self.pubbliredazionale.save()
 
             return {
@@ -611,7 +609,6 @@ IMPORTANTE: Rispondi SOLO con il JSON, nient'altro."""
 
             # Salva i dati aggiornati
             self.pubbliredazionale.interview_data = interview_data
-            self.pubbliredazionale.status = 'interview_completed'
             self.pubbliredazionale.save()
 
             # Calcola quando l'articolo sarà pronto

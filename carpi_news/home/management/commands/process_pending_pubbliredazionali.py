@@ -44,7 +44,7 @@ class Command(BaseCommand):
         # Trova pubbliredazionali pronti per essere processati
         pending = Articolo.objects.filter(
             is_pubbliredazionale=True,
-            status='interview_completed',  # Intervista completata
+            interview_data__isnull=False,  # Intervista completata (ha dati)
             contenuto='',  # Articolo non ancora generato
             payment_status='pending'  # Non ancora pagato
         )
@@ -94,24 +94,14 @@ class Command(BaseCommand):
         try:
             self.stdout.write(f'Elaborazione pubbliredazionale {pub.id} - {pub.nome_azienda}...')
 
-            # Marca come "in elaborazione"
-            pub.status = 'article_generating'
-            pub.save()
-
             # Genera articolo
             agent = PubbliredazioneAgent(pub)
             result = agent._complete_interview_and_generate()
 
             if not result.get('success'):
                 logger.error(f"Errore generazione articolo {pub.id}: {result.get('error')}")
-                pub.status = 'article_generation_failed'
-                pub.save()
                 self.stdout.write(self.style.ERROR(f'❌ Errore: {result.get("error")}'))
                 return
-
-            # Aggiorna status
-            pub.status = 'article_ready'
-            pub.save()
 
             self.stdout.write(self.style.SUCCESS(f'✅ Articolo generato: {pub.titolo}'))
 
@@ -120,8 +110,6 @@ class Command(BaseCommand):
 
         except Exception as e:
             logger.error(f"Errore processamento pubbliredazionale {pub.id}: {e}", exc_info=True)
-            pub.status = 'article_generation_failed'
-            pub.save()
             self.stdout.write(self.style.ERROR(f'❌ Eccezione: {str(e)}'))
 
     def send_notification_email(self, pub):
