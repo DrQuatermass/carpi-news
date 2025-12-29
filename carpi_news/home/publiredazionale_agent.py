@@ -1293,6 +1293,9 @@ FORMATTAZIONE RICHIESTA:
             'contenuto': self.pubbliredazionale.contenuto
         }
 
+        # Ottieni sito web dall'oggetto pubbliredazionale
+        sito_web = self.pubbliredazionale.sito_web or ''
+
         prompt = f"""Articolo corrente:
 {json.dumps(current_article, indent=2, ensure_ascii=False)}
 
