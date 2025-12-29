@@ -66,7 +66,7 @@ All monitor configurations are stored in the database (`MonitorConfig` model) an
 1. **Monitoring**: Automated scraping of configured news sources with keyword filtering
 2. **Content Extraction**: HTML parsing, GraphQL/REST API calls, or transcript processing
 3. **Keyword Filtering**: Full-content filtering for ANSA articles (Carpi-related keywords only)
-4. **Image Processing**: 
+4. **Image Processing**:
    - Automatic image extraction with enhanced selectors
    - Download and local storage for Comune Carpi (GraphQL API images)
    - URL encoding fix for spaces (La Voce images)
@@ -74,6 +74,54 @@ All monitor configurations are stored in the database (`MonitorConfig` model) an
 5. **AI Enhancement**: Content polishing and uniformity via `content_polisher.py`
 6. **Approval Workflow**: Articles require manual approval before publication (auto-approval configurable per source)
 7. **Logging**: Comprehensive logging via `logger_config.py`
+
+## Pubbliredazionali (Sponsored Articles)
+
+The system includes an AI-powered workflow for creating pubbliredazionali (sponsored articles) with conversational interview:
+
+### Workflow
+1. **Company Info Input**: User provides company name, website/social profile, interviewee details
+2. **Website/Social Analysis**:
+   - For websites: Deep scraping of content (headings, paragraphs, metadata)
+   - For social profiles (Instagram, Facebook, LinkedIn): Automatic detection and metadata extraction
+3. **Web Research**: AI-powered research on company, market, industry trends
+4. **Dynamic Interview**: AI agent conducts 3-8 questions based on collected information
+5. **Article Generation**: AI creates journalistic pubbliredazionale (500-700 words)
+6. **Preview & Payment**: User reviews article, can request regeneration, then proceeds to payment
+
+### Social Media Profile Support
+
+The system recognizes and handles social media profiles differently from regular websites:
+
+**Supported Platforms:**
+- Instagram (`instagram.com`)
+- Facebook (`facebook.com`, `fb.com`)
+- LinkedIn (`linkedin.com`)
+- Twitter/X (`twitter.com`, `x.com`)
+- TikTok (`tiktok.com`)
+
+**How it works:**
+1. **Auto-detection**: System recognizes social profile URLs automatically
+2. **Metadata Extraction**: Attempts to extract public information (username, name, bio)
+3. **Fallback Strategy**: If scraping fails (common due to anti-bot protection), relies on:
+   - Web research (Google search for public information)
+   - Interview conversation (primary source of information)
+4. **No errors**: Unlike regular websites, social profiles don't trigger "scraping failed" warnings
+
+**Configuration** (Optional):
+```env
+# .env file - Social Media API tokens (optional, for enhanced extraction)
+INSTAGRAM_ACCESS_TOKEN=your-token-here
+FACEBOOK_API_ACCESS_TOKEN=your-token-here
+LINKEDIN_ACCESS_TOKEN=your-token-here
+```
+
+Without API tokens, the system gracefully falls back to interview+web research only.
+
+**Key Files:**
+- `home/publiredazionale_agent.py`: Main AI agent for interview and article generation
+- `home/social_media_scraper.py`: Social profile information extraction
+- `admin_panel/views.py`: Web interface for pubbliredazionale creation
 
 ## Management Commands
 

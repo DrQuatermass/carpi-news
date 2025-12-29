@@ -10,6 +10,7 @@ import requests
 from bs4 import BeautifulSoup
 from django.conf import settings
 from .api_usage_tracker import APIUsageTracker
+from .social_media_scraper import SocialMediaScraper
 
 logger = logging.getLogger(__name__)
 
@@ -873,9 +874,25 @@ Rispondi in formato JSON:
 
             if is_social:
                 logger.info(f"Rilevato profilo social ({platform_name}): {url}")
-                logger.info(f"I profili social non sono scrapabili - userò solo l'intervista e web research")
-                # Restituisci messaggio informativo invece di stringa vuota
-                return f"Profilo {platform_name}: {url}\n(Le informazioni saranno raccolte tramite intervista e ricerca web)"
+
+                # Tenta di estrarre informazioni dal profilo social
+                try:
+                    scraper = SocialMediaScraper()
+                    profile_data = scraper.extract_profile_info(url)
+
+                    if profile_data.get('error'):
+                        logger.warning(f"Impossibile estrarre info da {platform_name}: {profile_data.get('error')}")
+                        social_info = f"Profilo {platform_name}: {url}\n(Informazioni non disponibili - userò intervista e web research)"
+                    else:
+                        # Formatta informazioni estratte
+                        social_info = scraper.format_for_article_context(profile_data)
+                        logger.info(f"Estratte informazioni da {platform_name}: {profile_data.get('name', 'N/A')}")
+
+                    return social_info
+
+                except Exception as e:
+                    logger.error(f"Errore estrazione profilo {platform_name}: {e}")
+                    return f"Profilo {platform_name}: {url}\n(Le informazioni saranno raccolte tramite intervista e web research)"
 
             headers = {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
