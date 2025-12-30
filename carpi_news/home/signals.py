@@ -531,6 +531,11 @@ def _share_article_background(article_id, article_title):
                 logger.warning(f"[Background Thread] Articolo '{article_title}' non più approvato, annullo condivisione")
                 return
 
+            # Per pubbliredazionali, verifica anche che siano pagati
+            if articolo.is_pubbliredazionale and articolo.payment_status != 'completed':
+                logger.warning(f"[Background Thread] Pubbliredazionale '{article_title}' non ancora pagato, annullo condivisione")
+                return
+
             # Doppio controllo: verifica se è già stato condiviso su TUTTE le piattaforme
             # Questo previene duplicati anche se il lock scade prematuramente
             platforms = ['telegram', 'facebook', 'instagram']
