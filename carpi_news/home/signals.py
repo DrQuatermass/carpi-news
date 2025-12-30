@@ -420,9 +420,9 @@ def handle_pubbliredazionale_payment(sender, instance, created, **kwargs):
 
     # Condividi se:
     # 1. Il pagamento è passato da non completato a completato
-    # 2. L'articolo è già approvato (approvato=True E approved_by non null)
+    # 2. L'articolo è già approvato (approvato=True)
     if not was_paid and is_paid:
-        if instance.approvato and instance.approved_by:
+        if instance.approvato:
             logger.info(f"Pubbliredazionale '{instance.titolo}' pagato e già approvato. Avvio condivisione automatica.")
 
             # I link interni sono già stati aggiunti durante la generazione

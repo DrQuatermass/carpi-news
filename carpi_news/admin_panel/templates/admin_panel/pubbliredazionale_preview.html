@@ -362,7 +362,7 @@
                 <strong>Categoria:</strong> {{ pubbliredazionale.categoria }}
             </div>
 
-            {% if pubbliredazionale.approved_by %}
+            {% if pubbliredazionale.approvato %}
                 <div style="margin: 20px 0; padding: 15px; background: #d1fae5; border-left: 4px solid #10b981; border-radius: 8px;">
                     <strong style="color: #065f46;">✓ ARTICOLO APPROVATO</strong>
                     <p style="color: #047857; margin-top: 5px; font-size: 14px;">
@@ -391,7 +391,7 @@
         </div>
 
         <!-- Feedback Section -->
-        {% if pubbliredazionale.approved_by %}
+        {% if pubbliredazionale.approvato %}
             <!-- ARTICOLO APPROVATO: Solo upload foto e pagamento -->
             <div class="feedback-section">
                 <h2>✅ Articolo Approvato!</h2>
@@ -524,7 +524,7 @@
 
         function regenerateArticle() {
             // Verifica se l'articolo è già approvato (non dovrebbe mai succedere se il template è corretto)
-            const isApproved = {% if pubbliredazionale.approved_by %}true{% else %}false{% endif %};
+            const isApproved = {% if pubbliredazionale.approvato %}true{% else %}false{% endif %};
             if (isApproved) {
                 alert('L\'articolo è già stato approvato dalla redazione. Non è più possibile rigenerarlo.');
                 return;

@@ -292,7 +292,7 @@ class ArticoloAdmin(admin.ModelAdmin):
         """Mostra stato approvazione pubbliredazionale"""
         if not obj.is_pubbliredazionale:
             return '-'
-        if obj.approved_by:
+        if obj.approvato:
             return format_html(
                 '<span style="background: #4CAF50; color: white; padding: 4px 8px; '
                 'border-radius: 12px; font-size: 11px; font-weight: bold;">✓ APPROVATO</span>'
@@ -309,13 +309,12 @@ class ArticoloAdmin(admin.ModelAdmin):
         from django.core.mail import send_mail
         from django.conf import settings
 
-        pubbliredazionali = queryset.filter(is_pubbliredazionale=True, approved_by__isnull=True)
+        pubbliredazionali = queryset.filter(is_pubbliredazionale=True, approvato=False)
         count = 0
 
         for pub in pubbliredazionali:
-            # Approva
-            pub.approved_by = request.user
-            pub.approved_at = timezone.now()
+            # Approva il pubbliredazionale
+            pub.approvato = True
             pub.save()
             count += 1
 

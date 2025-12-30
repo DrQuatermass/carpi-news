@@ -340,7 +340,7 @@ class Articolo(models.Model):
             self.titolo and
             self.contenuto and
             self.interview_data and  # Intervista completata se ci sono dati
-            self.approved_by is not None and  # DEVE essere approvato dall'admin
+            self.approvato and  # DEVE essere approvato dall'admin
             self.payment_status != 'completed'  # Non ancora pagato
         )
 
