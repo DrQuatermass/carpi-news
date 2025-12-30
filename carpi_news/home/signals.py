@@ -279,6 +279,13 @@ def track_approval_change(sender, instance, **kwargs):
                 'was_approved': old_instance.approvato,
                 'is_approved': instance.approvato
             }, 60)  # Cache per 1 minuto
+
+            # Per pubbliredazionali, traccia anche il payment_status
+            if instance.is_pubbliredazionale:
+                cache.set(f'pubbliredazionale_payment_state_{instance.pk}', {
+                    'was_paid': old_instance.payment_status == 'completed',
+                    'is_paid': instance.payment_status == 'completed',
+                }, 60)
         except Articolo.DoesNotExist:
             # Caso edge: pk esiste ma oggetto non trovato
             cache.set(f'article_approval_state_{instance.pk}', {
@@ -346,16 +353,23 @@ def handle_article_approval(sender, instance, created, **kwargs):
     # Condividi se:
     # 1. L'articolo è passato da non approvato ad approvato (approvazione manuale)
     # 2. L'articolo è nuovo e già approvato (auto-approvazione)
+    # 3. Per pubbliredazionali: condividi SOLO se anche pagato (payment_status='completed')
     if (not was_approved and is_approved) or (created and is_approved):
-        logger.info(f"Articolo '{instance.titolo}' appena approvato, aggiorno feed RSS e avvio condivisione automatica")
-
-        # Invia email al cliente se è un pubbliredazionale
+        # Per pubbliredazionali, verifica anche che siano pagati
         if instance.is_pubbliredazionale:
-            from .email_notifications import send_pubbliredazionale_approved_notification
-            try:
-                send_pubbliredazionale_approved_notification(instance)
-            except Exception as e:
-                logger.error(f"Errore invio email approvazione pubbliredazionale ID {instance.id}: {e}")
+            if instance.payment_status != 'completed':
+                logger.info(f"Pubbliredazionale '{instance.titolo}' approvato ma non ancora pagato. Condivisione rimandata al pagamento.")
+                # Invia email al cliente per approvazione (ma non condivide)
+                from .email_notifications import send_pubbliredazionale_approved_notification
+                try:
+                    send_pubbliredazionale_approved_notification(instance)
+                except Exception as e:
+                    logger.error(f"Errore invio email approvazione pubbliredazionale ID {instance.id}: {e}")
+                return  # NON condividere ancora
+            else:
+                logger.info(f"Pubbliredazionale '{instance.titolo}' approvato E pagato. Procedo con condivisione.")
+
+        logger.info(f"Articolo '{instance.titolo}' appena approvato, aggiorno feed RSS e avvio condivisione automatica")
 
         # I link interni sono già stati aggiunti durante la generazione (polish_article)
         # Non è necessario riaggiungerli qui
@@ -380,6 +394,59 @@ def handle_article_approval(sender, instance, created, **kwargs):
         _notify_search_engines_background(instance)
 
         logger.info(f"Feed RSS aggiornato per articolo: {instance.titolo}")
+
+
+@receiver(post_save, sender=Articolo)
+def handle_pubbliredazionale_payment(sender, instance, created, **kwargs):
+    """
+    Gestisce la condivisione automatica quando un pubbliredazionale viene pagato.
+    Se il pubbliredazionale è già approvato E il pagamento è appena stato completato,
+    triggera la condivisione social.
+    """
+    if not instance.is_pubbliredazionale:
+        return
+
+    # Recupera lo stato del pagamento dalla cache
+    payment_state = cache.get(f'pubbliredazionale_payment_state_{instance.pk}')
+
+    if not payment_state:
+        return  # Nessun cambiamento di payment_status
+
+    was_paid = payment_state['was_paid']
+    is_paid = payment_state['is_paid']
+
+    # Pulizia cache
+    cache.delete(f'pubbliredazionale_payment_state_{instance.pk}')
+
+    # Condividi se:
+    # 1. Il pagamento è passato da non completato a completato
+    # 2. L'articolo è già approvato (approvato=True E approved_by non null)
+    if not was_paid and is_paid:
+        if instance.approvato and instance.approved_by:
+            logger.info(f"Pubbliredazionale '{instance.titolo}' pagato e già approvato. Avvio condivisione automatica.")
+
+            # I link interni sono già stati aggiunti durante la generazione
+            # Invalida cache RSS
+            invalidate_rss_feeds()
+
+            # Condivisione automatica in background
+            import threading
+            thread = threading.Thread(
+                target=_share_article_background,
+                args=(instance.id, instance.titolo),
+                name=f"SharePubbliredazionale-{instance.id}"
+            )
+            thread.daemon = True
+            thread.start()
+
+            logger.info(f"Condivisione social avviata per pubbliredazionale pagato: {instance.titolo}")
+
+            # Notifica motori di ricerca
+            _notify_search_engines_background(instance)
+
+            logger.info(f"Feed RSS aggiornato per pubbliredazionale: {instance.titolo}")
+        else:
+            logger.info(f"Pubbliredazionale '{instance.titolo}' pagato ma non ancora approvato. Condivisione rimandata all'approvazione.")
 
 
 def _notify_search_engines_background(instance):
