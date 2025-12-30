@@ -214,10 +214,9 @@ class MonitorConfigForm(forms.ModelForm):
 
 @admin.register(Articolo)
 class ArticoloAdmin(admin.ModelAdmin):
-    list_display = ("titolo", "categoria", "spotlight_display", "is_pubbliredazionale", "payment_status_display", "approved_display", "approvato", "data_pubblicazione", "views", "fonti_web_count")
+    list_display = ("titolo", "categoria", "spotlight_display", "is_pubbliredazionale", "payment_status_display", "approvato", "data_pubblicazione", "views", "fonti_web_count")
     list_filter = ['approvato', 'spotlight', 'categoria', IsPubbliredazionaleFilter, 'payment_status', HasWebSourcesFilter]
     search_fields = ['titolo', 'slug', 'nome_azienda', 'sito_web', 'pubbliredazionale_user__username']
-    actions = ['approve_pubbliredazionali']
 
     def get_fieldsets(self, request, obj=None):
         """Fieldsets dinamici: diversi per pubbliredazionali e articoli normali"""
@@ -287,77 +286,6 @@ class ArticoloAdmin(admin.ModelAdmin):
             color, obj.get_payment_status_display()
         )
     payment_status_display.short_description = 'Pagamento'
-
-    def approved_display(self, obj):
-        """Mostra stato approvazione pubbliredazionale"""
-        if not obj.is_pubbliredazionale:
-            return '-'
-        if obj.approvato:
-            return format_html(
-                '<span style="background: #4CAF50; color: white; padding: 4px 8px; '
-                'border-radius: 12px; font-size: 11px; font-weight: bold;">✓ APPROVATO</span>'
-            )
-        return format_html(
-            '<span style="background: #FF9800; color: white; padding: 4px 8px; '
-            'border-radius: 12px; font-size: 11px; font-weight: bold;">⏳ IN ATTESA</span>'
-        )
-    approved_display.short_description = 'Approvazione'
-
-    def approve_pubbliredazionali(self, request, queryset):
-        """Azione admin per approvare pubbliredazionali e inviare notifica email"""
-        from django.utils import timezone
-        from django.core.mail import send_mail
-        from django.conf import settings
-
-        pubbliredazionali = queryset.filter(is_pubbliredazionale=True, approvato=False)
-        count = 0
-
-        for pub in pubbliredazionali:
-            # Approva il pubbliredazionale
-            pub.approvato = True
-            pub.save()
-            count += 1
-
-            # Invia email notifica all'utente
-            try:
-                user_email = pub.pubbliredazionale_user.email if pub.pubbliredazionale_user else None
-                if user_email:
-                    preview_url = f"{settings.SITE_URL}/gestionale/pubbliredazionale/{pub.id}/preview/"
-
-                    subject = f'Il tuo pubbliredazionale è stato approvato - {pub.nome_azienda}'
-                    message = f'''Gentile {pub.pubbliredazionale_user.first_name or 'Cliente'},
-
-Il tuo pubbliredazionale è stato approvato dalla redazione!
-
-Azienda: {pub.nome_azienda}
-Titolo: {pub.titolo}
-
-Puoi ora procedere al pagamento e alla pubblicazione accedendo al seguente link:
-{preview_url}
-
-Una volta completato il pagamento, l'articolo verrà pubblicato sul sito.
-
-Grazie per aver scelto i nostri servizi.
-
----
-Ombra del Portico - Notizie di Carpi
-{settings.SITE_URL}
-'''
-
-                    send_mail(
-                        subject,
-                        message,
-                        settings.DEFAULT_FROM_EMAIL,
-                        [user_email],
-                        fail_silently=True,
-                    )
-            except Exception as e:
-                import logging
-                logger = logging.getLogger(__name__)
-                logger.error(f"Errore invio email approvazione pubbliredazionale {pub.id}: {e}")
-
-        self.message_user(request, f'{count} pubbliredazionale/i approvato/i con successo. Email di notifica inviate.')
-    approve_pubbliredazionali.short_description = 'Approva pubbliredazionali selezionati'
 
     def rigenera_button(self, obj):
         if obj.pk:  # Solo per oggetti già salvati
