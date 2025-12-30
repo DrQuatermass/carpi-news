@@ -214,7 +214,11 @@ Esempi:
         """
         logger.info(f"_search_articles chiamato con intent: {intent}")
         logger.info(f"Keywords ricevute per ricerca: {intent.get('keywords', [])}")
-        query = Articolo.objects.filter(approvato=True)
+        from django.db.models import Q
+        query = Articolo.objects.filter(
+            Q(is_pubbliredazionale=False, approvato=True) |
+            Q(is_pubbliredazionale=True, approvato=True, payment_status='completed')
+        )
 
         # Filtro temporale
         if intent.get('timeframe'):
@@ -323,7 +327,12 @@ Esempi:
 
             # Cerca articoli Cultura & Eventi con data_evento nel range temporale
             # Riapplica i filtri temporali ma su data_evento invece di data_pubblicazione
-            query_eventi = Articolo.objects.filter(approvato=True, categoria__iexact=categoria)
+            from django.db.models import Q
+            query_eventi = Articolo.objects.filter(
+                Q(is_pubbliredazionale=False, approvato=True) |
+                Q(is_pubbliredazionale=True, approvato=True, payment_status='completed'),
+                categoria__iexact=categoria
+            )
 
             # Calcola date range (come sopra ma per data_evento)
             now = timezone.now()

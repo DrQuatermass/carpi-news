@@ -21,14 +21,27 @@ import uuid
 
 logger = logging.getLogger(__name__)
 
+
+def get_published_articles_query():
+    """
+    Restituisce una query per articoli pubblicabili.
+    - Articoli normali: approvato=True
+    - Pubbliredazionali: approvato=True AND payment_status='completed'
+    """
+    from django.db.models import Q
+    return Articolo.objects.filter(
+        Q(is_pubbliredazionale=False, approvato=True) |  # Articoli normali approvati
+        Q(is_pubbliredazionale=True, approvato=True, payment_status='completed')  # Pubbliredazionali approvati E pagati
+    )
+
+
 # Create your views here.
 def home(request):
     # Filtro per categoria (opzionale)
     categoria = request.GET.get('categoria', None)
 
-    # Query base: solo articoli approvati e pubblicati (non futuri)
-    articoli_query = Articolo.objects.filter(
-        approvato=True,
+    # Query base: solo articoli pubblicabili (approvati e, se pubbliredazionali, pagati) e pubblicati (non futuri)
+    articoli_query = get_published_articles_query().filter(
         data_pubblicazione__lte=timezone.now()
     ).only(
         'id', 'titolo', 'sommario', 'categoria', 'slug', 'foto', 'foto_upload', 'data_pubblicazione', 'spotlight'
@@ -129,7 +142,7 @@ def home(request):
         logger.info(f"Caricati {len(page_obj)} articoli approvati per la home (pagina {page_number})")
     
     # Ottieni lista categorie disponibili per il menu (raggruppa Editoriale e L'Eco del Consiglio in Rubriche)
-    categorie_raw = Articolo.objects.filter(approvato=True).values_list('categoria', flat=True).distinct()
+    categorie_raw = get_published_articles_query().values_list('categoria', flat=True).distinct()
     categorie_disponibili = []
     has_rubriche = False
     
@@ -265,7 +278,22 @@ def home(request):
     return render(request, "homepage.html", context)
 
 def dettaglio_articolo(request, slug):
-    articolo = get_object_or_404(Articolo, slug=slug, approvato=True)
+    # Recupera articolo pubblicabile (approvato e, se pubbliredazionale, pagato)
+    from django.db.models import Q
+    articolo = get_object_or_404(
+        Articolo,
+        slug=slug
+    )
+
+    # Verifica che sia pubblicabile
+    is_publishable = (
+        (not articolo.is_pubbliredazionale and articolo.approvato) or
+        (articolo.is_pubbliredazionale and articolo.approvato and articolo.payment_status == 'completed')
+    )
+
+    if not is_publishable:
+        from django.http import Http404
+        raise Http404("Articolo non disponibile")
 
     # Incrementa il contatore delle views solo se non visto in questa sessione
     session_key = f'viewed_article_{articolo.pk}'
@@ -292,7 +320,7 @@ def dettaglio_articolo(request, slug):
     articolo.refresh_from_db()
     
     # Ottieni liste categorie per il menu di navigazione
-    categorie_raw = Articolo.objects.filter(approvato=True).values_list('categoria', flat=True).distinct()
+    categorie_raw = get_published_articles_query().values_list('categoria', flat=True).distinct()
     categorie_disponibili = []
     has_rubriche = False
     
@@ -324,7 +352,7 @@ def dettaglio_articolo(request, slug):
 def privacy_policy(request):
     """Vista per la pagina della Privacy Policy"""
     # Ottieni categorie per il menu di navigazione
-    categorie_raw = Articolo.objects.filter(approvato=True).values_list('categoria', flat=True).distinct()
+    categorie_raw = get_published_articles_query().values_list('categoria', flat=True).distinct()
     categorie_disponibili = []
     has_rubriche = False
     
@@ -477,7 +505,7 @@ def fonti_articolo(request, slug):
     logger.info(f"Visualizzazione fonti articolo: {articolo.titolo}")
 
     # Ottieni liste categorie per il menu di navigazione
-    categorie_raw = Articolo.objects.filter(approvato=True).values_list('categoria', flat=True).distinct()
+    categorie_raw = get_published_articles_query().values_list('categoria', flat=True).distinct()
     categorie_disponibili = []
     has_rubriche = False
 
@@ -539,7 +567,7 @@ def caplet(request):
         }
 
     # Ottieni categorie per il menu di navigazione
-    categorie_raw = Articolo.objects.filter(approvato=True).values_list('categoria', flat=True).distinct()
+    categorie_raw = get_published_articles_query().values_list('categoria', flat=True).distinct()
     categorie_disponibili = []
     has_rubriche = False
 
@@ -567,7 +595,7 @@ def caplet(request):
 def about(request):
     """Vista per la pagina About - Informazioni sul progetto"""
     # Ottieni categorie per il menu di navigazione
-    categorie_raw = Articolo.objects.filter(approvato=True).values_list('categoria', flat=True).distinct()
+    categorie_raw = get_published_articles_query().values_list('categoria', flat=True).distinct()
     categorie_disponibili = []
     has_rubriche = False
 
@@ -676,7 +704,7 @@ def chatbot_results(request):
     articles = chatbot._search_articles(intent)
 
     # Ottieni categorie per il menu
-    categorie_raw = Articolo.objects.filter(approvato=True).values_list('categoria', flat=True).distinct()
+    categorie_raw = get_published_articles_query().values_list('categoria', flat=True).distinct()
     categorie_disponibili = []
     has_rubriche = False
 
@@ -1120,7 +1148,7 @@ def programmazione_cinema(request):
         logger.error(f"Errore scraping Space City: {e}")
 
     # Ottieni categorie per il menu di navigazione
-    categorie_raw = Articolo.objects.filter(approvato=True).values_list('categoria', flat=True).distinct()
+    categorie_raw = get_published_articles_query().values_list('categoria', flat=True).distinct()
     categorie_disponibili = []
     has_rubriche = False
 
@@ -1229,7 +1257,7 @@ def calendario_eventi(request):
     }
 
     # Ottieni categorie per il menu di navigazione
-    categorie_raw = Articolo.objects.filter(approvato=True).values_list('categoria', flat=True).distinct()
+    categorie_raw = get_published_articles_query().values_list('categoria', flat=True).distinct()
     categorie_disponibili = []
     has_rubriche = False
 

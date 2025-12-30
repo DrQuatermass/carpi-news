@@ -12,6 +12,19 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+def get_published_articles_query():
+    """
+    Restituisce una query per articoli pubblicabili.
+    - Articoli normali: approvato=True
+    - Pubbliredazionali: approvato=True AND payment_status='completed'
+    """
+    from django.db.models import Q
+    return Articolo.objects.filter(
+        Q(is_pubbliredazionale=False, approvato=True) |
+        Q(is_pubbliredazionale=True, approvato=True, payment_status='completed')
+    )
+
+
 def validate_image_url(url):
     """
     Valida se un URL immagine è accessibile
@@ -79,8 +92,7 @@ class ArticoliFeedRSS(Feed):
     
     def items(self):
         """Restituisce gli ultimi 10 articoli approvati e pubblicati (non futuri)"""
-        articoli = Articolo.objects.filter(
-            approvato=True,
+        articoli = get_published_articles_query().filter(
             data_pubblicazione__lte=timezone.now()
         ).order_by('-data_pubblicazione')[:10]
 
@@ -117,8 +129,7 @@ class ArticoliFeedRSS(Feed):
         """Aggiungi metadati extra al feed basati sull'ultimo articolo approvato"""
         # Usa la data dell'ultimo articolo approvato come lastBuildDate
         # invece di datetime.now() per evitare falsi aggiornamenti
-        latest_article = Articolo.objects.filter(
-            approvato=True,
+        latest_article = get_published_articles_query().filter(
             data_pubblicazione__lte=timezone.now()
         ).order_by('-data_pubblicazione').first()
         last_build = latest_article.data_pubblicazione if latest_article else datetime.now()
@@ -210,8 +221,7 @@ class ArticoliFeedAtom(Feed):
     feed_type = 'atom'
     
     def items(self):
-        return Articolo.objects.filter(
-            approvato=True,
+        return get_published_articles_query().filter(
             data_pubblicazione__lte=timezone.now()
         ).order_by('-data_pubblicazione')[:10]
     
@@ -242,8 +252,7 @@ class ArticoliRecentiFeed(Feed):
         now = timezone.now()
         ieri = now - timedelta(days=1)
 
-        return Articolo.objects.filter(
-            approvato=True,
+        return get_published_articles_query().filter(
             data_pubblicazione__gte=ieri,
             data_pubblicazione__lte=now
         ).order_by('-data_pubblicazione')
@@ -254,8 +263,7 @@ class ArticoliRecentiFeed(Feed):
         ieri = datetime.now() - timedelta(days=1)
         
         # Usa la data dell'ultimo articolo nelle ultime 24 ore
-        latest_article = Articolo.objects.filter(
-            approvato=True,
+        latest_article = get_published_articles_query().filter(
             data_pubblicazione__gte=ieri
         ).order_by('-data_pubblicazione').first()
         
