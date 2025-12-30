@@ -223,6 +223,119 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .navbar {
+                padding: 10px 15px;
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .navbar-brand {
+                font-size: 16px;
+            }
+
+            .navbar-user {
+                flex-direction: column;
+                gap: 8px;
+                font-size: 13px;
+            }
+
+            .container {
+                margin: 20px auto;
+                padding: 0 10px;
+            }
+
+            .preview-card {
+                padding: 25px 20px;
+            }
+
+            .preview-card h1 {
+                font-size: 24px;
+            }
+
+            .preview-card h2 {
+                font-size: 20px;
+            }
+
+            .info-grid {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+
+            .article-preview {
+                padding: 20px 15px;
+            }
+
+            .article-preview h1 {
+                font-size: 22px;
+            }
+
+            .article-preview h2 {
+                font-size: 18px;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .btn {
+                width: 100%;
+                text-align: center;
+                font-size: 14px;
+                padding: 10px 15px;
+            }
+
+            /* Upload foto responsive */
+            #photoUploadSection {
+                padding: 20px 15px;
+            }
+
+            #photoUploadSection h3 {
+                font-size: 16px;
+            }
+
+            #photoInput {
+                font-size: 13px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .navbar-brand {
+                font-size: 14px;
+            }
+
+            .preview-card {
+                padding: 20px 15px;
+            }
+
+            .preview-card h1 {
+                font-size: 20px;
+            }
+
+            .preview-card h2 {
+                font-size: 18px;
+            }
+
+            .article-preview {
+                padding: 15px 10px;
+            }
+
+            .article-preview h1 {
+                font-size: 20px;
+            }
+
+            .article-preview h2 {
+                font-size: 16px;
+            }
+
+            .btn {
+                font-size: 13px;
+                padding: 9px 12px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -278,46 +391,88 @@
         </div>
 
         <!-- Feedback Section -->
-        <div class="feedback-section">
-            <h2>💬 Vuoi modificare qualcosa?</h2>
-            <p style="color: #718096; margin-bottom: 15px;">
-                Se desideri che l'articolo venga modificato, scrivi qui le tue richieste. L'AI rigenererà l'articolo considerando il tuo feedback.
-            </p>
-            <textarea id="feedbackText" class="feedback-textarea" placeholder="Es: Vorrei più enfasi sui servizi offerti, meno sulla storia aziendale..."></textarea>
-
-            <div style="margin-top: 30px; padding: 20px; background: #f0f9ff; border-radius: 8px; border-left: 4px solid #0ea5e9;">
-                <h3 style="color: #0369a1; margin-bottom: 15px; font-size: 16px;">📷 Foto Articolo</h3>
-                <p style="color: #0c4a6e; font-size: 14px; margin-bottom: 15px;">
-                    {% if pubbliredazionale.foto_upload %}
-                        <strong style="color: #10b981;">✓ Foto già caricata!</strong> Puoi cambiarla selezionandone una nuova.
+        {% if pubbliredazionale.approved_by %}
+            <!-- ARTICOLO APPROVATO: Solo upload foto e pagamento -->
+            <div class="feedback-section">
+                <h2>✅ Articolo Approvato!</h2>
+                <p style="color: #047857; margin-bottom: 20px; font-size: 16px;">
+                    La redazione ha approvato il tuo pubbliredazionale.
+                    {% if not pubbliredazionale.foto_upload %}
+                        <strong>Carica la foto dell'articolo</strong> e poi procedi al pagamento.
                     {% else %}
-                        <strong>Richiesta:</strong> Seleziona un'immagine rappresentativa (JPG, PNG, WEBP - max 5MB).
+                        Puoi procedere al pagamento!
                     {% endif %}
                 </p>
 
-                {% if pubbliredazionale.foto_upload %}
-                    <div id="currentPhotoPreview" style="margin-bottom: 15px; text-align: center;">
-                        <img src="{{ pubbliredazionale.foto_upload.url }}" alt="Foto attuale" style="max-width: 100%; max-height: 250px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.15);">
+                <div style="margin-top: 20px; padding: 20px; background: #f0f9ff; border-radius: 8px; border-left: 4px solid #0ea5e9;">
+                    <h3 style="color: #0369a1; margin-bottom: 15px; font-size: 16px;">📷 Foto Articolo</h3>
+                    <p style="color: #0c4a6e; font-size: 14px; margin-bottom: 15px;">
+                        {% if pubbliredazionale.foto_upload %}
+                            <strong style="color: #10b981;">✓ Foto già caricata!</strong> Puoi cambiarla selezionandone una nuova.
+                        {% else %}
+                            <strong>Richiesta:</strong> Seleziona un'immagine rappresentativa (JPG, PNG, WEBP - max 5MB).
+                        {% endif %}
+                    </p>
+
+                    {% if pubbliredazionale.foto_upload %}
+                        <div id="currentPhotoPreview" style="margin-bottom: 15px; text-align: center;">
+                            <img src="{{ pubbliredazionale.foto_upload.url }}" alt="Foto attuale" style="max-width: 100%; max-height: 250px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.15);">
+                        </div>
+                    {% endif %}
+
+                    <input type="file" id="fotoInput" accept="image/jpeg,image/png,image/jpg,image/webp" style="display: block; margin-bottom: 10px; padding: 10px; border: 2px solid #cbd5e0; border-radius: 8px; width: 100%; background: white; cursor: pointer;">
+
+                    <div id="photoPreview" style="margin-top: 15px; text-align: center; display: none;">
+                        <p style="color: #10b981; font-weight: 600; margin-bottom: 10px;">✓ Nuova foto selezionata:</p>
+                        <img id="photoPreviewImg" src="" alt="Preview" style="max-width: 100%; max-height: 250px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.15);">
                     </div>
-                {% endif %}
+                </div>
 
-                <input type="file" id="fotoInput" accept="image/jpeg,image/png,image/jpg,image/webp" style="display: block; margin-bottom: 10px; padding: 10px; border: 2px solid #cbd5e0; border-radius: 8px; width: 100%; background: white; cursor: pointer;">
-
-                <div id="photoPreview" style="margin-top: 15px; text-align: center; display: none;">
-                    <p style="color: #10b981; font-weight: 600; margin-bottom: 10px;">✓ Nuova foto selezionata:</p>
-                    <img id="photoPreviewImg" src="" alt="Preview" style="max-width: 100%; max-height: 250px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.15);">
+                <div class="action-buttons">
+                    <button class="btn btn-primary" onclick="proceedToPayment()" style="font-size: 18px; padding: 15px 30px;">
+                        💳 Procedi al Pagamento (€200)
+                    </button>
                 </div>
             </div>
+        {% else %}
+            <!-- IN ATTESA DI APPROVAZIONE: Mostra opzione rigenerazione -->
+            <div class="feedback-section">
+                <h2>💬 Vuoi modificare qualcosa?</h2>
+                <p style="color: #718096; margin-bottom: 15px;">
+                    Se desideri che l'articolo venga modificato, scrivi qui le tue richieste. L'AI rigenererà l'articolo considerando il tuo feedback.
+                </p>
+                <textarea id="feedbackText" class="feedback-textarea" placeholder="Es: Vorrei più enfasi sui servizi offerti, meno sulla storia aziendale..."></textarea>
 
-            <div class="action-buttons">
-                <button class="btn btn-secondary" onclick="regenerateArticle()">🔄 Rigenera Articolo</button>
-                {% if pubbliredazionale.approved_by %}
-                    <button class="btn btn-primary" onclick="proceedToPayment()">💳 Procedi al Pagamento (€200)</button>
-                {% else %}
+                <div style="margin-top: 30px; padding: 20px; background: #f0f9ff; border-radius: 8px; border-left: 4px solid #0ea5e9;">
+                    <h3 style="color: #0369a1; margin-bottom: 15px; font-size: 16px;">📷 Foto Articolo</h3>
+                    <p style="color: #0c4a6e; font-size: 14px; margin-bottom: 15px;">
+                        {% if pubbliredazionale.foto_upload %}
+                            <strong style="color: #10b981;">✓ Foto già caricata!</strong> Puoi cambiarla selezionandone una nuova.
+                        {% else %}
+                            <strong>Richiesta:</strong> Seleziona un'immagine rappresentativa (JPG, PNG, WEBP - max 5MB).
+                        {% endif %}
+                    </p>
+
+                    {% if pubbliredazionale.foto_upload %}
+                        <div id="currentPhotoPreview" style="margin-bottom: 15px; text-align: center;">
+                            <img src="{{ pubbliredazionale.foto_upload.url }}" alt="Foto attuale" style="max-width: 100%; max-height: 250px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.15);">
+                        </div>
+                    {% endif %}
+
+                    <input type="file" id="fotoInput" accept="image/jpeg,image/png,image/jpg,image/webp" style="display: block; margin-bottom: 10px; padding: 10px; border: 2px solid #cbd5e0; border-radius: 8px; width: 100%; background: white; cursor: pointer;">
+
+                    <div id="photoPreview" style="margin-top: 15px; text-align: center; display: none;">
+                        <p style="color: #10b981; font-weight: 600; margin-bottom: 10px;">✓ Nuova foto selezionata:</p>
+                        <img id="photoPreviewImg" src="" alt="Preview" style="max-width: 100%; max-height: 250px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.15);">
+                    </div>
+                </div>
+
+                <div class="action-buttons">
+                    <button class="btn btn-secondary" onclick="regenerateArticle()">🔄 Rigenera Articolo</button>
                     <button class="btn btn-primary" disabled style="opacity: 0.5; cursor: not-allowed;" title="Attendi approvazione redazione">💳 Procedi al Pagamento (€200)</button>
-                {% endif %}
+                </div>
             </div>
-        </div>
+        {% endif %}
     </div>
 
     <!-- Loading Overlay -->
@@ -368,8 +523,20 @@
         });
 
         function regenerateArticle() {
-            const feedback = document.getElementById('feedbackText').value.trim();
+            // Verifica se l'articolo è già approvato (non dovrebbe mai succedere se il template è corretto)
+            const isApproved = {% if pubbliredazionale.approved_by %}true{% else %}false{% endif %};
+            if (isApproved) {
+                alert('L\'articolo è già stato approvato dalla redazione. Non è più possibile rigenerarlo.');
+                return;
+            }
 
+            const feedbackElement = document.getElementById('feedbackText');
+            if (!feedbackElement) {
+                alert('Errore: campo feedback non trovato.');
+                return;
+            }
+
+            const feedback = feedbackElement.value.trim();
             if (!feedback) {
                 alert('Per favore, inserisci le modifiche che desideri prima di rigenerare l\'articolo.');
                 return;
