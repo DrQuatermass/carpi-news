@@ -94,16 +94,7 @@ class Articolo(models.Model):
         help_text='Importo dello sconto applicato'
     )
 
-    # Approvazione pubbliredazionale
-    approved_by = models.ForeignKey(
-        'auth.User',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='pubbliredazionali_approvati',
-        verbose_name='Approvato da'
-    )
-    approved_at = models.DateTimeField('Approvato il', null=True, blank=True)
+    # Note amministrative
     admin_notes = models.TextField('Note amministrative', blank=True, help_text='Visibili solo agli admin')
 
     def save(self, *args, **kwargs):

@@ -239,7 +239,7 @@ class ArticoloAdmin(admin.ModelAdmin):
                     'classes': ('collapse',)
                 }),
                 ('Approvazione', {
-                    'fields': ('approvato', 'approved_by', 'approved_at', 'admin_notes')
+                    'fields': ('approvato', 'admin_notes')
                 }),
                 ('Metadata', {
                     'fields': ('views', 'data_pubblicazione', 'richieste_modifica', 'fonti_web_display', 'rigenera_button'),
@@ -261,7 +261,7 @@ class ArticoloAdmin(admin.ModelAdmin):
 
     def get_readonly_fields(self, request, obj=None):
         """Readonly fields dinamici"""
-        base_readonly = ['rigenera_button', 'views', 'fonti_web_display', 'total_price', 'approved_by', 'approved_at']
+        base_readonly = ['rigenera_button', 'views', 'fonti_web_display', 'total_price']
         if obj and obj.is_pubbliredazionale:
             return base_readonly + ['interview_data']
         return base_readonly
