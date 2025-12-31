@@ -87,6 +87,9 @@ IMPORTANTE:
 - Per domande su RELAZIONI tra entità (es. "cosa è successo tra X e Y"), usa articles_needed: 10
 - Per domande semplici su fatti specifici, usa articles_needed: 1-3
 - Per domande generiche o complesse, usa articles_needed: 5-10
+- NOMI DI LUOGHI COMPOSTI: "San Marino", "San Prospero", "San Pietro" ecc. NON separare, tieni come keywords: ["san marino"], ["san prospero"]
+- NOMI E COGNOMI: se entity è un nome persona, aggiungi anche come singola keyword (es. entity: "Eola Papazzoni" -> keywords: ["eola papazzoni", "polisportiva"])
+- DERIVATI: per "San Marino" cerca anche "san marinese", "marinese"; per "San Prospero" cerca anche "san prosperese"
 
 Restituisci SOLO un JSON valido con questa struttura:
 {
@@ -100,6 +103,7 @@ Restituisci SOLO un JSON valido con questa struttura:
 
 Esempi:
 - "Trovami articoli su Aimag" -> {"keywords": ["aimag"], "timeframe": null, "categoria": null, "entity": "Aimag", "request_type": "search", "articles_needed": 0}
+- "eola papazzoni san marino" -> {"keywords": ["eola papazzoni", "san marinese"], "timeframe": null, "categoria": null, "entity": "Eola Papazzoni", "request_type": "search", "articles_needed": 0}
 - "Cosa è successo tra Aimag e Hera?" -> {"keywords": ["aimag", "hera"], "timeframe": null, "categoria": null, "entity": null, "request_type": "question", "articles_needed": 10}
 - "Chi è il sindaco di Campogalliano?" -> {"keywords": ["sindaco", "campogalliano"], "timeframe": null, "categoria": null, "entity": "sindaco", "request_type": "question", "articles_needed": 3}
 - "Eventi di domani" -> {"keywords": ["eventi"], "timeframe": "domani", "categoria": null, "entity": null, "request_type": "search", "articles_needed": 0}
@@ -110,6 +114,7 @@ Esempi:
 - "Cosa è successo questa settimana?" -> {"keywords": [], "timeframe": "settimana", "categoria": null, "entity": null, "request_type": "question", "articles_needed": 8}
 - "Ultime notizie di sport" -> {"keywords": [], "timeframe": null, "categoria": "Sport", "entity": null, "request_type": "latest", "articles_needed": 0}
 - "Rugby" -> {"keywords": ["rugby"], "timeframe": null, "categoria": null, "entity": null, "request_type": "search", "articles_needed": 0}
+- "Mario Rossi San Prospero" -> {"keywords": ["mario rossi", "san prosperese"], "timeframe": null, "categoria": null, "entity": "Mario Rossi", "request_type": "search", "articles_needed": 0}
 """
 
         try:
