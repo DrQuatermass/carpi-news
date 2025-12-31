@@ -464,6 +464,9 @@
                             {% elif pub.titolo and pub.contenuto %}
                                 <span class="badge badge-info">💳 Da pagare</span>
                                 <a href="{% url 'admin_panel:pubbliredazionale_payment' pub.id %}" class="btn-primary" style="padding: 6px 12px; font-size: 13px;">Paga</a>
+                            {% elif pub.interview_data %}
+                                <span class="badge badge-warning">⏳ Redazione al lavoro</span>
+                                <span style="font-size: 12px; color: #718096;">Riceverai una email quando pronto</span>
                             {% else %}
                                 <span class="badge badge-info">📝 Bozza</span>
                                 <a href="{% url 'admin_panel:pubbliredazionale_interview' pub.id %}" class="btn-primary" style="padding: 6px 12px; font-size: 13px;">Continua</a>

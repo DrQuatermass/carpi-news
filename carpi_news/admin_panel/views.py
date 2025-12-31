@@ -857,6 +857,8 @@ def pubbliredazionale_interview(request, pubbliredazionale_id):
                     admin_emails = User.objects.filter(is_superuser=True).values_list('email', flat=True)
                     admin_emails = [email for email in admin_emails if email]
 
+                    logger.info(f"Trovati {len(admin_emails)} admin con email configurata")
+
                     if admin_emails:
                         admin_url = f"{settings.SITE_URL}/admin/home/articolo/{pubbliredazionale.id}/change/"
                         subject = f'📷 Intervista completata + foto caricata: {pubbliredazionale.nome_azienda}'
@@ -886,9 +888,11 @@ Ombra del Portico - Sistema di gestione pubbliredazionali
                             recipient_list=admin_emails,
                             fail_silently=False,
                         )
-                        logger.info(f"Email admin inviata dopo upload foto per pubbliredazionale {pubbliredazionale_id}")
+                        logger.info(f"✅ Email admin inviata dopo upload foto per pubbliredazionale {pubbliredazionale_id} a {', '.join(admin_emails)}")
+                    else:
+                        logger.warning(f"⚠️ Nessun admin con email configurata - email NON inviata per pubbliredazionale {pubbliredazionale_id}")
                 except Exception as e:
-                    logger.error(f"Errore invio email admin dopo upload foto: {e}")
+                    logger.error(f"❌ Errore invio email admin dopo upload foto: {e}", exc_info=True)
 
                 return JsonResponse({'success': True, 'message': 'Foto caricata con successo'})
 

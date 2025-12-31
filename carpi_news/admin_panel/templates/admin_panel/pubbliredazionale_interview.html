@@ -812,10 +812,10 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    addSystemMessage('✅ Foto caricata con successo! L\'amministratore riceverà una notifica.\n\nL\'articolo sarà generato nelle prossime ore e riceverai una email quando sarà pronto per la revisione.');
+                    addSystemMessage('✅ Foto caricata con successo!\n\n📝 La redazione di Ombra del Portico sta elaborando il tuo pubbliredazionale.\n\n📧 Riceverai una EMAIL nelle prossime ore (entro 2-3 ore in orario lavorativo, oppure domani mattina) con il link per visualizzare l\'anteprima dell\'articolo.\n\n⏰ Puoi chiudere questa pagina, ti avviseremo via email quando sarà pronto!');
                     setTimeout(() => {
                         window.location.href = '/gestionale/';
-                    }, 5000);
+                    }, 8000);
                 } else {
                     alert('Errore: ' + (data.error || 'Impossibile caricare la foto'));
                     button.disabled = false;
