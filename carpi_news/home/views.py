@@ -473,7 +473,8 @@ def news_sitemap(request):
     articles = Articolo.objects.filter(
         approvato=True,
         data_pubblicazione__gte=cutoff_date,
-        data_pubblicazione__lte=now
+        data_pubblicazione__lte=now,
+        is_pubbliredazionale=False  # Escludi pubbliredazionali da Google News
     ).exclude(
         titolo__istartswith='test'  # Escludi articoli di test
     ).exclude(
