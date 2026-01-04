@@ -19,7 +19,7 @@ class Articolo(models.Model):
     contenuto = models.TextField()
     sommario = models.TextField(max_length=5000, blank=True)
     categoria = models.CharField(max_length=100, default='Generale', db_index=True)
-    slug = models.SlugField(max_length=50, unique=True, blank=True)
+    slug = models.SlugField(max_length=100, unique=True, blank=True)
     approvato = models.BooleanField(default=False, db_index=True)
     fonte = models.URLField(max_length=500, blank=True, null=True)
     foto = models.TextField(blank=True, null=True)
@@ -99,16 +99,43 @@ class Articolo(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            base_slug = slugify(self.titolo)[:45]  # Limita a 45 per lasciare spazio al contatore
+            # Stop words italiane da rimuovere per slug più puliti e SEO-friendly
+            stop_words = {
+                'il', 'lo', 'la', 'i', 'gli', 'le', 'un', 'uno', 'una',
+                'di', 'a', 'da', 'in', 'con', 'su', 'per', 'tra', 'fra',
+                'del', 'dello', 'della', 'dei', 'degli', 'delle',
+                'al', 'allo', 'alla', 'ai', 'agli', 'alle',
+                'dal', 'dallo', 'dalla', 'dai', 'dagli', 'dalle',
+                'nel', 'nello', 'nella', 'nei', 'negli', 'nelle',
+                'sul', 'sullo', 'sulla', 'sui', 'sugli', 'sulle',
+                'e', 'o', 'ma', 'che', 'chi', 'cui'
+            }
+
+            # Dividi il titolo in parole e rimuovi stop words
+            parole = self.titolo.lower().split()
+            parole_filtrate = [p for p in parole if p not in stop_words or len(parole) <= 3]
+            titolo_ottimizzato = ' '.join(parole_filtrate) if parole_filtrate else self.titolo
+
+            # Genera slug base (max 80 caratteri per lasciare spazio alla data)
+            base_slug = slugify(titolo_ottimizzato, allow_unicode=False)[:80]
+
+            # Se lo slug è troppo corto, usa l'originale senza filtro
+            if len(base_slug) < 10:
+                base_slug = slugify(self.titolo, allow_unicode=False)[:80]
+
             slug = base_slug
-            counter = 1
 
-            # Se lo slug esiste già, aggiungi un suffisso numerico
-            while Articolo.objects.filter(slug=slug).exclude(pk=self.pk).exists():
-                slug = f"{base_slug}-{counter}"
-                counter += 1
+            # Se lo slug esiste già, aggiungi la data invece di un contatore
+            if Articolo.objects.filter(slug=slug).exclude(pk=self.pk).exists():
+                data_suffix = timezone.now().strftime('%Y-%m-%d')
+                slug = f"{base_slug}-{data_suffix}"
 
-            self.slug = slug[:50]  # Assicurati che non superi mai 50 caratteri
+                # Se anche con la data esiste, aggiungi l'ora
+                if Articolo.objects.filter(slug=slug).exclude(pk=self.pk).exists():
+                    ora_suffix = timezone.now().strftime('%H%M')
+                    slug = f"{base_slug}-{data_suffix}-{ora_suffix}"
+
+            self.slug = slug[:100]  # Assicurati che non superi mai 100 caratteri
 
         if not self.sommario:
             # Rimuovi tag HTML dal contenuto per il sommario
