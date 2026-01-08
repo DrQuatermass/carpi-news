@@ -81,8 +81,9 @@ IMPORTANTE:
 - NON includere "carpi" nelle keywords (è ridondante, tutto il sito parla di Carpi)
 - NON includere articoli, preposizioni o congiunzioni (il, lo, la, al, alla, del, della, di, da, a, e, o)
 - Correggi errori di battitura evidenti (es. "sivurezza" -> "sicurezza")
-- Usa categoria SOLO per richieste generiche ("ultime notizie di sport")
-- Per ricerche specifiche (es. "rugby") NON usare categoria, usa solo keywords
+- Usa categoria SOLO per richieste esplicitamente generiche senza argomento specifico ("ultime notizie di sport", "ultime notizie di cultura")
+- Per ricerche con argomenti specifici (es. "rugby", "teatro", "ragazzi irresistibili") NON usare categoria, usa SOLO keywords
+- Se l'utente menziona qualcosa di specifico (nome, evento, argomento), categoria DEVE essere null
 - DOMANDE APERTE (chi/cosa/quando/dove/perché): usa request_type "question"
 - Per domande su RELAZIONI tra entità (es. "cosa è successo tra X e Y"), usa articles_needed: 10
 - Per domande semplici su fatti specifici, usa articles_needed: 1-3
@@ -104,6 +105,7 @@ Restituisci SOLO un JSON valido con questa struttura:
 Esempi:
 - "Trovami articoli su Aimag" -> {"keywords": ["aimag"], "timeframe": null, "categoria": null, "entity": "Aimag", "request_type": "search", "articles_needed": 0}
 - "eola papazzoni san marino" -> {"keywords": ["eola papazzoni", "san marinese"], "timeframe": null, "categoria": null, "entity": "Eola Papazzoni", "request_type": "search", "articles_needed": 0}
+- "i ragazzi irresistibili a teatro" -> {"keywords": ["ragazzi", "irresistibili", "teatro"], "timeframe": null, "categoria": null, "entity": null, "request_type": "search", "articles_needed": 0}
 - "Cosa è successo tra Aimag e Hera?" -> {"keywords": ["aimag", "hera"], "timeframe": null, "categoria": null, "entity": null, "request_type": "question", "articles_needed": 10}
 - "Chi è il sindaco di Campogalliano?" -> {"keywords": ["sindaco", "campogalliano"], "timeframe": null, "categoria": null, "entity": "sindaco", "request_type": "question", "articles_needed": 3}
 - "Eventi di domani" -> {"keywords": ["eventi"], "timeframe": "domani", "categoria": null, "entity": null, "request_type": "search", "articles_needed": 0}
@@ -113,7 +115,9 @@ Esempi:
 - "Notizie di ottobre" -> {"keywords": [], "timeframe": "ottobre", "categoria": null, "entity": null, "request_type": "search", "articles_needed": 0}
 - "Cosa è successo questa settimana?" -> {"keywords": [], "timeframe": "settimana", "categoria": null, "entity": null, "request_type": "question", "articles_needed": 8}
 - "Ultime notizie di sport" -> {"keywords": [], "timeframe": null, "categoria": "Sport", "entity": null, "request_type": "latest", "articles_needed": 0}
+- "Ultime notizie di cultura" -> {"keywords": [], "timeframe": null, "categoria": "Cultura & Eventi", "entity": null, "request_type": "latest", "articles_needed": 0}
 - "Rugby" -> {"keywords": ["rugby"], "timeframe": null, "categoria": null, "entity": null, "request_type": "search", "articles_needed": 0}
+- "Teatro a Carpi" -> {"keywords": ["teatro"], "timeframe": null, "categoria": null, "entity": null, "request_type": "search", "articles_needed": 0}
 - "Mario Rossi San Prospero" -> {"keywords": ["mario rossi", "san prosperese"], "timeframe": null, "categoria": null, "entity": "Mario Rossi", "request_type": "search", "articles_needed": 0}
 """
 
