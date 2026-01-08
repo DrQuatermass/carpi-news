@@ -425,6 +425,7 @@
 .article-card {
     display: flex;
     gap: 12px;
+    align-items: center;
     background: white;
     border-radius: 12px;
     overflow: hidden;
@@ -442,20 +443,21 @@
 }
 
 .article-card .article-image {
-    width: 100px;
-    height: 120px;
+    width: 90px;
+    height: 90px;
     background-size: cover;
     background-position: center;
     background-color: #F4F0E8;
     flex-shrink: 0;
+    border-radius: 8px;
 }
 
 .article-card .article-content {
     flex: 1;
-    padding: 8px 12px;
+    padding: 6px 10px;
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 0px;
     min-width: 0;
 }
 
@@ -468,16 +470,16 @@
 }
 
 .article-title {
-    font-size: 14px;
+    font-size: 8px;
     font-weight: 600;
     color: #2C2C2C;
     margin: 0;
     line-height: 1.4;
     display: -webkit-box;
-    -webkit-line-clamp: 3;
+    -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
-    word-break: break-word;
+    text-overflow: ellipsis;
 }
 
 .article-summary {

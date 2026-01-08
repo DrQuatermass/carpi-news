@@ -248,8 +248,8 @@ class OmbraChatbot {
                     <div class="article-image" style="background-image: url('${imageUrl}')"></div>
                     <div class="article-content">
                         <span class="article-category">${article.categoria}</span>
-                        <h4 class="article-title">${this.escapeHtml(article.titolo)}</h4>
-                        <p class="article-summary">${this.escapeHtml(article.sommario)}</p>
+                        <h4 class="article-title" style="font-size: 17px !important;">${this.escapeHtml(article.titolo)}</h4>
+                        <p class="article-summary" style="font-size: 13px !important;">${this.escapeHtml(article.sommario)}</p>
                         <span class="article-date">${date}</span>
                     </div>
                 </a>
