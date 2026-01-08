@@ -416,13 +416,11 @@ Esempi:
                 logger.info(f"Nessun articolo {categoria} con data_evento, continuo con ricerca standard")
         if keywords:
             # Prova prima con AND (articoli che contengono TUTTE le parole)
-            # Usa regex con word boundary per cercare parole intere
+            # Usa icontains per compatibilità PostgreSQL (iregex con \b non funziona)
             query_and = query
             for keyword in keywords:
-                # \b = word boundary, cerca solo parole intere
-                regex_pattern = rf'\b{keyword}\b'
                 # AND: ogni keyword deve essere presente in titolo o contenuto
-                keyword_query = Q(titolo__iregex=regex_pattern) | Q(contenuto__iregex=regex_pattern)
+                keyword_query = Q(titolo__icontains=keyword) | Q(contenuto__icontains=keyword)
                 query_and = query_and.filter(keyword_query)
 
             # Converti in lista per contare
@@ -438,8 +436,7 @@ Esempi:
                 logger.info(f"AND non ha trovato risultati, provo con OR: {keywords}")
                 keyword_query_or = Q()
                 for keyword in keywords:
-                    regex_pattern = rf'\b{keyword}\b'
-                    keyword_query_or |= Q(titolo__iregex=regex_pattern) | Q(contenuto__iregex=regex_pattern)
+                    keyword_query_or |= Q(titolo__icontains=keyword) | Q(contenuto__icontains=keyword)
                 query_or = query.filter(keyword_query_or)
                 articles_or = list(query_or.order_by('-data_pubblicazione'))
                 logger.info(f"Filtro keywords applicato (OR fallback): {keywords} - {len(articles_or)} articoli")
