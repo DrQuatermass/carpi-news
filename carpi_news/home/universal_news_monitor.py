@@ -1019,27 +1019,59 @@ class YouTubeAPIScraper(BaseScraper):
 
             # Controlla prima se i sottotitoli sono disponibili
             self.logger.info(f"Verifica disponibilità sottotitoli per video {video_id}")
-            api = YouTubeTranscriptApi()
 
             try:
-                # Prova a ottenere la lista dei transcript disponibili
+                # Crea istanza API e ottieni lista transcript disponibili
+                api = YouTubeTranscriptApi()
                 transcript_list = api.list(video_id)
-                # Cerca transcript in italiano
-                transcript_list.find_transcript(['it'])
-                self.logger.info(f"Sottotitoli disponibili per video {video_id}")
-            except (TranscriptsDisabled, NoTranscriptFound):
-                self.logger.info(f"Sottotitoli non disponibili per video {video_id} - probabilmente una diretta in corso")
+
+                # Prova prima con transcript italiano manuale
+                transcript = None
+                try:
+                    transcript = transcript_list.find_transcript(['it'])
+                    self.logger.info(f"Trovato transcript italiano manuale per video {video_id}")
+                except NoTranscriptFound:
+                    # Se non c'è italiano manuale, prova con autogenerato
+                    try:
+                        self.logger.info(f"Transcript italiano manuale non disponibile, provo con autogenerato")
+                        transcript = transcript_list.find_generated_transcript(['it'])
+                        self.logger.info(f"Trovato transcript autogenerato italiano per video {video_id}")
+                    except NoTranscriptFound:
+                        # Se non c'è nemmeno autogenerato, prova con qualsiasi lingua
+                        self.logger.info(f"Nessun transcript italiano, provo con altre lingue")
+                        for t in transcript_list:
+                            transcript = t
+                            self.logger.info(f"Usando transcript in {t.language} (code: {t.language_code})")
+                            break
+
+                if not transcript:
+                    raise NoTranscriptFound("Nessun transcript disponibile in alcuna lingua")
+
+                # Estrai il testo dal transcript
+                transcript_data = transcript.fetch()
+                # Gli oggetti possono essere dict o oggetti con attributi
+                text = " ".join([
+                    item['text'] if isinstance(item, dict) else item.text
+                    for item in transcript_data
+                ])
+                self.logger.info(f"Transcript estratto: {len(text)} caratteri")
+                return text
+
+            except TranscriptsDisabled:
+                self.logger.info(f"Sottotitoli disabilitati per video {video_id}")
+                # Controlla se è una diretta
                 if self._is_live_stream(video_id):
-                    self.logger.info(f"Video {video_id} confermato come diretta - sarà riprovato più tardi")
+                    self.logger.info(f"Video {video_id} è una diretta - sarà riprovato più tardi")
                     self._schedule_retry(video_id)
                 return None
 
-            # Se i sottotitoli sono disponibili, procedi con l'estrazione
-            self.logger.info(f"Estrazione transcript per video {video_id}")
-            transcript_data = api.fetch(video_id, languages=['it'])
-            text = " ".join([snippet.text for snippet in transcript_data])
-            self.logger.info(f"Transcript estratto: {len(text)} caratteri")
-            return text
+            except NoTranscriptFound:
+                self.logger.info(f"Nessun transcript disponibile per video {video_id}")
+                # Controlla se è una diretta
+                if self._is_live_stream(video_id):
+                    self.logger.info(f"Video {video_id} è una diretta - sarà riprovato più tardi")
+                    self._schedule_retry(video_id)
+                return None
 
         except (TranscriptsDisabled, NoTranscriptFound) as e:
             self.logger.error(f"Transcript non disponibile per video {video_id}: {e}")
