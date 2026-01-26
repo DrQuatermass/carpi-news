@@ -229,17 +229,21 @@ STRUTTURA OBBLIGATORIA:
 
 Rispondi SOLO con saluto + domanda (max 2-3 frasi)."""
 
-            # Aggiungi nome/cognome intervistato se disponibili
+            # Aggiungi nome/cognome/ruolo intervistato se disponibili
             interviewer_name = ""
+            interviewer_role = ""
             if self.pubbliredazionale.intervistato_nome and self.pubbliredazionale.intervistato_cognome:
                 interviewer_name = f"{self.pubbliredazionale.intervistato_nome} {self.pubbliredazionale.intervistato_cognome}"
             elif self.pubbliredazionale.intervistato_nome:
                 interviewer_name = self.pubbliredazionale.intervistato_nome
 
-            saluto_target = f"a {interviewer_name}" if interviewer_name else "all'intervistato"
+            if self.pubbliredazionale.intervistato_ruolo:
+                interviewer_role = f" ({self.pubbliredazionale.intervistato_ruolo})"
+
+            saluto_target = f"a {interviewer_name}{interviewer_role}" if interviewer_name else "all'intervistato"
 
             prompt = f"""AZIENDA: {self.pubbliredazionale.nome_azienda}
-INTERVISTATO: {interviewer_name if interviewer_name else "Non specificato"}
+INTERVISTATO: {interviewer_name}{interviewer_role if interviewer_name else "Non specificato"}
 
 RICERCA PRELIMINARE:
 {business_research.get('summary', 'Nessuna informazione disponibile')}
@@ -417,14 +421,18 @@ Rispondi con JSON: {"complete": true} oppure {"complete": false, "question": "la
         website_content = interview_data.get('website_content', '')
         market_analysis = interview_data.get('web_research', {}).get('findings', '')
 
-        # Nome intervistato se disponibile
+        # Nome/ruolo intervistato se disponibile
         interviewer_name = ""
+        interviewer_role = ""
         if self.pubbliredazionale.intervistato_nome and self.pubbliredazionale.intervistato_cognome:
             interviewer_name = f"{self.pubbliredazionale.intervistato_nome} {self.pubbliredazionale.intervistato_cognome}"
         elif self.pubbliredazionale.intervistato_nome:
             interviewer_name = self.pubbliredazionale.intervistato_nome
 
-        interviewer_line = f"INTERVISTATO: {interviewer_name}" if interviewer_name else ""
+        if self.pubbliredazionale.intervistato_ruolo:
+            interviewer_role = f" ({self.pubbliredazionale.intervistato_ruolo})"
+
+        interviewer_line = f"INTERVISTATO: {interviewer_name}{interviewer_role}" if interviewer_name else ""
 
         # Data odierna per contestualizzare
         from datetime import datetime
@@ -1239,12 +1247,16 @@ Restituisci un JSON con:
         nome_azienda = self.pubbliredazionale.nome_azienda
         sito_web = self.pubbliredazionale.sito_web
 
-        # Nome intervistato se disponibile
+        # Nome/ruolo intervistato se disponibile
         interviewer_name = ""
+        interviewer_role = ""
         if self.pubbliredazionale.intervistato_nome and self.pubbliredazionale.intervistato_cognome:
             interviewer_name = f"{self.pubbliredazionale.intervistato_nome} {self.pubbliredazionale.intervistato_cognome}"
         elif self.pubbliredazionale.intervistato_nome:
             interviewer_name = self.pubbliredazionale.intervistato_nome
+
+        if self.pubbliredazionale.intervistato_ruolo:
+            interviewer_role = f", {self.pubbliredazionale.intervistato_ruolo}"
 
         website_content = interview_data.get('website_content', '')
         conversation = interview_data.get('conversation', [])
@@ -1260,7 +1272,7 @@ Restituisci un JSON con:
         research_text = web_research.get('findings', '')
         post_research_text = post_research.get('findings', '')
 
-        interviewer_line = f"INTERVISTATO: {interviewer_name} (puoi citarlo nell'articolo per personalizzare)" if interviewer_name else ""
+        interviewer_line = f"INTERVISTATO: {interviewer_name}{interviewer_role} (puoi citarlo nell'articolo per personalizzare)" if interviewer_name else ""
 
         # Data odierna per contestualizzare
         from datetime import datetime

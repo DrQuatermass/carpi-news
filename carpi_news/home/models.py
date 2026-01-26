@@ -53,6 +53,7 @@ class Articolo(models.Model):
     sito_web = models.URLField('Sito web azienda', max_length=500, blank=True, help_text='URL del sito web dell\'azienda')
     intervistato_nome = models.CharField('Nome intervistato', max_length=100, blank=True, help_text='Nome della persona intervistata')
     intervistato_cognome = models.CharField('Cognome intervistato', max_length=100, blank=True, help_text='Cognome della persona intervistata')
+    intervistato_ruolo = models.CharField('Ruolo in azienda', max_length=100, blank=True, help_text='Ruolo o carica dell\'intervistato in azienda (es: Titolare, Direttore)')
 
     # Conversazione AI (salvata come JSON)
     interview_data = models.JSONField(

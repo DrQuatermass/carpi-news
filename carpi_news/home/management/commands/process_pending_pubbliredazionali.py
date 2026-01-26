@@ -176,6 +176,11 @@ Questo è un messaggio automatico. Per assistenza, risponda a questa email.
 
             subject = f'🔔 Nuovo pubbliredazionale da approvare: {pub.nome_azienda}'
 
+            # Formatta nome intervistato con ruolo
+            intervistato_info = f"{pub.intervistato_nome} {pub.intervistato_cognome}"
+            if pub.intervistato_ruolo:
+                intervistato_info += f" ({pub.intervistato_ruolo})"
+
             message = f"""Ciao,
 
 un nuovo pubbliredazionale è stato generato e richiede la tua approvazione prima che l'utente possa procedere al pagamento.
@@ -184,7 +189,7 @@ Dettagli:
 - Azienda: {pub.nome_azienda}
 - Sito web: {pub.sito_web or 'N/A'}
 - Utente: {pub.pubbliredazionale_user.username} ({pub.pubbliredazionale_user.email})
-- Intervistato: {pub.intervistato_nome} {pub.intervistato_cognome}
+- Intervistato: {intervistato_info}
 - Titolo articolo: {pub.titolo}
 
 Azioni richieste:

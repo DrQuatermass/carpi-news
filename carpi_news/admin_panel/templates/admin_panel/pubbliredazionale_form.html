@@ -253,6 +253,14 @@
                 </div>
 
                 <div class="form-group">
+                    <label for="intervistato_ruolo">Ruolo in Azienda</label>
+                    <input type="text" id="intervistato_ruolo" name="intervistato_ruolo" class="form-control"
+                           value="{{ form_data.intervistato_ruolo }}"
+                           placeholder="Es: Titolare, Direttore Commerciale, Responsabile">
+                    <div class="help-text"><strong>Opzionale:</strong> Il ruolo o la carica della persona intervistata</div>
+                </div>
+
+                <div class="form-group">
                     <label for="sito_web">Sito Web o Pagina Facebook</label>
                     <input type="url" id="sito_web" name="sito_web" class="form-control"
                            value="{{ form_data.sito_web }}"

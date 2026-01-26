@@ -769,6 +769,7 @@ def pubbliredazionale_create(request):
         sito_web = request.POST.get('sito_web', '').strip()
         intervistato_nome = request.POST.get('intervistato_nome', '').strip()
         intervistato_cognome = request.POST.get('intervistato_cognome', '').strip()
+        intervistato_ruolo = request.POST.get('intervistato_ruolo', '').strip()
         promo_code = request.POST.get('promo_code', '').strip()
 
         # Validazione: solo nome azienda obbligatorio
@@ -786,6 +787,7 @@ def pubbliredazionale_create(request):
             sito_web=sito_web,  # Opzionale, può essere link Facebook
             intervistato_nome=intervistato_nome,
             intervistato_cognome=intervistato_cognome,
+            intervistato_ruolo=intervistato_ruolo,
             categoria='Attualità',  # Sempre Attualità
             titolo=f'Pubbliredazionale {nome_azienda}',  # Temporaneo
             contenuto='',  # Verrà generato dall'AI
@@ -862,6 +864,12 @@ def pubbliredazionale_interview(request, pubbliredazionale_id):
                     if admin_emails:
                         admin_url = f"{settings.SITE_URL}/admin/home/articolo/{pubbliredazionale.id}/change/"
                         subject = f'📷 Intervista completata + foto caricata: {pubbliredazionale.nome_azienda}'
+
+                        # Formatta nome intervistato con ruolo
+                        intervistato_info = f"{pubbliredazionale.intervistato_nome} {pubbliredazionale.intervistato_cognome}"
+                        if pubbliredazionale.intervistato_ruolo:
+                            intervistato_info += f" ({pubbliredazionale.intervistato_ruolo})"
+
                         message = f"""Ciao,
 
 un nuovo pubbliredazionale ha completato l'intervista e caricato la foto.
@@ -870,7 +878,7 @@ Dettagli:
 - Azienda: {pubbliredazionale.nome_azienda}
 - Sito web: {pubbliredazionale.sito_web or 'N/A'}
 - Utente: {pubbliredazionale.pubbliredazionale_user.username} ({pubbliredazionale.pubbliredazionale_user.email})
-- Intervistato: {pubbliredazionale.intervistato_nome} {pubbliredazionale.intervistato_cognome}
+- Intervistato: {intervistato_info}
 - Foto caricata: ✓
 
 L'articolo sarà generato automaticamente dal sistema tra circa 107 minuti (o domani mattina se fuori orario lavorativo).
@@ -946,8 +954,13 @@ def pubbliredazionale_preview(request, pubbliredazionale_id):
         pubbliredazionale_user=request.user
     )
 
-    # Se non ha ancora completato l'intervista (manca titolo o contenuto), redirect
-    if not (pubbliredazionale.titolo and pubbliredazionale.contenuto and pubbliredazionale.interview_data):
+    # Verifica che l'intervista sia completata (ha conversazione con almeno 3 domande)
+    interview_data = pubbliredazionale.interview_data or {}
+    conversation = interview_data.get('conversation', [])
+    questions_asked = len([msg for msg in conversation if msg.get('role') == 'agent'])
+
+    # Se l'intervista non è completata (meno di 3 domande O nessun articolo generato)
+    if questions_asked < 3 or not pubbliredazionale.titolo or not pubbliredazionale.contenuto:
         messages.warning(request, 'Devi completare l\'intervista prima di vedere l\'anteprima.')
         return redirect('admin_panel:pubbliredazionale_interview', pubbliredazionale_id=pubbliredazionale.id)
 
