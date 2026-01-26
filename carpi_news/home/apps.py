@@ -23,6 +23,7 @@ class HomeConfig(AppConfig):
     _watchdog_thread = None
     _editorial_scheduler_started = False
     _cosa_fare_oggi_scheduler_started = False
+    _reshare_events_scheduler_started = False
     
     def ready(self):
         """Chiamato quando l'app è pronta - avvia il monitor playlist e registra segnali"""
@@ -75,6 +76,9 @@ class HomeConfig(AppConfig):
                 print("[DEBUG] Avvio start_cosa_fare_oggi_scheduler()", flush=True)
                 logger.info("[DEBUG] Avvio start_cosa_fare_oggi_scheduler()")
                 self.start_cosa_fare_oggi_scheduler()
+                print("[DEBUG] Avvio start_reshare_events_scheduler()", flush=True)
+                logger.info("[DEBUG] Avvio start_reshare_events_scheduler()")
+                self.start_reshare_events_scheduler()
                 print("[DEBUG] Avvio monitor completato", flush=True)
                 logger.info("[DEBUG] Avvio monitor completato")
             except Exception as e:
@@ -392,6 +396,43 @@ class HomeConfig(AppConfig):
         except Exception as e:
             print(f"[DEBUG] Exception: {e}", flush=True)
             logger.error(f"Errore nell'avvio scheduler 'Cosa fare oggi?': {e}")
+            import traceback
+            logger.error(f"Traceback: {traceback.format_exc()}")
+
+    def start_reshare_events_scheduler(self):
+        """Avvia lo scheduler per ricondivisione eventi di domani"""
+        print("[DEBUG] start_reshare_events_scheduler() chiamato", flush=True)
+        try:
+            # Previeni avvii multipli
+            if HomeConfig._reshare_events_scheduler_started:
+                print("[DEBUG] Scheduler ricondivisione eventi già avviato in questo worker", flush=True)
+                logger.info("Scheduler ricondivisione eventi già avviato, skip")
+                return
+
+            import sys
+            sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+            print("[DEBUG] Importo reshare_events_scheduler", flush=True)
+            from reshare_events_scheduler import start_scheduler_daemon
+
+            print("[DEBUG] Chiamo start_scheduler_daemon() per ricondivisione eventi", flush=True)
+            success = start_scheduler_daemon()
+            print(f"[DEBUG] start_scheduler_daemon() ritorna: {success}", flush=True)
+            if success:
+                HomeConfig._reshare_events_scheduler_started = True
+                print("[DEBUG] SUCCESS: Scheduler ricondivisione eventi avviato!", flush=True)
+                logger.info("[OK] Scheduler ricondivisione eventi avviato - esecuzione alle 7:50 ogni giorno")
+            else:
+                # False significa che un altro worker ha già il lock (comportamento normale)
+                print("[DEBUG] FALSE: Lock già acquisito da altro worker", flush=True)
+                logger.info("[INFO] Scheduler ricondivisione eventi già gestito da altro worker")
+
+        except ImportError as e:
+            print(f"[DEBUG] ImportError: {e}", flush=True)
+            logger.error(f"Modulo 'schedule' non trovato - installa con: pip install schedule")
+        except Exception as e:
+            print(f"[DEBUG] Exception: {e}", flush=True)
+            logger.error(f"Errore nell'avvio scheduler ricondivisione eventi: {e}")
             import traceback
             logger.error(f"Traceback: {traceback.format_exc()}")
 
