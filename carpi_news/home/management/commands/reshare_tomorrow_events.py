@@ -111,7 +111,16 @@ class Command(BaseCommand):
                     continue
 
             # Condividi su tutte le piattaforme abilitate
+            # IMPORTANTE: Per la ricondivisione, rimuoviamo temporaneamente i log delle pubblicazioni precedenti
+            # per forzare la condivisione anche se l'articolo è già stato pubblicato in passato
             try:
+                # Salva i log esistenti per riferimento
+                existing_logs = list(SocialPublicationLog.objects.filter(articolo=articolo, success=True))
+
+                # Cancella temporaneamente i log per permettere la ricondivisione
+                SocialPublicationLog.objects.filter(articolo=articolo).delete()
+
+                # Esegui la condivisione (ora share_article_on_approval non troverà log e condividerà)
                 results = social_manager.share_article_on_approval(articolo)
 
                 # Mostra risultati per piattaforma
