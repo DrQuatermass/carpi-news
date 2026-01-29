@@ -89,13 +89,15 @@ function changePage(direction) {
         const slideOutClass = direction > 0 ? 'slide-out-left' : 'slide-out-right';
         const slideInClass = direction > 0 ? 'slide-in-right' : 'slide-in-left';
 
-        // Aggiungi classe di transizione al grid
+        // Salva l'altezza PRIMA di modificare le classi (evita forced reflow)
+        const newsNav = document.querySelector('.news-nav');
+        const currentHeight = newsNav.offsetHeight;
+
+        // Aggiungi classe di transizione al grid DOPO aver letto offsetHeight
         const newsGrid = document.getElementById('news-grid');
         newsGrid.classList.add('transitioning');
 
-        // Salva l'altezza corrente della griglia per evitare layout shift
-        const newsNav = document.querySelector('.news-nav');
-        const currentHeight = newsNav.offsetHeight;
+        // Applica minHeight salvato
         newsNav.style.minHeight = currentHeight + 'px';
 
         // Blocca temporaneamente l'effetto parallasse

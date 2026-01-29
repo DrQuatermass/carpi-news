@@ -999,9 +999,10 @@
     <!-- Chatbot JavaScript - caricamento differito (non critico per LCP) -->
     <script src="{% static 'home/js/chatbot.js' %}?v=2026010804" defer></script>
 
-    <!-- Google Analytics - Deferred -->
+    <!-- Google Analytics - Deferred e Idle Callback -->
     <script>
-      window.addEventListener('load', function() {
+      // Carica GA solo quando il browser è idle (dopo tutte le risorse critiche)
+      (window.requestIdleCallback || window.setTimeout)(function() {
         var script = document.createElement('script');
         script.src = 'https://www.googletagmanager.com/gtag/js?id=G-MSCYFFSNGD';
         script.async = true;
@@ -1011,7 +1012,7 @@
         function gtag(){dataLayer.push(arguments);}
         gtag('js', new Date());
         gtag('config', 'G-MSCYFFSNGD');
-      });
+      }, { timeout: 3000 });
     </script>
     {% endblock %}
 </body>
