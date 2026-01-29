@@ -15,11 +15,11 @@ import hashlib
 
 logger = logging.getLogger(__name__)
 
-# Timeout per richieste HTTP (secondi)
-REQUEST_TIMEOUT = 10
+# Timeout per richieste HTTP (secondi) - ridotto per migliorare LCP
+REQUEST_TIMEOUT = 5
 
-# Qualità WebP (0-100) - aumentata per migliore qualità visiva
-WEBP_QUALITY = 85
+# Qualità WebP (0-100) - ottimizzata per compressione/qualità
+WEBP_QUALITY = 78
 
 # Dimensioni massime cache (10 MB per immagine)
 MAX_CACHE_SIZE = 10 * 1024 * 1024
@@ -53,14 +53,21 @@ def download_and_optimize_image(url, width=None, quality=WEBP_QUALITY):
         tuple: (image_data: bytes, content_type: str)
     """
     try:
-        # Download dell'immagine
+        # Download dell'immagine con connection pooling e compressione
         logger.info(f"Downloading image: {url[:100]}...")
-        response = requests.get(
+
+        # Session con connection pooling per riutilizzare connessioni TCP
+        session = requests.Session()
+
+        response = session.get(
             url,
             timeout=REQUEST_TIMEOUT,
             headers={
-                'User-Agent': 'Mozilla/5.0 (compatible; OmbraDelPortico/1.0; +https://ombradelportico.it)'
-            }
+                'User-Agent': 'Mozilla/5.0 (compatible; OmbraDelPortico/1.0; +https://ombradelportico.it)',
+                'Accept': 'image/webp,image/avif,image/*,*/*;q=0.8',  # Preferisce immagini già ottimizzate
+                'Accept-Encoding': 'gzip, deflate, br'  # Compressione HTTP
+            },
+            stream=True  # Streaming per grandi immagini
         )
         response.raise_for_status()
 
@@ -95,9 +102,10 @@ def download_and_optimize_image(url, width=None, quality=WEBP_QUALITY):
                 background.paste(img)
             img = background
 
-        # Converti in WebP
+        # Converti in WebP con compressione ottimizzata
         webp_io = BytesIO()
-        img.save(webp_io, 'WebP', quality=quality, method=6)
+        # method=4: bilancia velocità/compressione (invece di 6 che è più lento)
+        img.save(webp_io, 'WebP', quality=quality, method=4)
         webp_data = webp_io.getvalue()
 
         # Log risparmio
@@ -119,7 +127,7 @@ def download_and_optimize_image(url, width=None, quality=WEBP_QUALITY):
 
 
 @require_GET
-@cache_control(public=True, max_age=604800)  # Cache 7 giorni
+@cache_control(public=True, max_age=2592000, immutable=True)  # Cache 30 giorni, immutable
 def image_proxy_view(request):
     """
     View per proxy immagini esterne con ottimizzazione e cache
@@ -166,6 +174,7 @@ def image_proxy_view(request):
         image_data, content_type = cached_data
         response = HttpResponse(image_data, content_type=content_type)
         response['X-Cache'] = 'HIT'
+        response['Vary'] = 'Accept'
         return response
 
     # Cache miss: scarica e ottimizza
@@ -175,11 +184,12 @@ def image_proxy_view(request):
     if image_data is None:
         return HttpResponseServerError("Failed to process image")
 
-    # Salva in cache (7 giorni)
-    cache.set(cache_key, (image_data, content_type), timeout=604800)
+    # Salva in cache (30 giorni)
+    cache.set(cache_key, (image_data, content_type), timeout=2592000)
 
     # Ritorna immagine ottimizzata
     response = HttpResponse(image_data, content_type=content_type)
     response['X-Cache'] = 'MISS'
-    response['Cache-Control'] = 'public, max-age=604800, immutable'  # 7 giorni browser cache
+    response['Cache-Control'] = 'public, max-age=2592000, immutable'  # 30 giorni browser cache
+    response['Vary'] = 'Accept'  # Cache varia per tipo Accept
     return response
