@@ -97,7 +97,11 @@ def image_srcset(image_url, sizes="default"):
         return ", ".join(srcset_parts)
 
     # Per immagini esterne, usa il proxy per diverse dimensioni
-    if image_url.startswith('http') and not 'ombradelportico.it' in image_url:
+    # Escludi localhost e domini interni dal proxy
+    internal_domains = ['ombradelportico.it', 'localhost', '127.0.0.1']
+    is_external = image_url.startswith('http') and not any(domain in image_url for domain in internal_domains)
+
+    if is_external:
         from urllib.parse import quote
         encoded_url = quote(image_url, safe='')
         # Genera srcset con proxy per diverse larghezze
@@ -112,10 +116,10 @@ def image_srcset(image_url, sizes="default"):
 
         # Se l'URL contiene il dominio, rimuovilo per avere solo il path
         clean_url = image_url
-        if 'ombradelportico.it' in image_url:
-            # Estrai solo il path dopo il dominio
+        if 'ombradelportico.it' in image_url or 'localhost' in image_url or '127.0.0.1' in image_url:
+            # Estrai solo il path dopo il dominio (supporta anche localhost:8000)
             import re
-            domain_match = re.search(r'ombradelportico\.it(/.+)$', image_url)
+            domain_match = re.search(r'(?:ombradelportico\.it|localhost(?::\d+)?|127\.0\.0\.1(?::\d+)?)(/.+)$', image_url)
             if domain_match:
                 clean_url = domain_match.group(1)
 
