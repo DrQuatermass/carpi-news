@@ -2927,7 +2927,12 @@ footer .footer-section.footer-links-section .footer-useful-links a:hover {
 }
 
 .spotlight-main .spotlight-image {
-    height: 400px;
+    height: 280px;
+    background: #f8f8f8;
+}
+
+.spotlight-main .spotlight-image img {
+    object-fit: contain;
 }
 
 .spotlight-main .spotlight-content {
