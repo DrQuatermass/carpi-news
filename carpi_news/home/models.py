@@ -157,9 +157,23 @@ class Articolo(models.Model):
 
         # Priorità: foto_upload prima di foto URL
         if self.foto_upload:
-            # Per le immagini caricate, aggiungi sempre il dominio completo per IFTTT
-            site_url = getattr(settings, 'SITE_URL', 'https://ombradelportico.it')
-            return f"{site_url}{self.foto_upload.url}"
+            # Verifica se il file esiste fisicamente
+            import os
+            from pathlib import Path
+
+            file_path = Path(settings.MEDIA_ROOT) / str(self.foto_upload)
+            if not file_path.exists():
+                logger.warning(f"Immagine caricata non trovata: {self.foto_upload} (articolo: {self.titolo})")
+                # Fallback sul campo foto se disponibile
+                if self.foto:
+                    # Continua con la logica del campo foto
+                    pass
+                else:
+                    return fallback_image
+            else:
+                # Per le immagini caricate, aggiungi sempre il dominio completo per IFTTT
+                site_url = getattr(settings, 'SITE_URL', 'https://ombradelportico.it')
+                return f"{site_url}{self.foto_upload.url}"
 
         if not self.foto:
             return fallback_image
