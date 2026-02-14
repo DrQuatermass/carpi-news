@@ -80,8 +80,8 @@ def register_view(request):
         last_name = request.POST.get('last_name', '')
 
         # Validazione
-        if not username or not password:
-            messages.error(request, 'Username e password sono obbligatori.')
+        if not username or not password or not email or not first_name or not last_name:
+            messages.error(request, 'Tutti i campi sono obbligatori.')
             return render(request, 'admin_panel/register.html')
 
         if password != password_confirm:
@@ -90,6 +90,11 @@ def register_view(request):
 
         if len(password) < 6:
             messages.error(request, 'La password deve contenere almeno 6 caratteri.')
+            return render(request, 'admin_panel/register.html')
+
+        # Verifica che l'email non sia già utilizzata
+        if User.objects.filter(email=email).exists():
+            messages.error(request, 'Email già utilizzata. Usa un\'altra email.')
             return render(request, 'admin_panel/register.html')
 
         try:
@@ -101,7 +106,7 @@ def register_view(request):
                 first_name=first_name,
                 last_name=last_name
             )
-            messages.success(request, f'Account creato con successo! Benvenuto {username}!')
+            messages.success(request, f'Account creato con successo! Benvenuto {first_name}!')
             login(request, user)
             return redirect('admin_panel:dashboard')
 
