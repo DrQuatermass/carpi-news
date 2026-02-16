@@ -1,0 +1,25 @@
+/* Fix per modalità Source di CKEditor - testo leggibile */
+
+/* Stile per textarea Source mode */
+.cke_source {
+    background-color: #fff !important;
+    color: #000 !important;
+    font-family: 'Courier New', Consolas, monospace !important;
+    font-size: 13px !important;
+    line-height: 1.5 !important;
+    padding: 10px !important;
+}
+
+/* Stile alternativo per l'area di editing in modalità Source */
+.cke_editable_source,
+textarea.cke_source {
+    background: #ffffff !important;
+    color: #000000 !important;
+    border: 1px solid #ccc !important;
+}
+
+/* Override per evitare colori strani */
+.cke_wysiwyg_frame,
+.cke_wysiwyg_div {
+    background-color: #fff !important;
+}

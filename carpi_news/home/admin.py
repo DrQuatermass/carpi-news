@@ -17,6 +17,7 @@ from pathlib import Path
 from django.db.models import Sum, Count, Avg, Q, F
 from django.utils import timezone
 from datetime import timedelta
+from ckeditor.widgets import CKEditorWidget
 
 
 class HasWebSourcesFilter(SimpleListFilter):
@@ -212,8 +213,24 @@ class MonitorConfigForm(forms.ModelForm):
         except Exception as e:
             raise forms.ValidationError(f'Errore nella validazione: {str(e)}')
 
+class ArticoloAdminForm(forms.ModelForm):
+    """Form personalizzato per Articolo con CKEditor"""
+    class Meta:
+        model = Articolo
+        fields = '__all__'
+        widgets = {
+            'contenuto': CKEditorWidget(),
+        }
+
+    class Media:
+        css = {
+            'all': ('admin/css/ckeditor_custom.css',)
+        }
+
+
 @admin.register(Articolo)
 class ArticoloAdmin(admin.ModelAdmin):
+    form = ArticoloAdminForm
     list_display = ("titolo", "categoria", "spotlight_display", "is_pubbliredazionale", "payment_status_display", "approvato", "data_pubblicazione", "views", "fonti_web_count")
     list_filter = ['approvato', 'spotlight', 'categoria', IsPubbliredazionaleFilter, 'payment_status', HasWebSourcesFilter]
     search_fields = ['titolo', 'slug', 'nome_azienda', 'sito_web', 'pubbliredazionale_user__username']

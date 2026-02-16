@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'ckeditor',  # Rich text editor
     'home.apps.HomeConfig',  # Usa la configurazione personalizzata
     'admin_panel.apps.AdminPanelConfig',  # Admin panel per banner e gestione
 ]
@@ -348,3 +349,40 @@ FACEBOOK_APP_SECRET = os.getenv('FACEBOOK_APP_SECRET', '')
 # Richiede account Instagram Business/Creator collegato alla pagina Facebook
 INSTAGRAM_AUTO_SHARE = os.getenv('INSTAGRAM_AUTO_SHARE', 'False').lower() in ['true', '1', 'yes']
 INSTAGRAM_ACCOUNT_ID = os.getenv('INSTAGRAM_ACCOUNT_ID', '')
+
+# CKEditor Configuration
+CKEDITOR_CONFIGS = {
+    'default': {
+        'skin': 'moono-lisa',
+        'toolbar_Basic': [
+            ['Source', '-', 'Bold', 'Italic']
+        ],
+        'toolbar_Full': [
+            ['Source', '-', 'Save', 'NewPage', 'Preview', 'Print', '-', 'Templates'],
+            ['Cut', 'Copy', 'Paste', 'PasteText', 'PasteFromWord', '-', 'Undo', 'Redo'],
+            ['Find', 'Replace', '-', 'SelectAll'],
+            ['Form', 'Checkbox', 'Radio', 'TextField', 'Textarea', 'Select', 'Button', 'ImageButton', 'HiddenField'],
+            '/',
+            ['Bold', 'Italic', 'Underline', 'Strike', 'Subscript', 'Superscript', '-', 'RemoveFormat'],
+            ['NumberedList', 'BulletedList', '-', 'Outdent', 'Indent', '-', 'Blockquote', 'CreateDiv', '-', 'JustifyLeft', 'JustifyCenter', 'JustifyRight', 'JustifyBlock', '-', 'BidiLtr', 'BidiRtl'],
+            ['Link', 'Unlink', 'Anchor'],
+            ['Image', 'Flash', 'Table', 'HorizontalRule', 'Smiley', 'SpecialChar', 'PageBreak', 'Iframe'],
+            '/',
+            ['Styles', 'Format', 'Font', 'FontSize'],
+            ['TextColor', 'BGColor'],
+            ['Maximize', 'ShowBlocks'],
+        ],
+        'toolbar': 'Full',
+        'height': 500,
+        'width': '100%',
+        'filebrowserWindowWidth': 940,
+        'filebrowserWindowHeight': 725,
+        # CSS personalizzato per area Source (testo nero su sfondo bianco)
+        'contentsCss': [],
+        'bodyClass': 'ckeditor-body',
+        'extraAllowedContent': '*(*);*{*}',  # Permetti tutti gli stili e classi
+    }
+}
+
+# CSS personalizzato per CKEditor Source mode
+CKEDITOR_CONFIGS['default']['contentsCss'] = []
