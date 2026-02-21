@@ -75,22 +75,28 @@ class Command(BaseCommand):
             self.stdout.write(f'  • {evento.titolo} ({evento.categoria})')
 
         # Controlla se esiste già un articolo "Cosa fare oggi" per questa data
-        titolo_base = self.genera_titolo(target_date)
-        existing = Articolo.objects.filter(
-            titolo=titolo_base,
-            data_pubblicazione__date=target_date
-        ).first()
+        # Usa categoria + data invece del titolo per evitare race conditions
+        from django.db import transaction
 
-        if existing:
-            self.stdout.write(self.style.WARNING(f'\n[!] Articolo "Cosa fare oggi" già esistente per {target_date.strftime("%d/%m/%Y")}'))
-            self.stdout.write(f'  ID: {existing.id}')
-            self.stdout.write(f'  Slug: {existing.slug}')
-            self.stdout.write(f'  Creato: {existing.data_creazione.strftime("%d/%m/%Y %H:%M")}')
-            self.stdout.write(self.style.WARNING('  Usa --force per sovrascriverlo o elimina manualmente il vecchio articolo'))
-            return
+        # Lock a livello DB per prevenire race condition tra worker Gunicorn
+        with transaction.atomic():
+            existing = Articolo.objects.select_for_update().filter(
+                categoria='Cosa fare oggi',
+                data_pubblicazione__date=target_date
+            ).first()
 
-        # Genera il contenuto dell'articolo
-        titolo = titolo_base
+            if existing:
+                self.stdout.write(self.style.WARNING(f'\n[!] Articolo "Cosa fare oggi" già esistente per {target_date.strftime("%d/%m/%Y")}'))
+                self.stdout.write(f'  ID: {existing.id}')
+                self.stdout.write(f'  Slug: {existing.slug}')
+                self.stdout.write(f'  Titolo: {existing.titolo}')
+                self.stdout.write(f'  Creato: {existing.data_creazione.strftime("%d/%m/%Y %H:%M")}')
+                self.stdout.write(self.style.WARNING('  Articolo già presente, skip per evitare duplicati'))
+                return
+
+            # Genera il contenuto dell'articolo (dentro la transazione per mantenere il lock)
+            titolo_base = self.genera_titolo(target_date)
+            titolo = titolo_base
         contenuto = self.genera_contenuto(eventi, target_date)
         sommario = self.genera_sommario(eventi, target_date)
 

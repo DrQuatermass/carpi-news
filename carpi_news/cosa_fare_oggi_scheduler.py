@@ -24,22 +24,50 @@ from home.logger_config import setup_centralized_logger
 logger = setup_centralized_logger('cosa_fare_oggi_scheduler', 'INFO')
 
 def run_cosa_fare_oggi():
-    """Esegue la generazione di "Cosa fare oggi?" """
+    """Esegue la generazione di "Cosa fare oggi?" con protezione duplicati"""
+    from pathlib import Path
+    import time
+
     try:
-        logger.info("[OK] Avvio generazione 'Cosa fare oggi?' schedulata")
+        # Lock addizionale per prevenire esecuzioni simultanee da scheduler multipli
+        execution_lock = Path('locks') / 'cosa_fare_oggi_execution.lock'
 
-        # Import dinamico per evitare problemi di inizializzazione
-        from django.core.management import call_command
+        # Se il lock esiste ed è recente (meno di 5 minuti), skip
+        if execution_lock.exists():
+            lock_age = time.time() - execution_lock.stat().st_mtime
+            if lock_age < 300:  # 5 minuti
+                logger.info(f"Generazione 'Cosa fare oggi?' già in corso (lock età: {lock_age:.1f}s), skip")
+                return
+            else:
+                # Lock vecchio, rimuovilo
+                logger.info(f"Rimozione lock esecuzione vecchio ({lock_age:.1f}s)")
+                execution_lock.unlink()
 
-        # Esegui il comando genera_cosa_fare_oggi
-        call_command('genera_cosa_fare_oggi')
+        # Crea lock esecuzione
+        execution_lock.write_text(str(os.getpid()))
 
-        logger.info("[OK] 'Cosa fare oggi?' completato con successo")
+        try:
+            logger.info("[OK] Avvio generazione 'Cosa fare oggi?' schedulata")
+
+            # Import dinamico per evitare problemi di inizializzazione
+            from django.core.management import call_command
+
+            # Esegui il comando genera_cosa_fare_oggi
+            call_command('genera_cosa_fare_oggi')
+
+            logger.info("[OK] 'Cosa fare oggi?' completato con successo")
+        finally:
+            # Rimuovi lock esecuzione
+            if execution_lock.exists():
+                execution_lock.unlink()
 
     except Exception as e:
         logger.error(f"Errore nell'esecuzione schedulata di 'Cosa fare oggi?': {e}")
         import traceback
         logger.error(f"Traceback: {traceback.format_exc()}")
+        # Rimuovi lock anche in caso di errore
+        if 'execution_lock' in locals() and execution_lock.exists():
+            execution_lock.unlink()
 
 def start_scheduler():
     """Avvia lo scheduler per 'Cosa fare oggi?' """

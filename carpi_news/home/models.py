@@ -15,10 +15,21 @@ logger = logging.getLogger(__name__)
 
 
 class Articolo(models.Model):
+    CATEGORIA_CHOICES = [
+        ('Attualità', 'Attualità'),
+        ('Cronaca', 'Cronaca'),
+        ('Cultura & Eventi', 'Cultura & Eventi'),
+        ('Politica', 'Politica'),
+        ('Sport', 'Sport'),
+        ("L'Eco del Consiglio", "L'Eco del Consiglio"),
+        ('Cosa fare oggi', 'Cosa fare oggi'),
+        ('Editoriale', 'Editoriale'),
+    ]
+
     titolo = models.CharField(max_length=200)
     contenuto = models.TextField()
     sommario = models.TextField(max_length=5000, blank=True)
-    categoria = models.CharField(max_length=100, default='Generale', db_index=True)
+    categoria = models.CharField(max_length=100, choices=CATEGORIA_CHOICES, default='Attualità', db_index=True)
     slug = models.SlugField(max_length=100, unique=True, blank=True)
     approvato = models.BooleanField(default=False, db_index=True)
     fonte = models.URLField(max_length=500, blank=True, null=True)
@@ -98,7 +109,71 @@ class Articolo(models.Model):
     # Note amministrative
     admin_notes = models.TextField('Note amministrative', blank=True, help_text='Visibili solo agli admin')
 
+    @staticmethod
+    def normalize_category(categoria):
+        """
+        Normalizza automaticamente le categorie legacy/varianti alle categorie fisse.
+        Chiamato automaticamente nel save() per garantire coerenza.
+        """
+        if not categoria:
+            return 'Attualità'
+
+        # Mappa delle categorie legacy -> categoria fissa
+        category_map = {
+            # Legacy/varianti -> Nuova categoria
+            'generale': 'Attualità',
+            'comunicazioni': 'Attualità',
+            'attualita': 'Attualità',
+            'notizie': 'Attualità',
+            'comunicati stampa': 'Attualità',
+            'test': 'Attualità',
+
+            'cronaca': 'Cronaca',
+            'cronaca social': 'Cronaca',
+
+            'cultura': 'Cultura & Eventi',
+            'eventi': 'Cultura & Eventi',
+            'cultura & eventi': 'Cultura & Eventi',
+            'cultura ed eventi': 'Cultura & Eventi',
+            'spettacoli': 'Cultura & Eventi',
+
+            'politica': 'Politica',
+            'amministrazione': 'Politica',
+
+            'sport': 'Sport',
+            'calcio': 'Sport',
+
+            "l'eco del consiglio": "L'Eco del Consiglio",
+            'eco del consiglio': "L'Eco del Consiglio",
+            'consiglio comunale': "L'Eco del Consiglio",
+
+            'cosa fare oggi': 'Cosa fare oggi',
+            'cosa fare oggi?': 'Cosa fare oggi',
+
+            'editoriale': 'Editoriale',
+        }
+
+        # Normalizza: lowercase e trim
+        categoria_norm = categoria.strip().lower()
+
+        # Se c'è un mapping, usalo
+        if categoria_norm in category_map:
+            return category_map[categoria_norm]
+
+        # Altrimenti verifica se è già una categoria valida (case-insensitive)
+        valid_categories = [cat[0] for cat in Articolo.CATEGORIA_CHOICES]
+        for valid_cat in valid_categories:
+            if categoria.strip().lower() == valid_cat.lower():
+                return valid_cat
+
+        # Fallback: Attualità
+        logger.warning(f"Categoria sconosciuta '{categoria}' normalizzata a 'Attualità'")
+        return 'Attualità'
+
     def save(self, *args, **kwargs):
+        # Normalizza categoria prima del salvataggio
+        self.categoria = self.normalize_category(self.categoria)
+
         if not self.slug:
             # Stop words italiane da rimuovere per slug più puliti e SEO-friendly
             stop_words = {
