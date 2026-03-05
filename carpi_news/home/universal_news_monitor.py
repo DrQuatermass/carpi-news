@@ -3263,6 +3263,10 @@ Rielabora questa notizia seguendo le istruzioni del sistema. Rispondi SOLO con l
                     time.sleep(self.check_interval)
 
                     if self.is_running:
+                        # Rinnova connessione DB per evitare "connection already closed" nei thread
+                        from django.db import close_old_connections
+                        close_old_connections()
+
                         # Ricarica configurazione dal database prima di ogni controllo
                         if not self._reload_config_from_db():
                             break  # Se il reload fallisce o il monitor è disattivato, esci

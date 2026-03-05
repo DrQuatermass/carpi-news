@@ -231,12 +231,16 @@ class HomeConfig(AppConfig):
             import time
             from home.models import MonitorConfig
             from django.utils import timezone
+            from django.db import close_old_connections
 
             logger.info("Watchdog monitor avviato - controlla DB ogni 30 secondi")
 
             while True:
                 try:
                     time.sleep(30)  # Controlla ogni 30 secondi
+
+                    # Rinnova connessione DB per evitare "connection already closed" nei thread
+                    close_old_connections()
 
                     manager = HomeConfig._monitor_manager
                     if manager is None:
