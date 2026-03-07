@@ -3248,6 +3248,7 @@ Rielabora questa notizia seguendo le istruzioni del sistema. Rispondi SOLO con l
     
     def _monitor_loop(self):
         """Loop principale del monitoraggio"""
+        from django.db import close_old_connections, connection
         try:
             # Controllo iniziale
             try:
@@ -3255,6 +3256,8 @@ Rielabora questa notizia seguendo le istruzioni del sistema. Rispondi SOLO con l
                 self.check_for_new_articles()
             except Exception as e:
                 self.logger.error(f"Errore nel controllo iniziale: {e}")
+            finally:
+                connection.close()
 
             # Loop di monitoraggio
             while self.is_running:
@@ -3264,7 +3267,6 @@ Rielabora questa notizia seguendo le istruzioni del sistema. Rispondi SOLO con l
 
                     if self.is_running:
                         # Rinnova connessione DB per evitare "connection already closed" nei thread
-                        from django.db import close_old_connections
                         close_old_connections()
 
                         # Ricarica configurazione dal database prima di ogni controllo
@@ -3275,6 +3277,8 @@ Rielabora questa notizia seguendo le istruzioni del sistema. Rispondi SOLO con l
                 except Exception as e:
                     self.logger.error(f"Errore nel loop: {e}")
                     time.sleep(60)
+                finally:
+                    connection.close()
 
         finally:
             self.release_lock()
