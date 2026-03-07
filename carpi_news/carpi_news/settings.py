@@ -92,7 +92,10 @@ if DATABASE_URL:
     # Production database (PostgreSQL/MySQL)
     import dj_database_url
     DATABASES = {
-        'default': dj_database_url.parse(DATABASE_URL)
+        'default': {
+            **dj_database_url.parse(DATABASE_URL),
+            'CONN_MAX_AGE': 0,  # Chiudi connessione dopo ogni request (evita accumulo con thread monitor)
+        }
     }
 else:
     # Development database (SQLite) con ottimizzazioni aggressive per produzione
