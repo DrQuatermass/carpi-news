@@ -1340,7 +1340,7 @@ def _get_newsletter_context():
         _banners.sort(key=lambda b: b.priority)
         _site = getattr(settings, 'SITE_URL', 'https://ombradelportico.it').rstrip('/')
         newsletter_banners = []
-        for _b in _banners[:2]:
+        for _b in _banners[:4]:
             if not _b.image:
                 continue
             _img = _b.image.url

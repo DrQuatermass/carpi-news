@@ -47,6 +47,19 @@
     <tr>
       <td bgcolor="#ffffff" style="padding: 28px 32px;">
 
+        {% if newsletter_banners %}
+        <!-- BANNER 0 — prima delle notizie -->
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 0 0 20px;">
+          <tr><td align="center" style="padding: 0 0 4px;">
+            <a href="{{ newsletter_banners.0.link_url }}" target="_blank" rel="noopener nofollow sponsored">
+              <img src="{{ newsletter_banners.0.image_url }}" alt="{{ newsletter_banners.0.alt_text }}"
+                   style="width:100%;max-width:536px;height:auto;border-radius:8px;display:inline-block;box-shadow:0 2px 8px rgba(0,0,0,0.12);">
+            </a>
+            <div style="font-family:Arial,sans-serif;font-size:10px;color:#bbb;text-align:center;margin-top:5px;">Spazio promozionale</div>
+          </td></tr>
+        </table>
+        {% endif %}
+
         {% if articoli_oggi %}
         <!-- SEZIONE: OGGI -->
         <table width="100%" cellpadding="0" cellspacing="0" border="0">
@@ -95,19 +108,16 @@
         {% endfor %}
         {% endif %}
 
-        {% if newsletter_banners %}
-        <!-- BANNER 1 -->
+        {% if newsletter_banners|length > 1 %}
+        <!-- BANNER 1 — tra oggi e ieri -->
         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 8px 0 20px;">
-          <tr>
-            <td align="center" style="padding: 12px 0 4px;">
-              <a href="{{ newsletter_banners.0.link_url }}" target="_blank" rel="noopener nofollow sponsored">
-                <img src="{{ newsletter_banners.0.image_url }}"
-                     alt="{{ newsletter_banners.0.alt_text }}"
-                     style="width: 100%; max-width: 536px; height: auto; border-radius: 8px; display: inline-block; box-shadow: 0 2px 8px rgba(0,0,0,0.12);">
-              </a>
-              <div style="font-family: Arial, sans-serif; font-size: 10px; color: #bbb; text-align: center; margin-top: 5px;">Spazio promozionale</div>
-            </td>
-          </tr>
+          <tr><td align="center" style="padding: 12px 0 4px;">
+            <a href="{{ newsletter_banners.1.link_url }}" target="_blank" rel="noopener nofollow sponsored">
+              <img src="{{ newsletter_banners.1.image_url }}" alt="{{ newsletter_banners.1.alt_text }}"
+                   style="width:100%;max-width:536px;height:auto;border-radius:8px;display:inline-block;box-shadow:0 2px 8px rgba(0,0,0,0.12);">
+            </a>
+            <div style="font-family:Arial,sans-serif;font-size:10px;color:#bbb;text-align:center;margin-top:5px;">Spazio promozionale</div>
+          </td></tr>
         </table>
         {% endif %}
 
@@ -159,19 +169,16 @@
         {% endfor %}
         {% endif %}
 
-        {% if newsletter_banners|length > 1 %}
-        <!-- BANNER 2 -->
+        {% if newsletter_banners|length > 2 %}
+        <!-- BANNER 2 — tra ieri e cosa fare domani -->
         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 8px 0 20px;">
-          <tr>
-            <td align="center" style="padding: 12px 0 4px;">
-              <a href="{{ newsletter_banners.1.link_url }}" target="_blank" rel="noopener nofollow sponsored">
-                <img src="{{ newsletter_banners.1.image_url }}"
-                     alt="{{ newsletter_banners.1.alt_text }}"
-                     style="width: 100%; max-width: 536px; height: auto; border-radius: 8px; display: inline-block; box-shadow: 0 2px 8px rgba(0,0,0,0.12);">
-              </a>
-              <div style="font-family: Arial, sans-serif; font-size: 10px; color: #bbb; text-align: center; margin-top: 5px;">Spazio promozionale</div>
-            </td>
-          </tr>
+          <tr><td align="center" style="padding: 12px 0 4px;">
+            <a href="{{ newsletter_banners.2.link_url }}" target="_blank" rel="noopener nofollow sponsored">
+              <img src="{{ newsletter_banners.2.image_url }}" alt="{{ newsletter_banners.2.alt_text }}"
+                   style="width:100%;max-width:536px;height:auto;border-radius:8px;display:inline-block;box-shadow:0 2px 8px rgba(0,0,0,0.12);">
+            </a>
+            <div style="font-family:Arial,sans-serif;font-size:10px;color:#bbb;text-align:center;margin-top:5px;">Spazio promozionale</div>
+          </td></tr>
         </table>
         {% endif %}
 
@@ -194,7 +201,7 @@
             {% if articolo.foto or articolo.foto_upload %}
             <td width="110" valign="top" style="padding-right: 14px;">
               <a href="{{ site_url }}{% url 'dettaglio_articolo' articolo.slug %}">
-                <img src="{{ site_url }}{{ articolo.get_image_url }}" width="110" height="74"
+                <img src="{{ articolo.get_image_url }}" width="110" height="74"
                   alt="{{ articolo.titolo }}"
                   style="border-radius: 6px; object-fit: cover; width:110px; height:74px;">
               </a>
@@ -223,6 +230,19 @@
           </tr>
         </table>
         {% endfor %}
+        {% endif %}
+
+        {% if newsletter_banners|length > 3 %}
+        <!-- BANNER 3 — dopo gli eventi -->
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin: 8px 0 4px;">
+          <tr><td align="center" style="padding: 12px 0 4px;">
+            <a href="{{ newsletter_banners.3.link_url }}" target="_blank" rel="noopener nofollow sponsored">
+              <img src="{{ newsletter_banners.3.image_url }}" alt="{{ newsletter_banners.3.alt_text }}"
+                   style="width:100%;max-width:536px;height:auto;border-radius:8px;display:inline-block;box-shadow:0 2px 8px rgba(0,0,0,0.12);">
+            </a>
+            <div style="font-family:Arial,sans-serif;font-size:10px;color:#bbb;text-align:center;margin-top:5px;">Spazio promozionale</div>
+          </td></tr>
+        </table>
         {% endif %}
 
       </td>
