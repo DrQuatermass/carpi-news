@@ -1291,12 +1291,14 @@ def _get_newsletter_context():
     oggi_mezzanotte = make_aware(dt.datetime.combine(oggi, time.min))
     ieri_mezzanotte = oggi_mezzanotte - dt.timedelta(days=1)
 
-    # Articoli pubblicati oggi (dalla mezzanotte), esclusi Cultura & Eventi, ordinati per views
+    _categorie_escluse = ['Cultura & Eventi', 'Cosa fare oggi']
+
+    # Articoli pubblicati oggi (dalla mezzanotte), esclusi Cultura & Eventi e Cosa fare oggi
     articoli_oggi_qs = Articolo.objects.filter(
         approvato=True,
         data_pubblicazione__gte=oggi_mezzanotte,
         escludi_newsletter=False,
-    ).exclude(categoria='Cultura & Eventi').order_by('-views')
+    ).exclude(categoria__in=_categorie_escluse).order_by('-views')
 
     # Articoli di ieri, stesse esclusioni
     articoli_ieri_qs = Articolo.objects.filter(
@@ -1304,7 +1306,7 @@ def _get_newsletter_context():
         data_pubblicazione__gte=ieri_mezzanotte,
         data_pubblicazione__lt=oggi_mezzanotte,
         escludi_newsletter=False,
-    ).exclude(categoria='Cultura & Eventi').order_by('-views')
+    ).exclude(categoria__in=_categorie_escluse).order_by('-views')
 
     # Raggruppa per categoria
     def raggruppa_per_categoria(qs):
@@ -1329,7 +1331,7 @@ def _get_newsletter_context():
         _banners = list(_Banner.objects.filter(
             position__in=_horizontal,
             status='active',
-            payment_status='completed',
+            payment_status__in=['completed', 'saved'],
             approved=True,
             start_date__lte=_now,
             end_date__gte=_now,
