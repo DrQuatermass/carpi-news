@@ -1338,7 +1338,19 @@ def _get_newsletter_context():
         ).order_by('priority'))
         random.shuffle(_banners)
         _banners.sort(key=lambda b: b.priority)
-        newsletter_banners = _banners[:2]
+        _site = getattr(settings, 'SITE_URL', 'https://ombradelportico.it').rstrip('/')
+        newsletter_banners = []
+        for _b in _banners[:2]:
+            if not _b.image:
+                continue
+            _img = _b.image.url
+            if not _img.startswith('http'):
+                _img = _site + _img
+            newsletter_banners.append({
+                'image_url': _img,
+                'link_url': _b.link_url,
+                'alt_text': _b.alt_text or _b.title,
+            })
     except Exception:
         newsletter_banners = []
 
