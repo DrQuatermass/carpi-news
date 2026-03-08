@@ -1348,7 +1348,7 @@ def _get_newsletter_context():
                 _img = _site + _img
             newsletter_banners.append({
                 'image_url': _img,
-                'link_url': _b.link_url,
+                'link_url': f"{_site}/admin-panel/banner/{_b.id}/click/",
                 'alt_text': _b.alt_text or _b.title,
             })
     except Exception:
