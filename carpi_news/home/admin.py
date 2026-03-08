@@ -7,7 +7,7 @@ from django.shortcuts import redirect, render
 from django.contrib import messages
 from django.contrib.admin import SimpleListFilter
 from django import forms
-from .models import Articolo, MonitorConfig, APIUsage, ChatbotConversation, SocialPublicationLog
+from .models import Articolo, MonitorConfig, APIUsage, ChatbotConversation, SocialPublicationLog, NewsletterSubscriber, NewsletterLog
 import threading
 import urllib.parse
 import subprocess
@@ -231,8 +231,9 @@ class ArticoloAdminForm(forms.ModelForm):
 @admin.register(Articolo)
 class ArticoloAdmin(admin.ModelAdmin):
     form = ArticoloAdminForm
-    list_display = ("titolo", "categoria", "spotlight_display", "is_pubbliredazionale", "payment_status_display", "approvato", "data_pubblicazione", "views", "fonti_web_count")
-    list_filter = ['approvato', 'spotlight', 'categoria', IsPubbliredazionaleFilter, 'payment_status', HasWebSourcesFilter]
+    list_display = ("titolo", "categoria", "spotlight_display", "is_pubbliredazionale", "payment_status_display", "approvato", "escludi_newsletter", "data_pubblicazione", "views", "fonti_web_count")
+    list_editable = ("escludi_newsletter",)
+    list_filter = ['approvato', 'spotlight', 'categoria', 'escludi_newsletter', IsPubbliredazionaleFilter, 'payment_status', HasWebSourcesFilter]
     search_fields = ['titolo', 'slug', 'nome_azienda', 'sito_web', 'pubbliredazionale_user__username']
 
     def get_fieldsets(self, request, obj=None):
@@ -268,7 +269,7 @@ class ArticoloAdmin(admin.ModelAdmin):
                     'fields': ('titolo', 'slug', 'contenuto', 'sommario', 'categoria', 'data_evento', 'foto', 'foto_upload')
                 }),
                 ('Pubblicazione', {
-                    'fields': ('approvato', 'spotlight', 'fonte', 'data_pubblicazione', 'views')
+                    'fields': ('approvato', 'spotlight', 'escludi_newsletter', 'fonte', 'data_pubblicazione', 'views')
                 }),
                 ('Rigenerazione AI', {
                     'fields': ('richieste_modifica', 'fonti_web_display', 'rigenera_button')
@@ -1360,4 +1361,41 @@ class SocialPublicationLogAdmin(admin.ModelAdmin):
 
 
 # Aggiungi link alla dashboard nella lista APIUsage
-admin.site.add_action(APIUsageAdmin.dashboard_view, 'Visualizza Dashboard Costi') 
+admin.site.add_action(APIUsageAdmin.dashboard_view, 'Visualizza Dashboard Costi')
+
+
+# ---------------------------------------------------------------------------
+# NEWSLETTER
+# ---------------------------------------------------------------------------
+
+@admin.register(NewsletterSubscriber)
+class NewsletterSubscriberAdmin(admin.ModelAdmin):
+    list_display = ['email', 'nome', 'attivo', 'data_iscrizione']
+    list_filter = ['attivo']
+    list_editable = ['attivo']
+    search_fields = ['email', 'nome']
+    readonly_fields = ['data_iscrizione', 'token_disiscrizione']
+    actions = ['attiva_selezionati', 'disattiva_selezionati']
+
+    def attiva_selezionati(self, request, queryset):
+        queryset.update(attivo=True)
+        self.message_user(request, f"{queryset.count()} iscritti riattivati.")
+    attiva_selezionati.short_description = "Riattiva iscritti selezionati"
+
+    def disattiva_selezionati(self, request, queryset):
+        queryset.update(attivo=False)
+        self.message_user(request, f"{queryset.count()} iscritti disattivati.")
+    disattiva_selezionati.short_description = "Disattiva iscritti selezionati"
+
+
+@admin.register(NewsletterLog)
+class NewsletterLogAdmin(admin.ModelAdmin):
+    list_display = ['data_invio', 'oggetto', 'num_articoli', 'num_destinatari', 'stato']
+    list_filter = ['stato']
+    readonly_fields = ['data_invio', 'oggetto', 'num_destinatari', 'num_articoli', 'stato', 'note']
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False 

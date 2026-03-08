@@ -61,6 +61,11 @@ urlpatterns = [
     path('sitemap-archive.xml', views.sitemap_archive, name='sitemap_archive'),
     path('sitemap-news.xml', views.news_sitemap, name='news_sitemap'),
 
+    # Newsletter
+    path('newsletter/', views.newsletter_subscribe, name='newsletter_subscribe'),
+    path('newsletter/disiscrivi/<uuid:token>/', views.newsletter_unsubscribe, name='newsletter_unsubscribe'),
+    path('newsletter/preview/', views.newsletter_preview, name='newsletter_preview'),
+
     # Admin panel per banner e gestione
     path('gestionale/', include('admin_panel.urls')),
 

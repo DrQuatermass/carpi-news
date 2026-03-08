@@ -13,7 +13,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.db import models
 from datetime import datetime, timedelta
-from .models import Articolo, ChatbotConversation
+from .models import Articolo, ChatbotConversation, NewsletterSubscriber
 from .chatbot_service import ChatbotService
 import time
 import uuid
@@ -1274,3 +1274,142 @@ def calendario_eventi(request):
     context['categorie_disponibili'] = categorie_disponibili
 
     return render(request, 'calendario_eventi.html', context)
+
+
+# ---------------------------------------------------------------------------
+# NEWSLETTER
+# ---------------------------------------------------------------------------
+
+def _get_newsletter_context():
+    """Recupera gli articoli per la newsletter (logica condivisa tra preview e command)."""
+    from datetime import date, time
+    from django.utils.timezone import make_aware
+    import datetime as dt
+
+    oggi = date.today()
+    domani = oggi + dt.timedelta(days=1)
+    oggi_mezzanotte = make_aware(dt.datetime.combine(oggi, time.min))
+    ieri_mezzanotte = oggi_mezzanotte - dt.timedelta(days=1)
+
+    # Articoli pubblicati oggi (dalla mezzanotte), esclusi Cultura & Eventi, ordinati per views
+    articoli_oggi_qs = Articolo.objects.filter(
+        approvato=True,
+        data_pubblicazione__gte=oggi_mezzanotte,
+        escludi_newsletter=False,
+    ).exclude(categoria='Cultura & Eventi').order_by('-views')
+
+    # Articoli di ieri, stesse esclusioni
+    articoli_ieri_qs = Articolo.objects.filter(
+        approvato=True,
+        data_pubblicazione__gte=ieri_mezzanotte,
+        data_pubblicazione__lt=oggi_mezzanotte,
+        escludi_newsletter=False,
+    ).exclude(categoria='Cultura & Eventi').order_by('-views')
+
+    # Raggruppa per categoria
+    def raggruppa_per_categoria(qs):
+        result = {}
+        for art in qs:
+            result.setdefault(art.categoria, []).append(art)
+        return result
+
+    # Eventi Cultura & Eventi con data_evento = domani
+    eventi_domani = Articolo.objects.filter(
+        approvato=True,
+        categoria='Cultura & Eventi',
+        data_evento=domani,
+        escludi_newsletter=False,
+    ).order_by('-views')
+
+    # Banner orizzontali attivi per la newsletter (max 2, per priorità poi shuffle)
+    try:
+        from admin_panel.models import Banner as _Banner
+        _now = timezone.now()
+        _horizontal = ['header', 'footer', 'article_top', 'article_middle', 'article_bottom']
+        _banners = list(_Banner.objects.filter(
+            position__in=_horizontal,
+            status='active',
+            payment_status='completed',
+            approved=True,
+            start_date__lte=_now,
+            end_date__gte=_now,
+        ).order_by('priority'))
+        random.shuffle(_banners)
+        _banners.sort(key=lambda b: b.priority)
+        newsletter_banners = _banners[:2]
+    except Exception:
+        newsletter_banners = []
+
+    return {
+        'articoli_oggi': raggruppa_per_categoria(articoli_oggi_qs),
+        'articoli_ieri': raggruppa_per_categoria(articoli_ieri_qs),
+        'eventi_domani': list(eventi_domani),
+        'data_oggi': oggi,
+        'data_domani': domani,
+        'newsletter_banners': newsletter_banners,
+        'site_url': getattr(settings, 'SITE_URL', 'https://ombradelportico.it'),
+    }
+
+
+def newsletter_subscribe(request):
+    """Pagina di iscrizione alla newsletter."""
+    from django.contrib import messages as msg
+
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+
+    success = False
+    if request.method == 'POST':
+        email = request.POST.get('email', '').strip().lower()
+        nome = request.POST.get('nome', '').strip()
+        if email:
+            subscriber, created = NewsletterSubscriber.objects.get_or_create(
+                email=email,
+                defaults={'nome': nome},
+            )
+            if created:
+                success = True
+            elif not subscriber.attivo:
+                subscriber.attivo = True
+                if nome:
+                    subscriber.nome = nome
+                subscriber.save()
+                success = True
+            else:
+                if is_ajax:
+                    return JsonResponse({'ok': False, 'already': True, 'message': 'Sei già iscritto alla newsletter.'})
+                msg.info(request, 'Questa email è già iscritta alla newsletter.')
+        else:
+            if is_ajax:
+                return JsonResponse({'ok': False, 'message': 'Inserisci un indirizzo email valido.'})
+            msg.error(request, 'Inserisci un indirizzo email valido.')
+
+        if is_ajax and success:
+            return JsonResponse({'ok': True, 'message': 'Iscrizione completata! Da oggi riceverai le notizie di Carpi ogni pomeriggio.'})
+
+    return render(request, 'newsletter/subscribe.html', {'success': success})
+
+
+def newsletter_unsubscribe(request, token):
+    """Disiscrizione dalla newsletter tramite token univoco."""
+    try:
+        subscriber = NewsletterSubscriber.objects.get(token_disiscrizione=token)
+        subscriber.attivo = False
+        subscriber.save()
+        disiscritto = True
+    except NewsletterSubscriber.DoesNotExist:
+        disiscritto = False
+
+    return render(request, 'newsletter/unsubscribe.html', {'disiscritto': disiscritto})
+
+
+def newsletter_preview(request):
+    """Preview HTML della newsletter (solo staff)."""
+    if not request.user.is_staff:
+        from django.contrib.auth.views import redirect_to_login
+        return redirect_to_login(request.get_full_path())
+
+    ctx = _get_newsletter_context()
+    ctx['site_url'] = request.build_absolute_uri('/').rstrip('/')
+    ctx['subscriber'] = None  # preview: nessun token reale
+    ctx['is_preview'] = True
+    return render(request, 'newsletter/preview.html', ctx)

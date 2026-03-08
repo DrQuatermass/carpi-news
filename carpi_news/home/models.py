@@ -11,6 +11,7 @@ import re
 import requests
 import json
 import logging
+import uuid
 logger = logging.getLogger(__name__)
 
 
@@ -45,6 +46,7 @@ class Articolo(models.Model):
     data_modifica = models.DateTimeField(auto_now=True, db_index=True, help_text="Data ultima modifica dell'articolo")
     data_evento = models.DateField(blank=True, null=True, help_text="Data dell'evento per articoli di categoria Cultura ed Eventi")
     telegram_notified = models.BooleanField(default=False, db_index=True, help_text="Indica se l'articolo è stato notificato su Telegram")
+    escludi_newsletter = models.BooleanField(default=False, help_text="Se selezionato, questo articolo non verrà incluso nella newsletter")
 
     # CAMPI PUBBLIREDAZIONALE
     is_pubbliredazionale = models.BooleanField(default=False, help_text="È un articolo pubbliredazionale", db_index=True)
@@ -738,5 +740,47 @@ def notify_websub_on_approval(sender, instance, created, **kwargs):
         except Exception as e:
             logger.error(f"WebSub: errore nell'avvio notifica per articolo '{instance.titolo}': {str(e)}")
 
+
+# ---------------------------------------------------------------------------
+# NEWSLETTER
+# ---------------------------------------------------------------------------
+
+class NewsletterSubscriber(models.Model):
+    email = models.EmailField(unique=True)
+    nome = models.CharField(max_length=100, blank=True)
+    attivo = models.BooleanField(default=True)
+    data_iscrizione = models.DateTimeField(auto_now_add=True)
+    token_disiscrizione = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
+
+    def __str__(self):
+        return self.email
+
+    class Meta:
+        verbose_name = 'Iscritto Newsletter'
+        verbose_name_plural = 'Iscritti Newsletter'
+        ordering = ['-data_iscrizione']
+
+
+class NewsletterLog(models.Model):
+    STATO_CHOICES = [
+        ('success', 'Completato'),
+        ('partial', 'Parziale'),
+        ('failed', 'Fallito'),
+        ('skipped', 'Saltato (nessun articolo)'),
+    ]
+    data_invio = models.DateTimeField(auto_now_add=True)
+    oggetto = models.CharField(max_length=200)
+    num_destinatari = models.IntegerField(default=0)
+    num_articoli = models.IntegerField(default=0)
+    stato = models.CharField(max_length=20, choices=STATO_CHOICES)
+    note = models.TextField(blank=True)
+
+    def __str__(self):
+        return f"Newsletter {self.data_invio:%d/%m/%Y} — {self.num_destinatari} destinatari"
+
+    class Meta:
+        verbose_name = 'Log Newsletter'
+        verbose_name_plural = 'Log Newsletter'
+        ordering = ['-data_invio']
 
 # Create your models here.

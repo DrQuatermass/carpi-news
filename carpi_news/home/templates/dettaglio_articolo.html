@@ -367,6 +367,103 @@
             white-space: normal;
         }
     }
+
+/* Newsletter CTA */
+.nl-cta-box {
+  margin: 2rem 0;
+  padding: 1.4rem 1.6rem;
+  background: linear-gradient(135deg, rgba(150,108,66,0.07) 0%, rgba(184,149,106,0.07) 100%);
+  border: 1px solid rgba(150,108,66,0.25);
+  border-left: 4px solid #966C42;
+  border-radius: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+}
+.nl-cta-box.nl-success {
+  background: linear-gradient(135deg, rgba(150,108,66,0.12) 0%, rgba(184,149,106,0.08) 100%);
+  border-color: #966C42;
+  justify-content: center;
+  text-align: center;
+}
+.nl-cta-icon {
+  color: #966C42;
+  flex-shrink: 0;
+}
+.nl-cta-text {
+  flex: 1;
+  min-width: 180px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.9rem;
+  color: #555;
+}
+.nl-cta-text strong {
+  color: #2C2C2C;
+  font-size: 0.95rem;
+  font-family: 'Playfair Display', serif;
+}
+.nl-cta-form {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+.nl-cta-form input[type="email"] {
+  padding: 0.55rem 0.9rem;
+  border: 1px solid rgba(150,108,66,0.35);
+  border-radius: 20px;
+  font-size: 0.88rem;
+  color: #2C2C2C;
+  background: #fff;
+  width: 200px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.nl-cta-form input[type="email"]:focus {
+  border-color: #966C42;
+  box-shadow: 0 0 0 2px rgba(150,108,66,0.12);
+}
+.nl-cta-form button {
+  padding: 0.55rem 1.2rem;
+  background: linear-gradient(135deg, #966C42, #B8956A);
+  color: white;
+  border: none;
+  border-radius: 20px;
+  font-size: 0.88rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+.nl-cta-form button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(150,108,66,0.35);
+}
+.nl-cta-note {
+  width: 100%;
+  font-size: 0.75rem;
+  color: #aaa;
+  margin: -0.4rem 0 0;
+  padding: 0;
+}
+.nl-success-msg {
+  font-family: 'Playfair Display', serif;
+  color: #966C42;
+  font-size: 1rem;
+  font-weight: 600;
+}
+.nl-success-sub {
+  font-size: 0.88rem;
+  color: #666;
+  margin-top: 0.3rem;
+}
+@media (max-width: 600px) {
+  .nl-cta-box { flex-direction: column; align-items: flex-start; }
+  .nl-cta-form { width: 100%; }
+  .nl-cta-form input[type="email"] { flex: 1; width: auto; }
+}
 </style>
 {% endblock %}
 
@@ -516,6 +613,23 @@
                     </button>
                 </div>
            <!-- </div>-->
+
+            <!-- Newsletter CTA -->
+            <div class="nl-cta-box" id="nl-cta-box">
+              <div class="nl-cta-icon">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+              </div>
+              <div class="nl-cta-text">
+                <strong>Ti è piaciuto questo articolo?</strong>
+                <span>Ricevi ogni giorno le notizie di Carpi alle 17:30, direttamente nella tua email.</span>
+              </div>
+              <form class="nl-cta-form" id="nl-cta-form">
+                {% csrf_token %}
+                <input type="email" name="email" placeholder="tua@email.it" required autocomplete="email">
+                <button type="submit">Iscriviti</button>
+              </form>
+              <p class="nl-cta-note">Gratis. Disiscrizione con un click.</p>
+            </div>
 
             {% if articoli_correlati %}
             <!-- Articoli correlati -->
@@ -958,5 +1072,41 @@
         }, 100); // Aspetta 100ms per il DOM
     })();
     {% endif %}
+
+// Newsletter CTA inline
+(function() {
+  const form = document.getElementById('nl-cta-form');
+  const box  = document.getElementById('nl-cta-box');
+  if (!form || !box) return;
+
+  form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const email = form.querySelector('input[type="email"]').value.trim();
+    const csrfToken = form.querySelector('[name=csrfmiddlewaretoken]').value;
+
+    fetch('{% url "newsletter_subscribe" %}', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-CSRFToken': csrfToken,
+        'X-Requested-With': 'XMLHttpRequest',
+      },
+      body: 'email=' + encodeURIComponent(email),
+    })
+    .then(r => r.json())
+    .then(data => {
+      box.classList.add('nl-success');
+      if (data.ok || data.already) {
+        box.innerHTML = '<p class="nl-success-msg">Iscrizione confermata!</p><p class="nl-success-sub">' + data.message + '</p>';
+      } else {
+        box.innerHTML = '<p class="nl-success-msg" style="color:#c0392b">Attenzione</p><p class="nl-success-sub">' + data.message + '</p>';
+        box.classList.remove('nl-success');
+      }
+    })
+    .catch(() => {
+      box.innerHTML = '<p class="nl-success-sub" style="color:#c0392b">Errore di rete. Riprova più tardi.</p>';
+    });
+  });
+})();
 </script>
 {% endblock %}

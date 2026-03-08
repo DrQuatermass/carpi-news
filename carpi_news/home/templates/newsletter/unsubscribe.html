@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Disiscrizione Newsletter — Ombra del Portico{% endblock %}
+{% block meta_description %}Gestisci la tua iscrizione alla newsletter di Ombra del Portico.{% endblock %}
+
+{% block content %}
+<div class="container">
+  <div class="unsub-page">
+
+    {% if disiscritto %}
+      <div class="feature-card unsub-card">
+        <h1>Disiscrizione completata</h1>
+        <p>Il tuo indirizzo email è stato rimosso dalla newsletter di Ombra del Portico.<br>
+           Non riceverai più aggiornamenti quotidiani.</p>
+        <div class="unsub-actions">
+          <a href="{% url 'newsletter_subscribe' %}" class="btn-resubscribe">Reiscriviti</a>
+          <a href="{% url 'home' %}" class="btn-home">Homepage</a>
+        </div>
+      </div>
+    {% else %}
+      <div class="feature-card unsub-card unsub-error">
+        <h1>Link non valido</h1>
+        <p>Il link di disiscrizione non è valido o è già stato utilizzato.</p>
+        <a href="{% url 'home' %}" class="btn-resubscribe">Torna alla homepage</a>
+      </div>
+    {% endif %}
+
+  </div>
+</div>
+
+<style>
+.unsub-page {
+  max-width: 520px;
+  margin: 3rem auto;
+  padding: 0 1rem 4rem;
+}
+
+.unsub-card {
+  text-align: center;
+  padding: 3rem 2rem;
+}
+
+.unsub-card h1 {
+  font-family: 'Playfair Display', serif;
+  font-size: 1.6rem;
+  color: #966C42;
+  margin: 0 0 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 3px solid #966C42;
+}
+
+.unsub-card p {
+  color: #555;
+  line-height: 1.7;
+  margin-bottom: 1.8rem;
+  font-size: 1rem;
+}
+
+.unsub-error h1 {
+  color: #c0392b;
+  border-color: #c0392b;
+}
+
+.unsub-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.btn-resubscribe {
+  display: inline-block;
+  background: linear-gradient(135deg, #966C42, #B8956A);
+  color: white !important;
+  padding: 12px 28px;
+  text-decoration: none;
+  border-radius: 25px;
+  font-weight: bold;
+  font-family: 'Playfair Display', serif;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(150, 108, 66, 0.3);
+}
+
+.btn-resubscribe:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(150, 108, 66, 0.4);
+  text-decoration: none;
+}
+
+.btn-home {
+  display: inline-block;
+  border: 2px solid rgba(150, 108, 66, 0.4);
+  color: #966C42 !important;
+  padding: 10px 26px;
+  text-decoration: none;
+  border-radius: 25px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.btn-home:hover {
+  border-color: #966C42;
+  background: rgba(150, 108, 66, 0.05);
+  text-decoration: none;
+}
+</style>
+{% endblock %}

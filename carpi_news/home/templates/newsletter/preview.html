@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Preview Newsletter — Ombra del Portico{% endblock %}
+
+{% block content %}
+<div style="background: linear-gradient(135deg, #966C42 0%, #B8956A 100%); color: white; padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; font-family: 'Playfair Display', serif; font-size: 14px;">
+  <strong>Anteprima Newsletter</strong>
+  <span style="opacity: 0.9; font-family: Arial, sans-serif; font-size: 13px;">
+    Oggi: {{ articoli_oggi|length }} categorie &nbsp;|&nbsp;
+    Ieri: {{ articoli_ieri|length }} categorie &nbsp;|&nbsp;
+    Eventi domani: {{ eventi_domani|length }}
+  </span>
+</div>
+
+{% include "newsletter/email_template.html" %}
+{% endblock %}

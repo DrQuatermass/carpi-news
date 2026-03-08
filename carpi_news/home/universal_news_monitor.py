@@ -499,8 +499,13 @@ class HTMLScraper(BaseScraper):
                 return None
         
         # Immagine
-        image_url = self._extract_image_from_html(item)
-        
+        image_url_suffix = self.config.config.get('image_url_suffix')
+        if image_url_suffix:
+            # Costruisci URL immagine direttamente dall'URL articolo (es. Plone: /image_news)
+            image_url = article_url.rstrip('/') + '/' + image_url_suffix.lstrip('/')
+        else:
+            image_url = self._extract_image_from_html(item)
+
         return {
             'title': title,
             'url': article_url,
