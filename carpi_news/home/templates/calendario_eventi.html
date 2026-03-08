@@ -441,3 +441,17 @@
     {% show_banner 'footer' %}
 </div>
 {% endblock %}
+
+{% block javascript %}
+{{ block.super }}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        if (window.innerWidth <= 768) {
+            var todayCell = document.querySelector('.calendar-day.today');
+            if (todayCell) {
+                todayCell.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+            }
+        }
+    });
+</script>
+{% endblock %}
