@@ -528,27 +528,46 @@
 /* Responsive */
 @media (max-width: 480px) {
     .chatbot-container {
-        width: calc(100vw - 20px);
-        height: calc(100vh - 120px);
-        right: 10px;
-        bottom: 90px;
-        border-radius: 12px;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100%;
+        height: 100%;
+        border-radius: 0;
     }
 
+    /* Quando la tastiera è aperta il JS sovrascrive top/height via visualViewport */
+
     .chatbot-toggle {
-        width: 56px;
-        height: 56px;
+        width: 52px;
+        height: 52px;
         bottom: 20px;
         right: 20px;
     }
 
     .chatbot-toggle svg {
-        width: 26px;
-        height: 26px;
+        width: 24px;
+        height: 24px;
     }
 
     .message-content {
         max-width: 85%;
+    }
+
+    .chatbot-header {
+        padding: 14px 16px;
+    }
+
+    .chatbot-messages {
+        padding: 12px 14px;
+    }
+
+    .chatbot-input {
+        padding: 10px 14px;
+        /* Evita che la tastiera copra l'input su iOS */
+        padding-bottom: max(10px, env(safe-area-inset-bottom));
     }
 }
 

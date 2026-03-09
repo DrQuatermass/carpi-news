@@ -49,6 +49,25 @@ class OmbraChatbot {
             if (e.key === 'Enter') this.sendMessage();
         });
 
+        // Mobile: adatta container quando la tastiera appare/sparisce
+        if (window.visualViewport && window.innerWidth <= 480) {
+            window.visualViewport.addEventListener('resize', () => {
+                if (!this.isOpen) return;
+                const vv = window.visualViewport;
+                this.container.style.top = vv.offsetTop + 'px';
+                this.container.style.height = vv.height + 'px';
+                // assicura che i messaggi siano visibili in fondo
+                setTimeout(() => this.scrollToBottom(), 50);
+            });
+        }
+
+        // Mobile: quando l'input riceve focus, scrolla i messaggi in fondo
+        this.input?.addEventListener('focus', () => {
+            if (window.innerWidth <= 480) {
+                setTimeout(() => this.scrollToBottom(), 300);
+            }
+        });
+
         // Carica messaggi salvati
         this.loadMessages();
 
