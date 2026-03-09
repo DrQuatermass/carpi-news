@@ -621,8 +621,8 @@
             // Aggiorna il campo nascosto duration_days
             document.getElementById('duration_days').value = days;
 
-            // La priorità è il moltiplicatore (1-5)
-            const multiplier = parseInt(priority);
+            // priority 1=Massima→×5, priority 5=Minima→×1 (più visibilità = più costo)
+            const multiplier = 6 - parseInt(priority);
 
             const pricePerDay = basePricePerDay * multiplier;
             const totalPrice = (days * pricePerDay).toFixed(2);

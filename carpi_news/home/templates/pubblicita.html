@@ -1,0 +1,580 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Pubblicità su Ombra del Portico - Raggiungi Carpi{% endblock %}
+
+{% block meta_description %}Fai pubblicità sul principale giornale online di Carpi. Banner orizzontali, banner tra gli articoli e pubbliredazionali per raggiungere migliaia di lettori locali ogni mese.{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ===== LAYOUT ===== */
+.pub-content {
+    max-width: 900px;
+    margin: 2rem auto;
+    padding: 2rem;
+    background: #fff;
+    border-radius: 10px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    line-height: 1.6;
+}
+.pub-content h1 {
+    color: #2c3e50;
+    margin-bottom: 0.5rem;
+    text-align: center;
+    font-family: 'Playfair Display', serif;
+}
+.pub-content .subtitle {
+    text-align: center;
+    color: #666;
+    font-size: 1.1rem;
+    font-style: italic;
+    margin-bottom: 2rem;
+}
+.pub-content section { margin-bottom: 2.5rem; }
+.pub-content h2 {
+    color: #5A5A5A;
+    margin: 2.5rem 0 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 3px solid #966C42;
+    font-family: 'Playfair Display', serif;
+}
+
+/* ===== INTRO BOX ===== */
+.pub-intro {
+    background: linear-gradient(135deg, #966C42 0%, #B8956A 100%);
+    color: #fff;
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 15px rgba(150,108,66,0.3);
+}
+.pub-intro p { margin: 0; font-size: 1.05rem; line-height: 1.7; }
+
+/* ===== STATS ===== */
+.stats-bar {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 1rem;
+    background: #f8f9fa;
+    border-left: 4px solid #966C42;
+    border-radius: 8px;
+    padding: 1.2rem;
+    margin-bottom: 2rem;
+    text-align: center;
+}
+.stat-num {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #966C42;
+    display: block;
+    line-height: 1;
+    margin-bottom: 4px;
+}
+.stat-label { font-size: 0.78rem; color: #666; line-height: 1.3; }
+
+/* ===== WHY CARDS ===== */
+.why-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; margin: 1rem 0; }
+.why-card {
+    background: #f8f9fa;
+    padding: 1.2rem 1.4rem;
+    border-radius: 8px;
+    border-left: 4px solid #966C42;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.why-card:hover { transform: translateX(5px); box-shadow: 0 4px 15px rgba(150,108,66,0.2); }
+.why-icon { font-size: 1.4rem; margin-bottom: 0.5rem; }
+.why-card h4 { font-family: 'Playfair Display', serif; font-size: 0.95rem; color: #966C42; margin-bottom: 0.4rem; }
+.why-card p { font-size: 0.87rem; color: #555; line-height: 1.5; margin: 0; }
+
+/* ===== PRICING CARDS ===== */
+.pricing-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1.2rem;
+    margin: 1.2rem 0;
+}
+.pricing-card {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 1.5rem;
+    border-left: 4px solid #966C42;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+.pricing-card:hover { transform: translateX(5px); box-shadow: 0 4px 15px rgba(150,108,66,0.2); }
+.pricing-card.featured { background: linear-gradient(135deg, #fff3e0 0%, #fff 100%); border-left-color: #966C42; }
+.pricing-card .featured-badge {
+    display: inline-block;
+    background: #966C42;
+    color: #FAF7F0;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    margin-bottom: 0.6rem;
+    letter-spacing: 0.3px;
+}
+.pricing-icon { font-size: 1.6rem; margin-bottom: 0.6rem; }
+.pricing-card h3 { font-family: 'Playfair Display', serif; font-size: 1.15rem; color: #966C42; margin-bottom: 0.4rem; }
+.pricing-card .pricing-desc { color: #666; font-size: 0.87rem; margin-bottom: 1rem; line-height: 1.5; flex: 1; }
+.pricing-price { display: flex; align-items: baseline; gap: 3px; margin-bottom: 1rem; }
+.pricing-price .amount { font-family: 'Playfair Display', serif; font-size: 2rem; font-weight: 700; color: #966C42; line-height: 1; }
+.pricing-price .currency { font-size: 1rem; color: #966C42; font-weight: 600; }
+.pricing-price .period { font-size: 0.82rem; color: #aaa; margin-left: 2px; }
+.pricing-features {
+    list-style: none; padding: 0;
+    margin: 0 0 1.2rem;
+    border-top: 1px solid #e9e4de;
+    padding-top: 0.8rem;
+}
+.pricing-features li {
+    display: flex; align-items: flex-start; gap: 7px;
+    padding: 4px 0; font-size: 0.88rem; color: #555; line-height: 1.4;
+}
+.pricing-features li::before { content: '✓'; color: #966C42; font-weight: 700; flex-shrink: 0; }
+.btn-pricing {
+    display: block; text-align: center; margin-top: auto;
+    padding: 10px 18px; border-radius: 25px;
+    font-weight: 700; font-size: 0.9rem;
+    text-decoration: none; transition: all 0.3s ease;
+    background: linear-gradient(135deg, #966C42, #B8956A);
+    color: #FAF7F0;
+    box-shadow: 0 4px 15px rgba(150,108,66,0.3);
+}
+.btn-pricing:hover { background: linear-gradient(135deg, #B8956A, #D4C4A0); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(150,108,66,0.4); color: #FAF7F0; text-decoration: none; }
+.btn-pricing.outline { background: transparent; border: 2px solid #966C42; color: #966C42; box-shadow: none; }
+.btn-pricing.outline:hover { background: #966C42; color: #FAF7F0; }
+
+/* ===== TABELLA VISIBILITÀ ===== */
+.visibility-table {
+    background: #f8f9fa;
+    border-left: 4px solid #966C42;
+    border-radius: 8px;
+    padding: 1.2rem;
+    margin: 1.2rem 0;
+}
+.visibility-table p { margin-bottom: 0.3rem; font-weight: 700; color: #2C2C2C; font-family: 'Playfair Display', serif; }
+.visibility-table small { display: block; font-size: 0.82rem; color: #888; margin-bottom: 0.8rem; }
+.visibility-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.6rem;
+}
+.vis-cell {
+    background: #fff;
+    border-radius: 6px;
+    padding: 0.7rem 0.4rem;
+    text-align: center;
+    border: 1.5px solid #e9e4de;
+    transition: box-shadow 0.2s;
+    display: block;
+    text-decoration: none;
+    color: inherit;
+}
+.vis-cell:hover { box-shadow: 0 3px 10px rgba(150,108,66,0.2); text-decoration: none; }
+.vis-cell.highlight { border-color: #966C42; border-width: 2px; }
+.vis-cell.top { background: linear-gradient(135deg, #966C42, #B8956A); }
+.vis-label { font-size: 0.65rem; color: #999; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 3px; }
+.vis-price { font-family: 'Playfair Display', serif; font-size: 1.05rem; font-weight: 700; color: #966C42; }
+.vis-cell.top .vis-label { color: rgba(250,247,240,0.8); }
+.vis-cell.top .vis-price { color: #FAF7F0; }
+.vis-unit { font-size: 0.65rem; color: #bbb; }
+.vis-cell.top .vis-unit { color: rgba(250,247,240,0.6); }
+.vis-desc { font-size: 0.65rem; color: #aaa; margin-top: 4px; line-height: 1.3; }
+.vis-cell.highlight .vis-desc { color: #966C42; }
+.vis-cell.top .vis-desc { color: rgba(250,247,240,0.8); }
+.visibility-note { font-size: 0.8rem; color: #888; text-align: center; margin-top: 0.8rem; margin-bottom: 0; }
+
+/* ===== PRICING NOTE ===== */
+.pricing-note {
+    background: #f8f9fa;
+    border-left: 4px solid #e8ddd0;
+    border-radius: 8px;
+    padding: 1rem 1.2rem;
+    font-size: 0.85rem; color: #777; margin: 1rem 0;
+}
+.pricing-note strong { color: #966C42; }
+
+/* ===== ESEMPI ===== */
+.publi-examples { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.2rem; margin: 1rem 0; }
+.publi-example-card {
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid #966C42;
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.publi-example-card:hover { transform: translateX(5px); box-shadow: 0 4px 15px rgba(150,108,66,0.2); }
+.publi-example-header { background: #966C42; padding: 0.6rem 1rem; }
+.publi-example-label { color: rgba(250,247,240,0.85); font-size: 0.7rem; font-style: italic; }
+.publi-example-body { padding: 1rem; }
+.publi-example-title { font-family: 'Playfair Display', serif; font-size: 1rem; color: #2C2C2C; margin-bottom: 0.6rem; line-height: 1.4; font-weight: 600; }
+.publi-example-text { font-size: 0.85rem; color: #555; line-height: 1.6; position: relative; max-height: 100px; overflow: hidden; }
+.publi-example-text::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 40px; background: linear-gradient(transparent, #f8f9fa); }
+.publi-example-footer { padding: 0 1rem 0.8rem; display: flex; align-items: center; justify-content: space-between; }
+.publi-example-tag { background: #e8ddd0; color: #966C42; font-size: 0.72rem; padding: 2px 8px; border-radius: 10px; font-weight: 600; }
+.publi-star-rating { color: #F4A836; font-size: 0.8rem; }
+
+/* ===== STEPS ===== */
+.steps-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin: 1rem 0; }
+.step-item { text-align: center; padding: 1.2rem 0.8rem; }
+.step-circle {
+    width: 48px; height: 48px;
+    background: linear-gradient(135deg, #966C42, #B8956A);
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 0.8rem;
+    font-family: 'Playfair Display', serif; font-size: 1.2rem; font-weight: 700; color: #FAF7F0;
+}
+.step-item h4 { font-family: 'Playfair Display', serif; margin-bottom: 0.4rem; color: #2C2C2C; font-size: 0.9rem; }
+.step-item p { font-size: 0.82rem; color: #777; margin: 0; line-height: 1.5; }
+
+/* ===== CTA ===== */
+.cta-section {
+    background: linear-gradient(135deg, #B8956A 0%, #D4C4A0 100%);
+    color: #fff;
+    padding: 2rem;
+    border-radius: 8px;
+    text-align: center;
+    margin: 2rem 0;
+    box-shadow: 0 4px 15px rgba(150,108,66,0.3);
+}
+.cta-section h2 { color: #fff; border: none; margin: 0 0 0.8rem; font-family: 'Playfair Display', serif; font-size: 1.5rem; }
+.cta-section > p { opacity: 0.9; font-size: 0.95rem; max-width: 480px; margin: 0 auto 1.5rem; line-height: 1.6; }
+.cta-buttons { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+.btn-cta-primary {
+    background: #fff; color: #966C42;
+    padding: 12px 24px; border-radius: 25px;
+    font-weight: 700; font-size: 0.95rem;
+    text-decoration: none; transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+}
+.btn-cta-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.2); color: #966C42; text-decoration: none; }
+.btn-cta-secondary {
+    background: transparent; color: #fff;
+    border: 2px solid rgba(255,255,255,0.7);
+    padding: 12px 24px; border-radius: 25px;
+    font-weight: 600; font-size: 0.95rem;
+    text-decoration: none; transition: all 0.3s ease;
+}
+.btn-cta-secondary:hover { border-color: #fff; background: rgba(255,255,255,0.15); color: #fff; text-decoration: none; }
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 768px) {
+    .pub-content { margin: 1rem; padding: 1.2rem; }
+    .pub-content h1 { font-size: 1.6rem; }
+    .pub-content h2 { font-size: 1.2rem; }
+    .why-grid { grid-template-columns: 1fr; }
+    .pricing-grid { grid-template-columns: 1fr; }
+    .visibility-grid { grid-template-columns: repeat(3, 1fr); }
+    .publi-examples { grid-template-columns: 1fr; }
+    .steps-grid { grid-template-columns: repeat(2, 1fr); }
+    .stats-bar { grid-template-columns: repeat(2, 1fr); }
+    .cta-buttons { flex-direction: column; align-items: center; }
+}
+@media (max-width: 480px) {
+    .pub-content { margin: 0.5rem; padding: 1rem; }
+    .visibility-grid { grid-template-columns: repeat(2, 1fr); }
+    .steps-grid { grid-template-columns: 1fr; }
+    .stats-bar { grid-template-columns: 1fr; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+<div class="pub-content">
+
+    <h1>Pubblicità su Ombra del Portico</h1>
+    <p class="subtitle">Raggiungi i lettori carpigiani dove sono già presenti</p>
+
+    <div class="pub-intro">
+        <p>Ombra del Portico è il punto di riferimento digitale per l'informazione locale di Carpi. Posiziona il tuo brand accanto a notizie di qualità, rivolte a un'audience 100% locale.</p>
+    </div>
+
+    <!-- STATS DINAMICI DAL DB -->
+    <div class="stats-bar" style="margin-bottom:2rem;">
+        {% if total_impressions > 0 %}
+        <div class="stat-item">
+            <span class="stat-num">{{ total_impressions|floatformat:"0" }}</span>
+            <span class="stat-label">Visualizzazioni banner totali</span>
+        </div>
+        {% endif %}
+        {% if max_impressions > 0 %}
+        <div class="stat-item">
+            <span class="stat-num">{{ max_impressions }}</span>
+            <span class="stat-label">Visualizzazioni max campagna</span>
+        </div>
+        {% endif %}
+        {% if ctr_max > 0 %}
+        <div class="stat-item">
+            <span class="stat-num">{{ ctr_max }}%</span>
+            <span class="stat-label">CTR massimo registrato</span>
+        </div>
+        {% endif %}
+        {% if newsletter_count > 0 %}
+        <div class="stat-item">
+            <span class="stat-num">{{ newsletter_count }}</span>
+            <span class="stat-label">Iscritti newsletter</span>
+        </div>
+        {% endif %}
+        <div class="stat-item">
+            <span class="stat-num">Telegram</span>
+            <span class="stat-label">Facebook · X · Instagram</span>
+        </div>
+        <div class="stat-item">
+            <span class="stat-num">774+</span>
+            <span class="stat-label">Articoli pubblicati</span>
+        </div>
+    </div>
+
+    <!-- PERCHÉ SCEGLIERCI -->
+    <section>
+        <h2>Perché fare pubblicità su Ombra del Portico?</h2>
+
+        <div class="why-grid">
+            <div class="why-card">
+                <div class="why-icon">🎯</div>
+                <h4>Audience ultra-locale</h4>
+                <p>I nostri lettori abitano e lavorano a Carpi e dintorni. Zero dispersione su target non rilevanti per la tua attività.</p>
+            </div>
+            <div class="why-card">
+                <div class="why-icon">📰</div>
+                <h4>Contesto editoriale autorevole</h4>
+                <p>Il tuo annuncio appare accanto a notizie locali di qualità, in un ambiente di fiducia già consolidato con i lettori.</p>
+            </div>
+            <div class="why-card">
+                <div class="why-icon">📱</div>
+                <h4>Mobile-first</h4>
+                <p>Oltre il 70% dei lettori legge da smartphone. I formati banner sono ottimizzati per ogni schermo.</p>
+            </div>
+            <div class="why-card">
+                <div class="why-icon">📣</div>
+                <h4>Amplificazione social</h4>
+                <p>I pubbliredazionali vengono condivisi su Telegram, Facebook, X e Instagram, moltiplicando la copertura organica.</p>
+            </div>
+            <div class="why-card">
+                <div class="why-icon">✍️</div>
+                <h4>Contenuti di qualità</h4>
+                <p>I pubbliredazionali sono redatti con cura dalla nostra redazione: tono professionale, stile giornalistico autentico.</p>
+            </div>
+            <div class="why-card">
+                <div class="why-icon">⚡</div>
+                <h4>Rapidità di pubblicazione</h4>
+                <p>Dal brief alla pubblicazione in pochi giorni. Nessuna burocrazia, nessun intermediario.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- BANNER PRICING -->
+    <section>
+        <h2>Banner Pubblicitario</h2>
+        <p style="color:#666; margin-bottom:1rem;">Un unico acquisto, due posizioni incluse: orizzontale e verticale. La visibilità scelta determina il costo.</p>
+
+        <div class="pricing-grid">
+
+            <div class="pricing-card featured" style="max-width: 520px; margin: 0 auto;">
+                <div class="featured-badge">Include entrambi i formati</div>
+                <div class="pricing-icon">📐</div>
+                <h3>Banner — Orizzontale + Verticale</h3>
+                <p class="pricing-desc">Con un unico acquisto ottieni due posizioni simultanee: il <strong>leaderboard orizzontale</strong> (728×90) visibile su tutte le pagine e il <strong>banner card verticale</strong> (300×250) integrato nella griglia notizie della homepage.</p>
+                <div class="pricing-price">
+                    <span class="currency">a partire da €</span>
+                    <span class="amount">{{ price_banner_30 }}</span>
+                    <span class="period">/mese</span>
+                </div>
+                <ul class="pricing-features">
+                    <li>Banner orizzontale 728×90 — header, ogni pagina</li>
+                    <li>Banner verticale 300×250 — card tra gli articoli</li>
+                    <li>Incluso nella newsletter settimanale agli iscritti</li>
+                    <li>Visibilità selezionabile: Minima → Massima</li>
+                    <li>Più alta la visibilità, maggiore il costo giornaliero</li>
+                    <li>Durata libera: da 1 giorno a più mesi</li>
+                    <li>Link diretto al tuo sito</li>
+                    <li>Report visualizzazioni e click mensile</li>
+                </ul>
+                <a href="/gestionale/banner/crea/" class="btn-pricing">Configura il tuo banner →</a>
+            </div>
+
+        </div>
+
+        <!-- TABELLA VISIBILITÀ / PREZZO -->
+        <div class="visibility-table">
+            <p>Scegli la visibilità — clicca per iniziare</p>
+            <small>Più alta la visibilità, più spesso appare il banner rispetto agli altri.</small>
+            <div class="visibility-grid">
+                <a href="/gestionale/banner/crea/" class="vis-cell">
+                    <div class="vis-label">Minima</div>
+                    <div class="vis-price">€1,70</div>
+                    <div class="vis-unit">/giorno</div>
+                    <div class="vis-desc">Visibilità occasionale, per test o budget contenuti</div>
+                </a>
+                <a href="/gestionale/banner/crea/" class="vis-cell">
+                    <div class="vis-label">Bassa</div>
+                    <div class="vis-price">€3,40</div>
+                    <div class="vis-unit">/giorno</div>
+                    <div class="vis-desc">Campagne di lungo periodo a basso costo</div>
+                </a>
+                <a href="/gestionale/banner/crea/" class="vis-cell highlight">
+                    <div class="vis-label">Media ⭐</div>
+                    <div class="vis-price">€5,10</div>
+                    <div class="vis-unit">/giorno</div>
+                    <div class="vis-desc">Il più scelto: equilibrio tra copertura e costo</div>
+                </a>
+                <a href="/gestionale/banner/crea/" class="vis-cell">
+                    <div class="vis-label">Alta</div>
+                    <div class="vis-price">€6,80</div>
+                    <div class="vis-unit">/giorno</div>
+                    <div class="vis-desc">Alta frequenza, copertura significativa</div>
+                </a>
+                <a href="/gestionale/banner/crea/" class="vis-cell top">
+                    <div class="vis-label">Massima</div>
+                    <div class="vis-price">€8,50</div>
+                    <div class="vis-unit">/giorno</div>
+                    <div class="vis-desc">Banner mostrato il più possibile</div>
+                </a>
+            </div>
+            <p class="visibility-note">Esempio: 30 giorni a visibilità Media = €5,10 × 30 = <strong style="color:#966C42;">€153</strong></p>
+        </div>
+
+        <p class="pricing-note">
+            I prezzi si riferiscono a <strong>30 giorni di pubblicazione</strong>. Disponibili sconti per campagne di 3 o 6 mesi.
+            Il banner può essere fornito dall'inserzionista oppure realizzato da noi: <strong>servizio di design banner €80</strong>.
+        </p>
+    </section>
+
+    <!-- PUBBLIREDAZIONALE PRICING -->
+    <section>
+        <h2>Pubbliredazionali</h2>
+        <p style="color:#666; margin-bottom:1rem;">Articoli giornalistici su misura per la tua azienda, scritti con cura dalla nostra redazione</p>
+
+        <div class="pricing-grid">
+
+            <div class="pricing-card featured">
+                <div class="featured-badge">✍️ Articolo sponsorizzato</div>
+                <div class="pricing-icon">📝</div>
+                <h3>Pubbliredazionale</h3>
+                <p class="pricing-desc">Un articolo giornalistico professionale sulla tua azienda, prodotto o evento. Stile autentico, ottimizzato per i lettori carpigiani.</p>
+                <div class="pricing-price">
+                    <span class="currency">€</span>
+                    <span class="amount">{{ publi_price }}</span>
+                    <span class="period">una tantum</span>
+                </div>
+                <ul class="pricing-features">
+                    <li>Articolo 500–700 parole</li>
+                    <li>Intervista guidata tramite piattaforma</li>
+                    <li>Revisione e approvazione prima della pubblicazione</li>
+                    <li>Condivisione su Telegram, Facebook, X, Instagram</li>
+                    <li>Link al tuo sito nell'articolo</li>
+                    <li>Report visualizzazioni dopo 30 giorni</li>
+                </ul>
+                <a href="/gestionale/pubbliredazionale/" class="btn-pricing">Inizia subito</a>
+            </div>
+
+            <div class="pricing-card">
+                <div class="pricing-icon">🎁</div>
+                <h3>Bundle Pubbliredazionale + Banner</h3>
+                <p class="pricing-desc">Pubbliredazionale + Banner 30 giorni a visibilità <strong>Alta</strong> (orizzontale + verticale). Risparmio rispetto ai prezzi separati.</p>
+                <div class="pricing-price">
+                    <span class="currency">€</span>
+                    <span class="amount">{{ price_bundle }}</span>
+                    <span class="period">tutto incluso</span>
+                </div>
+                <ul class="pricing-features">
+                    <li>1× Pubbliredazionale (€{{ publi_price }})</li>
+                    <li>1× Banner orizz. + verticale 30 gg — visibilità Alta (€6,80/giorno)</li>
+                    <li style="color:#966C42; font-weight:600;">Totale €{{ price_bundle }} invece di €404</li>
+                    <li>Link al tuo sito nell'articolo e nel banner</li>
+                    <li>Condivisione social completa (4 canali)</li>
+                </ul>
+                <a href="mailto:redazione@ombradelportico.it?subject=Bundle%20Pubbliredazionale%20%2B%20Banner" class="btn-pricing outline">Richiedi info</a>
+            </div>
+
+        </div>
+
+        <p class="pricing-note">
+            I pubbliredazionali sono chiaramente segnalati come contenuto sponsorizzato nel rispetto delle normative IAP.
+            La pubblicazione avviene entro <strong>3–5 giorni lavorativi</strong> dalla ricezione dei contenuti.
+            Il prezzo del banner nel bundle si riferisce alla visibilità Minima (€1,70/giorno); visibilità superiori sono disponibili a costo aggiunto.
+        </p>
+    </div>
+
+    <!-- ESEMPI REALI PUBBLIREDAZIONALI -->
+    {% if esempi_publi %}
+    <section>
+        <h2>Esempi di pubbliredazionali pubblicati</h2>
+        <p style="color:#666; margin-bottom:1rem;">Estratti reali dai pubbliredazionali più letti su Ombra del Portico</p>
+
+        <div class="publi-examples">
+            {% for esempio in esempi_publi %}
+            <div class="publi-example-card">
+                <div class="publi-example-header">
+                    <span class="publi-example-label">Pubbliredazionale</span>
+                </div>
+                <div class="publi-example-body">
+                    <div class="publi-example-title">{{ esempio.titolo }}</div>
+                    <div class="publi-example-text">{{ esempio.estratto }}</div>
+                </div>
+                <div class="publi-example-footer">
+                    <span class="publi-example-tag">~{{ esempio.parole }} parole</span>
+                    <span class="publi-star-rating">★★★★★</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+    {% endif %}
+
+    <!-- COME FUNZIONA -->
+    <section>
+        <h2>Come funziona</h2>
+
+        <div class="steps-grid">
+            <div class="step-item">
+                <div class="step-circle">1</div>
+                <h4>Contattaci</h4>
+                <p>Scrivi a redazione@ombradelportico.it o apri il processo direttamente dalla piattaforma.</p>
+            </div>
+            <div class="step-item">
+                <div class="step-circle">2</div>
+                <h4>Intervista guidata</h4>
+                <p>Per i pubbliredazionali, rispondi a poche domande sulla tua azienda. La piattaforma ti guida passo dopo passo.</p>
+            </div>
+            <div class="step-item">
+                <div class="step-circle">3</div>
+                <h4>Bozza e revisione</h4>
+                <p>Ricevi la bozza dell'articolo o l'anteprima del banner. Puoi richiedere modifiche prima di confermare.</p>
+            </div>
+            <div class="step-item">
+                <div class="step-circle">4</div>
+                <h4>Pagamento</h4>
+                <p>Pagamento sicuro online prima della pubblicazione. Accettiamo carta di credito e bonifico.</p>
+            </div>
+            <div class="step-item">
+                <div class="step-circle">5</div>
+                <h4>Pubblicazione</h4>
+                <p>Il tuo contenuto va online. Per i Premium, viene subito condiviso sui canali social del giornale.</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA FINALE -->
+    <div class="cta-section">
+        <h2>Porta il tuo business all'attenzione di Carpi</h2>
+        <p>Contattaci per un preventivo personalizzato o inizia subito con il processo guidato per il pubbliredazionale.</p>
+        <div class="cta-buttons">
+            <a href="mailto:redazione@ombradelportico.it?subject=Richiesta%20pubblicit%C3%A0%20Ombra%20del%20Portico" class="btn-cta-primary">
+                ✉️ Scrivici subito
+            </a>
+            <a href="/gestionale/pubbliredazionale/" class="btn-cta-secondary">
+                Crea pubbliredazionale →
+            </a>
+        </div>
+        <p style="margin-top:1.5rem; font-size:0.85rem; opacity:0.9;">oppure chiamaci: <a href="tel:+393463332864" style="color:#fff; font-weight:600;">346 333 28 64</a></p>
+    </div>
+
+</div>{# /pub-content #}
+</div>{# /container #}
+{% endblock %}

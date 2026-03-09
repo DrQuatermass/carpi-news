@@ -616,6 +616,94 @@ def about(request):
     return render(request, "about.html", context)
 
 
+def pubblicita(request):
+    """Vista per la pagina di pubblicità e pricing"""
+    import html as _html
+    import decimal
+    from django.db.models import Max, Sum
+    from admin_panel.models import Banner
+
+    def _strip_html(text):
+        text = re.sub(r'<[^>]+>', ' ', text)
+        text = _html.unescape(text)
+        text = re.sub(r'\s+', ' ', text).strip()
+        return text
+
+
+    # ── Esempi reali di pubbliredazionali (i più visti) ───────────────────────
+    publi_raw = Articolo.objects.filter(
+        is_pubbliredazionale=True
+    ).exclude(contenuto='').exclude(contenuto__isnull=True).order_by('-views')
+
+    esempi_publi = []
+    for p in publi_raw:
+        contenuto = p.contenuto or ''
+        if len(contenuto) < 100:
+            continue
+        clean = _strip_html(contenuto)
+        if len(clean.split()) < 60:
+            continue
+
+        esempi_publi.append({
+            'titolo': p.titolo or '',
+            'estratto': clean[:500],
+            'parole': len(clean.split()),
+        })
+
+        if len(esempi_publi) >= 4:
+            break
+
+    # ── Statistiche dinamiche ──────────────────────────────────────────────────
+    banner_stats = Banner.objects.filter(impressions__gt=0).aggregate(
+        max_impressions=Max('impressions'),
+        total_impressions=Sum('impressions'),
+        max_clicks=Max('clicks'),
+    )
+    max_impressions = banner_stats.get('max_impressions') or 0
+    total_impressions = banner_stats.get('total_impressions') or 0
+
+    ctr_max = 0
+    best_banner = Banner.objects.filter(impressions__gt=0, clicks__gt=0).order_by('-clicks').first()
+    if best_banner:
+        ctr_max = round((best_banner.clicks / best_banner.impressions) * 100, 1)
+
+    newsletter_count = NewsletterSubscriber.objects.filter(attivo=True).count()
+
+    # Prezzi calcolati dal prezzo giornaliero minimo (€1.70/giorno, da Banner model)
+    price_per_day = decimal.Decimal('1.70')
+    price_banner_30 = int(price_per_day * 30)   # €51 — include orizzontale + verticale (visibilità Minima)
+    publi_price = 200
+    price_bundle = 280  # Pubbliredazionale + banner visibilità Alta 30gg
+
+    # ── Categorie per il menu di navigazione ──────────────────────────────────
+    categorie_raw = get_published_articles_query().values_list('categoria', flat=True).distinct()
+    categorie_disponibili = []
+    has_rubriche = False
+
+    for cat in sorted(categorie_raw):
+        if cat in ['Editoriale', "L'Eco del Consiglio"]:
+            if not has_rubriche:
+                categorie_disponibili.append('Rubriche')
+                has_rubriche = True
+        else:
+            categorie_disponibili.append(cat)
+
+    context = {
+        'categorie_disponibili': list(categorie_disponibili),
+        'current_year': 2025,
+        'esempi_publi': esempi_publi,
+        'ctr_max': ctr_max,
+        'max_impressions': max_impressions,
+        'total_impressions': total_impressions,
+        'newsletter_count': newsletter_count,
+        'price_banner_30': price_banner_30,
+        'publi_price': publi_price,
+        'price_bundle': price_bundle,
+    }
+
+    return render(request, "pubblicita.html", context)
+
+
 @require_http_methods(["POST"])
 @csrf_exempt
 def chatbot_api(request):
