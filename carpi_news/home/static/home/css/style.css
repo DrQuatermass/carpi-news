@@ -239,16 +239,53 @@ nav {
     color: #966C42;
 }
 
+/* Subheader bar */
+.subheader-bar {
+    position: fixed;
+    top: 60px;
+    left: 0;
+    right: 0;
+    z-index: 999;
+    background: rgba(250, 247, 240, 0.97);
+    border-bottom: 1px solid rgba(150, 108, 66, 0.15);
+    backdrop-filter: blur(10px);
+}
+.subheader-inner {
+    display: flex;
+    gap: 0;
+    align-items: center;
+}
+.subheader-link {
+    display: inline-block;
+    padding: 8px 18px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: #5A5A5A;
+    text-decoration: none;
+    border-bottom: 2px solid transparent;
+    transition: color 0.2s, border-color 0.2s;
+}
+.subheader-link:hover,
+.subheader-link.active {
+    color: #966C42;
+    border-bottom-color: #966C42;
+    text-decoration: none;
+}
+@media (max-width: 768px) {
+    .subheader-bar { top: 56px; }
+    .subheader-link { padding: 7px 14px; font-size: 0.8rem; }
+}
+
 /* Main Content */
 main {
-    margin-top: 80px;
+    margin-top: 100px;
     padding: 2rem 0;
 }
 
 /* Responsive main content - reduce top margin on mobile when hero is hidden */
 @media (max-width: 768px) {
     main {
-        margin-top: 65px;
+        margin-top: 90px;
         padding: 1rem 0;
     }
 }

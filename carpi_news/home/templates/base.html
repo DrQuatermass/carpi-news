@@ -669,8 +669,6 @@
                     <a href="#" class="dropdown-toggle" aria-expanded="false" aria-haspopup="true">Rubriche</a>
                     <ul class="dropdown-menu" role="menu">
                         <li role="none"><a href="{% url 'home' %}?categoria=Cosa fare oggi" rel="nofollow" role="menuitem">Cosa fare oggi</a></li>
-                        <li role="none"><a href="{% url 'calendario_eventi' %}" role="menuitem">Calendario Eventi</a></li>
-                        <li role="none"><a href="{% url 'programmazione_cinema' %}" role="menuitem">Cinema</a></li>
                         <li role="none"><a href="{% url 'home' %}?categoria=L'Eco del Consiglio" rel="nofollow" role="menuitem">L'Eco del consiglio</a></li>
                         <li role="none"><a href="{% url 'home' %}?categoria=Editoriale" rel="nofollow" role="menuitem">Editoriale</a></li>
                         <li role="none"><a href="/caplet/" role="menuitem">Caplet</a></li>
@@ -699,8 +697,6 @@
 
                         <!-- Rubriche nel menu mobile -->
                         <li><a href="{% url 'home' %}?categoria=Cosa fare oggi" rel="nofollow">Cosa fare oggi</a></li>
-                        <li><a href="{% url 'calendario_eventi' %}">Calendario Eventi</a></li>
-                        <li><a href="{% url 'programmazione_cinema' %}">Cinema</a></li>
                         <li><a href="{% url 'home' %}?categoria=L'Eco del Consiglio" rel="nofollow">L'Eco del consiglio</a></li>
                         <li><a href="{% url 'home' %}?categoria=Editoriale" rel="nofollow">Editoriale</a></li>
                         <li><a href="/caplet/">Caplet</a></li>
@@ -709,6 +705,18 @@
             </div>
         </nav>
     </header>
+
+    <!-- BARRA SECONDARIA: Calendario e Cinema -->
+    <div class="subheader-bar">
+        <div class="container subheader-inner">
+            <a href="{% url 'calendario_eventi' %}" class="subheader-link {% if request.resolver_match.url_name == 'calendario_eventi' %}active{% endif %}">
+                Calendario Eventi
+            </a>
+            <a href="{% url 'programmazione_cinema' %}" class="subheader-link {% if request.resolver_match.url_name == 'programmazione_cinema' %}active{% endif %}">
+                Cinema
+            </a>
+        </div>
+    </div>
 
     <main>
         {% block content %}
@@ -775,8 +783,6 @@
                 <div class="footer-section footer-links-section">
                     <h3>Link Utili</h3>
                     <ul class="footer-useful-links" style="list-style: none; padding: 0; margin: 0;">
-                        <li style="margin-bottom: 0.8rem; list-style: none;"><a href="{% url 'calendario_eventi' %}" style="color: rgba(255, 255, 255, 0.8); text-decoration: none;">Calendario Eventi</a></li>
-                        <li style="margin-bottom: 0.8rem; list-style: none;"><a href="{% url 'programmazione_cinema' %}" style="color: rgba(255, 255, 255, 0.8); text-decoration: none;">Programmazione Cinema</a></li>
                         <li style="margin-bottom: 0.8rem; list-style: none;"><a href="{% url 'newsletter_subscribe' %}" style="color: rgba(255, 255, 255, 0.8); text-decoration: none;">Iscriviti alla Newsletter</a></li>
                     </ul>
                 </div>
