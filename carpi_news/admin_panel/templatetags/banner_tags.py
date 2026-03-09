@@ -98,26 +98,20 @@ def show_banner(context, position):
             # Nessuna request nel context, reset comunque
             reset_shown_users()
 
-        # Definisci i gruppi di posizioni intercambiabili
-        horizontal_positions = ['header', 'footer', 'article_top', 'article_middle', 'article_bottom']
-
-        # Determina quali posizioni cercare
-        if position in horizontal_positions:
-            # Per banner orizzontali, cerca in tutte le posizioni orizzontali
-            search_positions = horizontal_positions
-        else:
-            # Per banner verticali, cerca solo nella posizione specifica
-            search_positions = [position]
-
-        # Ottieni tutti i banner attivi, approvati per le posizioni specificate
-        banners = list(Banner.objects.filter(
-            position__in=search_positions,
+        base_qs = Banner.objects.filter(
             status='active',
             payment_status='completed',
-            approved=True,  # Solo banner approvati
+            approved=True,
             start_date__lte=timezone.now(),
-            end_date__gte=timezone.now()
-        ).select_related('user'))
+            end_date__gte=timezone.now(),
+        ).select_related('user')
+
+        if position == 'between_articles':
+            # Per slot verticale: solo banner con image_vertical caricata
+            banners = list(base_qs.exclude(image_vertical='').exclude(image_vertical__isnull=True))
+        else:
+            # Per tutti gli slot orizzontali: cerca banner con position=header
+            banners = list(base_qs.filter(position='header').exclude(image='').exclude(image__isnull=True))
 
         if not banners:
             return {

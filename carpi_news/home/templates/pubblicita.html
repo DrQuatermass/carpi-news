@@ -160,8 +160,10 @@
 .visibility-table small { display: block; font-size: 0.82rem; color: #888; margin-bottom: 0.8rem; }
 .visibility-grid {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 0.6rem;
+    max-width: 560px;
+    margin: 0 auto;
 }
 .vis-cell {
     background: #fff;
@@ -187,6 +189,16 @@
 .vis-cell.highlight .vis-desc { color: #966C42; }
 .vis-cell.top .vis-desc { color: rgba(250,247,240,0.8); }
 .visibility-note { font-size: 0.8rem; color: #888; text-align: center; margin-top: 0.8rem; margin-bottom: 0; }
+.vis-cell { cursor: pointer; }
+.vis-cell.selected { border-color: #966C42; border-width: 2.5px; box-shadow: 0 0 0 3px rgba(150,108,66,0.15); }
+.vis-cell.top.selected { box-shadow: 0 0 0 3px rgba(150,108,66,0.35); }
+.vis-info-panel { background: #fff; border: 1.5px solid #e9e4de; border-radius: 8px; padding: 1rem 1.2rem; margin-top: 0.8rem; animation: fadeInPanel 0.2s ease; }
+@keyframes fadeInPanel { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+.vis-info-cost { font-size: 0.9rem; color: #555; margin-bottom: 0.4rem; }
+.vis-info-cost strong { color: #966C42; font-size: 1rem; }
+.vis-info-description { font-size: 0.82rem; color: #666; margin: 0.4rem 0 0.8rem; line-height: 1.5; }
+.vis-info-btn { display: inline-block; background: #966C42; color: #FAF7F0; border-radius: 6px; padding: 0.5rem 1.2rem; font-size: 0.85rem; text-decoration: none; font-weight: 600; transition: background 0.2s; }
+.vis-info-btn:hover { background: #7a5535; text-decoration: none; color: #FAF7F0; }
 
 /* ===== PRICING NOTE ===== */
 .pricing-note {
@@ -291,7 +303,7 @@
     <p class="subtitle">Raggiungi i lettori carpigiani dove sono già presenti</p>
 
     <div class="pub-intro">
-        <p>Ombra del Portico è il punto di riferimento digitale per l'informazione locale di Carpi. Posiziona il tuo brand accanto a notizie di qualità, rivolte a un'audience 100% locale.</p>
+        <p>Ombra del Portico è un punto di riferimento digitale per l'informazione locale di Carpi. Posiziona il tuo brand accanto a notizie di qualità, rivolte a un'audience 100% locale.</p>
     </div>
 
     <!-- STATS DINAMICI DAL DB -->
@@ -314,10 +326,10 @@
             <span class="stat-label">CTR massimo registrato</span>
         </div>
         {% endif %}
-        {% if newsletter_count > 0 %}
+        {% if newsletter_emails_sent > 0 %}
         <div class="stat-item">
-            <span class="stat-num">{{ newsletter_count }}</span>
-            <span class="stat-label">Iscritti newsletter</span>
+            <span class="stat-num">{{ newsletter_emails_sent }}</span>
+            <span class="stat-label">Email newsletter inviate</span>
         </div>
         {% endif %}
         <div class="stat-item">
@@ -378,8 +390,8 @@
                 <p class="pricing-desc">Con un unico acquisto ottieni due posizioni simultanee: il <strong>leaderboard orizzontale</strong> (728×90) visibile su tutte le pagine e il <strong>banner card verticale</strong> (300×250) integrato nella griglia notizie della homepage.</p>
                 <div class="pricing-price">
                     <span class="currency">a partire da €</span>
-                    <span class="amount">{{ price_banner_30 }}</span>
-                    <span class="period">/mese</span>
+                    <span class="amount">{{ price_per_day }}</span>
+                    <span class="period">/giorno</span>
                 </div>
                 <ul class="pricing-features">
                     <li>Banner orizzontale 728×90 — header, ogni pagina</li>
@@ -391,7 +403,7 @@
                     <li>Link diretto al tuo sito</li>
                     <li>Report visualizzazioni e click mensile</li>
                 </ul>
-                <a href="/gestionale/banner/crea/" class="btn-pricing">Configura il tuo banner →</a>
+                <a href="/gestionale/banners/create/" class="btn-pricing">Configura il tuo banner →</a>
             </div>
 
         </div>
@@ -401,39 +413,73 @@
             <p>Scegli la visibilità — clicca per iniziare</p>
             <small>Più alta la visibilità, più spesso appare il banner rispetto agli altri.</small>
             <div class="visibility-grid">
-                <a href="/gestionale/banner/crea/" class="vis-cell">
-                    <div class="vis-label">Minima</div>
-                    <div class="vis-price">€1,70</div>
-                    <div class="vis-unit">/giorno</div>
-                    <div class="vis-desc">Visibilità occasionale, per test o budget contenuti</div>
-                </a>
-                <a href="/gestionale/banner/crea/" class="vis-cell">
-                    <div class="vis-label">Bassa</div>
+<div class="vis-cell" data-level="bassa" data-price="3.40" data-label="Economica" onclick="selectVisibility(this)">
+                    <div class="vis-label">Economica</div>
                     <div class="vis-price">€3,40</div>
                     <div class="vis-unit">/giorno</div>
                     <div class="vis-desc">Campagne di lungo periodo a basso costo</div>
-                </a>
-                <a href="/gestionale/banner/crea/" class="vis-cell highlight">
+                </div>
+                <div class="vis-cell highlight" data-level="media" data-price="5.10" data-label="Media" onclick="selectVisibility(this)">
                     <div class="vis-label">Media ⭐</div>
                     <div class="vis-price">€5,10</div>
                     <div class="vis-unit">/giorno</div>
                     <div class="vis-desc">Il più scelto: equilibrio tra copertura e costo</div>
-                </a>
-                <a href="/gestionale/banner/crea/" class="vis-cell">
+                </div>
+                <div class="vis-cell" data-level="alta" data-price="6.80" data-label="Alta" onclick="selectVisibility(this)">
                     <div class="vis-label">Alta</div>
                     <div class="vis-price">€6,80</div>
                     <div class="vis-unit">/giorno</div>
                     <div class="vis-desc">Alta frequenza, copertura significativa</div>
-                </a>
-                <a href="/gestionale/banner/crea/" class="vis-cell top">
+                </div>
+                <div class="vis-cell top" data-level="massima" data-price="8.50" data-label="Massima" onclick="selectVisibility(this)">
                     <div class="vis-label">Massima</div>
                     <div class="vis-price">€8,50</div>
                     <div class="vis-unit">/giorno</div>
                     <div class="vis-desc">Banner mostrato il più possibile</div>
-                </a>
+                </div>
             </div>
-            <p class="visibility-note">Esempio: 30 giorni a visibilità Media = €5,10 × 30 = <strong style="color:#966C42;">€153</strong></p>
+
+            <!-- Pannello dinamico -->
+            <div id="vis-info-panel" class="vis-info-panel" style="display:none;">
+                <div class="vis-info-cost">
+                    30 giorni a visibilità <strong id="vis-info-label"></strong>
+                    = <span id="vis-info-price-day"></span> × 30 = <strong id="vis-info-total"></strong>
+                </div>
+                <p id="vis-info-desc" class="vis-info-description"></p>
+                <a id="vis-info-cta" href="/gestionale/banners/create/" class="vis-info-btn">Inizia con questa visibilità →</a>
+            </div>
+
+            <p class="visibility-note" id="vis-default-note">Clicca su una visibilità per vedere il costo mensile</p>
         </div>
+
+        <script>
+        const visibilityData = {
+            minima:  { desc: "Il banner appare raramente, circa 1 volta ogni 5 rispetto agli altri. Perfetto per chi vuole provare la piattaforma o ha un budget molto limitato." },
+            bassa:   { desc: "Il banner appare con discreta frequenza. Ideale per campagne di lunga durata a costo contenuto, senza grandi pretese di visibilità immediata." },
+            media:   { desc: "Il banner appare 3 volte su 5 rispetto agli altri. Il miglior equilibrio tra copertura e investimento: la scelta più popolare." },
+            alta:    { desc: "Il banner appare quasi sempre, con alta frequenza tra le rotazioni. Ottimo per campagne che puntano a risultati concreti in poco tempo." },
+            massima: { desc: "Il banner viene mostrato il più possibile. Massima esposizione garantita: domina la rotazione rispetto a tutti gli altri inserzionisti." }
+        };
+
+        function selectVisibility(el) {
+            document.querySelectorAll('.vis-cell').forEach(c => c.classList.remove('selected'));
+            el.classList.add('selected');
+
+            const level = el.dataset.level;
+            const price = parseFloat(el.dataset.price);
+            const label = el.dataset.label;
+            const total = (price * 30).toFixed(0);
+
+            document.getElementById('vis-info-label').textContent = label;
+            document.getElementById('vis-info-price-day').textContent = '€' + price.toFixed(2).replace('.', ',');
+            document.getElementById('vis-info-total').textContent = '€' + total;
+            document.getElementById('vis-info-desc').textContent = visibilityData[level].desc;
+            document.getElementById('vis-info-cta').href = '/gestionale/banners/create/?visibilita=' + level;
+
+            document.getElementById('vis-default-note').style.display = 'none';
+            document.getElementById('vis-info-panel').style.display = 'block';
+        }
+        </script>
 
         <p class="pricing-note">
             I prezzi si riferiscono a <strong>30 giorni di pubblicazione</strong>. Disponibili sconti per campagne di 3 o 6 mesi.
@@ -466,7 +512,7 @@
                     <li>Link al tuo sito nell'articolo</li>
                     <li>Report visualizzazioni dopo 30 giorni</li>
                 </ul>
-                <a href="/gestionale/pubbliredazionale/" class="btn-pricing">Inizia subito</a>
+                <a href="/gestionale/pubbliredazionale/create/" class="btn-pricing">Inizia subito</a>
             </div>
 
             <div class="pricing-card">
@@ -505,7 +551,12 @@
 
         <div class="publi-examples">
             {% for esempio in esempi_publi %}
-            <div class="publi-example-card">
+            <a href="{% if esempio.slug %}/articolo/{{ esempio.slug }}/{% else %}#{% endif %}" class="publi-example-card" style="text-decoration:none; color:inherit; display:block;">
+                {% if esempio.foto %}
+                <div class="publi-example-img" style="height:160px; overflow:hidden; border-radius:8px 8px 0 0; background:#f0ebe4;">
+                    <img src="{{ esempio.foto }}" alt="{{ esempio.titolo }}" loading="lazy" style="width:100%; height:100%; object-fit:cover;">
+                </div>
+                {% endif %}
                 <div class="publi-example-header">
                     <span class="publi-example-label">Pubbliredazionale</span>
                 </div>
@@ -517,7 +568,7 @@
                     <span class="publi-example-tag">~{{ esempio.parole }} parole</span>
                     <span class="publi-star-rating">★★★★★</span>
                 </div>
-            </div>
+            </a>
             {% endfor %}
         </div>
     </section>
@@ -564,7 +615,7 @@
             <a href="mailto:redazione@ombradelportico.it?subject=Richiesta%20pubblicit%C3%A0%20Ombra%20del%20Portico" class="btn-cta-primary">
                 ✉️ Scrivici subito
             </a>
-            <a href="/gestionale/pubbliredazionale/" class="btn-cta-secondary">
+            <a href="/gestionale/pubbliredazionale/create/" class="btn-cta-secondary">
                 Crea pubbliredazionale →
             </a>
         </div>

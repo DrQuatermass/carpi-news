@@ -127,24 +127,24 @@ def banner_create(request):
             title = request.POST.get('title')
             link_url = request.POST.get('link_url')
             alt_text = request.POST.get('alt_text')
-            position = request.POST.get('position')
             start_date_str = request.POST.get('start_date')
             end_date_str = request.POST.get('end_date')
             priority = int(request.POST.get('priority', 1))
             image = request.FILES.get('image')
+            image_vertical = request.FILES.get('image_vertical')
 
             # Validazione base
             missing_fields = []
             if not title:
                 missing_fields.append('Titolo')
             if not image:
-                missing_fields.append('Immagine')
+                missing_fields.append('Banner orizzontale')
+            if not image_vertical:
+                missing_fields.append('Banner verticale')
             if not link_url:
                 missing_fields.append('URL di destinazione')
             if not alt_text:
                 missing_fields.append('Testo alternativo')
-            if not position:
-                missing_fields.append('Posizione')
             if not start_date_str:
                 missing_fields.append('Data inizio')
             if not end_date_str:
@@ -152,70 +152,42 @@ def banner_create(request):
 
             if missing_fields:
                 messages.error(request, f'Campi obbligatori mancanti: {", ".join(missing_fields)}')
-                context = {
-                    'positions': Banner.POSITION_CHOICES,
-                    'form_data': request.POST,
-                    'occupied_positions': list(Banner.objects.filter(
-                        user=request.user,
-                        status='active',
-                        payment_status='completed'
-                    ).values_list('position', flat=True)),
-                }
-                return render(request, 'admin_panel/banner_form.html', context)
+                return render(request, 'admin_panel/banner_form.html', {'form_data': request.POST})
 
             # Converti le date
             from datetime import datetime, date
             start_date = timezone.make_aware(datetime.strptime(start_date_str, '%Y-%m-%d'))
             end_date = timezone.make_aware(datetime.strptime(end_date_str, '%Y-%m-%d').replace(hour=23, minute=59, second=59))
 
-            # Calcola duration_days
             duration_days = (end_date - start_date).days + 1
 
-            # Validazione date
             if end_date < start_date:
                 messages.error(request, 'La data di fine deve essere successiva o uguale alla data di inizio.')
-                context = {
-                    'positions': Banner.POSITION_CHOICES,
-                    'form_data': request.POST,
-                    'occupied_positions': list(Banner.objects.filter(
-                        user=request.user,
-                        status='active',
-                        payment_status='completed'
-                    ).values_list('position', flat=True)),
-                }
-                return render(request, 'admin_panel/banner_form.html', context)
+                return render(request, 'admin_panel/banner_form.html', {'form_data': request.POST})
 
-            # Permetti data inizio da oggi (non prima)
-            # Confronta solo le date, non l'ora
             today = date.today()
-            start_date_only = start_date.date()
-            if start_date_only < today:
+            if start_date.date() < today:
                 messages.error(request, 'La data di inizio non può essere nel passato.')
-                context = {
-                    'positions': Banner.POSITION_CHOICES,
-                    'form_data': request.POST,
-                    'occupied_positions': list(Banner.objects.filter(
-                        user=request.user,
-                        status='active',
-                        payment_status='completed'
-                    ).values_list('position', flat=True)),
-                }
-                return render(request, 'admin_panel/banner_form.html', context)
+                return render(request, 'admin_panel/banner_form.html', {'form_data': request.POST})
 
             # Calcola il prezzo per giorno in base alla priorità
-            # priority 1=Massima→×5, priority 5=Minima→×1 (più visibilità = più costo)
+            if priority == 5 and not request.user.is_staff:
+                priority = 4
             base_price_per_day = 1.70
-            multiplier = 6 - priority
-            price_per_day = base_price_per_day * multiplier
+            if priority == 5:
+                price_per_day = 0
+            else:
+                price_per_day = base_price_per_day * (6 - priority)
 
-            # Crea il banner
+            # Crea il banner — posizione fissa 'header' (campagna include entrambi i formati)
             banner = Banner(
                 user=request.user,
                 title=title,
                 image=image,
+                image_vertical=image_vertical,
                 link_url=link_url,
                 alt_text=alt_text,
-                position=position,
+                position='header',
                 duration_days=duration_days,
                 priority=priority,
                 price_per_day=price_per_day,
@@ -227,42 +199,19 @@ def banner_create(request):
             try:
                 banner.save()
             except Exception as validation_error:
-                # Gestisci errori di validazione immagine
                 messages.error(request, str(validation_error))
-                context = {
-                    'positions': Banner.POSITION_CHOICES,
-                    'form_data': request.POST,
-                    'occupied_positions': list(Banner.objects.filter(
-                        user=request.user,
-                        status='active',
-                        payment_status='completed'
-                    ).values_list('position', flat=True)),
-                }
-                return render(request, 'admin_panel/banner_form.html', context)
+                return render(request, 'admin_panel/banner_form.html', {'form_data': request.POST})
 
-            # Ottieni le dimensioni consigliate per il messaggio
-            recommended_size = Banner.get_recommended_size(position)
-            messages.success(request, f'Banner "{title}" creato! L\'immagine è stata scalata a larghezza massima {recommended_size[0]}px mantenendo le proporzioni e convertita in WebP.')
-            messages.info(request, 'Completa l\'acquisto per attivare il banner.')
+            messages.success(request, f'Campagna "{title}" creata con successo! Entrambi i banner sono stati ottimizzati in WebP.')
+            messages.info(request, 'Completa l\'acquisto per attivare la campagna.')
             return redirect('admin_panel:banner_payment', banner_id=banner.id)
 
         except Exception as e:
-            messages.error(request, f'Errore nella creazione del banner: {str(e)}')
-
-    # Trova le posizioni già occupate dall'utente corrente (banner attivi)
-    # Tutte le posizioni possono avere più banner (gestiti con priorità)
-    # Questa lista serve solo per mostrare visivamente quali posizioni hanno già banner
-    occupied_positions = list(Banner.objects.filter(
-        user=request.user,
-        status='active',
-        payment_status='completed'
-    ).values_list('position', flat=True).distinct())
+            messages.error(request, f'Errore nella creazione della campagna: {str(e)}')
 
     context = {
-        'positions': Banner.POSITION_CHOICES,
-        'occupied_positions': occupied_positions,
-        'banner': None,  # Nessun banner esistente in modalità creazione
-        'form_data': {},  # Nessun dato form da ripristinare
+        'banner': None,
+        'form_data': {},
     }
     return render(request, 'admin_panel/banner_form.html', context)
 
@@ -283,7 +232,6 @@ def banner_edit(request, banner_id):
         banner.title = request.POST.get('title', banner.title)
         banner.link_url = request.POST.get('link_url', banner.link_url)
         banner.alt_text = request.POST.get('alt_text', banner.alt_text)
-        banner.position = request.POST.get('position', banner.position)
 
         # Gestisci le date
         start_date_str = request.POST.get('start_date')
@@ -302,33 +250,29 @@ def banner_edit(request, banner_id):
         priority = int(request.POST.get('priority', banner.priority))
 
         # Ricalcola il prezzo per giorno in base alla priorità
-        # priority 1=Massima→×5, priority 5=Minima→×1
+        # priority 1=Massima→×5, priority 5=Minima gratuita (solo admin)
+        if priority == 5 and not request.user.is_staff:
+            priority = 4  # fallback a Bassa per utenti normali
         base_price_per_day = 1.70
-        multiplier = 6 - priority
-        banner.price_per_day = base_price_per_day * multiplier
+        if priority == 5:
+            banner.price_per_day = 0  # Minima è gratuita, solo admin
+        else:
+            multiplier = 6 - priority
+            banner.price_per_day = base_price_per_day * multiplier
         banner.priority = priority
 
         if 'image' in request.FILES:
             banner.image = request.FILES['image']
+        if 'image_vertical' in request.FILES:
+            banner.image_vertical = request.FILES['image_vertical']
 
         banner.save()
-        messages.success(request, 'Banner aggiornato con successo!')
+        messages.success(request, 'Campagna banner aggiornata con successo!')
         return redirect('admin_panel:dashboard')
-
-    # Trova le posizioni già occupate dall'utente corrente (escludi il banner in modifica)
-    # Tutte le posizioni possono avere più banner (gestiti con priorità)
-    # Questa lista serve solo per mostrare visivamente quali posizioni hanno già banner
-    occupied_positions = list(Banner.objects.filter(
-        user=request.user,
-        status='active',
-        payment_status='completed'
-    ).exclude(id=banner.id).values_list('position', flat=True).distinct())
 
     context = {
         'banner': banner,
-        'positions': Banner.POSITION_CHOICES,
         'is_edit': True,
-        'occupied_positions': occupied_positions,
     }
     return render(request, 'admin_panel/banner_form.html', context)
 

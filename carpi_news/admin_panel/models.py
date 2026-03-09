@@ -9,30 +9,11 @@ class Banner(models.Model):
     """Modello per i banner pubblicitari"""
 
     POSITION_CHOICES = [
-        ('header', 'Header (Sopra il titolo)'),
-        ('sidebar_top', 'Sidebar Alto'),
-        ('sidebar_middle', 'Sidebar Centro'),
-        ('sidebar_bottom', 'Sidebar Basso'),
-        ('between_articles', 'Tra gli articoli (Homepage)'),
-        ('article_top', 'Inizio articolo'),
-        ('article_middle', 'Centro articolo'),
-        ('article_bottom', 'Fine articolo'),
-        ('footer', 'Footer'),
+        ('header', 'Campagna (orizzontale + verticale)'),
     ]
 
-    # Dimensioni consigliate per posizione (width x height in pixel)
-    # ORIZZONTALI (728×90 Leaderboard): header, footer, article_top, article_bottom
-    # VERTICALI (300×250 Medium Rectangle): between_articles, sidebar_*, article_middle
     RECOMMENDED_SIZES = {
-        'header': (728, 90),  # Leaderboard - Header sito
-        'footer': (728, 90),  # Leaderboard - Footer sito
-        'article_top': (728, 90),  # Leaderboard - Inizio articolo
-        'article_bottom': (728, 90),  # Leaderboard - Fine articolo
-        'between_articles': (300, 250),  # Medium Rectangle - Tra le card homepage
-        'article_middle': (300, 250),  # Medium Rectangle - Centro articolo
-        'sidebar_top': (300, 250),  # Medium Rectangle - Sidebar alto (non implementato)
-        'sidebar_middle': (300, 250),  # Medium Rectangle - Sidebar centro (non implementato)
-        'sidebar_bottom': (300, 250),  # Medium Rectangle - Sidebar basso (non implementato)
+        'header': (728, 90),
     }
 
     # Tolleranza per le dimensioni (±10%)
@@ -61,7 +42,8 @@ class Banner(models.Model):
 
     # Informazioni banner
     title = models.CharField('Titolo', max_length=200, help_text='Nome identificativo del banner')
-    image = models.ImageField('Immagine', upload_to='banners/', help_text='Immagine del banner (sarà convertita automaticamente in WebP)')
+    image = models.ImageField('Banner orizzontale (728×90)', upload_to='banners/', blank=True, null=True, help_text='Leaderboard orizzontale — header su tutte le pagine (sarà convertita in WebP)')
+    image_vertical = models.ImageField('Banner verticale (300×250)', upload_to='banners/', blank=True, null=True, help_text='Card verticale — tra gli articoli in homepage (sarà convertita in WebP)')
     link_url = models.URLField('URL di destinazione', help_text='Dove viene reindirizzato chi clicca sul banner')
     alt_text = models.CharField('Testo alternativo', max_length=200, help_text='Descrizione per accessibilità')
 
@@ -77,7 +59,7 @@ class Banner(models.Model):
 
     # Pricing
     price_per_day = models.DecimalField('Prezzo al giorno (€)', max_digits=10, decimal_places=2,
-                                        validators=[MinValueValidator(0.01)], default=1.70)
+                                        validators=[MinValueValidator(0)], default=1.70)
     total_price = models.DecimalField('Prezzo totale (€)', max_digits=10, decimal_places=2,
                                       validators=[MinValueValidator(0)], editable=False)
 
@@ -130,14 +112,16 @@ class Banner(models.Model):
         return f"{self.title} - {self.get_position_display()}"
 
     def save(self, *args, **kwargs):
-        # Verifica se è un nuovo banner o se l'immagine è cambiata
+        # Verifica se è un nuovo banner o se le immagini sono cambiate
         is_new = self.pk is None
         image_changed = False
+        image_vertical_changed = False
 
         if not is_new:
             try:
                 old_instance = Banner.objects.get(pk=self.pk)
                 image_changed = old_instance.image != self.image
+                image_vertical_changed = old_instance.image_vertical != self.image_vertical
             except Banner.DoesNotExist:
                 pass
 
@@ -151,19 +135,20 @@ class Banner(models.Model):
             self.end_date = self.start_date + timedelta(days=self.duration_days)
 
         # Imposta lo stato a 'pending_payment' per i nuovi banner (se non specificato)
-        # Il banner parte da pending_payment, poi dopo il pagamento va in pending_approval
         if is_new and self.status == 'draft':
             self.status = 'pending_payment'
 
-        # Ottimizza immagine se è nuova o cambiata
+        # Ottimizza immagini se nuove o cambiate
         if (is_new or image_changed) and self.image:
-            self._optimize_image()
+            self._optimize_image(field='image', target_size=(728, 90))
+        if (is_new or image_vertical_changed) and self.image_vertical:
+            self._optimize_image(field='image_vertical', target_size=(300, 250))
 
         super().save(*args, **kwargs)
 
         # Email verrà inviata dopo il pagamento, non alla creazione
 
-    def _optimize_image(self):
+    def _optimize_image(self, field='image', target_size=(728, 90)):
         """Ottimizza automaticamente l'immagine banner in WebP"""
         try:
             from PIL import Image
@@ -171,38 +156,31 @@ class Banner(models.Model):
             import io
             import os
 
-            # Apri immagine
-            img = Image.open(self.image)
+            image_field = getattr(self, field)
+            img = Image.open(image_field)
 
             # Converti in RGB se necessario
             if img.mode in ('RGBA', 'LA', 'P'):
-                # Per immagini con trasparenza, mantieni RGBA
                 if img.mode == 'P':
                     img = img.convert('RGBA')
             elif img.mode != 'RGB':
                 img = img.convert('RGB')
 
-            # Determina dimensioni target basate sulla posizione
-            if self.position:
-                target_width, target_height = self.get_recommended_size(self.position)
+            target_width, target_height = target_size
+            # Ridimensiona solo se necessario (troppo grande)
+            if img.width > target_width * 1.2:
+                ratio = target_width / img.width
+                new_height = int(img.height * ratio)
+                img = img.resize((target_width, new_height), Image.Resampling.LANCZOS)
 
-                # Ridimensiona solo se necessario (troppo grande)
-                if img.width > target_width * 1.2:  # 20% tolleranza
-                    ratio = target_width / img.width
-                    new_height = int(img.height * ratio)
-                    img = img.resize((target_width, new_height), Image.Resampling.LANCZOS)
-
-            # Salva come WebP ottimizzato (quality=70 per migliori prestazioni)
+            # Salva come WebP ottimizzato
             output = io.BytesIO()
             img.save(output, format='WEBP', quality=70, method=6)
             output.seek(0)
 
-            # Genera nome file WebP
-            original_name = os.path.splitext(os.path.basename(self.image.name))[0]
+            original_name = os.path.splitext(os.path.basename(image_field.name))[0]
             webp_name = f"{original_name}.webp"
-
-            # Sostituisci l'immagine con la versione ottimizzata
-            self.image.save(webp_name, ContentFile(output.read()), save=False)
+            image_field.save(webp_name, ContentFile(output.read()), save=False)
 
         except Exception as e:
             import logging

@@ -2,9 +2,7 @@
 {% load webp_images %}
 
 {% if banner %}
-    {# Banner attivo - determina la classe del wrapper in base alla POSIZIONE DELLO SLOT (non del banner) #}
-    {# TUTTI i banner orizzontali (728×90) usano le stesse classi header/footer in base allo slot #}
-    {% if position == 'header' or position == 'article_top' or position == 'article_middle' or position == 'article_bottom' or position == 'horizontal' %}
+    {% if position == 'header' %}
         <div class="banner-header-slot has-active-banner" style="padding: 0 !important;">
             <div class="advertisement-banner" data-banner-id="{{ banner.id }}" style="width: 100%; padding: 0; margin: 0;">
                 <a href="{% url 'admin_panel:banner_click' banner.id %}" target="_blank" rel="noopener noreferrer nofollow sponsored" style="display: block; width: 100%; padding: 0; margin: 0;">
@@ -15,48 +13,29 @@
                          width="{{ banner.image.width }}"
                          height="{{ banner.image.height }}"
                          style="width: 100%; height: auto; border-radius: 10px; display: block; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);"
-                         {% if position == 'header' %}fetchpriority="high"{% endif %}>
-                </a>
-                <div style="font-size: 10px; color: #999; text-align: center; margin-top: 5px;">Pubblicità</div>
-            </div>
-        </div>
-    {% elif position == 'footer' %}
-        <div class="banner-footer-slot has-active-banner" style="grid-column: 1 / -1; padding: 0 !important;">
-            <div class="advertisement-banner" data-banner-id="{{ banner.id }}" style="width: 100%; padding: 0; margin: 0;">
-                <a href="{% url 'admin_panel:banner_click' banner.id %}" target="_blank" rel="noopener noreferrer nofollow sponsored" style="display: block; width: 100%; padding: 0; margin: 0;">
-                    <img src="{{ banner.image.url }}"
-                         srcset="{{ banner.image.url|image_srcset }}"
-                         sizes="(max-width: 768px) 100vw, 728px"
-                         alt="{{ banner.alt_text }}"
-                         width="{{ banner.image.width }}"
-                         height="{{ banner.image.height }}"
-                         style="width: 100%; height: auto; border-radius: 10px; display: block; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);">
+                         fetchpriority="high">
                 </a>
                 <div style="font-size: 10px; color: #999; text-align: center; margin-top: 5px;">Pubblicità</div>
             </div>
         </div>
     {% else %}
-        {# Banner verticali - DIMENSIONI DINAMICHE PER PERFORMANCE #}
+        {# Slot verticale (between_articles) — usa image_vertical #}
+        {% with img=banner.image_vertical|default:banner.image %}
         <div class="advertisement-banner" data-banner-id="{{ banner.id }}" style="width: 100%;">
             <a href="{% url 'admin_panel:banner_click' banner.id %}" target="_blank" rel="noopener noreferrer nofollow sponsored" style="display: block; width: 100%;">
-                <img src="{{ banner.image.url }}" alt="{{ banner.alt_text }}" loading="lazy" fetchpriority="low" width="{{ banner.image.width }}" height="{{ banner.image.height }}" style="width: 100%; height: auto; border-radius: 10px; display: block; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);">
+                <img src="{{ img.url }}" alt="{{ banner.alt_text }}" loading="lazy" fetchpriority="low" width="{{ img.width }}" height="{{ img.height }}" style="width: 100%; height: auto; border-radius: 10px; display: block; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);">
             </a>
             <div style="font-size: 10px; color: #999; text-align: center; margin-top: 5px;">Pubblicità</div>
         </div>
+        {% endwith %}
     {% endif %}
 {% else %}
     {# Nessun banner - mostra placeholder #}
-    {% if position == 'header' or position == 'article_top' or position == 'article_middle' or position == 'article_bottom' or position == 'horizontal' %}
+    {% if position == 'header' %}
         <a href="{% url 'admin_panel:dashboard' %}" class="banner-header-slot" rel="nofollow" style="text-decoration: none;">
-            {# Placeholder gestito da CSS ::before e ::after #}
         </a>
-    {% elif position == 'footer' %}
-        <a href="{% url 'admin_panel:dashboard' %}" class="banner-footer-slot" rel="nofollow" style="grid-column: 1 / -1; text-decoration: none;">
-            {# Placeholder gestito da CSS ::before e ::after #}
-        </a>
-    {% elif position == 'between_articles' or position == 'sidebar_top' or position == 'sidebar_middle' or position == 'sidebar_bottom' %}
+    {% elif position == 'between_articles' %}
         <a href="{% url 'admin_panel:dashboard' %}" class="banner-card-slot" rel="nofollow" style="text-decoration: none;">
-            {# Placeholder gestito da CSS ::before e ::after #}
         </a>
     {% endif %}
 {% endif %}

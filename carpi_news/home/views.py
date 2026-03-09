@@ -13,7 +13,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.db import models
 from datetime import datetime, timedelta
-from .models import Articolo, ChatbotConversation, NewsletterSubscriber
+from .models import Articolo, ChatbotConversation, NewsletterSubscriber, NewsletterLog
 from .chatbot_service import ChatbotService
 import time
 import uuid
@@ -648,6 +648,8 @@ def pubblicita(request):
             'titolo': p.titolo or '',
             'estratto': clean[:500],
             'parole': len(clean.split()),
+            'foto': p.foto or '',
+            'slug': p.slug or '',
         })
 
         if len(esempi_publi) >= 4:
@@ -668,11 +670,13 @@ def pubblicita(request):
         if ctr > ctr_max:
             ctr_max = ctr
 
-    newsletter_count = NewsletterSubscriber.objects.filter(attivo=True).count()
+    newsletter_emails_sent = NewsletterLog.objects.filter(stato='success').aggregate(
+        total=Sum('num_destinatari')
+    )['total'] or 0
 
-    # Prezzi calcolati dal prezzo giornaliero minimo (€1.70/giorno, da Banner model)
-    price_per_day = decimal.Decimal('1.70')
-    price_banner_30 = int(price_per_day * 30)   # €51 — include orizzontale + verticale (visibilità Minima)
+    # Prezzi calcolati dal prezzo giornaliero minimo pubblico (€3.40/giorno, visibilità Bassa)
+    price_per_day = decimal.Decimal('3.40')
+    price_banner_30 = int(price_per_day * 30)   # €102 — include orizzontale + verticale (visibilità Bassa)
     publi_price = 200
     price_bundle = 280  # Pubbliredazionale + banner visibilità Alta 30gg
 
@@ -698,9 +702,10 @@ def pubblicita(request):
         'ctr_max': ctr_max,
         'max_impressions': max_impressions,
         'total_impressions': total_impressions,
-        'newsletter_count': newsletter_count,
+        'newsletter_emails_sent': newsletter_emails_sent,
         'articoli_count': articoli_count,
         'price_banner_30': price_banner_30,
+        'price_per_day': price_per_day,
         'publi_price': publi_price,
         'price_bundle': price_bundle,
     }
