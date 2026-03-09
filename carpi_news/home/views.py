@@ -663,9 +663,10 @@ def pubblicita(request):
     total_impressions = banner_stats.get('total_impressions') or 0
 
     ctr_max = 0
-    best_banner = Banner.objects.filter(impressions__gt=0, clicks__gt=0).order_by('-clicks').first()
-    if best_banner:
-        ctr_max = round((best_banner.clicks / best_banner.impressions) * 100, 1)
+    for b in Banner.objects.filter(impressions__gt=0, clicks__gt=0):
+        ctr = round((b.clicks / b.impressions) * 100, 1)
+        if ctr > ctr_max:
+            ctr_max = ctr
 
     newsletter_count = NewsletterSubscriber.objects.filter(attivo=True).count()
 
