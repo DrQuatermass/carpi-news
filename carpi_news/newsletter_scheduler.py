@@ -64,7 +64,7 @@ def start_scheduler():
 
 
 def start_scheduler_daemon():
-    """Avvia lo scheduler in un thread daemon con controllo per prevenire duplicati"""
+    """Avvia lo scheduler in un thread daemon con lock atomico (fcntl) per prevenire duplicati tra worker Gunicorn"""
     from pathlib import Path
 
     try:
@@ -72,41 +72,34 @@ def start_scheduler_daemon():
         locks_dir.mkdir(exist_ok=True)
         lock_file = locks_dir / 'newsletter_scheduler.lock'
 
-        if lock_file.exists():
-            lock_age = time.time() - lock_file.stat().st_mtime
-            if lock_age < 120:
+        if os.name == 'nt':
+            # Windows: fallback al controllo PID (sviluppo locale)
+            if lock_file.exists():
                 try:
                     pid_str = lock_file.read_text().strip()
                     if pid_str and pid_str.isdigit():
-                        pid = int(pid_str)
-                        process_exists = False
-                        try:
-                            if os.name == 'nt':  # Windows
-                                import psutil
-                                process_exists = psutil.pid_exists(pid)
-                            else:  # Unix/Linux
-                                os.kill(pid, 0)
-                                process_exists = True
-                        except (OSError, ProcessLookupError, ImportError):
-                            process_exists = False
-
-                        if process_exists:
-                            logger.info(f"Scheduler newsletter già avviato dal processo {pid} (lock età: {lock_age:.1f}s), skip")
+                        import psutil
+                        if psutil.pid_exists(int(pid_str)):
+                            logger.info(f"Scheduler newsletter già avviato (PID {pid_str}), skip")
                             return False
-                        else:
-                            logger.info(f"Lock da processo morto {pid}, rimuovo")
-                            lock_file.unlink()
-                    else:
-                        logger.warning(f"Lock corrotto (PID non valido: '{pid_str}'), rimuovo")
-                        lock_file.unlink()
-                except Exception as e:
-                    logger.warning(f"Errore lettura lock: {e}, rimuovo")
-                    lock_file.unlink()
-            else:
-                logger.info(f"Rimozione lock newsletter vecchio ({lock_age:.1f}s)")
-                lock_file.unlink()
-
-        lock_file.write_text(str(os.getpid()))
+                except Exception:
+                    pass
+            lock_file.write_text(str(os.getpid()))
+        else:
+            # Linux/Unix: lock atomico con fcntl — impossibile race condition
+            import fcntl
+            lock_fd = open(lock_file, 'w')
+            try:
+                fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except IOError:
+                logger.info("Scheduler newsletter già gestito da altro worker Gunicorn, skip")
+                lock_fd.close()
+                return False
+            # Scrivi PID e mantieni il fd aperto per tenere il lock
+            lock_fd.write(str(os.getpid()))
+            lock_fd.flush()
+            # Salva fd come attributo del modulo per evitare garbage collection
+            start_scheduler_daemon._lock_fd = lock_fd
 
         thread = threading.Thread(target=start_scheduler, daemon=True)
         thread.start()
