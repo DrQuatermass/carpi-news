@@ -688,6 +688,8 @@ def pubblicita(request):
         else:
             categorie_disponibili.append(cat)
 
+    articoli_count = get_published_articles_query().count()
+
     context = {
         'categorie_disponibili': list(categorie_disponibili),
         'current_year': 2025,
@@ -696,6 +698,7 @@ def pubblicita(request):
         'max_impressions': max_impressions,
         'total_impressions': total_impressions,
         'newsletter_count': newsletter_count,
+        'articoli_count': articoli_count,
         'price_banner_30': price_banner_30,
         'publi_price': publi_price,
         'price_bundle': price_bundle,
