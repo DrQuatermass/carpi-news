@@ -52,7 +52,7 @@
     <noscript><link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet"></noscript>
 
     <!-- CSS principale -->
-    <link rel="stylesheet" href="{% static 'home/css/style.min.css' %}?v=6">
+    <link rel="stylesheet" href="{% static 'home/css/style.min.css' %}?v=12">
 
     <!-- Chatbot CSS - inline per performance -->
     <style>
@@ -664,6 +664,8 @@
                     {% endif %}
                 {% endfor %}
 
+                <li><a href="{% url 'calendario_eventi' %}" {% if request.resolver_match.url_name == 'calendario_eventi' %}class="active"{% endif %}>Calendario</a></li>
+                <li><a href="{% url 'programmazione_cinema' %}" {% if request.resolver_match.url_name == 'programmazione_cinema' %}class="active"{% endif %}>Cinema</a></li>
                 <!-- Dropdown Rubriche -->
                 <li class="dropdown">
                     <a href="#" class="dropdown-toggle" aria-expanded="false" aria-haspopup="true">Rubriche</a>
@@ -704,19 +706,18 @@
                 </div>
             </div>
         </nav>
-    </header>
-
-    <!-- BARRA SECONDARIA: Calendario e Cinema -->
-    <div class="subheader-bar">
-        <div class="container subheader-inner">
-            <a href="{% url 'calendario_eventi' %}" class="subheader-link {% if request.resolver_match.url_name == 'calendario_eventi' %}active{% endif %}">
-                Calendario Eventi
-            </a>
-            <a href="{% url 'programmazione_cinema' %}" class="subheader-link {% if request.resolver_match.url_name == 'programmazione_cinema' %}active{% endif %}">
-                Cinema
-            </a>
+        <!-- Barra secondaria: Calendario e Cinema -->
+        <div class="subheader-bar">
+            <div class="container subheader-inner">
+                <a href="{% url 'calendario_eventi' %}" class="subheader-link {% if request.resolver_match.url_name == 'calendario_eventi' %}active{% endif %}">
+                    Calendario Eventi
+                </a>
+                <a href="{% url 'programmazione_cinema' %}" class="subheader-link {% if request.resolver_match.url_name == 'programmazione_cinema' %}active{% endif %}">
+                    Cinema
+                </a>
+            </div>
         </div>
-    </div>
+    </header>
 
     <main>
         {% block content %}

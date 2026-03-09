@@ -239,26 +239,21 @@ nav {
     color: #966C42;
 }
 
-/* Subheader bar */
-.subheader-bar {
-    position: fixed;
-    top: 56px;
-    left: 0;
-    right: 0;
-    z-index: 999;
-    background: rgba(250, 247, 240, 0.97);
-    border-bottom: 1px solid rgba(150, 108, 66, 0.15);
-    backdrop-filter: blur(10px);
+/* Subheader bar: visibile solo su mobile */
+@media (min-width: 769px) {
+    .subheader-bar { display: none; }
 }
+
 .subheader-inner {
     display: flex;
     gap: 0;
     align-items: center;
+    justify-content: center;
 }
 .subheader-link {
     display: inline-block;
-    padding: 8px 18px;
-    font-size: 0.82rem;
+    padding: 7px 18px;
+    font-size: 0.8rem;
     font-weight: 500;
     color: #5A5A5A;
     text-decoration: none;
@@ -272,17 +267,16 @@ nav {
     text-decoration: none;
 }
 @media (max-width: 768px) {
-    .subheader-bar { top: 56px; }
-    .subheader-link { padding: 7px 14px; font-size: 0.8rem; }
+    .subheader-link { padding: 6px 14px; font-size: 0.78rem; }
 }
 
 /* Main Content */
 main {
-    margin-top: 100px;
+    margin-top: 65px;
     padding: 2rem 0;
 }
 
-/* Responsive main content - reduce top margin on mobile when hero is hidden */
+/* Responsive main content - mobile: subheader bar aggiunge altezza */
 @media (max-width: 768px) {
     main {
         margin-top: 90px;
