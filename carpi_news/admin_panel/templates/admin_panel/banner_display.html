@@ -4,7 +4,7 @@
 {% if banner %}
     {% if position == 'header' %}
         <div class="banner-header-slot has-active-banner" style="padding: 0 !important;">
-            <div class="advertisement-banner" data-banner-id="{{ banner.id }}" style="width: 100%; padding: 0; margin: 0;">
+            <div class="advertisement-banner" data-banner-id="{{ banner.id }}" style="width: 100%; max-width: 728px; margin: 0 auto; padding: 0;">
                 <a href="{% url 'admin_panel:banner_click' banner.id %}" target="_blank" rel="noopener noreferrer nofollow sponsored" style="display: block; width: 100%; padding: 0; margin: 0;">
                     <img src="{{ banner.image.url }}"
                          srcset="{{ banner.image.url|image_srcset }}"
@@ -12,7 +12,7 @@
                          alt="{{ banner.alt_text }}"
                          width="{{ banner.image.width }}"
                          height="{{ banner.image.height }}"
-                         style="width: 100%; height: auto; border-radius: 10px; display: block; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);"
+                         style="width: 100%; height: auto; display: block; border-radius: 6px;"
                          fetchpriority="high">
                 </a>
                 <div style="font-size: 10px; color: #999; text-align: center; margin-top: 5px;">Pubblicità</div>
