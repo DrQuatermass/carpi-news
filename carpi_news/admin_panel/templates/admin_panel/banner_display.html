@@ -3,9 +3,9 @@
 
 {% if banner %}
     {% if position != 'between_articles' %}
-        <div class="banner-header-slot has-active-banner" style="padding: 0 !important;">
-            <div class="advertisement-banner" data-banner-id="{{ banner.id }}" style="width: 100%; max-width: 728px; margin: 0 auto; padding: 0;">
-                <a href="{% url 'admin_panel:banner_click' banner.id %}" target="_blank" rel="noopener noreferrer nofollow sponsored" style="display: block; width: 100%; padding: 0; margin: 0;">
+        <div style="margin: 20px 0; text-align: center; width: 100%;">
+            <div class="advertisement-banner" data-banner-id="{{ banner.id }}" style="display: inline-block; vertical-align: top; width: 100%; max-width: 728px; text-align: left;">
+                <a href="{% url 'admin_panel:banner_click' banner.id %}" target="_blank" rel="noopener noreferrer nofollow sponsored" style="display: block; width: 100%;">
                     <img src="{{ banner.image.url }}"
                          srcset="{{ banner.image.url|image_srcset }}"
                          sizes="(max-width: 768px) 100vw, 728px"
