@@ -104,14 +104,15 @@ def home(request):
 
     banner_positions = get_banner_positions()
 
-    # Ottieni tutti i banner attivi per la posizione 'between_articles'
+    # Ottieni tutti i banner attivi con image_vertical (per gli slot verticali nella griglia)
     all_banners = list(Banner.objects.filter(
-        position='between_articles',
+        position='header',
         status='active',
         payment_status='completed',
+        approved=True,
         start_date__lte=timezone.now(),
         end_date__gte=timezone.now()
-    ).select_related('user'))
+    ).exclude(image_vertical='').exclude(image_vertical__isnull=True).select_related('user'))
 
     # Verifica che non sia un bot
     user_agent = request.META.get('HTTP_USER_AGENT', '').lower()
@@ -194,8 +195,8 @@ def home(request):
     # Trova il primo banner per preload (se in posizione 0-2)
     first_banner_image = None
     for i, item in enumerate(grid_items[:3]):  # Solo primi 3 slot
-        if item['type'] == 'banner' and item.get('banner'):
-            first_banner_image = item['banner'].image.url
+        if item['type'] == 'banner' and item.get('banner') and item['banner'].image_vertical:
+            first_banner_image = item['banner'].image_vertical.url
             break
 
     # Ottieni banner orizzontale dalla tabella Banner (posizione 'horizontal')
