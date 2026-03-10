@@ -105,13 +105,16 @@ def home(request):
     banner_positions = get_banner_positions()
 
     # Ottieni tutti i banner attivi con image_vertical (per gli slot verticali nella griglia)
+    # Include sia campagne 'header' con image_vertical sia banner 'between_articles'
+    from django.db.models import Q
+    _now = timezone.now()
     all_banners = list(Banner.objects.filter(
-        position='header',
+        Q(position='between_articles') | Q(position='header'),
         status='active',
         payment_status='completed',
         approved=True,
-        start_date__lte=timezone.now(),
-        end_date__gte=timezone.now()
+        start_date__lte=_now,
+        end_date__gte=_now,
     ).exclude(image_vertical='').exclude(image_vertical__isnull=True).select_related('user'))
 
     # Verifica che non sia un bot

@@ -1,5 +1,6 @@
 from django import template
 from django.utils import timezone
+from django.db import models
 from admin_panel.models import Banner
 import random
 
@@ -107,10 +108,13 @@ def show_banner(context, position):
         ).select_related('user')
 
         if position == 'between_articles':
-            # Per slot verticale: solo banner con image_vertical caricata
-            banners = list(base_qs.exclude(image_vertical='').exclude(image_vertical__isnull=True))
+            # Per slot verticale: banner con position='between_articles' O campagne header con image_vertical
+            banners = list(base_qs.filter(
+                models.Q(position='between_articles') |
+                models.Q(position='header')
+            ).exclude(image_vertical='').exclude(image_vertical__isnull=True))
         else:
-            # Per tutti gli slot orizzontali: cerca banner con position=header
+            # Per tutti gli slot orizzontali: banner con position='header' e image caricata
             banners = list(base_qs.filter(position='header').exclude(image='').exclude(image__isnull=True))
 
         if not banners:
