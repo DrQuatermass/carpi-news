@@ -515,9 +515,10 @@
                             {% endif %}
                         {% endfor %}
 
-                        <!-- Banner Footer (dentro la griglia, sopra la paginazione) -->
-                        {% show_banner 'footer' %}
                     </div>
+
+                    <!-- Banner Footer (sotto la griglia, sopra la paginazione) -->
+                    {% show_banner 'footer' %}
 
                     <div class="nav-controls-bottom">
                         <button id="prev-btn" class="nav-arrow nav-arrow-centered" aria-label="Pagina precedente" {% if not has_prev %}disabled{% endif %}>

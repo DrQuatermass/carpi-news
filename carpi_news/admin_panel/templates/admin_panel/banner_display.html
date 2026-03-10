@@ -2,7 +2,7 @@
 {% load webp_images %}
 
 {% if banner %}
-    {% if position == 'header' %}
+    {% if position != 'between_articles' %}
         <div class="banner-header-slot has-active-banner" style="padding: 0 !important;">
             <div class="advertisement-banner" data-banner-id="{{ banner.id }}" style="width: 100%; max-width: 728px; margin: 0 auto; padding: 0;">
                 <a href="{% url 'admin_panel:banner_click' banner.id %}" target="_blank" rel="noopener noreferrer nofollow sponsored" style="display: block; width: 100%; padding: 0; margin: 0;">
@@ -31,7 +31,7 @@
     {% endif %}
 {% else %}
     {# Nessun banner - mostra placeholder #}
-    {% if position == 'header' %}
+    {% if position != 'between_articles' %}
         <a href="{% url 'admin_panel:dashboard' %}" class="banner-header-slot" rel="nofollow" style="text-decoration: none;">
         </a>
     {% elif position == 'between_articles' %}

@@ -3091,7 +3091,6 @@ footer .footer-section.footer-links-section .footer-useful-links a:hover {
 .banner-header-slot img {
     width: 100%;
     height: auto;
-    max-height: 200px;
     display: block;
     image-rendering: -webkit-optimize-contrast;
     image-rendering: crisp-edges;
@@ -3144,7 +3143,6 @@ footer .footer-section.footer-links-section .footer-useful-links a:hover {
 .banner-footer-slot img {
     width: 100%;
     height: auto;
-    max-height: 200px !important;
     display: block;
 }
 
