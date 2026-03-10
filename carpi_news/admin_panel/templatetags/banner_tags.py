@@ -108,11 +108,8 @@ def show_banner(context, position):
         ).select_related('user')
 
         if position == 'between_articles':
-            # Per slot verticale: richiede image_vertical
-            banners = list(base_qs.filter(
-                models.Q(position='between_articles') |
-                models.Q(position='header')
-            ).exclude(image_vertical='').exclude(image_vertical__isnull=True))
+            # Slot verticale: solo banner between_articles con image_vertical
+            banners = list(base_qs.filter(position='between_articles').exclude(image_vertical='').exclude(image_vertical__isnull=True))
         else:
             # Per tutti gli slot orizzontali: banner con position='header' e image caricata
             banners = list(base_qs.filter(position='header').exclude(image='').exclude(image__isnull=True))

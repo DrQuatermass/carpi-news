@@ -104,12 +104,10 @@ def home(request):
 
     banner_positions = get_banner_positions()
 
-    # Ottieni tutti i banner attivi con image_vertical (per gli slot verticali nella griglia)
-    # Include sia campagne 'header' con image_vertical sia banner 'between_articles'
-    from django.db.models import Q
+    # Banner verticali per la griglia homepage: solo position='between_articles' con image_vertical
     _now = timezone.now()
     all_banners = list(Banner.objects.filter(
-        Q(position='between_articles') | Q(position='header'),
+        position='between_articles',
         status='active',
         payment_status='completed',
         approved=True,
