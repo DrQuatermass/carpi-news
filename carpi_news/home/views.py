@@ -1399,10 +1399,17 @@ def _get_newsletter_context():
         escludi_newsletter=False,
     ).exclude(categoria__in=_categorie_escluse).order_by('-views')
 
-    # Articoli di ieri, stesse esclusioni
+    # Articoli dal momento dell'ultimo invio a oggi mezzanotte.
+    # Usa il timestamp dell'ultimo invio riuscito come cutoff per non riproporre
+    # articoli già inclusi nella newsletter precedente.
+    ultimo_invio = NewsletterLog.objects.filter(
+        stato__in=['success', 'partial']
+    ).order_by('-data_invio').first()
+    cutoff_ieri = ultimo_invio.data_invio if ultimo_invio else ieri_mezzanotte
+
     articoli_ieri_qs = Articolo.objects.filter(
         approvato=True,
-        data_pubblicazione__gte=ieri_mezzanotte,
+        data_pubblicazione__gte=cutoff_ieri,
         data_pubblicazione__lt=oggi_mezzanotte,
         escludi_newsletter=False,
     ).exclude(categoria__in=_categorie_escluse).order_by('-views')

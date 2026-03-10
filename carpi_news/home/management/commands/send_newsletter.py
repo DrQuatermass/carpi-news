@@ -21,13 +21,33 @@ class Command(BaseCommand):
             action='store_true',
             help='Mostra solo quanti articoli verrebbe inclusi, poi esce',
         )
+        parser.add_argument(
+            '--force',
+            action='store_true',
+            help='Forza invio anche se già inviata oggi',
+        )
 
     def handle(self, *args, **options):
         from home.views import _get_newsletter_context
         from home.models import NewsletterSubscriber, NewsletterLog
+        from django.utils import timezone as tz
 
         dry_run = options['dry_run']
         preview_only = options['preview_only']
+        force = options['force']
+
+        # Idempotency: skip if already sent successfully today (unless --force or --dry-run)
+        if not force and not dry_run and not preview_only:
+            oggi_mezzanotte = tz.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            gia_inviata = NewsletterLog.objects.filter(
+                stato__in=['success', 'partial'],
+                data_invio__gte=oggi_mezzanotte,
+            ).exists()
+            if gia_inviata:
+                self.stdout.write(self.style.WARNING(
+                    "Newsletter già inviata oggi. Usa --force per forzare il reinvio."
+                ))
+                return
 
         # Recupera contenuto newsletter
         ctx = _get_newsletter_context()
