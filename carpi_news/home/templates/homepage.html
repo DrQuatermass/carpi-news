@@ -459,14 +459,16 @@
                                 {# Slot banner: mostra banner attivo o placeholder #}
                                 {% if item.banner %}
                                     {# Banner attivo #}
+                                    {% with banner_img=item.banner.image_vertical|default:item.banner.image %}
                                     <div class="banner-card-slot has-active-banner">
                                         <div class="advertisement-banner" data-banner-id="{{ item.banner.id }}" style="width: 100%;">
                                             <a href="{% url 'admin_panel:banner_click' item.banner.id %}" target="_blank" rel="noopener noreferrer nofollow sponsored" style="display: block; width: 100%;">
-                                                <img src="{{ item.banner.image_vertical.url }}" alt="{{ item.banner.alt_text }}" width="{{ item.banner.image_vertical.width }}" height="{{ item.banner.image_vertical.height }}" loading="{% if forloop.counter0 <= 2 %}eager{% else %}lazy{% endif %}" {% if forloop.counter0 <= 2 %}fetchpriority="high"{% endif %} style="width: 100%; height: auto; border-radius: 10px; display: block; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);">
+                                                <img src="{{ banner_img.url }}" alt="{{ item.banner.alt_text }}" width="{{ banner_img.width }}" height="{{ banner_img.height }}" loading="{% if forloop.counter0 <= 2 %}eager{% else %}lazy{% endif %}" {% if forloop.counter0 <= 2 %}fetchpriority="high"{% endif %} style="width: 100%; height: auto; border-radius: 10px; display: block; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);">
                                             </a>
                                             <div style="font-size: 10px; color: #999; text-align: center; margin-top: 5px;">Pubblicità</div>
                                         </div>
                                     </div>
+                                    {% endwith %}
                                 {% else %}
                                     {# Placeholder #}
                                     <a href="{% url 'admin_panel:dashboard' %}" class="banner-card-slot" rel="nofollow" aria-label="Spazio pubblicitario disponibile - Clicca per acquistare">

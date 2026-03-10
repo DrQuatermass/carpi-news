@@ -115,7 +115,10 @@ def home(request):
         approved=True,
         start_date__lte=_now,
         end_date__gte=_now,
-    ).exclude(image_vertical='').exclude(image_vertical__isnull=True).select_related('user'))
+    ).exclude(
+        Q(image_vertical='') | Q(image_vertical__isnull=True),
+        Q(image='') | Q(image__isnull=True),
+    ).select_related('user'))
 
     # Verifica che non sia un bot
     user_agent = request.META.get('HTTP_USER_AGENT', '').lower()
@@ -198,9 +201,11 @@ def home(request):
     # Trova il primo banner per preload (se in posizione 0-2)
     first_banner_image = None
     for i, item in enumerate(grid_items[:3]):  # Solo primi 3 slot
-        if item['type'] == 'banner' and item.get('banner') and item['banner'].image_vertical:
-            first_banner_image = item['banner'].image_vertical.url
-            break
+        if item['type'] == 'banner' and item.get('banner'):
+            _bi = item['banner'].image_vertical or item['banner'].image
+            if _bi:
+                first_banner_image = _bi.url
+                break
 
     # Ottieni banner orizzontale dalla tabella Banner (posizione 'horizontal')
     from admin_panel.models import Banner
