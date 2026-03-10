@@ -12,7 +12,7 @@ class BannerAdmin(admin.ModelAdmin):
 
     fieldsets = (
         ('Informazioni Base', {
-            'fields': ('user', 'title', 'image', 'link_url', 'alt_text')
+            'fields': ('user', 'title', 'image', 'image_vertical', 'link_url', 'alt_text')
         }),
         ('Posizionamento', {
             'fields': ('position', 'priority')
