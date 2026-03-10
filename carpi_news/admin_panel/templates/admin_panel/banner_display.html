@@ -3,7 +3,7 @@
 
 {% if banner %}
     {% if position != 'between_articles' %}
-        <div style="margin: 20px 0; text-align: center; width: 100%;">
+        <div style="margin: 20px 0; text-align: center; width: 100%; grid-column: 1 / -1;">
             <div class="advertisement-banner" data-banner-id="{{ banner.id }}" style="display: inline-block; vertical-align: top; width: 100%; max-width: 728px; text-align: left;">
                 <a href="{% url 'admin_panel:banner_click' banner.id %}" target="_blank" rel="noopener noreferrer nofollow sponsored" style="display: block; width: 100%;">
                     <img src="{{ banner.image.url }}"
