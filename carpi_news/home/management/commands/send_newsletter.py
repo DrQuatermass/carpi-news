@@ -1,4 +1,5 @@
 import logging
+import os
 from django.core.management.base import BaseCommand
 from django.core.mail import EmailMultiAlternatives, get_connection
 from django.template.loader import render_to_string
@@ -28,13 +29,50 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        from home.views import _get_newsletter_context
-        from home.models import NewsletterSubscriber, NewsletterLog
-        from django.utils import timezone as tz
+        from pathlib import Path
 
         dry_run = options['dry_run']
         preview_only = options['preview_only']
         force = options['force']
+
+        # Lock file per prevenire esecuzioni concorrenti (più worker Gunicorn che sparano insieme)
+        lock_file = None
+        if not dry_run and not preview_only:
+            locks_dir = Path('locks')
+            locks_dir.mkdir(exist_ok=True)
+            lock_file_path = locks_dir / 'send_newsletter_running.lock'
+            lock_file = open(lock_file_path, 'w')
+            if os.name == 'nt':  # Windows (sviluppo locale)
+                import msvcrt
+                try:
+                    msvcrt.locking(lock_file.fileno(), msvcrt.LK_NBLCK, 1)
+                except OSError:
+                    self.stdout.write(self.style.WARNING(
+                        "Newsletter già in invio da un altro processo. Skip."
+                    ))
+                    lock_file.close()
+                    return
+            else:  # Unix/Linux (produzione)
+                import fcntl
+                try:
+                    fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                except IOError:
+                    self.stdout.write(self.style.WARNING(
+                        "Newsletter già in invio da un altro processo. Skip."
+                    ))
+                    lock_file.close()
+                    return
+
+        try:
+            self._do_send(dry_run, preview_only, force)
+        finally:
+            if lock_file:
+                lock_file.close()
+
+    def _do_send(self, dry_run, preview_only, force):
+        from home.views import _get_newsletter_context
+        from home.models import NewsletterSubscriber, NewsletterLog
+        from django.utils import timezone as tz
 
         # Idempotency: skip if already sent successfully today (unless --force or --dry-run)
         if not force and not dry_run and not preview_only:
@@ -151,11 +189,13 @@ class Command(BaseCommand):
         else:
             stato = 'failed'
 
-        prefix = "[DRY-RUN] " if dry_run else ""
-        note = f"{prefix}Inviati: {inviati}, Errori: {errori}"
         if dry_run:
-            note += " — Nessuna email reale spedita"
+            self.stdout.write(self.style.SUCCESS(
+                f"[DRY-RUN] Newsletter inviata: {inviati}/{len(subscribers)} destinatari, {num_totale} articoli"
+            ))
+            return
 
+        note = f"Inviati: {inviati}, Errori: {errori}"
         NewsletterLog.objects.create(
             oggetto=oggetto,
             num_destinatari=inviati,
@@ -165,5 +205,5 @@ class Command(BaseCommand):
         )
 
         self.stdout.write(self.style.SUCCESS(
-            f"{prefix}Newsletter inviata: {inviati}/{len(subscribers)} destinatari, {num_totale} articoli, stato={stato}"
+            f"Newsletter inviata: {inviati}/{len(subscribers)} destinatari, {num_totale} articoli, stato={stato}"
         ))

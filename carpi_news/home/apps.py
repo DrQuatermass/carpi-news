@@ -445,37 +445,6 @@ class HomeConfig(AppConfig):
             logger.error(f"Traceback: {traceback.format_exc()}")
 
     def start_newsletter_scheduler(self):
-        """Avvia lo scheduler per la newsletter giornaliera alle 17:30"""
-        print("[DEBUG] start_newsletter_scheduler() chiamato", flush=True)
-        try:
-            if HomeConfig._newsletter_scheduler_started:
-                print("[DEBUG] Scheduler newsletter già avviato in questo worker", flush=True)
-                logger.info("Scheduler newsletter già avviato, skip")
-                return
-
-            import sys
-            sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-            print("[DEBUG] Importo newsletter_scheduler", flush=True)
-            from newsletter_scheduler import start_scheduler_daemon
-
-            print("[DEBUG] Chiamo start_scheduler_daemon() per newsletter", flush=True)
-            success = start_scheduler_daemon()
-            print(f"[DEBUG] start_scheduler_daemon() ritorna: {success}", flush=True)
-            if success:
-                HomeConfig._newsletter_scheduler_started = True
-                print("[DEBUG] SUCCESS: Scheduler newsletter avviato!", flush=True)
-                logger.info("[OK] Scheduler newsletter avviato - invio alle 17:30 ogni giorno")
-            else:
-                print("[DEBUG] FALSE: Lock già acquisito da altro worker", flush=True)
-                logger.info("[INFO] Scheduler newsletter già gestito da altro worker")
-
-        except ImportError as e:
-            print(f"[DEBUG] ImportError: {e}", flush=True)
-            logger.error(f"Modulo 'schedule' non trovato - installa con: pip install schedule")
-        except Exception as e:
-            print(f"[DEBUG] Exception: {e}", flush=True)
-            logger.error(f"Errore nell'avvio scheduler newsletter: {e}")
-            import traceback
-            logger.error(f"Traceback: {traceback.format_exc()}")
+        """Scheduler newsletter gestito da cron job esterno — non avviare dal processo Django"""
+        logger.info("[INFO] Newsletter scheduler disabilitato nel processo Django — usa cron job")
 
