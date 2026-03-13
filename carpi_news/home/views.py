@@ -876,9 +876,13 @@ def programmazione_cinema(request):
     # Pattern per trovare la data di oggi nel testo
     # Es: "Martedì 3", "3 dicembre", "mercoledì 3 dicembre", "03/12/2025"
     # Usa word boundary \b per evitare match parziali (es: "3" in "31")
+    all_months_it = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno',
+                     'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre']
+    other_months_it = '|'.join(m for m in all_months_it if m != today_month_it)
     today_patterns = [
-        f"{today_weekday}\\s+\\b{today_day}\\b",  # "mercoledì 3"
-        f"{today_weekday}\\s+\\b{today_day_padded}\\b",  # "mercoledì 03"
+        # "mercoledì 3" - con negative lookahead per escludere altri mesi (es: "venerdì 13 giugno")
+        f"{today_weekday}\\s+\\b{today_day}\\b(?!\\s+(?:{other_months_it}))",
+        f"{today_weekday}\\s+\\b{today_day_padded}\\b(?!\\s+(?:{other_months_it}))",
         f"\\b{today_day}\\b\\s+{today_month_it}",  # "3 dicembre" (non "31 dicembre")
         f"\\b{today_day_padded}\\b\\s+{today_month_it}",  # "03 dicembre"
         f"{today_weekday}\\s+\\b{today_day}\\b\\s+{today_month_it}",  # "mercoledì 3 dicembre"
