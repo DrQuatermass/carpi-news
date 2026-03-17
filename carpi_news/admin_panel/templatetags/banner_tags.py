@@ -108,11 +108,11 @@ def show_banner(context, position):
         ).select_related('user')
 
         if position == 'between_articles':
-            # Slot verticale: solo banner between_articles con image_vertical
-            banners = list(base_qs.filter(position='between_articles').exclude(image_vertical='').exclude(image_vertical__isnull=True))
+            # Slot verticale: banner 'between_articles' o 'both', con image_vertical caricata
+            banners = list(base_qs.filter(position__in=['between_articles', 'both']).exclude(image_vertical='').exclude(image_vertical__isnull=True))
         else:
-            # Per tutti gli slot orizzontali: banner con position='header' e image caricata
-            banners = list(base_qs.filter(position='header').exclude(image='').exclude(image__isnull=True))
+            # Per tutti gli slot orizzontali: banner 'header' o 'both', con image caricata
+            banners = list(base_qs.filter(position__in=['header', 'both']).exclude(image='').exclude(image__isnull=True))
 
         if not banners:
             return {

@@ -9,13 +9,15 @@ class Banner(models.Model):
     """Modello per i banner pubblicitari"""
 
     POSITION_CHOICES = [
-        ('header', 'Campagna orizzontale (728×90) — header, footer, articoli'),
-        ('between_articles', 'Banner verticale (300×250) — tra gli articoli in homepage'),
+        ('both', 'Campagna completa (orizzontale + verticale) — header + tra gli articoli'),
+        ('header', 'Solo orizzontale (728×90) — header su tutte le pagine'),
+        ('between_articles', 'Solo verticale (300×250) — tra gli articoli in homepage'),
     ]
 
     RECOMMENDED_SIZES = {
         'header': (728, 90),
         'between_articles': (300, 250),
+        'both': (728, 90),
     }
 
     # Tolleranza per le dimensioni (±10%)

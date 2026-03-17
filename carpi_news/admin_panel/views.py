@@ -187,7 +187,7 @@ def banner_create(request):
                 image_vertical=image_vertical,
                 link_url=link_url,
                 alt_text=alt_text,
-                position='header',
+                position='both',
                 duration_days=duration_days,
                 priority=priority,
                 price_per_day=price_per_day,
