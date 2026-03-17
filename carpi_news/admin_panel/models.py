@@ -160,11 +160,15 @@ class Banner(models.Model):
 
             image_field = getattr(self, field)
             img = Image.open(image_field)
+            img.load()  # Carica i dati immagine prima che il file venga chiuso
 
-            # Converti in RGB se necessario
-            if img.mode in ('RGBA', 'LA', 'P'):
-                if img.mode == 'P':
-                    img = img.convert('RGBA')
+            # Converti sempre in RGB (i banner non usano trasparenza)
+            if img.mode == 'P':
+                img = img.convert('RGBA')
+            if img.mode in ('RGBA', 'LA'):
+                background = Image.new('RGB', img.size, (255, 255, 255))
+                background.paste(img.convert('RGB'), mask=img.split()[-1])
+                img = background
             elif img.mode != 'RGB':
                 img = img.convert('RGB')
 

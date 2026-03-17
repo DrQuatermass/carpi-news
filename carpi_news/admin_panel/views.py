@@ -475,14 +475,21 @@ Link per approvare: {settings.SITE_URL}/admin/admin_panel/banner/{banner.id}/cha
 
         # Ottieni access token
         auth = base64.b64encode(f"{settings.PAYPAL_CLIENT_ID}:{settings.PAYPAL_CLIENT_SECRET}".encode()).decode()
-        token_response = requests.post(
-            f'{base_url}/v1/oauth2/token',
-            headers={
-                'Authorization': f'Basic {auth}',
-                'Content-Type': 'application/x-www-form-urlencoded'
-            },
-            data={'grant_type': 'client_credentials'}
-        )
+        try:
+            token_response = requests.post(
+                f'{base_url}/v1/oauth2/token',
+                headers={
+                    'Authorization': f'Basic {auth}',
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                data={'grant_type': 'client_credentials'},
+                timeout=15
+            )
+        except requests.exceptions.RequestException as e:
+            import logging as _logging
+            _logging.getLogger(__name__).error(f"PayPal token request failed: {e}")
+            messages.error(request, 'Impossibile contattare PayPal. Riprova tra qualche minuto.')
+            return redirect('admin_panel:banner_payment', banner_id=banner.id)
 
         if token_response.status_code != 200:
             messages.error(request, f'Errore autenticazione PayPal: verifica Client ID e Secret in .env')
@@ -509,14 +516,21 @@ Link per approvare: {settings.SITE_URL}/admin/admin_panel/banner/{banner.id}/cha
             }
         }
 
-        order_response = requests.post(
-            f'{base_url}/v2/checkout/orders',
-            headers={
-                'Authorization': f'Bearer {access_token}',
-                'Content-Type': 'application/json'
-            },
-            json=order_data
-        )
+        try:
+            order_response = requests.post(
+                f'{base_url}/v2/checkout/orders',
+                headers={
+                    'Authorization': f'Bearer {access_token}',
+                    'Content-Type': 'application/json'
+                },
+                json=order_data,
+                timeout=15
+            )
+        except requests.exceptions.RequestException as e:
+            import logging as _logging
+            _logging.getLogger(__name__).error(f"PayPal order request failed: {e}")
+            messages.error(request, 'Impossibile creare l\'ordine PayPal. Riprova tra qualche minuto.')
+            return redirect('admin_panel:banner_payment', banner_id=banner.id)
 
         if order_response.status_code == 201:
             order = order_response.json()
@@ -531,9 +545,11 @@ Link per approvare: {settings.SITE_URL}/admin/admin_panel/banner/{banner.id}/cha
                 }
 
             # Trova l'URL di approvazione
-            for link in order['links']:
-                if link['rel'] == 'approve':
-                    return redirect(link['href'])
+            approve_url = next((link['href'] for link in order['links'] if link['rel'] == 'approve'), None)
+            if approve_url:
+                return redirect(approve_url)
+            messages.error(request, 'Errore PayPal: URL di pagamento non trovato.')
+            return redirect('admin_panel:banner_payment', banner_id=banner.id)
         else:
             messages.error(request, f'Errore creazione ordine PayPal: {order_response.text}')
             return redirect('admin_panel:banner_payment', banner_id=banner.id)
