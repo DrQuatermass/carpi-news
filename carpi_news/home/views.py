@@ -104,10 +104,10 @@ def home(request):
 
     banner_positions = get_banner_positions()
 
-    # Banner verticali per la griglia homepage: solo position='between_articles' con image_vertical
+    # Banner verticali per la griglia homepage: position 'between_articles' o 'both' con image_vertical
     _now = timezone.now()
     all_banners = list(Banner.objects.filter(
-        position='between_articles',
+        position__in=['between_articles', 'both'],
         status='active',
         payment_status='completed',
         approved=True,
