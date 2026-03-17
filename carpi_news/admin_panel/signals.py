@@ -167,6 +167,11 @@ def process_banner_image(sender, instance, **kwargs):
     if not instance.image:
         return
 
+    # Se l'immagine è già WebP (_optimize_image l'ha già elaborata), salta tutto
+    if instance.image.name and instance.image.name.lower().endswith('.webp'):
+        logger.debug(f"Banner già in formato WebP, skip elaborazione signal: {instance.image.name}")
+        return
+
     # Controlla se è un nuovo upload o se l'immagine è cambiata
     if instance.pk:
         try:
