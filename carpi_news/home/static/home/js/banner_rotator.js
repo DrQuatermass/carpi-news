@@ -14,7 +14,7 @@
 const BannerRotatorSystem = (() => {
     // --- Configurazione ---
     const ROTATION_INTERVAL = 8000;  // ms tra una rotazione e la successiva
-    const FADE_DURATION = 300;       // ms per il fade in/out
+    const FADE_DURATION = 700;       // ms per il fade in/out
     const STAGGER_DELAY = 2000;      // ms di sfasamento tra slot diversi
 
     // Priority 1 (massima) → 5 slot nella playlist, Priority 5 → 1 slot
