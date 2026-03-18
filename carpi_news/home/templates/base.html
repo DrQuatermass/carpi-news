@@ -46,10 +46,6 @@
     <link rel="preconnect" href="https://www.googletagmanager.com" crossorigin>
     <link rel="dns-prefetch" href="https://pagead2.googlesyndication.com">
     <link rel="dns-prefetch" href="https://fundingchoicesmessages.google.com">
-    <link rel="preconnect" href="https://pagead2.googlesyndication.com" crossorigin>
-
-    <!-- Google AdSense -->
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3345905614586761" crossorigin="anonymous"></script>
 
     <!-- Fonts caricati in modo asincrono per non bloccare il rendering -->
     <link rel="preload" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
@@ -1025,6 +1021,15 @@
         gtag('js', new Date());
         gtag('config', 'G-MSCYFFSNGD');
       }, { timeout: 3000 });
+
+      // Carica AdSense in idle (evita blocco LCP/FCP)
+      (window.requestIdleCallback || window.setTimeout)(function() {
+        var ads = document.createElement('script');
+        ads.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3345905614586761';
+        ads.async = true;
+        ads.crossOrigin = 'anonymous';
+        document.head.appendChild(ads);
+      }, { timeout: 5000 });
     </script>
     {% endblock %}
 </body>
