@@ -518,10 +518,12 @@
                 {{ articolo.contenuto|safe }}
             </div>
 
-            <!-- Banner centro articolo (verrà spostato nel mezzo via JS) -->
-            <div id="article-middle-banner" style="display: none;">
-                {% show_banner 'article_middle' %}
-            </div>
+            <!-- Banner dopo ogni H2 (inseriti via JS a partire dal 2° H2) -->
+            <div id="article-h2-banner-0" style="display: none;">{% show_banner 'article_middle' %}</div>
+            <div id="article-h2-banner-1" style="display: none;">{% show_banner 'article_middle' %}</div>
+            <div id="article-h2-banner-2" style="display: none;">{% show_banner 'article_middle' %}</div>
+            <div id="article-h2-banner-3" style="display: none;">{% show_banner 'article_middle' %}</div>
+            <div id="article-h2-banner-4" style="display: none;">{% show_banner 'article_middle' %}</div>
 
             <!-- Banner fine articolo -->
             {% show_banner 'article_bottom' %}
@@ -918,56 +920,38 @@
         });
     })();
 
-    // Sposta il banner article_middle nel mezzo del contenuto
+    // Inserisce banner dopo ogni H2 a partire dal 2°
     (function() {
         const articleContent = document.getElementById('article-content');
-        const middleBanner = document.getElementById('article-middle-banner');
+        if (!articleContent) return;
 
-        if (articleContent && middleBanner) {
-            // Cerca prima gli H2 (titoli di sezione)
-            const headings = articleContent.querySelectorAll('h2');
+        const headings = articleContent.querySelectorAll('h2');
+        const maxBanners = 5;
+        let bannerIndex = 0;
 
-            if (headings.length >= 3) {
-                // Se ci sono almeno 3 H2, inserisci dopo il secondo H2 (più in basso nell'articolo)
-                const secondHeading = headings[1];
+        // Parti dal secondo H2 (index 1)
+        for (let i = 1; i < headings.length && bannerIndex < maxBanners; i++) {
+            const banner = document.getElementById('article-h2-banner-' + bannerIndex);
+            if (!banner) break;
 
-                // Trova il prossimo elemento dopo l'H2 (di solito un paragrafo)
-                let insertAfter = secondHeading.nextElementSibling;
-                if (insertAfter && insertAfter.tagName === 'P') {
-                    // Inserisci dopo il primo paragrafo che segue l'H2
-                    insertAfter.parentNode.insertBefore(middleBanner, insertAfter.nextSibling);
-                } else {
-                    // Altrimenti inserisci subito dopo l'H2
-                    secondHeading.parentNode.insertBefore(middleBanner, secondHeading.nextSibling);
-                }
-                middleBanner.style.display = ''; // Mostra il banner
-                middleBanner.style.margin = '30px 0'; // Aggiungi margini
-            } else if (headings.length === 2) {
-                // Se ci sono solo 2 H2, inserisci dopo il primo H2
-                const firstHeading = headings[0];
+            const h2 = headings[i];
+            h2.parentNode.insertBefore(banner, h2);
+            banner.style.display = '';
+            banner.style.margin = '30px 0';
+            bannerIndex++;
+        }
 
-                let insertAfter = firstHeading.nextElementSibling;
-                if (insertAfter && insertAfter.tagName === 'P') {
-                    insertAfter.parentNode.insertBefore(middleBanner, insertAfter.nextSibling);
-                } else {
-                    firstHeading.parentNode.insertBefore(middleBanner, firstHeading.nextSibling);
-                }
-                middleBanner.style.display = ''; // Mostra il banner
-                middleBanner.style.margin = '30px 0'; // Aggiungi margini
-            } else {
-                // Fallback: usa i paragrafi se non ci sono H2
-                const paragraphs = articleContent.querySelectorAll('p');
-
-                if (paragraphs.length > 3) {
-                    // Inserisci il banner dopo il paragrafo centrale
-                    const middleIndex = Math.floor(paragraphs.length / 2);
-                    const middleParagraph = paragraphs[middleIndex];
-
-                    if (middleParagraph && middleParagraph.parentNode) {
-                        middleParagraph.parentNode.insertBefore(middleBanner, middleParagraph.nextSibling);
-                        middleBanner.style.display = ''; // Mostra il banner
-                        middleBanner.style.margin = '30px 0'; // Aggiungi margini
-                    }
+        // Fallback: se non ci sono abbastanza H2, inserisci il primo banner a metà paragrafi
+        if (bannerIndex === 0) {
+            const banner = document.getElementById('article-h2-banner-0');
+            if (!banner) return;
+            const paragraphs = articleContent.querySelectorAll('p');
+            if (paragraphs.length > 3) {
+                const middleParagraph = paragraphs[Math.floor(paragraphs.length / 2)];
+                if (middleParagraph && middleParagraph.parentNode) {
+                    middleParagraph.parentNode.insertBefore(banner, middleParagraph.nextSibling);
+                    banner.style.display = '';
+                    banner.style.margin = '30px 0';
                 }
             }
         }
