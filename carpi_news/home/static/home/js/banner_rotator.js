@@ -49,6 +49,13 @@ const BannerRotatorSystem = (() => {
         return playlist;
     }
 
+    // --- Selezione pesata casuale escludendo il banner corrente ---
+    function pickNext(playlist, excludeId) {
+        const candidates = playlist.filter(b => b.id !== excludeId);
+        const pool = candidates.length > 0 ? candidates : playlist;
+        return pool[Math.floor(Math.random() * pool.length)];
+    }
+
     // --- Inizializza rotatore per un singolo elemento ---
     function initRotator(container, playlist, slotIndex) {
         if (!container || !playlist || playlist.length <= 1) return;
@@ -68,9 +75,18 @@ const BannerRotatorSystem = (() => {
             container.style.opacity = '0';
             setTimeout(() => {
                 applyBanner(banner);
-                container.style.opacity = '1';
-                trackImpression(banner.id);
-                preloadNext();
+                const img = container.querySelector('.banner-img');
+                const fadeIn = () => {
+                    container.style.opacity = '1';
+                    trackImpression(banner.id);
+                    preloadNext();
+                };
+                if (img && !img.complete) {
+                    img.onload = fadeIn;
+                    img.onerror = fadeIn;
+                } else {
+                    fadeIn();
+                }
             }, FADE_DURATION);
         }
 
@@ -105,8 +121,9 @@ const BannerRotatorSystem = (() => {
 
         function rotate() {
             if (document.hidden || !isVisible) return;
-            currentIndex = (currentIndex + 1) % playlist.length;
-            swapBanner(playlist[currentIndex]);
+            const next = pickNext(playlist, playlist[currentIndex].id);
+            currentIndex = playlist.indexOf(next);
+            swapBanner(next);
         }
 
         function startRotation() {
