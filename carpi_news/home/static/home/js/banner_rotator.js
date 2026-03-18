@@ -86,9 +86,14 @@ const BannerRotatorSystem = (() => {
             // la nuova immagine è già in cache → nessun flash bianco
             const preload = new Image();
             preload.onload = () => {
+                // Blocca l'altezza corrente per evitare layout shift durante lo swap
+                const lockedHeight = img.offsetHeight;
+                img.style.height = lockedHeight + 'px';
                 img.style.opacity = '0';
                 setTimeout(() => {
                     applyBanner(banner);
+                    // Rilascia l'altezza bloccata: la nuova immagine può cambiare dimensioni
+                    img.style.height = '';
                     img.style.opacity = '1';
                     trackImpression(banner.id);
                     preloadNext();
