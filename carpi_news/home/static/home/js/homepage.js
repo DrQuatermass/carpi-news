@@ -219,9 +219,6 @@ function updatePageContent(data) {
         newsGrid.classList.remove('transitioning');
         isTransitioning = false;
 
-        // Notifica il rotatore banner che la griglia è stata aggiornata
-        window.dispatchEvent(new Event('bannerGridUpdated'));
-
         // Scroll alla sezione articoli DOPO che tutto è stato caricato
         setTimeout(() => {
             const newsSection = document.getElementById('news-section');
@@ -259,9 +256,9 @@ function createActiveBanner(banner) {
     bannerSlot.className = 'banner-card-slot has-active-banner';
 
     bannerSlot.innerHTML = `
-        <div class="advertisement-banner" data-banner-id="${banner.id}" data-banner-pool="between_articles" style="width: 100%;">
-            <a class="banner-link" href="/admin-panel/banner/${banner.id}/click/" target="_blank" rel="noopener noreferrer nofollow sponsored" style="display: block; width: 100%;">
-                <img class="banner-img" src="${banner.image_url}" alt="${banner.alt_text}" width="${banner.image_width}" height="${banner.image_height}" loading="lazy" style="width: 100%; height: auto; border-radius: 10px; display: block; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);">
+        <div class="advertisement-banner" data-banner-id="${banner.id}" style="width: 100%;">
+            <a href="/admin-panel/banner/${banner.id}/click/" target="_blank" rel="noopener noreferrer nofollow sponsored" style="display: block; width: 100%;">
+                <img src="${banner.image_url}" alt="${banner.alt_text}" width="${banner.image_width}" height="${banner.image_height}" loading="lazy" style="width: 100%; height: auto; border-radius: 10px; display: block; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);">
             </a>
             <div style="font-size: 10px; color: #999; text-align: center; margin-top: 5px;">Pubblicità</div>
         </div>
