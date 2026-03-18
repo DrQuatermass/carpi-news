@@ -1,8 +1,11 @@
 from django import template
 from django.utils import timezone
 from django.db import models
+from django.urls import reverse
+from django.utils.safestring import mark_safe
 from admin_panel.models import Banner
 import random
+import json
 
 register = template.Library()
 
@@ -76,6 +79,72 @@ def weighted_random_choice(banners):
     return selected_banner
 
 
+def _build_pool_json(banners, position):
+    """
+    Serializza una lista di banner in JSON sicuro per l'embedding HTML.
+    Usa image_vertical per la posizione between_articles.
+    Restituisce mark_safe(json_string).
+    """
+    pool = []
+    for b in banners:
+        if position == 'between_articles' and b.image_vertical:
+            img = b.image_vertical
+        elif b.image:
+            img = b.image
+        else:
+            continue
+        try:
+            pool.append({
+                'id': b.id,
+                'image_url': img.url,
+                'image_width': img.width,
+                'image_height': img.height,
+                'alt_text': b.alt_text,
+                'click_url': reverse('admin_panel:banner_click', args=[b.id]),
+                'priority': b.priority,
+            })
+        except Exception:
+            continue
+    json_str = json.dumps(pool, ensure_ascii=False)
+    json_str = json_str.replace('</', '<\\/')  # XSS prevention
+    return mark_safe(json_str)
+
+
+@register.simple_tag
+def render_banner_pool_json(position):
+    """
+    Emette un <script type="application/json"> con il pool di banner attivi
+    per la posizione indicata. Usato per i banner della griglia homepage
+    che non passano per banner_display.html.
+
+    Uso: {% render_banner_pool_json 'between_articles' %}
+    """
+    try:
+        base_qs = Banner.objects.filter(
+            status='active',
+            payment_status='completed',
+            approved=True,
+            start_date__lte=timezone.now(),
+            end_date__gte=timezone.now(),
+        ).select_related('user')
+
+        if position == 'between_articles':
+            banners = list(base_qs.filter(position__in=['between_articles', 'both'])
+                           .exclude(image_vertical='').exclude(image_vertical__isnull=True))
+        else:
+            banners = list(base_qs.filter(position__in=['header', 'both'])
+                           .exclude(image='').exclude(image__isnull=True))
+
+        pool_json = _build_pool_json(banners, position)
+        pos_safe = position.replace('"', '').replace("'", '').replace('<', '').replace('>', '')
+        return mark_safe(
+            f'<script type="application/json" class="banner-pool-data" data-position="{pos_safe}">'
+            f'{pool_json}</script>'
+        )
+    except Exception:
+        return mark_safe('')
+
+
 @register.inclusion_tag('admin_panel/banner_display.html', takes_context=True)
 def show_banner(context, position):
     """
@@ -117,7 +186,8 @@ def show_banner(context, position):
         if not banners:
             return {
                 'banner': None,
-                'position': position
+                'position': position,
+                'pool_json': mark_safe('[]'),
             }
 
         # Selezione randomica pesata
@@ -128,9 +198,13 @@ def show_banner(context, position):
             banner.impressions += 1
             banner.save(update_fields=['impressions'])
 
+        # Pool JSON per il rotatore JS (stesso queryset, nessuna query aggiuntiva)
+        pool_json = _build_pool_json(banners, position)
+
         return {
             'banner': banner,
-            'position': position  # Passa anche la posizione per il placeholder
+            'position': position,
+            'pool_json': pool_json,
         }
 
     except Exception as e:
@@ -139,7 +213,8 @@ def show_banner(context, position):
         logger.error(f"Errore in show_banner per posizione '{position}': {str(e)}")
         return {
             'banner': None,
-            'position': position
+            'position': position,
+            'pool_json': mark_safe('[]'),
         }
 
 

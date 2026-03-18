@@ -709,6 +709,21 @@ def banner_click(request, banner_id):
     return redirect(banner.link_url)
 
 
+def banner_impression(request, banner_id):
+    """
+    Traccia un'impressione banner dal rotatore JS client-side.
+    GET request, non richiede CSRF (solo incremento contatore non sensibile).
+    Ritorna 204 No Content.
+    """
+    from django.http import HttpResponse
+    from django.db.models import F
+    Banner.objects.filter(
+        id=banner_id,
+        status='active',
+    ).update(impressions=F('impressions') + 1)
+    return HttpResponse(status=204)
+
+
 @xframe_options_sameorigin
 def banner_preview_layout(request):
     """Vista interattiva per selezionare la posizione del banner"""

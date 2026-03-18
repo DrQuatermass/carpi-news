@@ -22,6 +22,7 @@ urlpatterns = [
 
     # Public URLs
     path('banner/<int:banner_id>/click/', views.banner_click, name='banner_click'),
+    path('banner/<int:banner_id>/impression/', views.banner_impression, name='banner_impression'),
     path('banners/preview/layout/', views.banner_preview_layout, name='banner_preview_layout'),
 
     # Pubbliredazionale URLs

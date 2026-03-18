@@ -4,9 +4,10 @@
 {% if banner %}
     {% if position != 'between_articles' %}
         <div style="margin: 20px 0; text-align: center; width: 100%; grid-column: 1 / -1;">
-            <div class="advertisement-banner" data-banner-id="{{ banner.id }}" style="display: inline-block; vertical-align: top; width: 100%; max-width: 728px; text-align: left;">
-                <a href="{% url 'admin_panel:banner_click' banner.id %}" target="_blank" rel="noopener noreferrer nofollow sponsored" style="display: block; width: 100%;">
-                    <img src="{{ banner.image.url }}"
+            <div class="advertisement-banner" data-banner-id="{{ banner.id }}" data-banner-pool="{{ position }}" style="display: inline-block; vertical-align: top; width: 100%; max-width: 728px; text-align: left;">
+                <a class="banner-link" href="{% url 'admin_panel:banner_click' banner.id %}" target="_blank" rel="noopener noreferrer nofollow sponsored" style="display: block; width: 100%;">
+                    <img class="banner-img"
+                         src="{{ banner.image.url }}"
                          srcset="{{ banner.image.url|image_srcset }}"
                          sizes="(max-width: 768px) 100vw, 728px"
                          alt="{{ banner.alt_text }}"
@@ -21,14 +22,16 @@
     {% else %}
         {# Slot verticale (between_articles) — usa image_vertical #}
         {% with img=banner.image_vertical|default:banner.image %}
-        <div class="advertisement-banner" data-banner-id="{{ banner.id }}" style="width: 100%;">
-            <a href="{% url 'admin_panel:banner_click' banner.id %}" target="_blank" rel="noopener noreferrer nofollow sponsored" style="display: block; width: 100%;">
-                <img src="{{ img.url }}" alt="{{ banner.alt_text }}" loading="lazy" fetchpriority="low" width="{{ img.width }}" height="{{ img.height }}" style="width: 100%; height: auto; border-radius: 10px; display: block; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);">
+        <div class="advertisement-banner" data-banner-id="{{ banner.id }}" data-banner-pool="{{ position }}" style="width: 100%;">
+            <a class="banner-link" href="{% url 'admin_panel:banner_click' banner.id %}" target="_blank" rel="noopener noreferrer nofollow sponsored" style="display: block; width: 100%;">
+                <img class="banner-img" src="{{ img.url }}" alt="{{ banner.alt_text }}" loading="lazy" fetchpriority="low" width="{{ img.width }}" height="{{ img.height }}" style="width: 100%; height: auto; border-radius: 10px; display: block; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);">
             </a>
             <div style="font-size: 10px; color: #999; text-align: center; margin-top: 5px;">Pubblicità</div>
         </div>
         {% endwith %}
     {% endif %}
+    {# Pool JSON per il rotatore JS (dati già in memoria, nessuna query extra) #}
+    <script type="application/json" class="banner-pool-data" data-position="{{ position }}">{{ pool_json }}</script>
 {% else %}
     {# Nessun banner - mostra placeholder #}
     {% if position != 'between_articles' %}
