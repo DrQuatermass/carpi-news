@@ -28,7 +28,12 @@ const BannerRotatorSystem = (() => {
 
     // --- Stili CSS (iniettati una volta sola) ---
     function injectStyles() {
-        // Nessuno stile necessario: swap istantaneo senza fade
+        if (document.getElementById('banner-rotator-styles')) return;
+        const style = document.createElement('style');
+        style.id = 'banner-rotator-styles';
+        // Transizione solo sull'img, NON sul container — il box rimane sempre visibile
+        style.textContent = '.banner-img{transition:opacity ' + FADE_DURATION + 'ms ease}';
+        document.head.appendChild(style);
     }
 
     // --- Costruzione playlist pesata ---
@@ -64,9 +69,37 @@ const BannerRotatorSystem = (() => {
         const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
         function swapBanner(banner) {
-            applyBanner(banner);
-            trackImpression(banner.id);
-            preloadNext();
+            if (reducedMotion) {
+                applyBanner(banner);
+                trackImpression(banner.id);
+                preloadNext();
+                return;
+            }
+            const img = container.querySelector('.banner-img');
+            if (!img) {
+                applyBanner(banner);
+                trackImpression(banner.id);
+                preloadNext();
+                return;
+            }
+            // Preload prima di iniziare il fade: quando parte l'animazione
+            // la nuova immagine è già in cache → nessun flash bianco
+            const preload = new Image();
+            preload.onload = () => {
+                img.style.opacity = '0';
+                setTimeout(() => {
+                    applyBanner(banner);
+                    img.style.opacity = '1';
+                    trackImpression(banner.id);
+                    preloadNext();
+                }, FADE_DURATION);
+            };
+            preload.onerror = () => {
+                applyBanner(banner);
+                trackImpression(banner.id);
+                preloadNext();
+            };
+            preload.src = banner.image_url;
         }
 
         function applyBanner(banner) {
