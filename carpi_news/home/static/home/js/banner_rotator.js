@@ -28,11 +28,7 @@ const BannerRotatorSystem = (() => {
 
     // --- Stili CSS (iniettati una volta sola) ---
     function injectStyles() {
-        if (document.getElementById('banner-rotator-styles')) return;
-        const style = document.createElement('style');
-        style.id = 'banner-rotator-styles';
-        style.textContent = '[data-banner-pool]{transition:opacity ' + FADE_DURATION + 'ms ease}';
-        document.head.appendChild(style);
+        // Nessuno stile necessario: swap istantaneo senza fade
     }
 
     // --- Costruzione playlist pesata ---
@@ -68,26 +64,9 @@ const BannerRotatorSystem = (() => {
         const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
         function swapBanner(banner) {
-            if (reducedMotion) {
-                applyBanner(banner);
-                return;
-            }
-            container.style.opacity = '0';
-            setTimeout(() => {
-                applyBanner(banner);
-                const img = container.querySelector('.banner-img');
-                const fadeIn = () => {
-                    container.style.opacity = '1';
-                    trackImpression(banner.id);
-                    preloadNext();
-                };
-                if (img && !img.complete) {
-                    img.onload = fadeIn;
-                    img.onerror = fadeIn;
-                } else {
-                    fadeIn();
-                }
-            }, FADE_DURATION);
+            applyBanner(banner);
+            trackImpression(banner.id);
+            preloadNext();
         }
 
         function applyBanner(banner) {
