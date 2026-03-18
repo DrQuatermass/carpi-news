@@ -65,23 +65,30 @@ const BannerRotatorSystem = (() => {
 
         // Distribuisce i punti di partenza tra slot diversi
         const startIndex = slotIndex * Math.floor(playlist.length / Math.max(1, slotIndex + 1)) % playlist.length;
-        let currentIndex = startIndex;
+        // currentBannerId = id del banner ATTUALMENTE VISIBILE a schermo
+        // (aggiornato solo quando applyBanner completa, non quando inizia lo swap)
+        let currentBannerId = playlist[startIndex].id;
+        let isSwapping = false;
         let timer = null;
         let isVisible = false;
         const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
         function swapBanner(banner) {
+            if (isSwapping) return;  // swap già in corso, salta
+            isSwapping = true;
             if (reducedMotion) {
                 applyBanner(banner);
+                currentBannerId = banner.id;
+                isSwapping = false;
                 trackImpression(banner.id);
-                preloadNext();
                 return;
             }
             const img = container.querySelector('.banner-img');
             if (!img) {
                 applyBanner(banner);
+                currentBannerId = banner.id;
+                isSwapping = false;
                 trackImpression(banner.id);
-                preloadNext();
                 return;
             }
             // Preload prima di iniziare il fade: quando parte l'animazione
@@ -94,17 +101,18 @@ const BannerRotatorSystem = (() => {
                 img.style.opacity = '0';
                 setTimeout(() => {
                     applyBanner(banner);
-                    // Rilascia l'altezza bloccata: la nuova immagine può cambiare dimensioni
                     img.style.height = '';
                     img.style.opacity = '1';
+                    currentBannerId = banner.id;  // aggiorna solo quando il banner è visibile
+                    isSwapping = false;
                     trackImpression(banner.id);
-                    preloadNext();
                 }, FADE_DURATION);
             };
             preload.onerror = () => {
                 applyBanner(banner);
+                currentBannerId = banner.id;
+                isSwapping = false;
                 trackImpression(banner.id);
-                preloadNext();
             };
             preload.src = banner.image_url;
         }
@@ -130,18 +138,9 @@ const BannerRotatorSystem = (() => {
             }
         }
 
-        function preloadNext() {
-            const next = playlist[(currentIndex + 1) % playlist.length];
-            if (next && next.image_url) {
-                const img = new Image();
-                img.src = next.image_url;
-            }
-        }
-
         function rotate() {
-            if (document.hidden || !isVisible) return;
-            const next = pickNext(playlist, playlist[currentIndex].id);
-            currentIndex = playlist.indexOf(next);
+            if (document.hidden || !isVisible || isSwapping) return;
+            const next = pickNext(playlist, currentBannerId);
             swapBanner(next);
         }
 
@@ -184,9 +183,6 @@ const BannerRotatorSystem = (() => {
             }
         };
         document.addEventListener('visibilitychange', visibilityHandler);
-
-        // Preload prima immagine del ciclo successivo
-        preloadNext();
 
         // Registra cleanup
         rotatorCleanup.set(container, () => {
