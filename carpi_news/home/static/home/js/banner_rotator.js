@@ -59,7 +59,9 @@ const BannerRotatorSystem = (() => {
 
     // --- Inizializza rotatore per un singolo elemento ---
     function initRotator(container, playlist, slotIndex) {
-        if (!container || !playlist || playlist.length <= 1) return;
+        // Serve almeno 2 banner distinti per avere senso ruotare
+        const uniqueIds = new Set(playlist.map(b => b.id));
+        if (!container || !playlist || uniqueIds.size <= 1) return;
 
         // Distribuisce i punti di partenza tra slot diversi
         const startIndex = slotIndex * Math.floor(playlist.length / Math.max(1, slotIndex + 1)) % playlist.length;
