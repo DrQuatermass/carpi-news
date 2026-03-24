@@ -365,6 +365,109 @@ La Redazione
         return False
 
 
+def send_comunicato_review_notification(article_data: dict, ai_response: str):
+    """
+    Invia email all'admin quando l'AI rileva un comunicato stampa sospetto/non verificabile.
+    L'admin può quindi decidere se pubblicare, modificare o ignorare.
+    """
+    try:
+        from django.utils.html import escape
+        import datetime
+
+        admin_email = getattr(settings, 'ADMIN_EMAIL', 'redazione@ombradelportico.it')
+
+        titolo_originale = article_data.get('title', '(senza titolo)')
+        contenuto_originale = article_data.get('full_content') or article_data.get('preview', '')
+        fonte = article_data.get('url', '')
+        mittente = article_data.get('sender', article_data.get('from', ''))
+        oggetto_email = article_data.get('subject', titolo_originale)
+        ora = datetime.datetime.now().strftime('%d/%m/%Y alle %H:%M')
+
+        subject = f'[REVISIONE MANUALE] Comunicato sospetto: {titolo_originale[:60]}'
+
+        html_message = f"""
+        <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto;">
+            <h2 style="color: #e74c3c; border-bottom: 2px solid #e74c3c; padding-bottom: 10px;">
+                Comunicato Stampa - Revisione Manuale Richiesta
+            </h2>
+            <p style="color: #7f8c8d;">Ricevuto il {escape(ora)}</p>
+
+            <div style="background: #fdf2f8; border: 1px solid #e74c3c; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                <h3 style="margin-top: 0; color: #c0392b;">Valutazione AI</h3>
+                <div style="border-left: 4px solid #e74c3c; padding-left: 15px; color: #495057; line-height: 1.6; white-space: pre-wrap;">{escape(ai_response[:2000])}</div>
+            </div>
+
+            <div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 20px; margin: 20px 0;">
+                <h3 style="margin-top: 0; color: #495057;">Comunicato Originale</h3>
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px;">
+                    <tr>
+                        <td style="padding: 6px 0; width: 120px;"><strong>Mittente:</strong></td>
+                        <td style="padding: 6px 0;">{escape(mittente)}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 6px 0;"><strong>Oggetto:</strong></td>
+                        <td style="padding: 6px 0;">{escape(oggetto_email)}</td>
+                    </tr>
+                    {"<tr><td style='padding: 6px 0;'><strong>Fonte:</strong></td><td style='padding: 6px 0;'><a href='" + escape(fonte) + "'>" + escape(fonte[:80]) + "</a></td></tr>" if fonte else ""}
+                </table>
+                <div style="border-left: 3px solid #adb5bd; padding-left: 15px; color: #495057; line-height: 1.6; white-space: pre-wrap;">{escape(contenuto_originale[:3000])}</div>
+            </div>
+
+            <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 15px; margin: 20px 0;">
+                <strong>Come procedere:</strong>
+                <ul style="margin: 10px 0; padding-left: 20px; color: #856404;">
+                    <li>Se la notizia è verificata e valida, crea un articolo manualmente dall'admin</li>
+                    <li>Se è falsa o irrilevante, ignorala</li>
+                    <li>Se hai dubbi, contatta il mittente per conferma</li>
+                </ul>
+            </div>
+
+            <hr style="border: none; border-top: 1px solid #dee2e6; margin: 20px 0;">
+            <p style="text-align: center; color: #6c757d; font-size: 12px;">
+                Generato automaticamente dal sistema Ombra del Portico
+            </p>
+        </div>
+        """
+
+        plain_message = f"""COMUNICATO STAMPA - REVISIONE MANUALE RICHIESTA
+Ricevuto il {ora}
+
+=== VALUTAZIONE AI ===
+{ai_response[:1500]}
+
+=== COMUNICATO ORIGINALE ===
+Mittente: {mittente}
+Oggetto: {oggetto_email}
+{"Fonte: " + fonte if fonte else ""}
+
+{contenuto_originale[:2000]}
+
+=== COME PROCEDERE ===
+- Se la notizia è verificata e valida, crea un articolo manualmente dall'admin
+- Se è falsa o irrilevante, ignorala
+- Se hai dubbi, contatta il mittente per conferma
+
+---
+Generato automaticamente dal sistema Ombra del Portico
+        """
+
+        send_mail(
+            subject=subject,
+            message=plain_message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            recipient_list=[admin_email],
+            html_message=html_message,
+            fail_silently=False,
+        )
+
+        logger.info(f"Email revisione comunicato inviata a {admin_email} per: {titolo_originale[:60]}")
+        return True
+
+    except Exception as e:
+        logger.error(f"Errore nell'invio email revisione comunicato: {e}")
+        return False
+
+
 def send_test_email():
     """
     Invia email di test per verificare la configurazione

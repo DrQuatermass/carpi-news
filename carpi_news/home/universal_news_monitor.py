@@ -2762,7 +2762,7 @@ class UniversalNewsMonitor:
 Titolo originale: {article_data['title']}
 
 Contenuto principale da rielaborare:
-{article_data['full_content']}
+{article_data.get('full_content') or article_data.get('content', '')}
 {links_section}
 
 Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
@@ -2833,6 +2833,17 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
             if not contenuto:
                 contenuto = content_polisher.clean_content(articolo_testo)
 
+            # Rileva se l'AI ha rifiutato/avvisato invece di generare un articolo
+            # (il titolo supera i 200 caratteri: l'AI ha scritto un avviso invece di seguire il formato)
+            if len(titolo or '') > 200 and article_data.get('content_type') == 'comunicato':
+                self.logger.warning(f"[REVISIONE] AI ha rifiutato il comunicato '{(titolo or '')[:80]}...' - invio email per revisione manuale")
+                try:
+                    from home.email_notifications import send_comunicato_review_notification
+                    send_comunicato_review_notification(article_data, articolo_testo)
+                except Exception as mail_err:
+                    self.logger.error(f"[REVISIONE] Errore invio email revisione: {mail_err}")
+                return "Comunicato inviato per revisione manuale (AI ha rilevato contenuto sospetto)"
+
             # Applica polishing finale
             polished_data = content_polisher.polish_article({
                 'titolo': titolo,
@@ -2879,7 +2890,7 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
 
                 self.logger.warning("[DEBUG] Creazione oggetto Articolo...")
                 articolo = Articolo(
-                    titolo=polished_data['titolo'],
+                    titolo=polished_data['titolo'][:200],
                     contenuto=polished_data['contenuto'],
                     categoria=category,
                     fonte=article_data['url'],
