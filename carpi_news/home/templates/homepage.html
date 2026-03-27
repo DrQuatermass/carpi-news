@@ -6,6 +6,8 @@
 
 {% block title %}Ombra del Portico - Le notizie della tua città{% endblock %}
 
+{% block meta_description %}{% if categoria_attiva == 'Attualità' %}Le ultime notizie di Carpi e dintorni. Cronaca, fatti del giorno e aggiornamenti in tempo reale.{% elif categoria_attiva == 'Cronaca' %}Cronaca locale di Carpi: fatti, incidenti, interventi delle forze dell'ordine e notizie dal territorio.{% elif categoria_attiva == 'Sport' %}Sport a Carpi: risultati, classifiche e notizie su calcio, atletica, karate, rugby, nuoto e tutte le discipline locali.{% elif categoria_attiva == 'Cultura & Eventi' %}Cultura ed eventi a Carpi: mostre, concerti, teatro, sagre e tutto quello che succede in città.{% elif categoria_attiva == 'Politica' %}Politica a Carpi: Comune, Giunta, Consiglio Comunale e decisioni che riguardano i cittadini.{% elif categoria_attiva == 'Rubriche' %}Le rubriche di Ombra del Portico: approfondimenti, opinioni e punti di vista sulla vita di Carpi.{% else %}Portale di informazione locale della città di Carpi e dintorni. Notizie, eventi e tutto quello che accade nella nostra comunità.{% endif %}{% endblock %}
+
 {% block extra_css %}
 <!-- Canonical URL -->
 <link rel="canonical" href="{{ canonical_url }}">
@@ -40,8 +42,6 @@
 <meta name="twitter:image" content="https://ombradelportico.it{% static 'home/images/portico_logo_nopayoff.png' %}">
 <meta name="twitter:site" content="@ombradelportico">
 
-<!-- Meta description generale -->
-<meta name="description" content="Portale di informazione locale della città di Carpi e dintorni. Notizie, eventi e tutto quello che accade nella nostra comunità.">
 
 <style>
     /* Breadcrumb styling */
