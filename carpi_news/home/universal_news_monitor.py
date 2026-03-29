@@ -2580,10 +2580,11 @@ class UniversalNewsMonitor:
                         existing_by_title = Articolo.objects.filter(titolo=article_data['title']).exists()
 
                         if not existing_by_url and not existing_by_title:
-                            self.process_new_article(article_data)
-                            processed_count += 1
-                            # Aggiungi hash solo se effettivamente processato
-                            self.seen_articles[article_hash] = datetime.now().isoformat()
+                            success = self.process_new_article(article_data)
+                            if success:
+                                processed_count += 1
+                                # Aggiungi hash solo se articolo effettivamente creato
+                                self.seen_articles[article_hash] = datetime.now().isoformat()
                         else:
                             # Articolo già esistente, aggiungi comunque l'hash per evitare ricontrolli DB
                             self.seen_articles[article_hash] = datetime.now().isoformat()
@@ -2614,7 +2615,7 @@ class UniversalNewsMonitor:
         # Solo la configurazione specifica del sito determina l'auto-approvazione
         return self.config.config.get('auto_approve', False)
     
-    def process_new_article(self, article_data: Dict[str, Any]):
+    def process_new_article(self, article_data: Dict[str, Any]) -> bool:
         """Processa un nuovo articolo"""
         try:
             self.logger.info(f"Processando nuovo articolo: {article_data['title']}")
@@ -2648,7 +2649,7 @@ class UniversalNewsMonitor:
                     # Per YouTube, NON creare articolo se transcript mancante (sarà ritentato)
                     if isinstance(self.scraper, YouTubeAPIScraper):
                         self.logger.warning(f"[YOUTUBE] Transcript non disponibile per {article_data['url']} - articolo NON creato, sarà ritentato")
-                        return  # Skip creazione articolo
+                        return False  # Skip creazione articolo
 
                     # Per altri tipi (email, HTML), usa fallback con preview
                     fallback_content = article_data.get('content') or article_data['preview']
@@ -2669,9 +2670,12 @@ class UniversalNewsMonitor:
                 self.logger.warning("[DEBUG] AI disabilitata, salvataggio diretto")
                 # Salva direttamente senza AI
                 self.save_article_directly(article_data)
-            
+
+            return True
+
         except Exception as e:
             self.logger.error(f"Errore nel processare articolo: {e}")
+            return False
     
     def generate_ai_article(self, article_data: Dict[str, Any]) -> str:
         """Genera articolo con AI con ricerca web conversazionale integrata"""
