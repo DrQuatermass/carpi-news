@@ -109,7 +109,9 @@ def show_banner(context, position):
 
         if position == 'between_articles':
             # Slot verticale: banner 'between_articles' o 'both', con image_vertical caricata
-            banners = list(base_qs.filter(position__in=['between_articles', 'both']).exclude(image_vertical='').exclude(image_vertical__isnull=True))
+            # Escludi immagini con rapporto larghezza/altezza > 2 (banner orizzontali)
+            banners_qs = list(base_qs.filter(position__in=['between_articles', 'both']).exclude(image_vertical='').exclude(image_vertical__isnull=True))
+            banners = [b for b in banners_qs if b.image_vertical.height > 0 and b.image_vertical.width / b.image_vertical.height <= 2]
         else:
             # Per tutti gli slot orizzontali: banner 'header' o 'both', con image caricata
             banners = list(base_qs.filter(position__in=['header', 'both']).exclude(image='').exclude(image__isnull=True))

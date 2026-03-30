@@ -106,7 +106,7 @@ def home(request):
 
     # Banner verticali per la griglia homepage: position 'between_articles' o 'both' con image_vertical
     _now = timezone.now()
-    all_banners = list(Banner.objects.filter(
+    all_banners_qs = list(Banner.objects.filter(
         position__in=['between_articles', 'both'],
         status='active',
         payment_status='completed',
@@ -114,6 +114,11 @@ def home(request):
         start_date__lte=_now,
         end_date__gte=_now,
     ).exclude(image_vertical='').exclude(image_vertical__isnull=True).select_related('user'))
+    # Escludi immagini con rapporto larghezza/altezza > 2 (banner orizzontali nella posizione verticale)
+    all_banners = [
+        b for b in all_banners_qs
+        if b.image_vertical.height > 0 and b.image_vertical.width / b.image_vertical.height <= 2
+    ]
 
     # Verifica che non sia un bot
     user_agent = request.META.get('HTTP_USER_AGENT', '').lower()
