@@ -933,6 +933,11 @@
             h2.parentNode.insertBefore(banner, h2);
             banner.style.display = '';
             banner.style.margin = '30px 0';
+            banner.querySelectorAll('ins.adsbygoogle').forEach(function(ins) {
+                if (!ins.getAttribute('data-adsbygoogle-status')) {
+                    (window.adsbygoogle = window.adsbygoogle || []).push({});
+                }
+            });
             bannerIndex++;
         }
 
@@ -947,6 +952,11 @@
                     middleParagraph.parentNode.insertBefore(banner, middleParagraph.nextSibling);
                     banner.style.display = '';
                     banner.style.margin = '30px 0';
+                    banner.querySelectorAll('ins.adsbygoogle').forEach(function(ins) {
+                        if (!ins.getAttribute('data-adsbygoogle-status')) {
+                            (window.adsbygoogle = window.adsbygoogle || []).push({});
+                        }
+                    });
                 }
             }
         }

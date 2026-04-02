@@ -439,11 +439,9 @@
             {% show_banner 'header' %}
 
             <!-- Banner Orizzontale -->
-            {% if banner_orizzontale %}
             <section class="banner-horizontal-section">
-                {% include 'banner_orizzontale.html' with banner=banner_orizzontale %}
+                {% show_banner 'header' %}
             </section>
-            {% endif %}
 
             <!-- Main News Grid -->
             <section class="news-section" id="news-section">
