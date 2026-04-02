@@ -30,12 +30,60 @@
         {% endwith %}
     {% endif %}
 {% else %}
-    {# Nessun banner - mostra placeholder #}
+    {# Nessun banner - mostra AdSense #}
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3345905614586761" crossorigin="anonymous"></script>
     {% if position != 'between_articles' %}
-        <a href="{% url 'admin_panel:dashboard' %}" class="banner-header-slot" rel="nofollow" style="text-decoration: none;">
-        </a>
+        <div style="margin: 20px 0; text-align: center; width: 100%; grid-column: 1 / -1;">
+            <div class="adsense-slot-desktop" style="max-width: 728px; margin: 0 auto;">
+                <ins class="adsbygoogle"
+                     style="display:block"
+                     data-ad-format="fluid"
+                     data-ad-layout-key="-5a+c8-y-bf+st"
+                     data-ad-client="ca-pub-3345905614586761"
+                     data-ad-slot="7169190997"></ins>
+                <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+            </div>
+            <div class="adsense-slot-mobile">
+                <ins class="adsbygoogle"
+                     style="display:block"
+                     data-ad-format="fluid"
+                     data-ad-layout-key="-5c+cb-w-bw+sv"
+                     data-ad-client="ca-pub-3345905614586761"
+                     data-ad-slot="8673844354"></ins>
+                <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+            </div>
+            <div style="font-size: 10px; color: #999; text-align: center; margin-top: 4px;">Pubblicità</div>
+        </div>
     {% elif position == 'between_articles' %}
-        <a href="{% url 'admin_panel:dashboard' %}" class="banner-card-slot" rel="nofollow" style="text-decoration: none;">
-        </a>
+        <div style="width: 100%; margin: 10px 0;">
+            <div class="adsense-slot-desktop">
+                <ins class="adsbygoogle"
+                     style="display:block"
+                     data-ad-format="fluid"
+                     data-ad-layout-key="-5a+c8-y-bf+st"
+                     data-ad-client="ca-pub-3345905614586761"
+                     data-ad-slot="7169190997"></ins>
+                <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+            </div>
+            <div class="adsense-slot-mobile">
+                <ins class="adsbygoogle"
+                     style="display:block"
+                     data-ad-format="fluid"
+                     data-ad-layout-key="-5c+cb-w-bw+sv"
+                     data-ad-client="ca-pub-3345905614586761"
+                     data-ad-slot="8673844354"></ins>
+                <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+            </div>
+            <div style="font-size: 10px; color: #999; text-align: center; margin-top: 4px;">Pubblicità</div>
+        </div>
     {% endif %}
 {% endif %}
+
+<style>
+    .adsense-slot-mobile { display: none; }
+    .adsense-slot-desktop { display: block; }
+    @media (max-width: 768px) {
+        .adsense-slot-mobile { display: block; }
+        .adsense-slot-desktop { display: none; }
+    }
+</style>
