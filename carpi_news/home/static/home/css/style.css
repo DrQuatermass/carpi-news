@@ -3098,12 +3098,9 @@ footer .footer-section.footer-links-section .footer-useful-links a:hover {
 
 .banner-horizontal-section .banner-header-slot,
 .banner-horizontal-section .advertisement-banner {
-    min-height: 150px !important;
-    max-height: 220px !important;
     display: flex;
     align-items: center;
     justify-content: center;
-    overflow: hidden;
     padding: 0 !important;
     margin: 0 auto !important;
     max-width: 1200px;
