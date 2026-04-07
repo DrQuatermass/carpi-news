@@ -242,19 +242,23 @@ def home(request):
             9: 'set', 10: 'ott', 11: 'nov', 12: 'dic'
         }
 
+        from home.templatetags.webp_images import image_srcset
+
         articoli_data = []
         for articolo in page_obj:
             # Formatta data in italiano
             data_pub = articolo.data_pubblicazione
             data_italiana = f"{data_pub.day} {ITALIAN_MONTHS_SHORT[data_pub.month]} {data_pub.year}"
 
+            image_url = articolo.get_image_url()
             articoli_data.append({
                 'titolo': articolo.titolo,
                 'sommario': articolo.sommario,
                 'categoria': articolo.categoria,
                 'data_pubblicazione': data_italiana,
                 'slug': articolo.slug,
-                'foto': articolo.get_image_url(),
+                'foto': image_url,
+                'foto_srcset': image_srcset(image_url),
             })
 
         # Prepara dati banner attivi per JSON

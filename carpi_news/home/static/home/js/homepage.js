@@ -284,10 +284,12 @@ function createNewsCard(articolo) {
     card.className = 'news-card';
 
     const imageUrl = buildImageUrl(articolo.foto);
+    const srcset = articolo.foto_srcset || '';
+    const srcsetAttr = srcset ? ` srcset="${srcset}" sizes="(max-width: 640px) 100vw, 616px"` : '';
 
     card.innerHTML = `
         <div class="news-image">
-            <img src="${imageUrl}"
+            <img src="${imageUrl}"${srcsetAttr}
                  alt="${articolo.titolo}"
                  class="card-img"
                  loading="lazy"
