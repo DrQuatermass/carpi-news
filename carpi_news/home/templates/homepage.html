@@ -160,8 +160,10 @@
         min-height: auto !important;
         border: none !important;
         cursor: default !important;
-        overflow: visible !important;
+        overflow: hidden !important;
         display: block !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
     }
 
     .banner-card-slot.has-adsense::before,
@@ -484,7 +486,7 @@
                                     <div class="banner-card-slot has-adsense">
                                         <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3345905614586761" crossorigin="anonymous"></script>
                                         <ins class="adsbygoogle adsense-fluid-unit"
-                                             style="display:block; width:100%"
+                                             style="display:block; width:100%; max-width:100%"
                                              data-ad-format="fluid"
                                              data-ad-layout-key-desktop="-5a+c8-y-bf+st"
                                              data-ad-layout-key-mobile="-5c+cb-w-bw+sv"

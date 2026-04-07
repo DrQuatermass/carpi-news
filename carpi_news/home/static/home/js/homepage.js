@@ -190,7 +190,7 @@ function updatePageContent(data) {
                     bannerElement.className = 'banner-card-slot has-adsense';
                     bannerElement.innerHTML = `
                         <ins class="adsbygoogle"
-                             style="display:block; width:100%"
+                             style="display:block; width:100%; max-width:100%"
                              data-ad-format="fluid"
                              data-ad-client="ca-pub-3345905614586761"></ins>
                         <div style="font-size: 10px; color: #999; text-align: center; margin-top: 5px;">Pubblicità</div>
