@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 REQUEST_TIMEOUT = 5
 
 # Qualità WebP (0-100) - ottimizzata per compressione/qualità
-WEBP_QUALITY = 78
+WEBP_QUALITY = 65
 
 # Dimensioni massime cache (10 MB per immagine)
 MAX_CACHE_SIZE = 10 * 1024 * 1024

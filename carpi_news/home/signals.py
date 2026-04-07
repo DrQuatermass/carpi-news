@@ -16,7 +16,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 
-def generate_responsive_versions(image_path, widths=[400, 600, 800], quality=75):
+def generate_responsive_versions(image_path, widths=[400, 600, 800], quality=65):
     """
     Genera versioni responsive di un'immagine
 
@@ -222,7 +222,7 @@ def generate_responsive_images_on_save(sender, instance, created, **kwargs):
     def generate_in_background():
         try:
             logger.info(f"Generazione versioni responsive per: {image_path}")
-            created_files = generate_responsive_versions(image_path, widths=[400, 600, 800], quality=75)
+            created_files = generate_responsive_versions(image_path, widths=[400, 600, 800], quality=65)
             if created_files:
                 logger.info(f"Generate {len(created_files)} versioni responsive per {instance.titolo}")
             else:

@@ -11,7 +11,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 
-def convert_banner_image_to_webp(image_field, quality=85):
+def convert_banner_image_to_webp(image_field, quality=75):
     """
     Converte un'immagine banner in WebP ottimizzato
 

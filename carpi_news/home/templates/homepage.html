@@ -404,7 +404,7 @@
                                         <span class="category-badge">{{ articolo.categoria }}</span>
                                         <img src="{{ articolo.get_image_url }}"
                                              srcset="{{ articolo.get_image_url|image_srcset:'large' }}"
-                                             sizes="(max-width: 768px) 100vw, 1200px"
+                                             sizes="(max-width: 768px) 100vw, (max-width: 1400px) calc(100vw - 60px), 1340px"
                                              alt="{{ articolo.titolo }}"
                                              width="1200"
                                              height="400"
