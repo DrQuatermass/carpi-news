@@ -263,10 +263,10 @@ def home(request):
             if banner:
                 banners_data.append({
                     'id': banner.id,
-                    'image_url': banner.image.url,
+                    'image_url': banner.image_vertical.url,
                     'alt_text': banner.alt_text,
-                    'image_width': banner.image.width,
-                    'image_height': banner.image.height,
+                    'image_width': banner.image_vertical.width,
+                    'image_height': banner.image_vertical.height,
                     'position_index': i  # Indice nello slot (0-3)
                 })
 
