@@ -153,6 +153,20 @@
         text-decoration: underline;
     }
 
+    /* AdSense slot - nascondi placeholder e rimuovi stili */
+    .banner-card-slot.has-adsense {
+        background: transparent !important;
+        padding: 0 !important;
+        min-height: auto !important;
+        border: none !important;
+        cursor: default !important;
+    }
+
+    .banner-card-slot.has-adsense::before,
+    .banner-card-slot.has-adsense::after {
+        display: none !important;
+    }
+
     /* Banner attivo - nascondi placeholder e rimuovi stili */
     .banner-card-slot.has-active-banner {
         background: transparent !important;
@@ -463,10 +477,19 @@
                                         </div>
                                     </div>
                                 {% else %}
-                                    {# Placeholder #}
-                                    <a href="{% url 'admin_panel:dashboard' %}" class="banner-card-slot" rel="nofollow" aria-label="Spazio pubblicitario disponibile - Clicca per acquistare">
-                                        {# Il placeholder è gestito dal CSS con ::before e ::after #}
-                                    </a>
+                                    {# Placeholder AdSense #}
+                                    <div class="banner-card-slot has-adsense">
+                                        <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3345905614586761" crossorigin="anonymous"></script>
+                                        <ins class="adsbygoogle adsense-fluid-unit"
+                                             style="display:block; width:100%"
+                                             data-ad-format="fluid"
+                                             data-ad-layout-key-desktop="-5a+c8-y-bf+st"
+                                             data-ad-layout-key-mobile="-5c+cb-w-bw+sv"
+                                             data-ad-slot-desktop="7169190997"
+                                             data-ad-slot-mobile="8673844354"
+                                             data-ad-client="ca-pub-3345905614586761"></ins>
+                                        <div style="font-size: 10px; color: #999; text-align: center; margin-top: 4px;">Pubblicità</div>
+                                    </div>
                                 {% endif %}
                             {% elif item.type == 'article' %}
                                 {# Articolo - prima immagine con fetchpriority high #}
