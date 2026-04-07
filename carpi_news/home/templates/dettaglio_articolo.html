@@ -505,6 +505,8 @@
                      sizes="(max-width: 768px) 100vw, 800px"
                      alt="{{ articolo.titolo }}"
                      class="img-responsive"
+                     width="800"
+                     height="450"
                      loading="eager"
                      fetchpriority="high">
             </div>
@@ -640,6 +642,8 @@
                                  srcset="{{ related.get_image_url|image_srcset }}"
                                  sizes="(max-width: 768px) 100vw, 400px"
                                  alt="{{ related.titolo }}"
+                                 width="400"
+                                 height="225"
                                  loading="lazy">
                         </div>
                         <div class="related-content">

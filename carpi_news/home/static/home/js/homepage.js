@@ -252,7 +252,11 @@ const SITE_URL = window.location.origin;
 
 function buildImageUrl(foto) {
     if (!foto) return DEFAULT_IMAGE;
-    if (foto.startsWith('http://') || foto.startsWith('https://')) return foto;
+    if (foto.startsWith('http://') || foto.startsWith('https://')) {
+        if (!foto.includes(window.location.hostname)) {
+            return `/image-proxy/?url=${encodeURIComponent(foto)}&w=600`;
+        }
+    }
     if (foto.startsWith('/')) return SITE_URL + foto;
     return foto;
 }
@@ -262,10 +266,13 @@ function createActiveBanner(banner) {
     const bannerSlot = document.createElement('div');
     bannerSlot.className = 'banner-card-slot has-active-banner';
 
+    const bannerSrcset = banner.image_srcset || '';
+    const bannerSrcsetAttr = bannerSrcset ? ` srcset="${bannerSrcset}" sizes="(max-width: 768px) 100vw, 380px"` : '';
+
     bannerSlot.innerHTML = `
         <div class="advertisement-banner" data-banner-id="${banner.id}" style="width: 100%;">
             <a href="/admin-panel/banner/${banner.id}/click/" target="_blank" rel="noopener noreferrer nofollow sponsored" style="display: block; width: 100%;">
-                <img src="${banner.image_url}" alt="${banner.alt_text}" width="${banner.image_width}" height="${banner.image_height}" loading="lazy" style="width: 100%; height: auto; border-radius: 10px; display: block; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);">
+                <img src="${banner.image_url}"${bannerSrcsetAttr} alt="${banner.alt_text}" width="${banner.image_width}" height="${banner.image_height}" loading="lazy" style="width: 100%; height: auto; border-radius: 10px; display: block; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);">
             </a>
             <div style="font-size: 10px; color: #999; text-align: center; margin-top: 5px;">Pubblicità</div>
         </div>

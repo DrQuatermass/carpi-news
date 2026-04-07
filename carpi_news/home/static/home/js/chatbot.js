@@ -241,11 +241,19 @@ class OmbraChatbot {
                 month: 'short'
             });
 
-            const imageUrl = article.foto || '/static/home/images/placeholder.jpg';
+            const rawUrl = article.foto || '';
+            let imageUrl;
+            if (!rawUrl) {
+                imageUrl = /static/home/images/portico_logo_nopayoff.png;
+            } else if ((rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) && !rawUrl.includes(window.location.hostname)) {
+                imageUrl = `/image-proxy/?url=${encodeURIComponent(rawUrl)}&w=200`;
+            } else {
+                imageUrl = rawUrl;
+            }
 
             articlesHtml += `
                 <a href="${article.url}" class="article-card">
-                    <div class="article-image" style="background-image: url('${imageUrl}')"></div>
+                    <div class="article-image"><img src="${imageUrl}" alt="${this.escapeHtml(article.titolo)}" width="90" height="90" loading="lazy" onerror="this.src='${/static/home/images/portico_logo_nopayoff.png}'"></div>
                     <div class="article-content">
                         <span class="article-category">${article.categoria}</span>
                         <h4 class="article-title" style="font-size: 17px !important;">${this.escapeHtml(article.titolo)}</h4>

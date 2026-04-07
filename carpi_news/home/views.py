@@ -265,9 +265,11 @@ def home(request):
         banners_data = []
         for i, banner in enumerate(active_banners):
             if banner:
+                banner_img_url = banner.image_vertical.url
                 banners_data.append({
                     'id': banner.id,
-                    'image_url': banner.image_vertical.url,
+                    'image_url': banner_img_url,
+                    'image_srcset': image_srcset(banner_img_url),
                     'alt_text': banner.alt_text,
                     'image_width': banner.image_vertical.width,
                     'image_height': banner.image_vertical.height,

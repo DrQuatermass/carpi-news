@@ -23,7 +23,15 @@
         {% with img=banner.image_vertical|default:banner.image %}
         <div class="advertisement-banner" data-banner-id="{{ banner.id }}" style="width: 100%;">
             <a href="{% url 'admin_panel:banner_click' banner.id %}" target="_blank" rel="noopener noreferrer nofollow sponsored" style="display: block; width: 100%;">
-                <img src="{{ img.url }}" alt="{{ banner.alt_text }}" loading="lazy" fetchpriority="low" width="{{ img.width }}" height="{{ img.height }}" style="width: 100%; height: auto; border-radius: 10px; display: block; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);">
+                <img src="{{ img.url }}"
+                     srcset="{{ img.url|image_srcset }}"
+                     sizes="(max-width: 768px) 100vw, 380px"
+                     alt="{{ banner.alt_text }}"
+                     loading="lazy"
+                     fetchpriority="low"
+                     width="{{ img.width }}"
+                     height="{{ img.height }}"
+                     style="width: 100%; height: auto; border-radius: 10px; display: block; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);">
             </a>
             <div style="font-size: 10px; color: #999; text-align: center; margin-top: 5px;">Pubblicità</div>
         </div>
