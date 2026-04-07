@@ -402,7 +402,7 @@
                                 <article>
                                     <div class="spotlight-image">
                                         <span class="category-badge">{{ articolo.categoria }}</span>
-                                        <img src="{{ articolo.get_image_url }}"
+                                        <img src="{{ articolo.get_image_url|proxy_url }}"
                                              srcset="{{ articolo.get_image_url|image_srcset:'large' }}"
                                              sizes="(max-width: 768px) 100vw, (max-width: 1400px) calc(100vw - 60px), 1340px"
                                              alt="{{ articolo.titolo }}"
@@ -433,7 +433,7 @@
                                     <article>
                                         <div class="spotlight-image">
                                             <span class="category-badge">{{ articolo.categoria }}</span>
-                                            <img src="{{ articolo.get_image_url }}"
+                                            <img src="{{ articolo.get_image_url|proxy_url }}"
                                                  srcset="{{ articolo.get_image_url|image_srcset }}"
                                                  sizes="(max-width: 768px) 100vw, 380px"
                                                  alt="{{ articolo.titolo }}"
@@ -503,7 +503,7 @@
                                         <div class="news-image">
                                             {% if item.is_first_article %}
                                                 {# PRIMA card articolo: eager loading senza WebP per massima velocità LCP #}
-                                                <img src="{{ item.data.get_image_url }}"
+                                                <img src="{{ item.data.get_image_url|proxy_url }}"
                                                      srcset="{{ item.data.get_image_url|image_srcset }}"
                                                      sizes="(max-width: 640px) 100vw, 616px"
                                                      alt="{{ item.data.titolo }}"
@@ -514,7 +514,7 @@
                                                      loading="eager">
                                             {% else %}
                                                 {# Altre card: lazy loading con WebP responsive #}
-                                                <img src="{{ item.data.get_image_url }}"
+                                                <img src="{{ item.data.get_image_url|proxy_url }}"
                                                      srcset="{{ item.data.get_image_url|image_srcset }}"
                                                      sizes="(max-width: 640px) 100vw, 616px"
                                                      alt="{{ item.data.titolo }}"

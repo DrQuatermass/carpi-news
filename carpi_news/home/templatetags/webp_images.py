@@ -161,6 +161,26 @@ def image_srcset(image_url, sizes="default"):
     return ""
 
 
+@register.filter
+def proxy_url(image_url):
+    """
+    Restituisce URL proxied per immagini esterne (da usare nell'attributo src).
+    Per immagini interne ritorna l'URL originale invariato.
+
+    Usage:
+        <img src="{{ article.foto|proxy_url }}">
+    """
+    if not image_url:
+        return image_url
+    if image_url.startswith('http') or image_url.startswith('https'):
+        internal_domains = ['ombradelportico.it', 'localhost', '127.0.0.1']
+        if not any(domain in image_url for domain in internal_domains):
+            from urllib.parse import quote
+            encoded_url = quote(image_url, safe='')
+            return f"/image-proxy/?url={encoded_url}&w=600"
+    return image_url
+
+
 def get_webp_url(image_url):
     """Helper per convertire URL in WebP solo per immagini locali"""
     if not image_url:
