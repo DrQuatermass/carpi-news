@@ -185,15 +185,22 @@ function updatePageContent(data) {
                     const bannerElement = createActiveBanner(activeBanner);
                     newsGrid.insertBefore(bannerElement, footerBanner);
                 } else {
-                    // Inserisci placeholder
-                    const placeholderHTML = `
-                        <a href="/admin-panel/" class="banner-card-slot" rel="nofollow" aria-label="Spazio pubblicitario disponibile - Clicca per acquistare">
-                        </a>
+                    // Inserisci placeholder AdSense
+                    const bannerElement = document.createElement('div');
+                    bannerElement.className = 'banner-card-slot has-adsense';
+                    bannerElement.innerHTML = `
+                        <ins class="adsbygoogle"
+                             style="display:block; width:100%"
+                             data-ad-format="fluid"
+                             data-ad-client="ca-pub-3345905614586761"></ins>
+                        <div style="font-size: 10px; color: #999; text-align: center; margin-top: 5px;">Pubblicità</div>
                     `;
-                    const tempDiv = document.createElement('div');
-                    tempDiv.innerHTML = placeholderHTML;
-                    const bannerElement = tempDiv.firstElementChild;
+                    const ins = bannerElement.querySelector('ins');
+                    const isMobile = window.innerWidth <= 768;
+                    ins.setAttribute('data-ad-layout-key', isMobile ? '-5c+cb-w-bw+sv' : '-5a+c8-y-bf+st');
+                    ins.setAttribute('data-ad-slot', isMobile ? '8673844354' : '7169190997');
                     newsGrid.insertBefore(bannerElement, footerBanner);
+                    (window.adsbygoogle = window.adsbygoogle || []).push({});
                 }
                 bannerSlotIndex++;
             } else {
