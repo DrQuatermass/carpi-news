@@ -17,9 +17,19 @@
 <meta name="robots" content="noindex, follow">
 {% endif %}
 
-<!-- Preload prima immagine articolo per LCP -->
-{% if first_article_image %}
-    <link rel="preload" as="image" href="{{ first_article_image }}" fetchpriority="high">
+<!-- Preload immagine LCP: spotlight principale (above-the-fold) -->
+{% if first_spotlight_image %}
+    <link rel="preload" as="image"
+          href="{{ first_spotlight_image|proxy_url }}"
+          imagesrcset="{{ first_spotlight_image|image_srcset:'large' }}"
+          imagesizes="(max-width: 768px) 100vw, (max-width: 1400px) calc(100vw - 60px), 1340px"
+          fetchpriority="high">
+{% elif first_article_image %}
+    <link rel="preload" as="image"
+          href="{{ first_article_image|proxy_url }}"
+          imagesrcset="{{ first_article_image|image_srcset }}"
+          imagesizes="(max-width: 640px) 100vw, 616px"
+          fetchpriority="high">
 {% endif %}
 
 <!-- Preload primo banner se presente nelle prime 3 posizioni -->

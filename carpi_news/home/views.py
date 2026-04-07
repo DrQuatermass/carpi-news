@@ -191,7 +191,10 @@ def home(request):
                     first_article_added = True
                 article_index += 1
 
-    # Trova la prima immagine articolo per preload LCP
+    # Spotlight principale: immagine per preload LCP (elemento più grande above-the-fold)
+    first_spotlight_image = articoli_spotlight[0].get_image_url() if articoli_spotlight else None
+
+    # Trova la prima immagine articolo per preload LCP (fallback se no spotlight)
     first_article_image = None
     for item in grid_items:
         if item['type'] == 'article':
@@ -220,7 +223,8 @@ def home(request):
         'articoli_spotlight': articoli_spotlight,  # 4 articoli in evidenza
         'banner_orizzontale': banner_orizzontale,  # Banner orizzontale dopo spotlight
         'grid_items': grid_items,  # Griglia con articoli e banner/placeholder
-        'first_article_image': first_article_image,  # Per preload LCP
+        'first_spotlight_image': first_spotlight_image,  # Per preload LCP spotlight (LCP principale)
+        'first_article_image': first_article_image,  # Per preload LCP (fallback)
         'first_banner_image': first_banner_image,  # Per preload banner
         'current_page': page_obj.number,
         'total_pages': paginator.num_pages,
