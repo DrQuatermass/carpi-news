@@ -465,24 +465,17 @@
 {% block content %}
     <div class="container">
         <article class="article-detail">
-            <!-- Breadcrumb visibili per Google -->
-            <nav aria-label="breadcrumb" itemscope itemtype="https://schema.org/BreadcrumbList">
+            <!-- Breadcrumb visibili -->
+            <nav aria-label="breadcrumb">
                 <ol class="breadcrumb-list">
-                    <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
-                        <a itemprop="item" href="{% url 'home' %}">
-                            <span itemprop="name">Home</span>
-                        </a>
-                        <meta itemprop="position" content="1" />
+                    <li>
+                        <a href="{% url 'home' %}">Home</a>
                     </li>
-                    <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
-                        <a itemprop="item" href="{% url 'home' %}?categoria={{ articolo.categoria|urlencode }}">
-                            <span itemprop="name">{{ articolo.categoria }}</span>
-                        </a>
-                        <meta itemprop="position" content="2" />
+                    <li>
+                        <a href="{% url 'home' %}?categoria={{ articolo.categoria|urlencode }}">{{ articolo.categoria }}</a>
                     </li>
-                    <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem" class="active">
-                        <span itemprop="name">{{ articolo.titolo }}</span>
-                        <meta itemprop="position" content="3" />
+                    <li class="active">
+                        <span>{{ articolo.titolo }}</span>
                     </li>
                 </ol>
             </nav>
@@ -500,7 +493,7 @@
             {% show_banner 'article_top' %}
 
             <div class="article-image">
-                <img src="{{ articolo.get_image_url }}"
+                <img src="{{ articolo.get_image_url|proxy_url }}"
                      srcset="{{ articolo.get_image_url|image_srcset }}"
                      sizes="(max-width: 768px) 100vw, 800px"
                      alt="{{ articolo.titolo }}"
@@ -638,7 +631,7 @@
                     {% for related in articoli_correlati %}
                     <a href="{% url 'dettaglio_articolo' related.slug %}" class="related-card">
                         <div class="related-image">
-                            <img src="{{ related.get_image_url }}"
+                            <img src="{{ related.get_image_url|proxy_url }}"
                                  srcset="{{ related.get_image_url|image_srcset }}"
                                  sizes="(max-width: 768px) 100vw, 400px"
                                  alt="{{ related.titolo }}"
