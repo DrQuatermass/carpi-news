@@ -8,21 +8,23 @@ from django.core.exceptions import ValidationError
 class Banner(models.Model):
     """Modello per i banner pubblicitari"""
 
+    HORIZONTAL_BANNER_SIZE = (728, 270)
+    VERTICAL_BANNER_SIZE = (300, 600)
+    ASPECT_RATIO_TOLERANCE = 0.08
+    # Compatibilita con la validazione legacy nei signals.
+    SIZE_TOLERANCE = ASPECT_RATIO_TOLERANCE
+
     POSITION_CHOICES = [
         ('both', 'Campagna completa (orizzontale + verticale) — header + tra gli articoli'),
-        ('header', 'Solo orizzontale (728×90) — header su tutte le pagine'),
-        ('between_articles', 'Solo verticale (300×250) — tra gli articoli in homepage'),
+        ('header', 'Solo orizzontale (728×270) — header su tutte le pagine'),
+        ('between_articles', 'Solo verticale (300×600) — tra gli articoli in homepage'),
     ]
 
     RECOMMENDED_SIZES = {
-        'header': (728, 90),
-        'between_articles': (300, 250),
-        'both': (728, 90),
+        'header': HORIZONTAL_BANNER_SIZE,
+        'between_articles': VERTICAL_BANNER_SIZE,
+        'both': HORIZONTAL_BANNER_SIZE,
     }
-
-    # Tolleranza per le dimensioni (±10%)
-    SIZE_TOLERANCE = 0.10
-
     STATUS_CHOICES = [
         ('draft', 'Bozza'),
         ('pending_approval', 'In attesa di approvazione'),
@@ -46,8 +48,8 @@ class Banner(models.Model):
 
     # Informazioni banner
     title = models.CharField('Titolo', max_length=200, help_text='Nome identificativo del banner')
-    image = models.ImageField('Banner orizzontale (728×90)', upload_to='banners/', blank=True, null=True, help_text='Leaderboard orizzontale — header su tutte le pagine (sarà convertita in WebP)')
-    image_vertical = models.ImageField('Banner verticale (300×250)', upload_to='banners/', blank=True, null=True, help_text='Card verticale — tra gli articoli in homepage (sarà convertita in WebP)')
+    image = models.ImageField('Banner orizzontale (728×270)', upload_to='banners/', blank=True, null=True, help_text='Leaderboard orizzontale — header su tutte le pagine (sarà convertita in WebP)')
+    image_vertical = models.ImageField('Banner verticale (300×600)', upload_to='banners/', blank=True, null=True, help_text='Card verticale — tra gli articoli in homepage (sarà convertita in WebP)')
     link_url = models.URLField('URL di destinazione', help_text='Dove viene reindirizzato chi clicca sul banner')
     alt_text = models.CharField('Testo alternativo', max_length=200, help_text='Descrizione per accessibilità')
 
@@ -144,15 +146,15 @@ class Banner(models.Model):
 
         # Ottimizza immagini se nuove o cambiate
         if (is_new or image_changed) and self.image:
-            self._optimize_image(field='image', target_size=(728, 90))
+            self._optimize_image(field='image', target_size=self.HORIZONTAL_BANNER_SIZE)
         if (is_new or image_vertical_changed) and self.image_vertical:
-            self._optimize_image(field='image_vertical', target_size=(300, 250))
+            self._optimize_image(field='image_vertical', target_size=self.VERTICAL_BANNER_SIZE)
 
         super().save(*args, **kwargs)
 
         # Email verrà inviata dopo il pagamento, non alla creazione
 
-    def _optimize_image(self, field='image', target_size=(728, 90)):
+    def _optimize_image(self, field='image', target_size=None):
         """Ottimizza automaticamente l'immagine banner in WebP"""
         try:
             from PIL import Image
@@ -160,9 +162,25 @@ class Banner(models.Model):
             import io
             import os
 
+            if target_size is None:
+                target_size = self.HORIZONTAL_BANNER_SIZE
+
             image_field = getattr(self, field)
             img = Image.open(image_field)
             img.load()  # Carica i dati immagine prima che il file venga chiuso
+
+            target_width, target_height = target_size
+            expected_ratio = target_width / target_height
+            actual_ratio = img.width / img.height if img.height else 0
+            ratio_delta = abs(actual_ratio - expected_ratio) / expected_ratio
+
+            if ratio_delta > self.ASPECT_RATIO_TOLERANCE:
+                field_label = 'orizzontale' if field == 'image' else 'verticale'
+                raise ValidationError(
+                    f"Banner {field_label} non valido: dimensioni {img.width}x{img.height}. "
+                    f"Usa proporzioni {target_width}x{target_height}; sono accettate "
+                    f"dimensioni equivalenti, ad esempio 600x222 per l'orizzontale."
+                )
 
             # Converti sempre in RGB (i banner non usano trasparenza)
             if img.mode == 'P':
@@ -174,9 +192,8 @@ class Banner(models.Model):
             elif img.mode != 'RGB':
                 img = img.convert('RGB')
 
-            target_width, target_height = target_size
-            # Ridimensiona solo se necessario (troppo grande)
-            if img.width > target_width * 1.2:
+            # Ridimensiona solo se necessario (troppo grande), senza fare upscale.
+            if img.width > target_width:
                 ratio = target_width / img.width
                 new_height = int(img.height * ratio)
                 img = img.resize((target_width, new_height), Image.Resampling.LANCZOS)
@@ -191,6 +208,8 @@ class Banner(models.Model):
             image_field.save(webp_name, ContentFile(output.read()), save=False)
 
         except Exception as e:
+            if isinstance(e, ValidationError):
+                raise
             import logging
             logger = logging.getLogger(__name__)
             logger.error(f"Errore ottimizzazione immagine banner {self.pk}: {str(e)}")

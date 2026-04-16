@@ -92,7 +92,7 @@ def validate_and_resize_banner_image(banner_instance):
         current_width, current_height = img.size
 
         # Determina il tipo di banner in base al formato
-        is_horizontal_banner = recommended_width > recommended_height  # Es. 728x90 (leaderboard)
+        is_horizontal_banner = recommended_width > recommended_height  # Es. 728x270 (leaderboard)
 
         # Calcola l'altezza massima consentita
         if is_horizontal_banner:

@@ -266,7 +266,16 @@ def banner_edit(request, banner_id):
         if 'image_vertical' in request.FILES:
             banner.image_vertical = request.FILES['image_vertical']
 
-        banner.save()
+        try:
+            banner.save()
+        except Exception as e:
+            logger.exception("Errore aggiornamento banner %s", banner.id)
+            messages.error(request, f'Errore durante il salvataggio del banner: {str(e)}')
+            return render(request, 'admin_panel/banner_form.html', {
+                'banner': banner,
+                'is_edit': True,
+            })
+
         messages.success(request, 'Campagna banner aggiornata con successo!')
         return redirect('admin_panel:dashboard')
 

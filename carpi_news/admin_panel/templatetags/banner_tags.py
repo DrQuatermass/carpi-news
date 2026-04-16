@@ -84,8 +84,8 @@ def show_banner(context, position):
     - La priorità influenza la probabilità di selezione
     - Gli utenti già presenti nella pagina hanno peso ridotto del 75%
     - Massimizza la diversità di utenti per pagina
-    - I banner orizzontali (728×90) sono intercambiabili tra header, footer, article_top, article_bottom
-    - I banner verticali (300×250) sono specifici per posizione
+    - I banner orizzontali (728×270) sono intercambiabili tra header, footer, article_top, article_bottom
+    - I banner verticali (300×600) sono specifici per posizione
 
     Uso: {% load banner_tags %}
          {% show_banner 'header' %}
