@@ -2,7 +2,6 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.core.validators import MinValueValidator
 from django.utils import timezone
-from django.core.exceptions import ValidationError
 
 
 class Banner(models.Model):
@@ -10,9 +9,8 @@ class Banner(models.Model):
 
     HORIZONTAL_BANNER_SIZE = (728, 270)
     VERTICAL_BANNER_SIZE = (300, 600)
-    ASPECT_RATIO_TOLERANCE = 0.08
     # Compatibilita con la validazione legacy nei signals.
-    SIZE_TOLERANCE = ASPECT_RATIO_TOLERANCE
+    SIZE_TOLERANCE = 0.30
 
     POSITION_CHOICES = [
         ('both', 'Campagna completa (orizzontale + verticale) — header + tra gli articoli'),
@@ -158,6 +156,7 @@ class Banner(models.Model):
         """Ottimizza automaticamente l'immagine banner in WebP"""
         try:
             from PIL import Image
+            from PIL import ImageFilter
             from django.core.files.base import ContentFile
             import io
             import os
@@ -170,17 +169,6 @@ class Banner(models.Model):
             img.load()  # Carica i dati immagine prima che il file venga chiuso
 
             target_width, target_height = target_size
-            expected_ratio = target_width / target_height
-            actual_ratio = img.width / img.height if img.height else 0
-            ratio_delta = abs(actual_ratio - expected_ratio) / expected_ratio
-
-            if ratio_delta > self.ASPECT_RATIO_TOLERANCE:
-                field_label = 'orizzontale' if field == 'image' else 'verticale'
-                raise ValidationError(
-                    f"Banner {field_label} non valido: dimensioni {img.width}x{img.height}. "
-                    f"Usa proporzioni {target_width}x{target_height}; sono accettate "
-                    f"dimensioni equivalenti, ad esempio 600x222 per l'orizzontale."
-                )
 
             # Converti sempre in RGB (i banner non usano trasparenza)
             if img.mode == 'P':
@@ -192,11 +180,30 @@ class Banner(models.Model):
             elif img.mode != 'RGB':
                 img = img.convert('RGB')
 
-            # Ridimensiona solo se necessario (troppo grande), senza fare upscale.
-            if img.width > target_width:
-                ratio = target_width / img.width
-                new_height = int(img.height * ratio)
-                img = img.resize((target_width, new_height), Image.Resampling.LANCZOS)
+            if img.size != target_size:
+                background_scale = max(target_width / img.width, target_height / img.height)
+                background_size = (
+                    max(1, int(img.width * background_scale)),
+                    max(1, int(img.height * background_scale)),
+                )
+                background = img.resize(background_size, Image.Resampling.LANCZOS)
+                left = max(0, (background.width - target_width) // 2)
+                top = max(0, (background.height - target_height) // 2)
+                background = background.crop((left, top, left + target_width, top + target_height))
+                background = background.filter(ImageFilter.GaussianBlur(radius=18))
+
+                foreground_scale = min(target_width / img.width, target_height / img.height)
+                foreground_size = (
+                    max(1, int(img.width * foreground_scale)),
+                    max(1, int(img.height * foreground_scale)),
+                )
+                foreground = img.resize(foreground_size, Image.Resampling.LANCZOS)
+                paste_position = (
+                    (target_width - foreground.width) // 2,
+                    (target_height - foreground.height) // 2,
+                )
+                background.paste(foreground, paste_position)
+                img = background
 
             # Salva come WebP ottimizzato
             output = io.BytesIO()
@@ -208,8 +215,6 @@ class Banner(models.Model):
             image_field.save(webp_name, ContentFile(output.read()), save=False)
 
         except Exception as e:
-            if isinstance(e, ValidationError):
-                raise
             import logging
             logger = logging.getLogger(__name__)
             logger.error(f"Errore ottimizzazione immagine banner {self.pk}: {str(e)}")
