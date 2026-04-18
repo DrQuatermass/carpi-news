@@ -707,15 +707,24 @@ def banner_payment_cancel(request, banner_id):
 # ===== PUBLIC BANNER VIEWS =====
 
 def banner_click(request, banner_id):
-    """Traccia i click sui banner e reindirizza"""
+    """Traccia i click sui banner e reindirizza.
+
+    SEO: questo endpoint non deve essere indicizzato da Google. Aggiungiamo
+    X-Robots-Tag: noindex, nofollow per evitare che i bot associno
+    markup strutturato della pagina di destinazione (o di articoli raggiunti
+    via redirect) a questa URL di tracking.
+    """
     banner = get_object_or_404(Banner, id=banner_id)
 
     # Incrementa il contatore dei click
     banner.clicks += 1
     banner.save(update_fields=['clicks'])
 
-    # Reindirizza all'URL del banner
-    return redirect(banner.link_url)
+    # Reindirizza all'URL del banner, bloccando indicizzazione
+    response = redirect(banner.link_url)
+    response['X-Robots-Tag'] = 'noindex, nofollow'
+    response['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    return response
 
 
 @xframe_options_sameorigin

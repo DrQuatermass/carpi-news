@@ -11,6 +11,7 @@ Allow: /feed/
 # Blocca aree amministrative
 Disallow: /admin/
 Disallow: /django-admin/
+Disallow: /gestionale/
 
 # Blocca file di sistema e cache
 Disallow: /media/cache/
