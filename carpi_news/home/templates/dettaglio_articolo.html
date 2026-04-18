@@ -73,6 +73,54 @@
 }
 </script>
 
+{% if articolo.data_evento and articolo.categoria == "Cultura & Eventi" %}
+<!-- Schema.org JSON-LD Event (articoli con data evento) -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Event",
+  "name": "{{ articolo.titolo|escapejs }}",
+  "description": "{{ articolo.sommario|striptags|escapejs }}",
+  "startDate": "{{ articolo.data_evento|date:'Y-m-d' }}",
+  "endDate": "{{ articolo.data_evento|date:'Y-m-d' }}",
+  "eventStatus": "https://schema.org/EventScheduled",
+  "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
+  "image": "{{ articolo.get_social_image_url }}",
+  "url": "{{ canonical_url }}",
+  "inLanguage": "it-IT",
+  "location": {
+    "@type": "Place",
+    "name": "Carpi",
+    "address": {
+      "@type": "PostalAddress",
+      "addressLocality": "Carpi",
+      "addressRegion": "MO",
+      "postalCode": "41012",
+      "addressCountry": "IT"
+    }
+  },
+  "performer": {
+    "@type": "Organization",
+    "name": "Ombra del Portico",
+    "url": "https://ombradelportico.it"
+  },
+  "organizer": {
+    "@type": "Organization",
+    "name": "Ombra del Portico",
+    "url": "https://ombradelportico.it"
+  },
+  "offers": {
+    "@type": "Offer",
+    "url": "{{ canonical_url }}",
+    "price": "0",
+    "priceCurrency": "EUR",
+    "availability": "https://schema.org/InStock",
+    "validFrom": "{{ articolo.data_pubblicazione|date:'c' }}"
+  }
+}
+</script>
+{% endif %}
+
 <!-- Breadcrumb Schema -->
 <script type="application/ld+json">
 {
