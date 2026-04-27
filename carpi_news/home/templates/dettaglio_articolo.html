@@ -73,7 +73,7 @@
 }
 </script>
 
-{% if articolo.data_evento and articolo.categoria == "Cultura & Eventi" %}
+{% if articolo.data_evento and articolo.categoria == "Cultura & Eventi" and request.GET.social_share != "1" %}
 <!-- Schema.org JSON-LD Event (articoli con data evento) -->
 <script type="application/ld+json">
 {

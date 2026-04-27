@@ -62,6 +62,14 @@ class SocialMediaManager:
 
         return url
 
+    def _get_article_url(self, articolo) -> str:
+        """URL canonico dell'articolo."""
+        return f"https://ombradelportico.it/articolo/{articolo.slug}/"
+
+    def _get_social_article_url(self, articolo) -> str:
+        """URL usato dai social per forzare metadata da articolo, non da evento."""
+        return f"{self._get_article_url(articolo)}?social_share=1"
+
     def _get_absolute_image_url(self, foto_field: str) -> Optional[str]:
         """
         Converte il campo foto in URL assoluto utilizzabile dalle API social
@@ -392,7 +400,7 @@ class SocialMediaManager:
         from django.db import transaction
 
         results = {}
-        article_url = f"https://ombradelportico.it/articolo/{articolo.slug}/"
+        article_url = self._get_social_article_url(articolo)
 
         logger.info(f"Avvio condivisione social per articolo: {articolo.titolo} (Twitter via RSS+IFTTT)")
 
@@ -554,7 +562,7 @@ class SocialMediaManager:
         from .models import SocialPublicationLog
 
         results = {}
-        article_url = f"https://ombradelportico.it/articolo/{articolo.slug}/"
+        article_url = self._get_social_article_url(articolo)
 
         logger.info(f"Retry condivisione solo piattaforme fallite per: {articolo.titolo}")
 
