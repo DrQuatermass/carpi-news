@@ -24,6 +24,9 @@ Disallow: /debug/
 Disallow: /image-proxy/
 Disallow: /media/proxy_cache/
 
+# Blocca endpoint applicativi senza valore SEO
+Disallow: /api/chatbot/
+
 # Sitemap per indicizzazione completa
 Sitemap: https://ombradelportico.it/sitemap_index.xml
 Sitemap: https://ombradelportico.it/sitemap.xml
