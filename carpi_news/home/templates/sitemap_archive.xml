@@ -4,7 +4,7 @@
   {% for article in articles %}
   <url>
     <loc>https://ombradelportico.it{% url 'dettaglio_articolo' article.slug %}</loc>
-    <lastmod>{{ article.data_modifica|date:"c" }}</lastmod>
+    <lastmod>{{ article.data_pubblicazione|date:"c" }}</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.3</priority>
   </url>

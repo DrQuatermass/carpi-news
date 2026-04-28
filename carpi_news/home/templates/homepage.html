@@ -17,6 +17,52 @@
 <meta name="robots" content="noindex, follow">
 {% endif %}
 
+{% if not request.GET.categoria %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "NewsMediaOrganization",
+      "@id": "https://ombradelportico.it/#organization",
+      "name": "Ombra del Portico",
+      "url": "https://ombradelportico.it",
+      "logo": {
+        "@type": "ImageObject",
+        "url": "https://ombradelportico.it/static/home/images/portico_logo.svg"
+      },
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "email": "redazione@ombradelportico.it",
+        "contactType": "editorial"
+      },
+      "sameAs": [
+        "https://t.me/ombradelportico",
+        "https://www.facebook.com/profile.php?id=61580488251783",
+        "https://x.com/ombradelportico",
+        "https://www.instagram.com/ombra_del_portico/"
+      ]
+    },
+    {
+      "@type": "WebSite",
+      "@id": "https://ombradelportico.it/#website",
+      "url": "https://ombradelportico.it",
+      "name": "Ombra del Portico",
+      "publisher": { "@id": "https://ombradelportico.it/#organization" },
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": {
+          "@type": "EntryPoint",
+          "urlTemplate": "https://ombradelportico.it/?categoria={search_term_string}"
+        },
+        "query-input": "required name=search_term_string"
+      }
+    }
+  ]
+}
+</script>
+{% endif %}
+
 <!-- Preload immagine LCP: spotlight principale (above-the-fold) -->
 {% if first_spotlight_image %}
     <link rel="preload" as="image"
@@ -37,23 +83,19 @@
     <link rel="preload" as="image" href="{{ first_banner_image }}" fetchpriority="high">
 {% endif %}
 
-<!-- Open Graph meta tags per homepage -->
-<meta property="og:title" content="Ombra del Portico - Notizie di Carpi">
-<meta property="og:description" content="Portale di informazione locale della città di Carpi e dintorni. Notizie, eventi e tutto quello che accade nella nostra comunità.">
-<meta property="og:image" content="https://ombradelportico.it{% static 'home/images/portico_logo_nopayoff.png' %}">
-<meta property="og:url" content="{{ canonical_url }}">
-<meta property="og:type" content="website">
-<meta property="og:site_name" content="Ombra del Portico">
-
-<!-- Twitter Card meta tags -->
-<meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="Ombra del Portico - Notizie di Carpi">
-<meta name="twitter:description" content="Portale di informazione locale della città di Carpi e dintorni.">
-<meta name="twitter:image" content="https://ombradelportico.it{% static 'home/images/portico_logo_nopayoff.png' %}">
-<meta name="twitter:site" content="@ombradelportico">
-
-
 <style>
+    .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+    }
+
     /* Breadcrumb styling */
     nav[aria-label="breadcrumb"] {
         margin-bottom: 20px;
@@ -373,6 +415,8 @@
 
 {% block content %}
     <div class="container">
+            <h1 class="sr-only">Ombra del Portico — Notizie di Carpi</h1>
+
             <!-- Hero Section -->
             <section class="hero">
                 <div class="hero-content">

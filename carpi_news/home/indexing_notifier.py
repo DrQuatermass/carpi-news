@@ -18,7 +18,7 @@ class IndexingNotifier:
     """Gestisce notifiche di indicizzazione verso Google e altri motori di ricerca."""
 
     def __init__(self):
-        self.site_url = os.getenv('SITE_URL', 'https://www.ombradelportico.it')
+        self.site_url = os.getenv('SITE_URL', 'https://ombradelportico.it')
         self.indexnow_key = os.getenv('INDEXNOW_KEY')
         self.google_credentials_path = os.getenv('GOOGLE_INDEXING_CREDENTIALS')
 

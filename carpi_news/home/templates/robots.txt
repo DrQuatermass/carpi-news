@@ -21,6 +21,7 @@ Disallow: /*.log$
 # Blocca pagine di test e sviluppo
 Disallow: /test/
 Disallow: /debug/
+Disallow: /image-proxy/
 
 # Sitemap per indicizzazione completa
 Sitemap: https://ombradelportico.it/sitemap_index.xml
@@ -29,9 +30,11 @@ Sitemap: https://ombradelportico.it/sitemap-news.xml
 
 # Per bot social media e news aggregators
 User-agent: facebookexternalhit
+Allow: /image-proxy/
 Allow: /
 
 User-agent: Twitterbot
+Allow: /image-proxy/
 Allow: /
 
 User-agent: GoogleBot-News
