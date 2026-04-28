@@ -296,7 +296,7 @@ Fonte: {article_data['url']}"""
                     "role": "user", 
                     "content": user_content
                 }],
-                model="claude-sonnet-4-20250514",
+                model="claude-sonnet-4-6-20260217",
             )
             
             # Estrai il testo dall'articolo generato

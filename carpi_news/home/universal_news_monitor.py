@@ -2841,7 +2841,7 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
                 "system": system_prompt,
                 "max_tokens": 4096,
                 "messages": [{"role": "user", "content": user_content}],
-                "model": "claude-sonnet-4-20250514"
+                "model": "claude-sonnet-4-6-20260217"
             }
             if tools:
                 api_params["tools"] = tools
@@ -3122,7 +3122,7 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
                         "system": system_prompt,
                         "max_tokens": 4096,
                         "messages": conversation,
-                        "model": "claude-sonnet-4-20250514"
+                        "model": "claude-sonnet-4-6-20260217"
                     }
                     if tools:
                         api_params_iter["tools"] = tools

@@ -539,7 +539,7 @@ ISTRUZIONI:
             prompt_base += "\n\nFornisci SOLO il contenuto dell'articolo riscritto, senza commenti aggiuntivi:"
             
             # Chiamata all'API Anthropic
-            model_name = "claude-sonnet-4-20250514"
+            model_name = "claude-sonnet-4-6-20260217"
             response = client.messages.create(
                 model=model_name,
                 max_tokens=4000,

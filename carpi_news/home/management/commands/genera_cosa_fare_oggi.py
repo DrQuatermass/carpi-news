@@ -224,7 +224,7 @@ ISTRUZIONI:
 STILE: Giornalistico locale, caldo, coinvolgente, che valorizza il territorio."""
 
         message = client.messages.create(
-            model="claude-sonnet-4-20250514",
+            model="claude-sonnet-4-6-20260217",
             max_tokens=2000,
             temperature=0.7,
             messages=[{

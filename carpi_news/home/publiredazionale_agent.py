@@ -258,7 +258,7 @@ Rispondi SOLO con saluto + domanda."""
 
         try:
             message = self.client.messages.create(
-                model="claude-sonnet-4-20250514",
+                model="claude-sonnet-4-6-20260217",
                 max_tokens=400,
                 temperature=0.7,
                 system=system_prompt,
@@ -272,7 +272,7 @@ Rispondi SOLO con saluto + domanda."""
             try:
                 APIUsageTracker.track_anthropic(
                     operation='publiredazionale_first_question',
-                    model='claude-sonnet-4-20250514',
+                    model='claude-sonnet-4-6-20260217',
                     input_tokens=message.usage.input_tokens,
                     output_tokens=message.usage.output_tokens,
                     success=True,
@@ -481,7 +481,7 @@ IMPORTANTE: Rispondi SOLO con il JSON, nient'altro."""
 
         try:
             message = self.client.messages.create(
-                model="claude-sonnet-4-20250514",
+                model="claude-sonnet-4-6-20260217",
                 max_tokens=500,
                 temperature=0.7,
                 system=system_prompt,
@@ -495,7 +495,7 @@ IMPORTANTE: Rispondi SOLO con il JSON, nient'altro."""
             try:
                 APIUsageTracker.track_anthropic(
                     operation='publiredazionale_next_question',
-                    model='claude-sonnet-4-20250514',
+                    model='claude-sonnet-4-6-20260217',
                     input_tokens=message.usage.input_tokens,
                     output_tokens=message.usage.output_tokens,
                     success=True
@@ -751,7 +751,7 @@ Contenuto del sito web:
 Genera un'analisi NARRATIVA che mi aiuti a scrivere una storia coinvolgente su questa azienda."""
 
             message = self.client.messages.create(
-                model="claude-sonnet-4-20250514",
+                model="claude-sonnet-4-6-20260217",
                 max_tokens=800,  # Ridotto da 1500 per velocità
                 temperature=0.5,
                 system=system_prompt,
@@ -764,7 +764,7 @@ Genera un'analisi NARRATIVA che mi aiuti a scrivere una storia coinvolgente su q
             # Traccia utilizzo
             APIUsageTracker.track_anthropic(
                 operation='publiredazionale_web_research',
-                model='claude-sonnet-4-20250514',
+                model='claude-sonnet-4-6-20260217',
                 input_tokens=message.usage.input_tokens,
                 output_tokens=message.usage.output_tokens,
                 success=True
@@ -846,7 +846,7 @@ Analizza l'intervista e genera una ricerca approfondita su:
 Scrivi in modo narrativo e giornalistico."""
 
             message = self.client.messages.create(
-                model="claude-sonnet-4-20250514",
+                model="claude-sonnet-4-6-20260217",
                 max_tokens=2000,
                 temperature=0.6,
                 system=system_prompt,
@@ -859,7 +859,7 @@ Scrivi in modo narrativo e giornalistico."""
             # Traccia utilizzo
             APIUsageTracker.track_anthropic(
                 operation='publiredazionale_post_interview_research',
-                model='claude-sonnet-4-20250514',
+                model='claude-sonnet-4-6-20260217',
                 input_tokens=message.usage.input_tokens,
                 output_tokens=message.usage.output_tokens,
                 success=True
@@ -930,7 +930,7 @@ Rispondi in formato JSON:
 }}"""
 
             message = self.client.messages.create(
-                model="claude-sonnet-4-20250514",
+                model="claude-sonnet-4-6-20260217",
                 max_tokens=300,
                 temperature=0.3,
                 messages=[{
@@ -943,7 +943,7 @@ Rispondi in formato JSON:
             try:
                 APIUsageTracker.track_anthropic(
                     operation='business_type_classification',
-                    model='claude-sonnet-4-20250514',
+                    model='claude-sonnet-4-6-20260217',
                     input_tokens=message.usage.input_tokens,
                     output_tokens=message.usage.output_tokens,
                     success=True,
@@ -1330,7 +1330,7 @@ Genera JSON."""
 
         try:
             message = self.client.messages.create(
-                model="claude-sonnet-4-20250514",
+                model="claude-sonnet-4-6-20260217",
                 max_tokens=3000,  # Aumentato per articoli più ricchi
                 temperature=0.8,  # Aumentato per più creatività narrativa
                 system=system_prompt,
@@ -1343,7 +1343,7 @@ Genera JSON."""
             # Traccia utilizzo
             APIUsageTracker.track_anthropic(
                 operation='publiredazionale_article_generation',
-                model='claude-sonnet-4-20250514',
+                model='claude-sonnet-4-6-20260217',
                 input_tokens=message.usage.input_tokens,
                 output_tokens=message.usage.output_tokens,
                 success=True
@@ -1456,7 +1456,7 @@ Restituisci JSON con:
 
         try:
             message = self.client.messages.create(
-                model="claude-sonnet-4-20250514",
+                model="claude-sonnet-4-6-20260217",
                 max_tokens=2000,
                 temperature=0.7,
                 system=system_prompt,
@@ -1469,7 +1469,7 @@ Restituisci JSON con:
             # Traccia utilizzo
             APIUsageTracker.track_anthropic(
                 operation='publiredazionale_article_regeneration',
-                model='claude-sonnet-4-20250514',
+                model='claude-sonnet-4-6-20260217',
                 input_tokens=message.usage.input_tokens,
                 output_tokens=message.usage.output_tokens,
                 success=True
