@@ -7,11 +7,10 @@ import requests
 import time
 from io import BytesIO
 from PIL import Image
-from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseServerError
+from django.http import HttpResponse, HttpResponseBadRequest
 from django.core.cache import cache
 from django.conf import settings
-from django.views.decorators.cache import cache_control
-from django.views.decorators.http import require_GET
+from django.views.decorators.http import require_http_methods
 from urllib.parse import unquote
 from pathlib import Path
 import hashlib
@@ -55,6 +54,13 @@ def get_cached_proxy_path(url: str, width: int = None, quality: int = WEBP_QUALI
 
 def is_fresh_cache_file(path: Path) -> bool:
     return path.exists() and (time.time() - path.stat().st_mtime) < PROXY_CACHE_TTL
+
+
+def proxy_error_response(message: str, status: int = 502):
+    response = HttpResponse(message, status=status, content_type='text/plain')
+    response['Cache-Control'] = 'no-store'
+    response['X-Cache'] = 'ERROR'
+    return response
 
 
 def download_and_optimize_image(url, width=None, quality=WEBP_QUALITY):
@@ -143,8 +149,7 @@ def download_and_optimize_image(url, width=None, quality=WEBP_QUALITY):
         return None, None
 
 
-@require_GET
-@cache_control(public=True, max_age=86400)
+@require_http_methods(["GET", "HEAD"])
 def image_proxy_view(request):
     """
     View per proxy immagini esterne con ottimizzazione e cache
@@ -208,7 +213,7 @@ def image_proxy_view(request):
     image_data, content_type = download_and_optimize_image(url, width, quality)
 
     if image_data is None:
-        return HttpResponseServerError("Failed to process image")
+        return proxy_error_response("Failed to process image")
 
     # Salva in cache (30 giorni)
     cache.set(cache_key, (image_data, content_type), timeout=2592000)
