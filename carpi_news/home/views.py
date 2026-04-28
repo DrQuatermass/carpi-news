@@ -10,6 +10,8 @@ from django.template import loader
 from django.conf import settings
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.cache import cache_page
+from django.views.decorators.vary import vary_on_headers
 from django.views.decorators.http import require_http_methods
 from django.db import models
 from datetime import datetime, timedelta
@@ -36,6 +38,8 @@ def get_published_articles_query():
 
 
 # Create your views here.
+@cache_page(300)
+@vary_on_headers('X-Requested-With')
 def home(request):
     # Filtro per categoria (opzionale)
     categoria = request.GET.get('categoria', None)

@@ -4,13 +4,16 @@ Scarica, ridimensiona, converte in WebP e cachea le immagini da fonti esterne
 """
 import logging
 import requests
+import time
 from io import BytesIO
 from PIL import Image
 from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseServerError
 from django.core.cache import cache
+from django.conf import settings
 from django.views.decorators.cache import cache_control
 from django.views.decorators.http import require_GET
 from urllib.parse import unquote
+from pathlib import Path
 import hashlib
 
 logger = logging.getLogger(__name__)
@@ -23,6 +26,11 @@ WEBP_QUALITY = 65
 
 # Dimensioni massime cache (10 MB per immagine)
 MAX_CACHE_SIZE = 10 * 1024 * 1024
+
+# Cache su disco per immagini proxy già processate
+PROXY_CACHE_TTL = 86400
+PROXY_CACHE_DIR = Path(settings.MEDIA_ROOT) / 'proxy_cache'
+PROXY_CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 
 def get_cache_key(url, width=None, quality=None):
@@ -38,6 +46,15 @@ def get_cache_key(url, width=None, quality=None):
     key_string = "_".join(key_parts)
     hash_key = hashlib.md5(key_string.encode()).hexdigest()
     return f"image_proxy_{hash_key}"
+
+
+def get_cached_proxy_path(url: str, width: int = None, quality: int = WEBP_QUALITY) -> Path:
+    key = hashlib.md5(f"{url}:{width}:{quality}".encode()).hexdigest()
+    return PROXY_CACHE_DIR / f"{key}.webp"
+
+
+def is_fresh_cache_file(path: Path) -> bool:
+    return path.exists() and (time.time() - path.stat().st_mtime) < PROXY_CACHE_TTL
 
 
 def download_and_optimize_image(url, width=None, quality=WEBP_QUALITY):
@@ -127,7 +144,7 @@ def download_and_optimize_image(url, width=None, quality=WEBP_QUALITY):
 
 
 @require_GET
-@cache_control(public=True, max_age=2592000, immutable=True)  # Cache 30 giorni, immutable
+@cache_control(public=True, max_age=86400)
 def image_proxy_view(request):
     """
     View per proxy immagini esterne con ottimizzazione e cache
@@ -164,6 +181,14 @@ def image_proxy_view(request):
     except ValueError:
         return HttpResponseBadRequest("Invalid parameters")
 
+    cached_path = get_cached_proxy_path(url, width, quality)
+    if is_fresh_cache_file(cached_path):
+        response = HttpResponse(cached_path.read_bytes(), content_type='image/webp')
+        response['X-Cache'] = 'DISK-HIT'
+        response['Cache-Control'] = 'public, max-age=86400'
+        response['Vary'] = 'Accept'
+        return response
+
     # Genera chiave cache
     cache_key = get_cache_key(url, width, quality)
 
@@ -174,6 +199,7 @@ def image_proxy_view(request):
         image_data, content_type = cached_data
         response = HttpResponse(image_data, content_type=content_type)
         response['X-Cache'] = 'HIT'
+        response['Cache-Control'] = 'public, max-age=86400'
         response['Vary'] = 'Accept'
         return response
 
@@ -186,10 +212,15 @@ def image_proxy_view(request):
 
     # Salva in cache (30 giorni)
     cache.set(cache_key, (image_data, content_type), timeout=2592000)
+    if content_type == 'image/webp':
+        try:
+            cached_path.write_bytes(image_data)
+        except Exception as e:
+            logger.warning(f"Disk cache write failed for proxy image: {e}")
 
     # Ritorna immagine ottimizzata
     response = HttpResponse(image_data, content_type=content_type)
     response['X-Cache'] = 'MISS'
-    response['Cache-Control'] = 'public, max-age=2592000, immutable'  # 30 giorni browser cache
+    response['Cache-Control'] = 'public, max-age=86400'
     response['Vary'] = 'Accept'  # Cache varia per tipo Accept
     return response

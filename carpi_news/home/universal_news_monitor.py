@@ -14,6 +14,7 @@ from bs4 import BeautifulSoup
 from django.utils import timezone
 from urllib.parse import urljoin, urlparse
 from abc import ABC, abstractmethod
+from pathlib import Path
 from typing import Dict, List, Optional, Any
 from django.conf import settings
 from PIL import Image
@@ -31,6 +32,62 @@ from home.logger_config import get_monitor_logger
 from home.content_polisher import content_polisher
 
 # Il logger sarà configurato dinamicamente per ogni monitor
+
+
+def download_and_save_image(image_url: str, article_slug: str) -> str:
+    """
+    Scarica immagine esterna e la salva in /media/images/downloaded/.
+    Restituisce il path relativo /media/... o l'URL originale in caso di errore.
+    """
+    if not image_url or not image_url.startswith('http'):
+        return image_url
+
+    try:
+        url_hash = hashlib.md5(image_url.encode()).hexdigest()[:12]
+        ext = image_url.split('?')[0].rsplit('.', 1)[-1].lower()
+        if ext not in ['jpg', 'jpeg', 'png', 'webp', 'gif']:
+            ext = 'jpg'
+        filename = f"{article_slug[:40]}-{url_hash}.{ext}"
+
+        save_dir = Path(settings.MEDIA_ROOT) / 'images' / 'downloaded'
+        save_dir.mkdir(parents=True, exist_ok=True)
+        save_path = save_dir / filename
+        media_url = f"/media/images/downloaded/{filename}"
+
+        if save_path.exists():
+            return media_url
+
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        response = requests.get(image_url, timeout=10, headers=headers, stream=True)
+        if response.status_code == 200:
+            content_type = response.headers.get('content-type', '')
+            if 'image' not in content_type and 'octet' not in content_type:
+                return image_url
+
+            with open(save_path, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+            return media_url
+
+    except Exception as e:
+        logging.getLogger(__name__).warning(f"Download immagine fallito: {image_url} - {e}")
+
+    return image_url
+
+
+def download_article_image_in_background(article_id: int, image_url: str, article_slug: str) -> None:
+    """Aggiorna foto con una copia locale senza bloccare il ciclo del monitor."""
+    if not image_url or not image_url.startswith('http'):
+        return
+
+    def _download():
+        local_url = download_and_save_image(image_url, article_slug)
+        if local_url != image_url:
+            Articolo.objects.filter(pk=article_id, foto=image_url).update(foto=local_url)
+
+    thread = threading.Thread(target=_download, name=f"ArticleImageDownload-{article_id}", daemon=True)
+    thread.start()
 
 
 class SiteConfig:
@@ -2908,6 +2965,11 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
                 self.logger.warning("[DEBUG] Chiamata articolo.save()...")
                 articolo.save()
                 self.logger.warning(f"[DEBUG] Articolo salvato! ID: {articolo.id}")
+                download_article_image_in_background(
+                    articolo.id,
+                    article_data.get('image_url'),
+                    articolo.slug,
+                )
 
                 search_status = f" (fonti web: {len(used_sources)})" if enable_web_search and used_sources else ""
                 return f"Articolo AI salvato con ID: {articolo.id}{search_status}"
@@ -3243,6 +3305,11 @@ Rielabora questa notizia seguendo le istruzioni del sistema. Rispondi SOLO con l
             )
             articolo.save()
             self.logger.info(f"Articolo salvato direttamente con ID: {articolo.id}")
+            download_article_image_in_background(
+                articolo.id,
+                article_data.get('image_url'),
+                articolo.slug,
+            )
     
     def start_monitoring(self, daemon: bool = False) -> bool:
         """Avvia il monitoraggio"""

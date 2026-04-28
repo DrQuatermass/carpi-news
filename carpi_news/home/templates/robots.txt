@@ -22,6 +22,7 @@ Disallow: /*.log$
 Disallow: /test/
 Disallow: /debug/
 Disallow: /image-proxy/
+Disallow: /media/proxy_cache/
 
 # Sitemap per indicizzazione completa
 Sitemap: https://ombradelportico.it/sitemap_index.xml

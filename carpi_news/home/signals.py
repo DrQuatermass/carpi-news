@@ -376,6 +376,8 @@ def handle_article_approval(sender, instance, created, **kwargs):
 
         # Invalida immediatamente la cache RSS per IFTTT (veloce, sincrono)
         invalidate_rss_feeds()
+        # Invalida cache homepage (tutte le varianti categoria)
+        cache.clear()
 
         # Condivisione automatica in background thread per evitare timeout
         # Instagram con retry può impiegare fino a 90 secondi
