@@ -639,7 +639,7 @@ class APIUsage(models.Model):
 
     # Dettagli chiamata
     operation = models.CharField(max_length=100, help_text="Operazione eseguita (es. 'generate_article', 'polish_content')")
-    model = models.CharField(max_length=100, blank=True, help_text="Modello utilizzato (es. 'claude-sonnet-4-6-20260217')")
+    model = models.CharField(max_length=100, blank=True, help_text="Modello utilizzato (es. 'claude-sonnet-4-6')")
 
     # Token usage (per Anthropic)
     input_tokens = models.IntegerField(default=0, help_text="Token di input (prompt)")

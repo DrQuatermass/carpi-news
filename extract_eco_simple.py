@@ -84,7 +84,7 @@ Restituisci SOLO il JSON, senza altri testi."""
 
     try:
         message = client.messages.create(
-            model="claude-sonnet-4-6-20260217",
+            model="claude-sonnet-4-6",
             max_tokens=2000,
             messages=[{"role": "user", "content": prompt}]
         )

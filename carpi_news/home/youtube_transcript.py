@@ -141,7 +141,7 @@ def genera_e_salva_articolo():
                 "role": "user",
                 "content": f"{trascrivi(video_id)}"
             }],
-            model="claude-sonnet-4-6-20260217",
+            model="claude-sonnet-4-6",
         )
         
         # Estrai il testo dall'articolo generato

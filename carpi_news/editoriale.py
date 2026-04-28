@@ -149,7 +149,7 @@ ESEMPIO DI FORMATO RICHIESTO CON LINK:
         logging.info("Client Anthropic inizializzato con successo")
         
         response = client.messages.create(
-            model="claude-sonnet-4-6-20260217",
+            model="claude-sonnet-4-6",
             max_tokens=4000,
             messages=[{"role": "user", "content": prompt_editoriale}]
         )
