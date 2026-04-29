@@ -202,13 +202,19 @@ class APIUsageTracker:
             from home.models import APIUsage
             from django.db.models import Sum
             from django.utils import timezone
-            from datetime import datetime
+            from datetime import datetime, timedelta
 
             # Conta quante query sono già state fatte oggi
-            today_start = timezone.make_aware(datetime.combine(timezone.now().date(), datetime.min.time()))
+            today = timezone.localdate()
+            today_start = timezone.make_aware(
+                datetime.combine(today, datetime.min.time()),
+                timezone.get_current_timezone()
+            )
+            tomorrow_start = today_start + timedelta(days=1)
             queries_today = APIUsage.objects.filter(
                 api_type='google_search',
-                timestamp__gte=today_start
+                timestamp__gte=today_start,
+                timestamp__lt=tomorrow_start
             ).aggregate(total=Sum('search_queries'))['total'] or 0
 
             # Calcola quante query sono a pagamento
@@ -274,12 +280,15 @@ class APIUsageTracker:
             from datetime import datetime, timedelta
 
             if date is None:
-                date = timezone.now().date()
+                date = timezone.localdate()
             elif isinstance(date, str):
                 date = datetime.strptime(date, '%Y-%m-%d').date()
 
             # Query per il giorno specifico
-            start_datetime = timezone.make_aware(datetime.combine(date, datetime.min.time()))
+            start_datetime = timezone.make_aware(
+                datetime.combine(date, datetime.min.time()),
+                timezone.get_current_timezone()
+            )
             end_datetime = start_datetime + timedelta(days=1)
 
             stats = {}

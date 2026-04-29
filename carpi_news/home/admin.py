@@ -1053,6 +1053,15 @@ class APIUsageAdmin(admin.ModelAdmin):
                       'error_message', 'related_article')
     date_hierarchy = 'timestamp'
 
+    def _local_day_range(self, date_value):
+        """Restituisce il range timezone-aware per un giorno nel timezone Django."""
+        current_tz = timezone.get_current_timezone()
+        start = timezone.make_aware(
+            timezone.datetime.combine(date_value, timezone.datetime.min.time()),
+            current_tz
+        )
+        return start, start + timedelta(days=1)
+
     fieldsets = (
         ('Informazioni Base', {
             'fields': ('timestamp', 'api_type', 'operation', 'model', 'success')
@@ -1114,28 +1123,32 @@ class APIUsageAdmin(admin.ModelAdmin):
         extra_context = extra_context or {}
 
         # Calcola statistiche
-        today = timezone.now().date()
-        last_7_days = today - timedelta(days=7)
-        last_30_days = today - timedelta(days=30)
+        today = timezone.localdate()
+        last_7_days = today - timedelta(days=6)
+        last_30_days = today - timedelta(days=29)
 
         # Stats oggi
-        today_start = timezone.make_aware(timezone.datetime.combine(today, timezone.datetime.min.time()))
-        today_stats = APIUsage.objects.filter(timestamp__gte=today_start).aggregate(
+        today_start, tomorrow_start = self._local_day_range(today)
+        today_stats = APIUsage.objects.filter(
+            timestamp__gte=today_start,
+            timestamp__lt=tomorrow_start
+        ).aggregate(
             total_cost=Sum(F('cost_total')),
             total_calls=Count('id'),
             anthropic_calls=Count('id', filter=Q(api_type='anthropic')),
-            google_calls=Count('id', filter=Q(api_type='google_search'))
+            google_calls=Count('id', filter=Q(api_type='google_search')),
+            openai_calls=Count('id', filter=Q(api_type='openai'))
         )
 
         # Stats ultimi 7 giorni
-        week_start = timezone.make_aware(timezone.datetime.combine(last_7_days, timezone.datetime.min.time()))
+        week_start, _ = self._local_day_range(last_7_days)
         week_stats = APIUsage.objects.filter(timestamp__gte=week_start).aggregate(
             total_cost=Sum(F('cost_total')),
             total_calls=Count('id')
         )
 
         # Stats ultimi 30 giorni
-        month_start = timezone.make_aware(timezone.datetime.combine(last_30_days, timezone.datetime.min.time()))
+        month_start, _ = self._local_day_range(last_30_days)
         month_stats = APIUsage.objects.filter(timestamp__gte=month_start).aggregate(
             total_cost=Sum(F('cost_total')),
             total_calls=Count('id')
@@ -1163,16 +1176,25 @@ class APIUsageAdmin(admin.ModelAdmin):
 
         # Periodo selezionato (default: ultimi 30 giorni)
         days = int(request.GET.get('days', 30))
-        start_date = timezone.now() - timedelta(days=days)
+        today = timezone.localdate()
+        start_day = today - timedelta(days=days - 1)
+        start_date, _ = self._local_day_range(start_day)
+        _, tomorrow_start = self._local_day_range(today)
+        current_tz = timezone.get_current_timezone()
 
         # Stats totali per periodo
         # Usa F() per riferirsi ai campi del database ed evitare conflitti di nomi
-        total_stats = APIUsage.objects.filter(timestamp__gte=start_date).aggregate(
+        total_stats = APIUsage.objects.filter(
+            timestamp__gte=start_date,
+            timestamp__lt=tomorrow_start
+        ).aggregate(
             total_cost=Sum(F('cost_total')),
             total_calls=Count('id'),
             anthropic_cost=Sum(F('cost_total'), filter=Q(api_type='anthropic')),
+            openai_cost=Sum(F('cost_total'), filter=Q(api_type='openai')),
             google_cost=Sum(F('cost_total'), filter=Q(api_type='google_search')),
             anthropic_calls=Count('id', filter=Q(api_type='anthropic')),
+            openai_calls=Count('id', filter=Q(api_type='openai')),
             google_calls=Count('id', filter=Q(api_type='google_search')),
             total_input_tokens=Sum('input_tokens'),
             total_output_tokens=Sum('output_tokens'),
@@ -1181,9 +1203,10 @@ class APIUsageAdmin(admin.ModelAdmin):
 
         # Costi giornalieri
         daily_costs = APIUsage.objects.filter(
-            timestamp__gte=start_date
+            timestamp__gte=start_date,
+            timestamp__lt=tomorrow_start
         ).annotate(
-            date=TruncDate('timestamp')
+            date=TruncDate('timestamp', tzinfo=current_tz)
         ).values('date', 'api_type').annotate(
             daily_cost=Sum(F('cost_total')),
             daily_calls=Count('id')
@@ -1197,9 +1220,11 @@ class APIUsageAdmin(admin.ModelAdmin):
                 daily_data[date_str] = {
                     'date': date_str,
                     'anthropic_cost': 0,
+                    'openai_cost': 0,
                     'google_cost': 0,
                     'total_cost': 0,
                     'anthropic_calls': 0,
+                    'openai_calls': 0,
                     'google_calls': 0,
                     'total_calls': 0
                 }
@@ -1215,7 +1240,8 @@ class APIUsageAdmin(admin.ModelAdmin):
 
         # Top operazioni per costo
         top_operations = APIUsage.objects.filter(
-            timestamp__gte=start_date
+            timestamp__gte=start_date,
+            timestamp__lt=tomorrow_start
         ).values('operation', 'api_type').annotate(
             operation_total_cost=Sum(F('cost_total')),
             total_calls=Count('id')

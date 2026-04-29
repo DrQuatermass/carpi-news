@@ -636,6 +636,7 @@ class APIUsage(models.Model):
 
     API_TYPES = [
         ('anthropic', 'Anthropic Claude'),
+        ('openai', 'OpenAI'),
         ('google_search', 'Google Search'),
     ]
 
