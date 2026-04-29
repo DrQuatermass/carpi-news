@@ -9,6 +9,7 @@ import uuid
 import subprocess
 import hashlib
 import io
+import re
 from datetime import datetime
 from bs4 import BeautifulSoup
 from django.utils import timezone
@@ -32,6 +33,34 @@ from home.logger_config import get_monitor_logger
 from home.content_polisher import content_polisher
 
 # Il logger sarà configurato dinamicamente per ogni monitor
+
+
+TAGS_INSTRUCTION = """
+
+Alla fine dell'articolo, su una riga separata, scrivi:
+TAGS: [3-5 tag pertinenti separati da virgola, specifici per l'argomento, es: "Carpi calcio, Serie D, stadio Cabassi"]
+"""
+
+
+def extract_tags(content: str, categoria: str) -> tuple[str, str]:
+    """
+    Estrae e rimuove la riga TAGS: dal contenuto.
+    Restituisce (content_pulito, tags_string).
+    """
+    tags = ''
+    match = re.search(r'\nTAGS:\s*(.+)$', content or '', re.MULTILINE)
+    if match:
+        tags_raw = match.group(1).strip()
+        tags = tags_raw.strip('"\'')[:200]
+        content = content[:match.start()].strip()
+
+    base_tags = [t.strip() for t in tags.split(',') if t.strip()]
+    existing_tags = {tag.lower() for tag in base_tags}
+    if 'carpi' not in existing_tags:
+        base_tags.append('Carpi')
+    if categoria and categoria.lower() not in existing_tags:
+        base_tags.append(categoria)
+    return (content or '').strip(), ', '.join(base_tags[:6])
 
 
 def download_and_save_image(image_url: str, article_slug: str) -> str:
@@ -2762,11 +2791,11 @@ class UniversalNewsMonitor:
                 base_prompt = self.config.config.get('ai_twitter_prompt',
                     self.config.config.get('ai_system_prompt',
                     """Sei un giornalista esperto. Rielabora questa notizia per il giornale locale."""))
-                system_prompt = base_prompt + date_context
+                system_prompt = base_prompt + date_context + TAGS_INSTRUCTION
             else:
                 base_prompt = self.config.config.get('ai_system_prompt',
                     """Sei un giornalista esperto. Rielabora questa notizia per il giornale locale.""")
-                system_prompt = base_prompt + date_context
+                system_prompt = base_prompt + date_context + TAGS_INSTRUCTION
 
             # Costruisci contenuto con eventuali link (MANTENIAMO)
             links_section = ""
@@ -2883,6 +2912,10 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
             if not articolo_testo:
                 raise Exception("Nessun contenuto ricevuto dalla conversazione AI")
 
+            # Usa categoria override se disponibile, altrimenti quella di default
+            category = article_data.get('category_override', self.config.category)
+            articolo_testo, tags_estratti = extract_tags(articolo_testo, category)
+
             # Estrai titolo e contenuto usando il content polisher
             self.logger.warning("[DEBUG] Estrazione titolo e contenuto...")
             titolo, contenuto = content_polisher.extract_clean_title_from_ai_response(articolo_testo)
@@ -2930,9 +2963,6 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
                     self.logger.warning(f"Articolo AI già esistente (race condition evitata): {existing.titolo}")
                     return f"Articolo già esistente con ID: {existing.id}"
 
-                # Usa categoria override se disponibile, altrimenti quella di default
-                category = article_data.get('category_override', self.config.category)
-
                 # Determina se deve essere auto-approvato
                 auto_approve = self.should_auto_approve(category)
 
@@ -2954,6 +2984,7 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
                     titolo=polished_data['titolo'][:200],
                     contenuto=polished_data['contenuto'],
                     categoria=category,
+                    tags=tags_estratti,
                     fonte=article_data['url'],
                     foto=article_data.get('image_url'),
                     fonti_web=used_sources if used_sources else None,  # Salva fonti web utilizzate
@@ -3275,6 +3306,7 @@ Rielabora questa notizia seguendo le istruzioni del sistema. Rispondi SOLO con l
                 'titolo': article_data['title'],
                 'contenuto': article_data['full_content']
             })
+            _, tags_estratti = extract_tags('', self.config.category)
 
             # Determina se deve essere auto-approvato
             auto_approve = self.should_auto_approve(self.config.category)
@@ -3297,6 +3329,7 @@ Rielabora questa notizia seguendo le istruzioni del sistema. Rispondi SOLO con l
                 titolo=polished_data['titolo'],
                 contenuto=polished_data['contenuto'],
                 categoria=self.config.category,
+                tags=tags_estratti,
                 fonte=article_data['url'],
                 foto=article_data.get('image_url'),
                 data_evento=data_evento,  # Imposta data evento se disponibile

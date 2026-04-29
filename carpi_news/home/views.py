@@ -502,17 +502,11 @@ def news_sitemap(request):
         categoria__in=['Editoriale', 'Cosa fare oggi']  # Google News preferisce notizie, non editoriali o agende
     ).order_by('-data_pubblicazione')
 
-    # Genera keywords per ogni articolo
-    stopwords_it = {'il', 'lo', 'la', 'i', 'gli', 'le', 'un', 'una', 'di', 'da', 'a', 'in', 'con', 'su', 'per', 'tra', 'fra', 'del', 'della', 'dei', 'delle', 'al', 'alla', 'ai', 'alle', 'dal', 'dalla', 'dai', 'dalle', 'sul', 'sulla', 'sui', 'sulle', 'nel', 'nella', 'nei', 'nelle', 'e', 'o', 'ma', 'se', 'che', 'chi', 'cui'}
-
     for article in articles:
-        # Estrai parole dal titolo (rimuovi punteggiatura, converti lowercase)
-        words = re.findall(r'\b\w+\b', article.titolo.lower())
-        # Filtra stopwords e parole corte (<3 caratteri)
-        keywords = [w.capitalize() for w in words if w not in stopwords_it and len(w) >= 3]
-        # Limita a prime 5 keywords + categoria + "Carpi"
-        keyword_list = keywords[:5] + [article.categoria, 'Carpi']
-        article.keywords = ', '.join(filter(None, keyword_list))  # Filtra valori None/vuoti
+        if article.tags:
+            article.keywords = article.tags
+        else:
+            article.keywords = f"{article.categoria}, Carpi"
 
     logger.info(f"Generata sitemap news con {len(articles)} articoli")
 

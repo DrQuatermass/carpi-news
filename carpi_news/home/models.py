@@ -31,6 +31,12 @@ class Articolo(models.Model):
     contenuto = models.TextField()
     sommario = models.TextField(max_length=5000, blank=True)
     categoria = models.CharField(max_length=100, choices=CATEGORIA_CHOICES, default='Attualità', db_index=True)
+    tags = models.CharField(
+        max_length=200,
+        blank=True,
+        default='',
+        help_text='Tag separati da virgola. Es: "Carpi calcio, Serie D, Carpi FC"'
+    )
     slug = models.SlugField(max_length=100, unique=True, blank=True)
     approvato = models.BooleanField(default=False, db_index=True)
     fonte = models.URLField(max_length=500, blank=True, null=True)
