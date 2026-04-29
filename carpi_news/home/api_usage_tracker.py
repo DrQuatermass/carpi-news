@@ -17,10 +17,6 @@ class APIUsageTracker:
             'input': 3.00,   # $3 per MTok
             'output': 15.00  # $15 per MTok
         },
-        'claude-sonnet-4-6': {
-            'input': 3.00,
-            'output': 15.00
-        },
         'claude-3-5-sonnet-20240620': {
             'input': 3.00,
             'output': 15.00
