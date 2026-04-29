@@ -42,7 +42,12 @@
   "@context": "https://schema.org",
   "@type": "NewsArticle",
   "headline": "{{ articolo.titolo|escapejs }}",
-  "image": "{{ articolo.get_social_image_url }}",
+  "image": {
+    "@type": "ImageObject",
+    "url": "{{ articolo.get_social_image_url }}",
+    "width": 1200,
+    "height": 630
+  },
   "datePublished": "{{ articolo.data_pubblicazione|date:'c' }}",
   "dateModified": "{{ articolo.data_pubblicazione|date:'c' }}",
   "author": {

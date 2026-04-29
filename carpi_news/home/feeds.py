@@ -6,6 +6,7 @@ from django.core.cache import cache
 from django.utils import timezone
 from .models import Articolo
 from datetime import datetime, timedelta
+from pathlib import Path
 import requests
 import logging
 
@@ -79,6 +80,21 @@ def validate_image_url(url):
         return False
 
 
+def site_url():
+    configured_url = getattr(settings, 'SITE_URL', 'https://ombradelportico.it').rstrip('/')
+    if 'localhost' in configured_url:
+        return 'https://ombradelportico.it'
+    return configured_url
+
+
+def media_enclosure_length(foto):
+    if foto and foto.startswith('/media/'):
+        path = Path(settings.MEDIA_ROOT) / foto[7:]
+        if path.exists():
+            return str(path.stat().st_size)
+    return '50000'
+
+
 class ArticoliFeedRSS(Feed):
     """Feed RSS per gli articoli approvati - utilizzato per IFTTT"""
     
@@ -89,6 +105,9 @@ class ArticoliFeedRSS(Feed):
     # Configurazioni RSS - ottimizzate per aggiornamenti immediati
     feed_type = Rss201rev2Feed
     ttl = 1  # Time to live ridotto a 1 minuto per aggiornamenti rapidi
+
+    def feed_url(self):
+        return f"{site_url()}/feed/rss/"
     
     def items(self):
         """Restituisce gli ultimi 10 articoli approvati e pubblicati (non futuri)"""
@@ -194,8 +213,8 @@ class ArticoliFeedRSS(Feed):
         return image_url
     
     def item_enclosure_length(self, item):
-        """Lunghezza del file (richiesto per enclosure, usiamo 0 come placeholder)"""
-        return "0"
+        """Lunghezza del file richiesta dal tag enclosure."""
+        return media_enclosure_length(item.foto)
     
     def item_enclosure_mime_type(self, item):
         """Tipo MIME dell'immagine"""
@@ -219,6 +238,9 @@ class ArticoliFeedAtom(Feed):
     description = "Le ultime notizie della città di Carpi - Feed Atom per condivisione automatica sui social"
     
     feed_type = 'atom'
+
+    def feed_url(self):
+        return f"{site_url()}/feed/atom/"
     
     def items(self):
         return get_published_articles_query().filter(
@@ -247,6 +269,9 @@ class ArticoliRecentiFeed(Feed):
     
     # Ottimizzazioni per IFTTT
     ttl = 1  # Aggiornamento ogni minuto
+
+    def feed_url(self):
+        return f"{site_url()}/feed/recenti/"
     
     def items(self):
         now = timezone.now()
@@ -332,7 +357,7 @@ class ArticoliRecentiFeed(Feed):
         return image_url
     
     def item_enclosure_length(self, item):
-        return "0"
+        return media_enclosure_length(item.foto)
     
     def item_enclosure_mime_type(self, item):
         if item.foto:
