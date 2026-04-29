@@ -1,6 +1,6 @@
 from django.contrib.syndication.views import Feed
 from django.urls import reverse
-from django.utils.feedgenerator import Rss201rev2Feed
+from django.utils.feedgenerator import Atom1Feed, Rss201rev2Feed
 from django.conf import settings
 from django.core.cache import cache
 from django.utils import timezone
@@ -237,7 +237,7 @@ class ArticoliFeedAtom(Feed):
     link = "https://ombradelportico.it/"
     description = "Le ultime notizie della città di Carpi - Feed Atom per condivisione automatica sui social"
     
-    feed_type = 'atom'
+    feed_type = Atom1Feed
 
     def feed_url(self):
         return f"{site_url()}/feed/atom/"

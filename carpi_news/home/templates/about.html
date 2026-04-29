@@ -2,6 +2,55 @@
 
 {% block title %}About - Ombra del Portico{% endblock %}
 
+{% block extra_css %}
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "NewsMediaOrganization",
+  "@id": "https://ombradelportico.it/#organization",
+  "name": "Ombra del Portico",
+  "url": "https://ombradelportico.it",
+  "foundingDate": "2025-09-08",
+  "description": "Portale di informazione locale della città di Carpi. Copertura continua di notizie, eventi, sport e cultura con supervisione editoriale umana.",
+  "logo": {
+    "@type": "ImageObject",
+    "url": "https://ombradelportico.it/static/home/images/portico_logo.svg"
+  },
+  "founder": {
+    "@type": "Person",
+    "name": "Sven Rinaldi"
+  },
+  "employee": {
+    "@type": "Person",
+    "name": "Sven Rinaldi",
+    "jobTitle": "Fondatore e Direttore"
+  },
+  "contactPoint": {
+    "@type": "ContactPoint",
+    "email": "redazione@ombradelportico.it",
+    "telephone": "+393463332864",
+    "contactType": "editorial"
+  },
+  "address": {
+    "@type": "PostalAddress",
+    "addressLocality": "Carpi",
+    "addressRegion": "MO",
+    "addressCountry": "IT"
+  },
+  "areaServed": {
+    "@type": "City",
+    "name": "Carpi"
+  },
+  "sameAs": [
+    "https://t.me/ombradelportico",
+    "https://www.facebook.com/profile.php?id=61580488251783",
+    "https://x.com/ombradelportico",
+    "https://www.instagram.com/ombra_del_portico/"
+  ]
+}
+</script>
+{% endblock %}
+
 {% block content %}
 <div class="container">
     <div class="about-content">
