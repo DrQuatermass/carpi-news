@@ -10,6 +10,7 @@ import subprocess
 import hashlib
 import io
 import re
+import json
 from datetime import datetime
 from bs4 import BeautifulSoup
 from django.utils import timezone
@@ -37,8 +38,24 @@ from home.content_polisher import content_polisher
 
 TAGS_INSTRUCTION = """
 
-Alla fine dell'articolo, su una riga separata, scrivi:
-TAGS: [3-5 tag pertinenti separati da virgola, specifici per l'argomento, es: "Carpi calcio, Serie D, stadio Cabassi"]
+Nel campo JSON "tags", inserisci 3-5 tag pertinenti, specifici per l'argomento.
+Esempio: ["Carpi calcio", "Serie D", "stadio Cabassi"]
+"""
+
+
+ARTICLE_OUTPUT_GUARDRAILS = """
+
+REGOLE DI OUTPUT OBBLIGATORIE:
+- Non mostrare mai reasoning, analisi, note di lavoro, frasi come "ho trovato" o "posso costruire".
+- Non ripetere il titolo nel corpo dell'articolo.
+- Non iniziare il corpo con un elenco puntato o numerato.
+- Evita elenchi puntati salvo necessita' giornalistica reale.
+- Usa frasi fluide con virgole; evita trattini e incisi con "-".
+- Rispondi solo con JSON valido, senza markdown, senza blocchi ``` e senza testo fuori dal JSON.
+- Il JSON deve avere esattamente questi campi: "titolo", "sommario", "contenuto", "tags".
+- "titolo" e "sommario" devono essere plain text, senza HTML.
+- "contenuto" deve contenere HTML con <p>, <strong>, <h2>/<h3> dove serve, mai <h1>.
+- "tags" deve essere un array di stringhe.
 """
 
 
@@ -61,6 +78,53 @@ def extract_tags(content: str, categoria: str) -> tuple[str, str]:
     if categoria and categoria.lower() not in existing_tags:
         base_tags.append(categoria)
     return (content or '').strip(), ', '.join(base_tags[:6])
+
+
+def normalize_ai_tags(tags_value, categoria: str) -> str:
+    """Normalizza tag AI da JSON e aggiunge tag base editoriali."""
+    if isinstance(tags_value, list):
+        base_tags = [str(t).strip() for t in tags_value if str(t).strip()]
+    elif isinstance(tags_value, str):
+        tags_clean = tags_value.strip().strip('[]')
+        base_tags = [t.strip().strip('"\'') for t in tags_clean.split(',') if t.strip()]
+    else:
+        base_tags = []
+
+    existing_tags = {tag.lower() for tag in base_tags}
+    if 'carpi' not in existing_tags:
+        base_tags.append('Carpi')
+    if categoria and categoria.lower() not in existing_tags:
+        base_tags.append(categoria)
+
+    return ', '.join(base_tags[:6])
+
+
+def parse_ai_article_json(response_text: str) -> Optional[Dict[str, Any]]:
+    """Estrae un articolo JSON dalla risposta AI, con tolleranza per code fence."""
+    if not response_text:
+        return None
+
+    cleaned = response_text.strip()
+    cleaned = re.sub(r'^```json?\s*|\s*```$', '', cleaned, flags=re.MULTILINE).strip()
+
+    if not cleaned.startswith('{'):
+        start = cleaned.find('{')
+        end = cleaned.rfind('}')
+        if start >= 0 and end > start:
+            cleaned = cleaned[start:end + 1]
+
+    try:
+        parsed = json.loads(cleaned)
+    except (TypeError, json.JSONDecodeError):
+        return None
+
+    if not isinstance(parsed, dict):
+        return None
+
+    if not parsed.get('titolo') or not parsed.get('contenuto'):
+        return None
+
+    return parsed
 
 
 def download_and_save_image(image_url: str, article_slug: str) -> str:
@@ -2791,11 +2855,11 @@ class UniversalNewsMonitor:
                 base_prompt = self.config.config.get('ai_twitter_prompt',
                     self.config.config.get('ai_system_prompt',
                     """Sei un giornalista esperto. Rielabora questa notizia per il giornale locale."""))
-                system_prompt = base_prompt + date_context + TAGS_INSTRUCTION
+                system_prompt = base_prompt + date_context + ARTICLE_OUTPUT_GUARDRAILS + TAGS_INSTRUCTION
             else:
                 base_prompt = self.config.config.get('ai_system_prompt',
                     """Sei un giornalista esperto. Rielabora questa notizia per il giornale locale.""")
-                system_prompt = base_prompt + date_context + TAGS_INSTRUCTION
+                system_prompt = base_prompt + date_context + ARTICLE_OUTPUT_GUARDRAILS + TAGS_INSTRUCTION
 
             # Costruisci contenuto con eventuali link (MANTENIAMO)
             links_section = ""
@@ -2914,18 +2978,29 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
 
             # Usa categoria override se disponibile, altrimenti quella di default
             category = article_data.get('category_override', self.config.category)
-            articolo_testo, tags_estratti = extract_tags(articolo_testo, category)
+            parsed_article = parse_ai_article_json(articolo_testo)
 
-            # Estrai titolo e contenuto usando il content polisher
-            self.logger.warning("[DEBUG] Estrazione titolo e contenuto...")
-            titolo, contenuto = content_polisher.extract_clean_title_from_ai_response(articolo_testo)
-            self.logger.warning(f"[DEBUG] Titolo estratto: {titolo[:50] if titolo else 'None'}...")
+            if parsed_article:
+                self.logger.warning("[DEBUG] Risposta AI JSON valida")
+                titolo = content_polisher.clean_title_plain(parsed_article.get('titolo', ''))[:200]
+                contenuto = parsed_article.get('contenuto', '')
+                sommario = content_polisher.clean_content_plain(parsed_article.get('sommario', ''))
+                tags_estratti = normalize_ai_tags(parsed_article.get('tags'), category)
+            else:
+                self.logger.warning("[DEBUG] Risposta AI non JSON, uso parser legacy")
+                articolo_testo, tags_estratti = extract_tags(articolo_testo, category)
 
-            # Se l'estrazione fallisce, usa il metodo fallback
-            if not titolo:
-                titolo = content_polisher.clean_title(article_data['title'])[:200]
-            if not contenuto:
-                contenuto = content_polisher.clean_content(articolo_testo)
+                # Estrai titolo e contenuto usando il content polisher
+                self.logger.warning("[DEBUG] Estrazione titolo e contenuto...")
+                titolo, contenuto = content_polisher.extract_clean_title_from_ai_response(articolo_testo)
+                sommario = ''
+                self.logger.warning(f"[DEBUG] Titolo estratto: {titolo[:50] if titolo else 'None'}...")
+
+                # Se l'estrazione fallisce, usa il metodo fallback
+                if not titolo:
+                    titolo = content_polisher.clean_title(article_data['title'])[:200]
+                if not contenuto:
+                    contenuto = content_polisher.clean_content(articolo_testo)
 
             # Rileva se l'AI ha rifiutato/avvisato invece di generare un articolo
             # (il titolo supera i 200 caratteri: l'AI ha scritto un avviso invece di seguire il formato)
@@ -2941,7 +3016,8 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
             # Applica polishing finale
             polished_data = content_polisher.polish_article({
                 'titolo': titolo,
-                'contenuto': contenuto
+                'contenuto': contenuto,
+                'sommario': sommario
             })
 
             # Salva nel database con protezione race condition
@@ -2983,6 +3059,7 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
                 articolo = Articolo(
                     titolo=polished_data['titolo'][:200],
                     contenuto=polished_data['contenuto'],
+                    sommario=polished_data.get('sommario', ''),
                     categoria=category,
                     tags=tags_estratti,
                     fonte=article_data['url'],
@@ -3248,7 +3325,7 @@ Contenuto originale:
 {article_data['full_content']}
 {links_section}
 
-Rielabora questa notizia seguendo le istruzioni del sistema. Rispondi SOLO con l'articolo rielaborato, senza commenti o note aggiuntive."""
+Rielabora questa notizia seguendo le istruzioni del sistema. Rispondi SOLO con JSON valido con i campi titolo, sommario, contenuto e tags."""
 
         # Chiamata a OpenAI (senza tool use per semplicità)
         response = client.chat.completions.create(

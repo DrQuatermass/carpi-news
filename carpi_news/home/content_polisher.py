@@ -103,6 +103,7 @@ class ContentPolisher:
         
         # Rimuovi eventuali tag HTML rimasti
         title = re.sub(r'<[^>]+>', '', title)
+        title = re.sub(r'^\s*(titolo|title)\s*[:\-]\s*', '', title, flags=re.IGNORECASE)
         
         # Pulisci spazi
         title = re.sub(r'\s+', ' ', title)
@@ -112,6 +113,70 @@ class ContentPolisher:
         title = re.sub(r'^[:\-\s]+', '', title)
         
         return title
+
+    def _normalize_sentence_dashes(self, text: str) -> str:
+        """Sostituisce i trattini usati come inciso con virgole."""
+        if not text:
+            return ""
+        text = re.sub(r'[ \t]+[–—][ \t]+', ', ', text)
+        text = re.sub(r'[ \t]+-[ \t]+', ', ', text)
+        return text
+
+    def _is_meta_reasoning_line(self, line: str) -> bool:
+        """Riconosce frasi di processo che non devono finire nell'articolo."""
+        normalized = re.sub(r'<[^>]+>', '', line or '').strip().lower()
+        normalized = normalized.strip(' "\'.,;:-')
+        if not normalized:
+            return False
+
+        meta_prefixes = (
+            'ho trovato',
+            'ho analizzato',
+            'ho verificato',
+            'ho raccolto',
+            'posso costruire',
+            'posso scrivere',
+            'procedo',
+            'ecco',
+            'di seguito',
+            'sulla base',
+            'in base',
+            'reasoning',
+            'ragionamento',
+            'analisi',
+        )
+        return normalized.startswith(meta_prefixes)
+
+    def _strip_leading_meta_lines(self, lines):
+        stripped = []
+        skipping = True
+        for line in lines:
+            clean_line = (line or '').strip()
+            if skipping and self._is_meta_reasoning_line(clean_line):
+                continue
+            skipping = False
+            stripped.append(line)
+        return stripped
+
+    def _unwrap_orphan_list_items(self, content: str) -> str:
+        """Una singola riga convertita in <li> e' spesso un titolo spurio, non una lista."""
+        if not content:
+            return ""
+
+        blocks = re.split(r'(\n\s*\n)', content)
+        cleaned_blocks = []
+        for block in blocks:
+            if not block.strip() or re.match(r'\n\s*\n', block):
+                cleaned_blocks.append(block)
+                continue
+
+            items = re.findall(r'<li>.*?</li>', block, flags=re.DOTALL)
+            if len(items) == 1 and block.strip() == items[0]:
+                cleaned_blocks.append(re.sub(r'^<li>(.*?)</li>$', r'\1', block.strip(), flags=re.DOTALL))
+            else:
+                cleaned_blocks.append(block)
+
+        return ''.join(cleaned_blocks)
     
     def clean_content_plain(self, content: str) -> str:
         """Pulisce il contenuto SENZA applicare formattazione HTML"""
@@ -153,6 +218,7 @@ class ContentPolisher:
         """Pulisce il contenuto dell'articolo"""
         if not content:
             return ""
+        content = self._normalize_sentence_dashes(content)
         
         # Rimuovi emoji
         content = self.emoji_pattern.sub('', content)
@@ -168,6 +234,7 @@ class ContentPolisher:
         # Converti elenchi
         for pattern, replacement in self.list_patterns:
             content = pattern.sub(replacement, content)
+        content = self._unwrap_orphan_list_items(content)
         
         # Pulisci spaziatura
         for pattern, replacement in self.spacing_patterns:
@@ -193,6 +260,7 @@ class ContentPolisher:
         # Dividi in paragrafi mantenendo la struttura
         paragraphs = content.split('\n\n')
         paragraphs = [p.strip() for p in paragraphs if p.strip()]
+        paragraphs = self._strip_leading_meta_lines(paragraphs)
         
         formatted_paragraphs = []
         i = 0
@@ -224,6 +292,7 @@ class ContentPolisher:
                     if part.startswith('<li>') and part.endswith('</li>'):
                         # È un elemento lista
                         if current_text:
+                            current_text = current_text.strip()
                             # Aggiungi il testo accumulato come paragrafo
                             if not current_text.endswith(('.', '!', '?', ':', '"')):
                                 current_text += '.'
@@ -515,7 +584,7 @@ class ContentPolisher:
             return "", ""
         
         # Dividi in righe
-        lines = ai_text.split('\n')
+        lines = self._strip_leading_meta_lines(ai_text.split('\n'))
         
         # Prima riga non vuota è il titolo
         title = ""
@@ -529,12 +598,28 @@ class ContentPolisher:
             
             if not title_found:
                 # Prima riga significativa è il titolo - SEMPRE PLAIN TEXT
-                title = self.clean_title_plain(line)
+                title = self.clean_title_plain(re.sub(r'^\s*[-â€¢*]\s*', '', line))
                 title_found = True
             else:
                 # Resto è contenuto - PUÒ AVERE MARKUP
                 content_lines.append(line)
         
+        content_lines = self._strip_leading_meta_lines(content_lines)
+
+        # Evita titolo duplicato come primo paragrafo o primo punto elenco.
+        while content_lines:
+            first_content_line = re.sub(r'^\s*[-â€¢*]\s*', '', content_lines[0]).strip()
+            first_content_line_clean = self.clean_title_plain(first_content_line)
+            if first_content_line_clean.lower() == title.lower():
+                content_lines.pop(0)
+                continue
+            if re.match(r'^\s*(titolo|title)\s*[:\-]\s*', first_content_line, flags=re.IGNORECASE):
+                possible_title = self.clean_title_plain(first_content_line)
+                if possible_title.lower() == title.lower():
+                    content_lines.pop(0)
+                    continue
+            break
+
         # Riunisci il contenuto CON formattazione HTML
         content = '\n'.join(content_lines)
         content = self.format_article_structure(self.clean_content(content))
