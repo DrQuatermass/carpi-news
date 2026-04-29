@@ -2,12 +2,21 @@
 {% load static %}
 {% load banner_tags %}
 
+{% block og_title %}Cinema a Carpi oggi — programmazione aggiornata{% endblock %}
+{% block og_description %}Film in programmazione oggi a Carpi: Space City Multisala, Cinema Eden e Cinema Corso. Orari e spettacoli aggiornati in tempo reale.{% endblock %}
+{% block twitter_title %}Cinema a Carpi oggi — programmazione aggiornata{% endblock %}
+{% block twitter_description %}Film in programmazione oggi a Carpi: Space City Multisala, Cinema Eden e Cinema Corso. Orari aggiornati.{% endblock %}
+
 {% block title %}Programmazione Cinema a Carpi - Ombra del Portico{% endblock %}
 
 {% block meta_description %}Programmazione aggiornata dei cinema di Carpi: Space City Multisala, Ariston, Cinema Corso e Cinema Eden. Film in programmazione oggi con orari e spettacoli.{% endblock %}
 
 {% block extra_css %}
 <link rel="canonical" href="https://ombradelportico.it/cinema/">
+
+{% if schema_json %}
+<script type="application/ld+json">{{ schema_json|safe }}</script>
+{% endif %}
 
 <style>
     /* Stili Banner Placeholder */

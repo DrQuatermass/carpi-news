@@ -862,6 +862,7 @@ def indexnow_key(request):
     return HttpResponse(key, content_type='text/plain')
 
 
+@cache_page(1800)
 def programmazione_cinema(request):
     """
     Vista per mostrare la programmazione aggiornata dei cinema locali
@@ -1278,11 +1279,49 @@ def programmazione_cinema(request):
     if has_rubriche:
         categorie_disponibili.append('Rubriche')
 
+    schema_graph = []
+    for cinema in cinema_data:
+        for film in cinema.get('films', []):
+            schema_graph.append({
+                "@type": "ScreeningEvent",
+                "name": film.get('title', ''),
+                "location": {
+                    "@type": "MovieTheater",
+                    "name": cinema.get('name', ''),
+                    "address": {
+                        "@type": "PostalAddress",
+                        "streetAddress": cinema.get('address', ''),
+                        "addressLocality": "Carpi",
+                        "addressRegion": "MO",
+                        "addressCountry": "IT"
+                    },
+                    "url": cinema.get('website', '')
+                },
+                "workPresented": {
+                    "@type": "Movie",
+                    "name": film.get('title', ''),
+                    **({"image": film["image"]} if film.get("image") else {})
+                },
+                "url": "https://ombradelportico.it/cinema/",
+                "eventStatus": "https://schema.org/EventScheduled",
+                "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
+                "organizer": {
+                    "@type": "Organization",
+                    "name": cinema.get('name', ''),
+                    "url": cinema.get('website', '')
+                }
+            })
+    schema_json = json.dumps({
+        "@context": "https://schema.org",
+        "@graph": schema_graph
+    }, ensure_ascii=False).replace('</', '<\\/') if schema_graph else ''
+
     context = {
         'cinema_data': cinema_data,
         'last_update': datetime.now(),
         'current_year': datetime.now().year,
         'categorie_disponibili': categorie_disponibili,
+        'schema_json': schema_json,
     }
 
     return render(request, 'programmazione_cinema.html', context)
