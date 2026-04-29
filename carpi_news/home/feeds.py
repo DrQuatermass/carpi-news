@@ -79,6 +79,11 @@ def validate_image_url(url):
         return False
 
 
+def get_social_article_url(item):
+    """URL usato dai feed social per forzare i metadati da articolo."""
+    return f"https://ombradelportico.it/articolo/{item.slug}/?social_share=1"
+
+
 class ArticoliFeedRSS(Feed):
     """Feed RSS per gli articoli approvati - utilizzato per IFTTT"""
     
@@ -151,7 +156,7 @@ class ArticoliFeedRSS(Feed):
     
     def item_link(self, item):
         """Link diretto all'articolo"""
-        return f"https://ombradelportico.it/articolo/{item.slug}/"
+        return get_social_article_url(item)
     
     def item_guid(self, item):
         """GUID univoco per ogni articolo"""
@@ -232,7 +237,7 @@ class ArticoliFeedAtom(Feed):
         return item.sommario[:300] + ("..." if len(item.sommario) > 300 else "")
     
     def item_link(self, item):
-        return f"https://ombradelportico.it/articolo/{item.slug}/"
+        return get_social_article_url(item)
     
     def item_pubdate(self, item):
         return item.data_pubblicazione
@@ -303,7 +308,7 @@ class ArticoliRecentiFeed(Feed):
         return description + hashtags
     
     def item_link(self, item):
-        return f"https://ombradelportico.it/articolo/{item.slug}/"
+        return get_social_article_url(item)
     
     def item_pubdate(self, item):
         return item.data_pubblicazione
