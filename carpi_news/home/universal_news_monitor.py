@@ -43,6 +43,9 @@ Esempio: ["Carpi calcio", "Serie D", "stadio Cabassi"]
 """
 
 
+MAX_SOURCE_CHARS = 20000  # ~6.500 token - margine extra
+
+
 ARTICLE_OUTPUT_GUARDRAILS = """
 
 REGOLE DI OUTPUT OBBLIGATORIE:
@@ -57,6 +60,62 @@ REGOLE DI OUTPUT OBBLIGATORIE:
 - "contenuto" deve contenere HTML con <p>, <strong>, <h2>/<h3> dove serve, mai <h1>.
 - "tags" deve essere un array di stringhe.
 """
+
+
+def truncate_ai_source_text(content: str, logger, label: str = "Contenuto sorgente") -> str:
+    if isinstance(content, str) and len(content) > MAX_SOURCE_CHARS:
+        logger.warning(
+            f"{label} troncato: {len(content):,} -> "
+            f"{MAX_SOURCE_CHARS:,} chars per ottimizzazione costi"
+        )
+        return content[:MAX_SOURCE_CHARS]
+    return content
+
+
+def get_message_content_length(content) -> int:
+    if isinstance(content, str):
+        return len(content)
+    if isinstance(content, list):
+        total = 0
+        for block in content:
+            if isinstance(block, dict):
+                total += len(block.get('text', '') or block.get('content', '') or '')
+            else:
+                total += len(getattr(block, 'text', '') or getattr(block, 'content', '') or '')
+        return total
+    return 0
+
+
+def limit_conversation_messages(messages: list, logger) -> None:
+    total_input = sum(get_message_content_length(m.get('content', '')) for m in messages if isinstance(m, dict))
+    if total_input <= MAX_SOURCE_CHARS * 3:
+        return
+
+    logger.warning(
+        f"Contesto conversazionale troncato: {total_input:,} -> "
+        f"{MAX_SOURCE_CHARS * 3:,} chars massimo stimato"
+    )
+
+    for msg in messages:
+        if not isinstance(msg, dict):
+            continue
+        content = msg.get('content')
+        if isinstance(content, str) and len(content) > MAX_SOURCE_CHARS:
+            msg['content'] = content[:MAX_SOURCE_CHARS]
+            break
+
+    total_input = sum(get_message_content_length(m.get('content', '')) for m in messages if isinstance(m, dict))
+    if total_input <= MAX_SOURCE_CHARS * 3:
+        return
+
+    for msg in reversed(messages):
+        content = msg.get('content') if isinstance(msg, dict) else None
+        if not isinstance(content, list):
+            continue
+        for block in content:
+            if isinstance(block, dict) and isinstance(block.get('content'), str) and len(block['content']) > MAX_SOURCE_CHARS:
+                block['content'] = block['content'][:MAX_SOURCE_CHARS]
+                return
 
 
 def extract_tags(content: str, categoria: str) -> tuple[str, str]:
@@ -2904,6 +2963,16 @@ class UniversalNewsMonitor:
 
             client = Anthropic(api_key=api_key)
 
+            preliminary_title = article_data.get('title')
+            existing = None
+            if article_data.get('url'):
+                existing = Articolo.objects.filter(fonte=article_data['url']).first()
+            if not existing and preliminary_title:
+                existing = Articolo.objects.filter(titolo=preliminary_title).first()
+            if existing:
+                self.logger.info(f"Articolo saltato (pre-check duplicato): {existing.titolo}")
+                return f"Articolo gia' esistente con ID: {existing.id}"
+
             # Scegli prompt in base al tipo di contenuto (MANTENIAMO IDENTICI)
             content_type = article_data.get('content_type', 'comunicato')
 
@@ -2928,10 +2997,15 @@ class UniversalNewsMonitor:
             if article_data.get('links_content'):
                 links_section = "\n\nContenuto aggiuntivo dai link riferiti:\n"
                 for i, link_data in enumerate(article_data['links_content'], 1):
+                    link_content = truncate_ai_source_text(
+                        link_data.get('content', ''),
+                        self.logger,
+                        label=f"Contenuto link {i}"
+                    )
                     links_section += f"\n--- Link {i}: {link_data['url']} ---\n"
                     if link_data.get('title'):
                         links_section += f"Titolo: {link_data['title']}\n"
-                    links_section += f"Contenuto: {link_data['content']}\n"
+                    links_section += f"Contenuto: {link_content}\n"
 
             # Setup per Tool Use conversazionale autonomo
             enable_web_search = self.config.config.get('enable_web_search', False)
@@ -2973,16 +3047,21 @@ class UniversalNewsMonitor:
                     }
                 }
 
+            content = article_data.get('full_content') or article_data.get('content', '')
+            content = truncate_ai_source_text(content, self.logger)
+
             # Contenuto iniziale per Claude con ricerca forzata
             user_content = f"""Fonte: {article_data['url']}
 Titolo originale: {article_data['title']}
 
 Contenuto principale da rielaborare:
-{article_data.get('full_content') or article_data.get('content', '')}
+{content}
 {links_section}
 
 Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
 {f"OBBLIGATORIO: Devi SEMPRE usare web_search almeno una volta per verificare fatti e approfondire l'articolo. Cerca informazioni specifiche sui nomi, luoghi, date, organizzazioni e eventi menzionati. Dopo aver fatto le ricerche, decidi autonomamente se i risultati sono abbastanza rilevanti e specifici da includere come fonti, oppure se è meglio non includere fonti generiche o poco pertinenti." if enable_web_search else "Lavora solo con il contenuto fornito."}"""
+
+            user_content = truncate_ai_source_text(user_content, self.logger, label="Messaggio user generate_article")
 
             # Tools da includere
             tools = [web_search_tool_def] if web_search_tool_def else []
@@ -3297,6 +3376,7 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
                     if tools:
                         api_params_iter["tools"] = tools
 
+                    limit_conversation_messages(api_params_iter["messages"], self.logger)
                     current_message = client.messages.create(**api_params_iter)
 
                     # Traccia utilizzo API (chiamate successive conversazionali)
@@ -3376,20 +3456,29 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
         if article_data.get('links_content'):
             links_section = "\n\nContenuto aggiuntivo dai link riferiti:\n"
             for i, link_data in enumerate(article_data['links_content'], 1):
+                link_content = truncate_ai_source_text(
+                    link_data.get('content', ''),
+                    self.logger,
+                    label=f"Contenuto link fallback {i}"
+                )
                 links_section += f"\n--- Link {i}: {link_data['url']} ---\n"
                 if link_data.get('title'):
                     links_section += f"Titolo: {link_data['title']}\n"
-                links_section += f"Contenuto: {link_data['content']}\n"
+                links_section += f"Contenuto: {link_content}\n"
+
+        content = article_data.get('full_content', '')
+        content = truncate_ai_source_text(content, self.logger)
 
         user_prompt = f"""Titolo originale: {article_data['title']}
 
 Contenuto originale:
-{article_data['full_content']}
+{content}
 {links_section}
 
 Rielabora questa notizia seguendo le istruzioni del sistema. Rispondi SOLO con JSON valido con i campi titolo, sommario, contenuto e tags."""
 
         # Chiamata a OpenAI (senza tool use per semplicità)
+        user_prompt = truncate_ai_source_text(user_prompt, self.logger, label="Messaggio user openai_fallback")
         response = client.chat.completions.create(
             model="gpt-4-turbo-2024-04-09",
             messages=[

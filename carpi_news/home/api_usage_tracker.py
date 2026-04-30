@@ -116,6 +116,14 @@ class APIUsageTracker:
                        f"Output: {output_tokens} tok (${output_cost}) - "
                        f"Totale: ${usage.cost_total}")
 
+            if usage.related_article is None:
+                logger.warning(
+                    f"APIUsage #{usage.id} senza articolo associato - "
+                    f"costo: ${usage.cost_total:.4f} - "
+                    f"operazione: {usage.operation} - "
+                    f"token input: {usage.input_tokens:,}"
+                )
+
             return usage
 
         except Exception as e:
@@ -173,6 +181,14 @@ class APIUsageTracker:
                        f"Input: {input_tokens} tok (${input_cost}) - "
                        f"Output: {output_tokens} tok (${output_cost}) - "
                        f"Totale: ${usage.cost_total}")
+
+            if usage.related_article is None:
+                logger.warning(
+                    f"APIUsage #{usage.id} senza articolo associato - "
+                    f"costo: ${usage.cost_total:.4f} - "
+                    f"operazione: {usage.operation} - "
+                    f"token input: {usage.input_tokens:,}"
+                )
 
             return usage
 
