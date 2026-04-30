@@ -122,6 +122,15 @@ class ContentPolisher:
         text = re.sub(r'[ \t]+-[ \t]+', ', ', text)
         return text
 
+    def _normalize_escaped_line_breaks(self, text: str) -> str:
+        """Converte sequenze \\n salvate come testo in veri ritorni a capo."""
+        if not text:
+            return ""
+        text = text.replace('\\r\\n', '\n')
+        text = text.replace('\\n', '\n')
+        text = text.replace('\\r', '\n')
+        return text
+
     def _is_meta_reasoning_line(self, line: str) -> bool:
         """Riconosce frasi di processo che non devono finire nell'articolo."""
         normalized = re.sub(r'<[^>]+>', '', line or '').strip().lower()
@@ -182,6 +191,7 @@ class ContentPolisher:
         """Pulisce il contenuto SENZA applicare formattazione HTML"""
         if not content:
             return ""
+        content = self._normalize_escaped_line_breaks(content)
         
         # Rimuovi emoji
         content = self.emoji_pattern.sub('', content)
@@ -218,6 +228,7 @@ class ContentPolisher:
         """Pulisce il contenuto dell'articolo"""
         if not content:
             return ""
+        content = self._normalize_escaped_line_breaks(content)
         content = self._normalize_sentence_dashes(content)
         
         # Rimuovi emoji

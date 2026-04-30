@@ -116,7 +116,9 @@ def parse_ai_article_json(response_text: str) -> Optional[Dict[str, Any]]:
     try:
         parsed = json.loads(cleaned)
     except (TypeError, json.JSONDecodeError):
-        return None
+        parsed = _parse_loose_ai_article_json(cleaned)
+        if not parsed:
+            return None
 
     if not isinstance(parsed, dict):
         return None
@@ -125,6 +127,66 @@ def parse_ai_article_json(response_text: str) -> Optional[Dict[str, Any]]:
         return None
 
     return parsed
+
+
+def _parse_loose_ai_article_json(text: str) -> Optional[Dict[str, Any]]:
+    """
+    Recupera risposte AI che hanno forma JSON ma non sono JSON valido.
+
+    Il caso piu' comune e' un campo "contenuto" multilinea con newline reali o
+    virgolette tipografiche/non escapate dentro il testo. Se non lo recuperiamo
+    qui, il fallback legacy salva pezzi come '"sommario": ...' nel corpo articolo.
+    """
+    if not text or '"contenuto"' not in text:
+        return None
+
+    def _extract_between(field: str, next_fields: tuple[str, ...]) -> str:
+        field_match = re.search(rf'"{re.escape(field)}"\s*:\s*', text)
+        if not field_match:
+            return ''
+
+        start = field_match.end()
+        end = len(text)
+        for next_field in next_fields:
+            next_match = re.search(rf',\s*"{re.escape(next_field)}"\s*:', text[start:], flags=re.DOTALL)
+            if next_match:
+                end = min(end, start + next_match.start())
+
+        value = text[start:end].strip().rstrip(',').strip()
+        if value.startswith('"') and value.endswith('"'):
+            value = value[1:-1]
+        elif value.startswith('"'):
+            value = value[1:]
+
+        return value.strip()
+
+    titolo = _extract_between('titolo', ('sommario', 'contenuto', 'tags'))
+    sommario = _extract_between('sommario', ('contenuto', 'tags'))
+    contenuto = _extract_between('contenuto', ('tags',))
+
+    tags = []
+    tags_match = re.search(r'"tags"\s*:\s*(\[[\s\S]*?\])', text)
+    if tags_match:
+        try:
+            parsed_tags = json.loads(tags_match.group(1))
+            if isinstance(parsed_tags, list):
+                tags = parsed_tags
+        except json.JSONDecodeError:
+            tags = [
+                tag.strip().strip('"\'')
+                for tag in tags_match.group(1).strip('[]').split(',')
+                if tag.strip()
+            ]
+
+    if not titolo or not contenuto:
+        return None
+
+    return {
+        'titolo': titolo,
+        'sommario': sommario,
+        'contenuto': contenuto,
+        'tags': tags,
+    }
 
 
 def download_and_save_image(image_url: str, article_slug: str) -> str:
