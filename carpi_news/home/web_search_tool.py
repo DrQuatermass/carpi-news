@@ -468,9 +468,7 @@ class WebSearchTool:
                     if pdf.pages:
                         first_page_text = pdf.pages[0].extract_text()
                         if first_page_text:
-                            # Prima riga come titolo
-                            lines = first_page_text.split('\n')
-                            title = lines[0].strip() if lines else "PDF Document"
+                            title = self._extract_pdf_title(first_page_text, url)
 
                     # Estrai testo da tutte le pagine (max 20 per performance)
                     for page in pdf.pages[:20]:
@@ -501,10 +499,8 @@ class WebSearchTool:
                     if page_text:
                         text_parts.append(page_text)
 
-                        # Se non abbiamo titolo, usa prima riga della prima pagina
                         if page_num == 0 and not title and page_text:
-                            lines = page_text.split('\n')
-                            title = lines[0].strip() if lines else "PDF Document"
+                            title = self._extract_pdf_title(page_text, url)
 
                 content = '\n\n'.join(text_parts)
 
@@ -526,6 +522,43 @@ class WebSearchTool:
         except Exception as e:
             self.logger.error(f"Errore estrazione PDF da {url}: {e}")
             return None
+
+    def _extract_pdf_title(self, text: str, url: str) -> str:
+        """Estrae il titolo più significativo da un PDF."""
+        import re
+        lines = [l.strip() for l in text.split('\n')
+                 if l.strip() and len(l.strip()) > 10]
+
+        for line in lines[:10]:
+            # Salta righe che sono solo numeri, date o codici
+            if re.match(r'^[\d\s\.\-\/\|]+$', line):
+                continue
+            # Salta righe troppo corte
+            if len(line) < 15:
+                continue
+            # Salta intestazioni tecniche comuni
+            if re.match(
+                r'^(pag|page|n\.|nr\.|doc|rev|ver|data|date|del|al|il)\s*[\d]',
+                line.lower()):
+                continue
+            # Salta righe che sono solo maiuscole e slash (es. codici)
+            if re.match(r'^[A-Z\s\/\.\-]{5,}$', line) and len(line) < 30:
+                continue
+            return line[:120]
+
+        # Fallback: usa il nome del file dall'URL
+        try:
+            filename = url.rstrip('/').split('/')[-1]
+            filename = filename.split('?')[0]  # rimuovi query params
+            filename = re.sub(r'\.(pdf|PDF)$', '', filename)
+            filename = re.sub(r'[-_%]', ' ', filename)
+            filename = re.sub(r'\s+', ' ', filename).strip()
+            if filename and len(filename) > 5:
+                return filename.title()[:80]
+        except Exception:
+            pass
+
+        return "Documento PDF"
 
     def _clean_pdf_text(self, text: str) -> str:
         """Pulisce il testo estratto da PDF"""
