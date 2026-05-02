@@ -4,7 +4,7 @@
 {% load banner_tags %}
 {% load webp_images %}
 
-{% block title %}{{ articolo.titolo }} - Ombra del Portico{% endblock %}
+{% block title %}{% if articolo.titolo_seo %}{{ articolo.titolo_seo }} - Ombra del Portico{% else %}{{ articolo.titolo }} - Ombra del Portico{% endif %}{% endblock %}
 
 {% block og_type %}article{% endblock %}
 {% block og_url %}https://ombradelportico.it{{ request.path }}{% endblock %}

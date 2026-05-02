@@ -28,6 +28,15 @@ class Articolo(models.Model):
     ]
 
     titolo = models.CharField(max_length=200)
+    titolo_seo = models.CharField(
+        max_length=70,
+        blank=True,
+        default='',
+        help_text=(
+            'Title tag SEO per Google (max 60 char, keyword-first). '
+            'Se vuoto usa il titolo principale.'
+        )
+    )
     contenuto = models.TextField()
     sommario = models.TextField(max_length=5000, blank=True)
     categoria = models.CharField(max_length=100, choices=CATEGORIA_CHOICES, default='Attualità', db_index=True)

@@ -55,8 +55,10 @@ REGOLE DI OUTPUT OBBLIGATORIE:
 - Evita elenchi puntati salvo necessita' giornalistica reale.
 - Usa frasi fluide con virgole; evita trattini e incisi con "-".
 - Rispondi solo con JSON valido, senza markdown, senza blocchi ``` e senza testo fuori dal JSON.
-- Il JSON deve avere esattamente questi campi: "titolo", "sommario", "contenuto", "tags".
-- "titolo" e "sommario" devono essere plain text, senza HTML.
+- Il JSON deve avere esattamente questi campi: "titolo", "titolo_seo", "sommario", "contenuto", "tags".
+- "titolo": titolo editoriale narrativo e coinvolgente per il lettore.
+- "titolo_seo": title tag per Google, MAX 60 caratteri, struttura SOGGETTO + LUOGO + AZIONE, deve contenere le parole chiave esatte che qualcuno cercherebbe su Google per questa notizia. Includi sempre "Carpi" o il nome specifico della persona/luogo. Esempio: "AIMAG Carpi: Morelli chiede trasparenza sulle nomine" invece di "AIMAG, Morelli lancia il guanto al sindaco". Se non riesci a creare un titolo_seo migliore del titolo, usa una stringa vuota "".
+- "sommario" deve essere plain text, senza HTML.
 - "contenuto" deve contenere HTML con <p>, <strong>, <h2>/<h3> dove serve, mai <h1>.
 - "tags" deve essere un array di stringhe.
 """
@@ -219,7 +221,8 @@ def _parse_loose_ai_article_json(text: str) -> Optional[Dict[str, Any]]:
 
         return value.strip()
 
-    titolo = _extract_between('titolo', ('sommario', 'contenuto', 'tags'))
+    titolo = _extract_between('titolo', ('titolo_seo', 'sommario', 'contenuto', 'tags'))
+    titolo_seo = _extract_between('titolo_seo', ('sommario', 'contenuto', 'tags'))
     sommario = _extract_between('sommario', ('contenuto', 'tags'))
     contenuto = _extract_between('contenuto', ('tags',))
 
@@ -242,6 +245,7 @@ def _parse_loose_ai_article_json(text: str) -> Optional[Dict[str, Any]]:
 
     return {
         'titolo': titolo,
+        'titolo_seo': titolo_seo,
         'sommario': sommario,
         'contenuto': contenuto,
         'tags': tags,
@@ -3213,6 +3217,7 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
             if parsed_article:
                 self.logger.warning("[DEBUG] Risposta AI JSON valida")
                 titolo = content_polisher.clean_title_plain(parsed_article.get('titolo', ''))[:200]
+                titolo_seo = content_polisher.clean_title_plain(parsed_article.get('titolo_seo', ''))[:70]
                 contenuto = parsed_article.get('contenuto', '')
                 sommario = content_polisher.clean_content_plain(parsed_article.get('sommario', ''))
                 tags_estratti = normalize_ai_tags(parsed_article.get('tags'), category)
@@ -3231,6 +3236,7 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
                     titolo = content_polisher.clean_title(article_data['title'])[:200]
                 if not contenuto:
                     contenuto = content_polisher.clean_content(articolo_testo)
+                titolo_seo = ''
 
             # Rileva se l'AI ha rifiutato/avvisato invece di generare un articolo
             # (il titolo supera i 200 caratteri: l'AI ha scritto un avviso invece di seguire il formato)
@@ -3288,6 +3294,7 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
                 self.logger.warning("[DEBUG] Creazione oggetto Articolo...")
                 articolo = Articolo(
                     titolo=polished_data['titolo'][:200],
+                    titolo_seo=titolo_seo,
                     contenuto=polished_data['contenuto'],
                     sommario=polished_data.get('sommario', ''),
                     categoria=category,
