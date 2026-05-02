@@ -3496,6 +3496,48 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
             # Se arriviamo qui, abbiamo raggiunto il limite di iterazioni
             self.logger.warning(f"Conversazione AI interrotta dopo {max_iterations} iterazioni")
 
+            try:
+                conversation.append({
+                    "role": "user",
+                    "content": (
+                        "Hai raggiunto il limite massimo di ricerche. Non usare altri strumenti. "
+                        "Genera ora l'articolo finale usando solo le informazioni disponibili e "
+                        "rispondi esclusivamente con il JSON richiesto dal system prompt."
+                    )
+                })
+                final_params = {
+                    "system": system_prompt,
+                    "max_tokens": 4096,
+                    "messages": conversation,
+                    "model": "claude-sonnet-4-6"
+                }
+                limit_conversation_messages(final_params["messages"], self.logger)
+                final_message = client.messages.create(**final_params)
+
+                try:
+                    from home.api_usage_tracker import APIUsageTracker
+                    APIUsageTracker.track_anthropic(
+                        operation='generate_article_final_no_tools',
+                        model=final_params["model"],
+                        input_tokens=final_message.usage.input_tokens,
+                        output_tokens=final_message.usage.output_tokens,
+                        related_article=None,
+                        success=True
+                    )
+                except Exception as e:
+                    self.logger.warning(f"Errore nel tracciare utilizzo API finale senza tool: {e}")
+
+                final_response = ""
+                for content_block in final_message.content:
+                    if content_block.type == "text":
+                        final_response += content_block.text
+
+                if final_response.strip():
+                    self.logger.warning("Conversazione AI completata con fallback finale senza tool")
+                    return final_response, web_sources
+            except Exception as final_error:
+                self.logger.error(f"Fallback finale senza tool fallito: {final_error}")
+
             # Restituisci l'ultimo contenuto disponibile
             final_content = ""
             for content_block in current_message.content:
