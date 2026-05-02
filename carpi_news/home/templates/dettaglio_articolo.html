@@ -29,7 +29,7 @@
 <meta property="article:section" content="{{ articolo.categoria }}">
 
 <!-- Meta keywords e geolocalizzazione -->
-<meta name="keywords" content="Carpi, notizie Carpi, {{ articolo.categoria }}, Emilia-Romagna, cronaca locale, news Carpi">
+<meta name="keywords" content="{{ articolo.tags|default:articolo.categoria }}, Carpi, Emilia-Romagna">
 <meta name="author" content="Redazione Ombra del Portico">
 <meta name="geo.region" content="IT-ER">
 <meta name="geo.placename" content="Carpi">
@@ -49,7 +49,7 @@
     "height": 630
   },
   "datePublished": "{{ articolo.data_pubblicazione|date:'c' }}",
-  "dateModified": "{{ articolo.data_pubblicazione|date:'c' }}",
+  "dateModified": "{{ articolo.data_modifica|date:'c' }}",
   "author": {
     "@type": "Person",
     "name": "Sven Rinaldi",
