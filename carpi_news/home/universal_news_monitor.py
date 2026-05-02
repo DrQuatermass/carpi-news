@@ -382,6 +382,102 @@ class BaseScraper(ABC):
 
 class HTMLScraper(BaseScraper):
     """Scraper per siti HTML generici"""
+
+    def _is_excluded_image(self, img_elem) -> bool:
+        """Scarta immagini di layout, loghi, icone e placeholder."""
+        classes = img_elem.get('class', '')
+        if isinstance(classes, list):
+            classes = ' '.join(classes)
+
+        attrs = ' '.join([
+            img_elem.get('src', ''),
+            img_elem.get('data-src', ''),
+            classes,
+            img_elem.get('id', ''),
+            img_elem.get('alt', ''),
+        ]).lower()
+
+        excluded_terms = [
+            'logo', 'icon', 'banner', 'header', 'footer', 'avatar', 'social',
+            'facebook', 'instagram', 'twitter', 'x.com', 'whatsapp', 'ads',
+            'advertisement', 'pubblicita', 'placeholder', 'sprite', 'araldo',
+            'scritta', 'san-michele'
+        ]
+        if any(term in attrs for term in excluded_terms):
+            return True
+
+        try:
+            width = int(img_elem.get('width', '0') or 0)
+            height = int(img_elem.get('height', '0') or 0)
+            if width and height and (width < 120 or height < 80):
+                return True
+        except (ValueError, TypeError):
+            pass
+
+        return False
+
+    def _extract_meta_image_from_soup(self, soup: BeautifulSoup, page_url: str) -> Optional[str]:
+        """Estrae l'immagine dichiarata nei meta tag social/structured data."""
+        meta_selectors = [
+            'meta[property="og:image"]',
+            'meta[property="og:image:secure_url"]',
+            'meta[name="twitter:image"]',
+            'meta[property="twitter:image"]',
+        ]
+        for selector in meta_selectors:
+            meta = soup.select_one(selector)
+            image_url = meta.get('content') if meta else None
+            if image_url:
+                return urljoin(page_url, image_url.strip())
+
+        for script in soup.select('script[type="application/ld+json"]'):
+            try:
+                data = json.loads(script.string or '')
+            except (json.JSONDecodeError, TypeError):
+                continue
+
+            candidates = data if isinstance(data, list) else [data]
+            for item in candidates:
+                if not isinstance(item, dict):
+                    continue
+                image_data = item.get('image')
+                if isinstance(image_data, str):
+                    return urljoin(page_url, image_data)
+                if isinstance(image_data, list) and image_data:
+                    first_image = image_data[0]
+                    if isinstance(first_image, str):
+                        return urljoin(page_url, first_image)
+                    if isinstance(first_image, dict) and first_image.get('url'):
+                        return urljoin(page_url, first_image['url'])
+                if isinstance(image_data, dict) and image_data.get('url'):
+                    return urljoin(page_url, image_data['url'])
+
+        return None
+
+    def _extract_best_article_image(self, soup: BeautifulSoup, page_url: str) -> Optional[str]:
+        """Estrae l'immagine principale evitando navigazione e correlati."""
+        meta_image = self._extract_meta_image_from_soup(soup, page_url)
+        if meta_image:
+            return meta_image
+
+        scoped_selectors = [
+            'article img',
+            'main img',
+            '.article-content img',
+            '.entry-content img',
+            '.post-content img',
+            '.content img',
+            '.news-body img',
+        ]
+        for selector in scoped_selectors:
+            for img_elem in soup.select(selector):
+                if self._is_excluded_image(img_elem):
+                    continue
+                image_url = self._extract_image_from_html_elem(img_elem)
+                if image_url:
+                    return urljoin(page_url, image_url)
+
+        return None
     
     def scrape_articles(self) -> List[Dict[str, Any]]:
         """Scrape articoli tramite HTML con supporto RSS discovery e JSON parsing"""
@@ -523,35 +619,28 @@ class HTMLScraper(BaseScraper):
                             from bs4 import BeautifulSoup
                             article_response = self._get_request(article_url, timeout=self.timeout)
                             article_soup = BeautifulSoup(article_response.content, 'html.parser')
+                            image_url = self._extract_best_article_image(article_soup, article_url)
 
                             # Prima cerca immagini con caratteristiche di articolo (es. Questura con ?art=)
                             all_imgs = article_soup.find_all('img')
                             img_elem = None
 
                             # Priorità 1: Immagini con parametro art= (tipico delle Questure) o in /statics/
-                            for img in all_imgs:
-                                src = img.get('src', '')
-                                if 'art=' in src or '/statics/' in src and not any(term in src.lower() for term in ['banner', 'header', 'san-michele']):
-                                    img_elem = img
-                                    break
-
-                            # Priorità 2: Prima immagine che non sia icona/logo/banner
-                            if not img_elem:
+                            if not image_url:
                                 for img in all_imgs:
-                                    src = img.get('src', '').lower()
-                                    if not any(term in src for term in ['logo', 'icon', 'banner', 'header', 'araldo', 'scritta']):
-                                        # Verifica dimensioni minime
-                                        try:
-                                            width = int(img.get('width', '0'))
-                                            height = int(img.get('height', '0'))
-                                            if width < 80 or height < 60:
-                                                continue
-                                        except (ValueError, TypeError):
-                                            pass
+                                    src = img.get('src', '')
+                                    if ('art=' in src or '/statics/' in src) and not self._is_excluded_image(img):
                                         img_elem = img
                                         break
 
-                            if img_elem:
+                            # Priorità 2: Prima immagine che non sia icona/logo/banner
+                            if not image_url and not img_elem:
+                                for img in all_imgs:
+                                    if not self._is_excluded_image(img):
+                                        img_elem = img
+                                        break
+
+                            if not image_url and img_elem:
                                 image_url = self._extract_image_from_html_elem(img_elem)
                         except Exception as e:
                             self.logger.debug(f"Errore estrazione immagine RSS: {e}")

@@ -101,6 +101,35 @@ class SocialMediaManager:
         url = f"https://ombradelportico.it{foto_field}"
         return self._normalize_url(url)
 
+    def _get_facebook_picture_url(self, articolo) -> Optional[str]:
+        """
+        Restituisce l'immagine da passare esplicitamente a Facebook.
+        Usa la logica social del modello e scarta URL non pubblici/locali.
+        """
+        image_url = None
+
+        try:
+            image_url = articolo.get_social_image_url()
+        except Exception as e:
+            logger.warning(f"Facebook: errore get_social_image_url per '{articolo.titolo}': {str(e)[:200]}")
+
+        if not image_url:
+            image_url = self._get_absolute_image_url(articolo.foto)
+
+        if not image_url:
+            return None
+
+        image_url = self._normalize_url(image_url)
+        if 'localhost' in image_url or '127.0.0.1' in image_url:
+            logger.warning(f"Facebook: immagine locale non utilizzabile, skip picture: {image_url}")
+            return None
+
+        if not self._validate_image_url(image_url, timeout=10):
+            logger.warning(f"Facebook: immagine non valida, lascio scegliere Open Graph: {image_url}")
+            return None
+
+        return image_url
+
     def _validate_image_url(self, image_url: str, timeout: int = 10) -> bool:
         """
         Valida che un URL immagine sia accessibile e contenga un'immagine valida
@@ -774,6 +803,10 @@ class SocialMediaManager:
                 'message': message,
                 'link': article_url,
             }
+            picture_url = self._get_facebook_picture_url(articolo)
+            if picture_url:
+                data['picture'] = picture_url
+                logger.info(f"Facebook: picture esplicita impostata: {picture_url}")
 
             response = requests.post(url, data=data, timeout=30)
 

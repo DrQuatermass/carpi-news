@@ -360,12 +360,17 @@ def dettaglio_articolo(request, slug):
         categoria=articolo.categoria
     ).exclude(pk=articolo.pk).order_by('-data_pubblicazione')[:6]
 
+    site_url = getattr(settings, 'SITE_URL', 'https://ombradelportico.it').rstrip('/')
+    canonical_url = f"{site_url}{request.path}"
+
     context = {
         'articolo': articolo,
         'articoli_correlati': articoli_correlati,
         'categorie_disponibili': list(categorie_disponibili),
         'categoria_attiva': None,  # Nessuna categoria attiva nel dettaglio
         'current_year': 2025,
+        'canonical_url': canonical_url,
+        'share_url': canonical_url,
     }
     
     return render(request, "dettaglio_articolo.html", context)
