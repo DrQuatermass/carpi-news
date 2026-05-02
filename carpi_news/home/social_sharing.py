@@ -101,34 +101,29 @@ class SocialMediaManager:
         url = f"https://ombradelportico.it{foto_field}"
         return self._normalize_url(url)
 
-    def _get_facebook_picture_url(self, articolo) -> Optional[str]:
+    def _refresh_facebook_link_preview(self, article_url: str, access_token: str) -> None:
         """
-        Restituisce l'immagine da passare esplicitamente a Facebook.
-        Usa la logica social del modello e scarta URL non pubblici/locali.
+        Chiede a Facebook di aggiornare la cache Open Graph prima del post.
+        Non blocca la condivisione se fallisce: /feed userà comunque il link.
         """
-        image_url = None
-
         try:
-            image_url = articolo.get_social_image_url()
+            response = requests.post(
+                "https://graph.facebook.com/v24.0/",
+                data={
+                    'id': article_url,
+                    'scrape': 'true',
+                    'access_token': access_token,
+                },
+                timeout=15,
+            )
+            if response.status_code == 200:
+                logger.info(f"Facebook: cache Open Graph aggiornata per {article_url}")
+            else:
+                logger.warning(
+                    f"Facebook: refresh Open Graph fallito {response.status_code} - {response.text[:500]}"
+                )
         except Exception as e:
-            logger.warning(f"Facebook: errore get_social_image_url per '{articolo.titolo}': {str(e)[:200]}")
-
-        if not image_url:
-            image_url = self._get_absolute_image_url(articolo.foto)
-
-        if not image_url:
-            return None
-
-        image_url = self._normalize_url(image_url)
-        if 'localhost' in image_url or '127.0.0.1' in image_url:
-            logger.warning(f"Facebook: immagine locale non utilizzabile, skip picture: {image_url}")
-            return None
-
-        if not self._validate_image_url(image_url, timeout=10):
-            logger.warning(f"Facebook: immagine non valida, lascio scegliere Open Graph: {image_url}")
-            return None
-
-        return image_url
+            logger.warning(f"Facebook: errore refresh Open Graph per {article_url}: {str(e)[:200]}")
 
     def _validate_image_url(self, image_url: str, timeout: int = 10) -> bool:
         """
@@ -794,6 +789,10 @@ class SocialMediaManager:
             if len(articolo.sommario) > 500:
                 message += "..."
 
+            # Aggiorna la cache Open Graph prima di pubblicare.
+            # Evita il parametro picture su /feed: non è affidabile per link post moderni.
+            self._refresh_facebook_link_preview(article_url, page_token)
+
             # Usa sempre l'endpoint /feed con il link
             # Facebook genererà automaticamente l'anteprima con immagine dal sito
             # Cliccando sull'immagine, l'utente va direttamente all'articolo
@@ -803,11 +802,6 @@ class SocialMediaManager:
                 'message': message,
                 'link': article_url,
             }
-            picture_url = self._get_facebook_picture_url(articolo)
-            if picture_url:
-                data['picture'] = picture_url
-                logger.info(f"Facebook: picture esplicita impostata: {picture_url}")
-
             response = requests.post(url, data=data, timeout=30)
 
             # Debug logging
