@@ -1494,7 +1494,7 @@ def _get_newsletter_context():
     try:
         from admin_panel.models import Banner as _Banner
         _now = timezone.now()
-        _horizontal = ['header', 'footer', 'article_top', 'article_middle', 'article_bottom']
+        _horizontal = ['both', 'header', 'footer', 'article_top', 'article_middle', 'article_bottom']
         _banners = list(_Banner.objects.filter(
             position__in=_horizontal,
             status='active',
