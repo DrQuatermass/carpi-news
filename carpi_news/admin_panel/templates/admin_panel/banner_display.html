@@ -10,8 +10,8 @@
                          srcset="{{ banner.image.url|image_srcset }}"
                          sizes="(max-width: 768px) 100vw, 728px"
                          alt="{{ banner.alt_text }}"
-                         width="{{ banner.image.width }}"
-                         height="{{ banner.image.height }}"
+                         width="{{ banner.image_width }}"
+                         height="{{ banner.image_height }}"
                          style="width: 100%; height: auto; display: block; border-radius: 6px;"
                          fetchpriority="high">
                 </a>
@@ -29,8 +29,8 @@
                      alt="{{ banner.alt_text }}"
                      loading="lazy"
                      fetchpriority="low"
-                     width="{{ img.width }}"
-                     height="{{ img.height }}"
+                     width="{% if banner.image_vertical %}{{ banner.image_vertical_width }}{% else %}{{ banner.image_width }}{% endif %}"
+                     height="{% if banner.image_vertical %}{{ banner.image_vertical_height }}{% else %}{{ banner.image_height }}{% endif %}"
                      style="width: 100%; height: auto; border-radius: 10px; display: block; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);">
             </a>
             <div style="font-size: 10px; color: #999; text-align: center; margin-top: 5px;">Pubblicità</div>

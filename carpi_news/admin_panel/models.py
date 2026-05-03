@@ -309,6 +309,34 @@ Ombra del Portico - Sistema di gestione banner
             return f"{width}x{height} pixel"
         return "Seleziona prima una posizione"
 
+    def get_image_dimensions(self, field='image'):
+        """Restituisce dimensioni banner senza far fallire il rendering se il file non e leggibile."""
+        fallback = self.VERTICAL_BANNER_SIZE if field == 'image_vertical' else self.HORIZONTAL_BANNER_SIZE
+        image_field = getattr(self, field, None)
+        if not image_field:
+            return fallback
+
+        try:
+            return image_field.width, image_field.height
+        except Exception:
+            return fallback
+
+    @property
+    def image_width(self):
+        return self.get_image_dimensions('image')[0]
+
+    @property
+    def image_height(self):
+        return self.get_image_dimensions('image')[1]
+
+    @property
+    def image_vertical_width(self):
+        return self.get_image_dimensions('image_vertical')[0]
+
+    @property
+    def image_vertical_height(self):
+        return self.get_image_dimensions('image_vertical')[1]
+
 
 class PromotionalCode(models.Model):
     """Modello per codici promozionali/sconto"""

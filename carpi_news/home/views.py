@@ -121,7 +121,7 @@ def home(request):
     # Escludi immagini con rapporto larghezza/altezza > 2 (banner orizzontali nella posizione verticale)
     all_banners = [
         b for b in all_banners_qs
-        if b.image_vertical.height > 0 and b.image_vertical.width / b.image_vertical.height <= 2
+        if b.image_vertical_height > 0 and b.image_vertical_width / b.image_vertical_height <= 2
     ]
 
     # Verifica che non sia un bot
@@ -279,8 +279,8 @@ def home(request):
                     'image_url': banner_img_url,
                     'image_srcset': image_srcset(banner_img_url),
                     'alt_text': banner.alt_text,
-                    'image_width': banner.image_vertical.width,
-                    'image_height': banner.image_vertical.height,
+                    'image_width': banner.image_vertical_width,
+                    'image_height': banner.image_vertical_height,
                     'position_index': i  # Indice nello slot (0-3)
                 })
 
