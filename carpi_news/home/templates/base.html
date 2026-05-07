@@ -40,6 +40,7 @@
     <meta name="twitter:title" content="{% block twitter_title %}{% block title_for_twitter %}Ombra del Portico — Notizie di Carpi, Eventi e Attualità{% endblock %}{% endblock %}">
     <meta name="twitter:description" content="{% block twitter_description %}{% block meta_description_for_twitter %}Notizie di Carpi in tempo reale: cronaca, eventi, sport e cultura carpigiana. Il portale di informazione locale aggiornato ogni giorno.{% endblock %}{% endblock %}">
     <meta name="twitter:image" content="{% block twitter_image %}https://ombradelportico.it{% static 'home/images/portico_logo_nopayoff.png' %}{% endblock %}">
+    <meta name="twitter:site" content="{{ TWITTER_SITE }}">
 
     <!-- Preload risorse critiche per LCP -->
     <link rel="preload" href="{% static 'home/css/style.min.css'%}?v=14" as="style">
