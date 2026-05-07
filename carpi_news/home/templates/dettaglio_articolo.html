@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load seo_filters %}
 {% load italian_dates %}
 {% load static %}
 {% load banner_tags %}
@@ -9,7 +10,7 @@
 {% block og_type %}article{% endblock %}
 {% block og_url %}https://ombradelportico.it{{ request.path }}{% endblock %}
 {% block og_title %}{{ articolo.titolo }}{% endblock %}
-{% block og_description %}{{ articolo.sommario|truncatechars:300|striptags }}{% endblock %}
+{% block og_description %}{{ articolo.sommario|striptags|truncate_sentences:300 }}{% endblock %}
 {% block og_image %}{{ articolo.get_social_image_url }}{% endblock %}
 {% block og_image_alt %}{{ articolo.titolo }}{% endblock %}
 {% block og_image_type %}{{ articolo.social_image_mime_type }}{% endblock %}
@@ -17,10 +18,10 @@
 {% block twitter_card %}summary_large_image{% endblock %}
 {% block twitter_url %}https://ombradelportico.it{{ request.path }}{% endblock %}
 {% block twitter_title %}{{ articolo.titolo }}{% endblock %}
-{% block twitter_description %}{{ articolo.sommario|truncatechars:200|striptags }}{% endblock %}
+{% block twitter_description %}{{ articolo.sommario|striptags|truncate_sentences:200 }}{% endblock %}
 {% block twitter_image %}{{ articolo.get_social_image_url }}{% endblock %}
 
-{% block meta_description %}{{ articolo.sommario|truncatechars:160|striptags }}{% endblock %}
+{% block meta_description %}{{ articolo.sommario|striptags|truncate_sentences:160 }}{% endblock %}
 {% block meta_keywords %}{{ articolo.meta_keywords }}{% endblock %}
 
 {% block extra_css %}
