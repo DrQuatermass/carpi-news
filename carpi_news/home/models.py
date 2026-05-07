@@ -243,6 +243,27 @@ class Articolo(models.Model):
 
         super().save(*args, **kwargs)
 
+    @property
+    def tag_list(self):
+        """Tag separati da virgola, ripuliti e deduplicati preservando l'ordine."""
+        tags = [tag.strip() for tag in (self.tags or '').split(',') if tag.strip()]
+        return list(dict.fromkeys(tags))
+
+    @property
+    def meta_keywords(self):
+        keywords = self.tag_list or [self.categoria]
+        keywords = keywords + [self.categoria, 'Carpi', 'Emilia-Romagna']
+        return ', '.join(dict.fromkeys(keywords))
+
+    @property
+    def social_image_mime_type(self):
+        image_url = self.get_social_image_url().split('?', 1)[0].lower()
+        if image_url.endswith('.webp'):
+            return 'image/webp'
+        if image_url.endswith('.png'):
+            return 'image/png'
+        return 'image/jpeg'
+
     def get_image_url(self):
         """Restituisce l'URL dell'immagine o il fallback se non disponibile/raggiungibile"""
         fallback_image = static('home/images/portico_logo_nopayoff.webp')

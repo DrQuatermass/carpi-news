@@ -11,6 +11,8 @@
 {% block og_title %}{{ articolo.titolo }}{% endblock %}
 {% block og_description %}{{ articolo.sommario|truncatechars:300|striptags }}{% endblock %}
 {% block og_image %}{{ articolo.get_social_image_url }}{% endblock %}
+{% block og_image_alt %}{{ articolo.titolo }}{% endblock %}
+{% block og_image_type %}{{ articolo.social_image_mime_type }}{% endblock %}
 
 {% block twitter_card %}summary_large_image{% endblock %}
 {% block twitter_url %}https://ombradelportico.it{{ request.path }}{% endblock %}
@@ -19,6 +21,7 @@
 {% block twitter_image %}{{ articolo.get_social_image_url }}{% endblock %}
 
 {% block meta_description %}{{ articolo.sommario|truncatechars:160|striptags }}{% endblock %}
+{% block meta_keywords %}{{ articolo.meta_keywords }}{% endblock %}
 
 {% block extra_css %}
 <!-- Canonical URL -->
@@ -26,10 +29,14 @@
 
 <!-- Open Graph article meta tags -->
 <meta property="article:published_time" content="{{ articolo.data_pubblicazione|date:'c' }}">
+<meta property="article:modified_time" content="{{ articolo.data_modifica|date:'c' }}">
 <meta property="article:section" content="{{ articolo.categoria }}">
+<meta property="article:publisher" content="{{ FACEBOOK_PAGE_URL }}">
+{% for tag in articolo.tag_list %}
+<meta property="article:tag" content="{{ tag }}">
+{% endfor %}
 
 <!-- Meta keywords e geolocalizzazione -->
-<meta name="keywords" content="{{ articolo.tags|default:articolo.categoria }}, Carpi, Emilia-Romagna">
 <meta name="author" content="Redazione Ombra del Portico">
 <meta name="geo.region" content="IT-ER">
 <meta name="geo.placename" content="Carpi">
@@ -41,7 +48,7 @@
 {
   "@context": "https://schema.org",
   "@type": "NewsArticle",
-  "headline": "{{ articolo.titolo|escapejs }}",
+  "headline": "{{ articolo.titolo|truncatechars:110|escapejs }}",
   "image": {
     "@type": "ImageObject",
     "url": "{{ articolo.get_social_image_url }}",
@@ -74,7 +81,7 @@
     "@type": "WebPage",
     "@id": "{{ canonical_url }}"
   },
-  "isAccessibleForFree": "True"
+  "isAccessibleForFree": true
 }
 </script>
 

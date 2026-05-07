@@ -508,10 +508,7 @@ def news_sitemap(request):
     ).order_by('-data_pubblicazione')
 
     for article in articles:
-        if article.tags:
-            article.keywords = article.tags
-        else:
-            article.keywords = f"{article.categoria}, Carpi"
+        article.keywords = article.meta_keywords
 
     logger.info(f"Generata sitemap news con {len(articles)} articoli")
 

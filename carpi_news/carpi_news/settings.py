@@ -326,6 +326,7 @@ PAYPAL_CLIENT_SECRET = os.getenv('PAYPAL_CLIENT_SECRET', '')
 
 # Site URL for media files
 SITE_URL = os.getenv('SITE_URL', 'https://ombradelportico.it')
+FACEBOOK_PAGE_URL = os.getenv('FACEBOOK_PAGE_URL', 'https://www.facebook.com/ombradelportico')
 
 # YouTube API Configuration
 YOUTUBE_API_KEY = os.getenv('YOUTUBE_API_KEY', '')
