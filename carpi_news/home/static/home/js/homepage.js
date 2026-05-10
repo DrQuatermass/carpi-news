@@ -190,7 +190,7 @@ function updatePageContent(data) {
                     bannerElement.className = 'banner-card-slot has-adsense';
                     bannerElement.innerHTML = `
                         <ins class="adsbygoogle"
-                             style="display:block; width:100%; max-width:100%"
+                             style="display:block; width:100%; max-width:100%; min-height:100%"
                              data-ad-format="fluid"
                              data-ad-client="ca-pub-3345905614586761"></ins>
                         <div style="font-size: 10px; color: #999; text-align: center; margin-top: 5px;">Pubblicità</div>
@@ -299,6 +299,8 @@ function createNewsCard(articolo) {
             <img src="${imageUrl}"${srcsetAttr}
                  alt="${articolo.titolo}"
                  class="card-img"
+                 width="616"
+                 height="347"
                  loading="lazy"
                  onerror="this.onerror=null; this.src='${DEFAULT_IMAGE}';">
         </div>

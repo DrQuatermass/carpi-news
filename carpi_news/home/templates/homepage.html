@@ -410,6 +410,38 @@
             display: block;
         }
     }
+
+    @media (min-width: 769px) {
+        .banner-card-slot.has-adsense {
+            aspect-ratio: 300 / 600 !important;
+            min-height: 0 !important;
+            contain: layout paint;
+        }
+
+        .banner-card-slot.has-adsense .adsbygoogle {
+            display: block !important;
+            width: 100% !important;
+            min-height: 100% !important;
+        }
+
+        .banner-horizontal-reserved,
+        .banner-horizontal-section .banner-header-slot {
+            aspect-ratio: 728 / 270;
+            max-width: 728px !important;
+            margin-left: auto !important;
+            margin-right: auto !important;
+            min-height: 150px !important;
+            max-height: none !important;
+            contain: layout paint;
+        }
+
+        .banner-horizontal-reserved .adsbygoogle,
+        .banner-horizontal-section .adsbygoogle {
+            display: block !important;
+            width: 100% !important;
+            min-height: 100% !important;
+        }
+    }
 </style>
 {% endblock %}
 
@@ -421,7 +453,7 @@
             <section class="hero">
                 <div class="hero-content">
                     <div class="hero-logo">
-                        <img src="{% static 'home/images/portico_logo.svg' %}" alt="Ombra del Portico" class="hero-logo-img">
+                        <img src="{% static 'home/images/portico_logo.svg' %}" alt="Ombra del Portico" class="hero-logo-img" width="804" height="84" fetchpriority="high">
                     </div>
 
                 </div>
@@ -540,7 +572,7 @@
                                     <div class="banner-card-slot has-adsense">
                                         <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3345905614586761" crossorigin="anonymous"></script>
                                         <ins class="adsbygoogle adsense-fluid-unit"
-                                             style="display:block; width:100%; max-width:100%"
+                                             style="display:block; width:100%; max-width:100%; min-height:100%"
                                              data-ad-format="fluid"
                                              data-ad-layout-key-desktop="-5a+c8-y-bf+st"
                                              data-ad-layout-key-mobile="-5c+cb-w-bw+sv"
@@ -621,7 +653,7 @@
 <div id="page-data" data-current-page="{{ current_page|default:1 }}" data-total-pages="{{ total_pages|default:1 }}" style="display:none"></div>
 
 <!-- Homepage JavaScript differito -->
-<script src="{% static 'home/js/homepage.js' %}?v=2025120804" defer></script>
+<script src="{% static 'home/js/homepage.js' %}?v=2026051001" defer></script>
 
 {% if request.GET.preview_mode %}
 <script>

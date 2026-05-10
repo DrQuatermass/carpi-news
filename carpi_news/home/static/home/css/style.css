@@ -3144,3 +3144,36 @@ footer .footer-section.footer-links-section .footer-useful-links a:hover {
     display: block;
 }
 
+/* Reserve ad space on desktop before third-party scripts resize their slots. */
+@media (min-width: 769px) {
+    .banner-card-slot.has-adsense {
+        aspect-ratio: 300 / 600 !important;
+        min-height: 0 !important;
+        contain: layout paint;
+    }
+
+    .banner-card-slot.has-adsense .adsbygoogle {
+        display: block !important;
+        width: 100% !important;
+        min-height: 100% !important;
+    }
+
+    .banner-horizontal-reserved,
+    .banner-horizontal-section .banner-header-slot {
+        aspect-ratio: 728 / 270;
+        max-width: 728px !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+        min-height: 150px !important;
+        max-height: none !important;
+        contain: layout paint;
+    }
+
+    .banner-horizontal-reserved .adsbygoogle,
+    .banner-horizontal-section .adsbygoogle {
+        display: block !important;
+        width: 100% !important;
+        min-height: 100% !important;
+    }
+}
+
