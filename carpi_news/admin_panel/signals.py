@@ -2,7 +2,6 @@ import logging
 from django.db.models.signals import pre_save, post_save
 from django.dispatch import receiver
 from django.core.files.base import ContentFile
-from django.core.cache import cache
 from .models import Banner
 from PIL import Image
 import io
@@ -237,23 +236,14 @@ def track_banner_approval_change(sender, instance, **kwargs):
         try:
             # Ottieni lo stato precedente dall'oggetto esistente
             old_instance = Banner.objects.get(pk=instance.pk)
-            # Salva lo stato precedente in cache per il post_save
-            cache.set(f'banner_approval_state_{instance.pk}', {
-                'was_approved': old_instance.approved,
-                'is_approved': instance.approved
-            }, 60)  # Cache per 1 minuto
+            # Passa lo stato precedente al post_save senza dipendere dalla cache.
+            instance._was_approved = old_instance.approved
         except Banner.DoesNotExist:
             # Caso edge: pk esiste ma oggetto non trovato
-            cache.set(f'banner_approval_state_{instance.pk}', {
-                'was_approved': False,
-                'is_approved': instance.approved
-            }, 60)
+            instance._was_approved = False
     else:
-        # Nuovo banner (pk è None) - usa l'id dell'oggetto Python temporaneamente
-        cache.set(f'banner_approval_state_new_{id(instance)}', {
-            'was_approved': False,
-            'is_approved': instance.approved
-        }, 60)
+        # Nuovo banner: consenti notifica solo se nasce gia approvato.
+        instance._was_approved = False
 
 
 @receiver(post_save, sender=Banner)
@@ -261,25 +251,8 @@ def handle_banner_approval(sender, instance, created, **kwargs):
     """
     Invia email al cliente quando il banner viene approvato
     """
-    # Recupera lo stato di approvazione dalla cache
-    approval_state = cache.get(f'banner_approval_state_{instance.pk}')
-
-    # Per banner nuovi, controlla anche la cache temporanea
-    if not approval_state and created:
-        approval_state = cache.get(f'banner_approval_state_new_{id(instance)}')
-        if approval_state:
-            cache.delete(f'banner_approval_state_new_{id(instance)}')
-
-    if not approval_state:
-        # Se non c'è cache, assumiamo sia un nuovo banner
-        was_approved = False
-        is_approved = instance.approved
-    else:
-        was_approved = approval_state['was_approved']
-        is_approved = approval_state['is_approved']
-        # Pulizia cache
-        if instance.pk:
-            cache.delete(f'banner_approval_state_{instance.pk}')
+    was_approved = getattr(instance, '_was_approved', instance.approved)
+    is_approved = instance.approved
 
     # Invia email se:
     # 1. Il banner è passato da non approvato ad approvato (approvazione manuale)
