@@ -41,3 +41,4 @@ paypalrestsdk==1.13.3
 # Search Engine Indexing
 google-auth==2.23.0
 google-auth-httplib2==0.1.1
+django-redis==5.4.0
