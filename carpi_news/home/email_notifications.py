@@ -289,7 +289,7 @@ def send_banner_approved_notification(banner):
         # URL dashboard gestionale
         protocol = 'https' if not getattr(settings, 'DEBUG', False) else 'http'
         domain = getattr(settings, 'SITE_URL', 'https://ombradelportico.it').replace('https://', '').replace('http://', '')
-        dashboard_url = f"{protocol}://{domain}/gestionale/dashboard/"
+        dashboard_url = f"{protocol}://{domain}/gestionale/"
 
         subject = f'✅ Il tuo banner "{banner.title}" è stato approvato!'
 
