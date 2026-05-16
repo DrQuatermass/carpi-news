@@ -384,6 +384,12 @@ FACEBOOK_REEL_MUSIC_DIR = os.getenv('FACEBOOK_REEL_MUSIC_DIR', '')
 INSTAGRAM_AUTO_SHARE = os.getenv('INSTAGRAM_AUTO_SHARE', 'False').lower() in ['true', '1', 'yes']
 INSTAGRAM_ACCOUNT_ID = os.getenv('INSTAGRAM_ACCOUNT_ID', '')
 
+# Instagram Story / Reel auto-publishing (oltre al post in feed)
+# Stesso video verticale 1080x1920 con musica del Reel Facebook,
+# pubblicato come Storia (sparisce in 24h) e/o Reel (permanente).
+INSTAGRAM_STORY_ENABLED = os.getenv('INSTAGRAM_STORY_ENABLED', 'False').lower() in ['true', '1', 'yes']
+INSTAGRAM_REEL_ENABLED = os.getenv('INSTAGRAM_REEL_ENABLED', 'False').lower() in ['true', '1', 'yes']
+
 # CKEditor Configuration
 CKEDITOR_CONFIGS = {
     'default': {

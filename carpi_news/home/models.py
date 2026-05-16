@@ -556,9 +556,11 @@ class SocialPublicationLog(models.Model):
     PLATFORM_CHOICES = [
         ('telegram', 'Telegram'),
         ('facebook', 'Facebook'),
-        ('facebook_reel', 'Facebook Reel'),
+        ('facebook_reel', 'Facebook Reel'),       # legacy: mantenuto per dati storici
         ('facebook_story', 'Facebook Story'),
         ('instagram', 'Instagram'),
+        ('instagram_story', 'Instagram Story'),
+        ('instagram_reel', 'Instagram Reel'),
     ]
 
     articolo = models.ForeignKey(Articolo, on_delete=models.CASCADE, related_name='social_publications')

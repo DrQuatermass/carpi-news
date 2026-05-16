@@ -146,7 +146,7 @@ class FacebookReelGenerator:
                     out_dir=tmp,
                 )
                 audio_path = self._prepare_audio(out_dir=tmp)
-                output_mp4 = _reels_output_dir() / f"{articolo.slug}.mp4"
+                output_mp4 = _reels_output_dir(self.config.output_dir_name) / f"{articolo.slug}.mp4"
                 self._encode_video(frame_path, audio_path, output_mp4)
                 logger.info(f"Reel generato: {output_mp4} ({output_mp4.stat().st_size // 1024} KB)")
                 return str(output_mp4)
@@ -314,9 +314,9 @@ class FacebookReelGenerator:
             draw.text((x, y), line, font=title_font, fill=WHITE + (255,))
             y += line_height
 
-        # CTA in basso
+        # CTA in basso (configurabile via ReelConfig.cta_text)
         cta_font = self._load_font(46)
-        cta = "Leggi su ombradelportico.it"
+        cta = self.config.cta_text
         bbox = draw.textbbox((0, 0), cta, font=cta_font)
         cw = bbox[2] - bbox[0]
         cx = (WIDTH - cw) // 2

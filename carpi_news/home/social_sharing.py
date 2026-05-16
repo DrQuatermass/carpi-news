@@ -50,7 +50,26 @@ class SocialMediaManager:
                 'enabled': getattr(settings, 'INSTAGRAM_AUTO_SHARE', False),
                 'account_id': getattr(settings, 'INSTAGRAM_ACCOUNT_ID', None),
                 'access_token': getattr(settings, 'FACEBOOK_ACCESS_TOKEN', None),  # Usa stesso token di Facebook
-            }
+            },
+            'instagram_story': {
+                'name': 'Instagram Story',
+                # Storia richiede sia INSTAGRAM_AUTO_SHARE che INSTAGRAM_STORY_ENABLED
+                'enabled': (
+                    getattr(settings, 'INSTAGRAM_AUTO_SHARE', False)
+                    and getattr(settings, 'INSTAGRAM_STORY_ENABLED', False)
+                ),
+                'account_id': getattr(settings, 'INSTAGRAM_ACCOUNT_ID', None),
+                'access_token': getattr(settings, 'FACEBOOK_ACCESS_TOKEN', None),
+            },
+            'instagram_reel': {
+                'name': 'Instagram Reel',
+                'enabled': (
+                    getattr(settings, 'INSTAGRAM_AUTO_SHARE', False)
+                    and getattr(settings, 'INSTAGRAM_REEL_ENABLED', False)
+                ),
+                'account_id': getattr(settings, 'INSTAGRAM_ACCOUNT_ID', None),
+                'access_token': getattr(settings, 'FACEBOOK_ACCESS_TOKEN', None),
+            },
         }
     
     def _normalize_url(self, url: str) -> str:
@@ -470,6 +489,74 @@ class SocialMediaManager:
                 results['instagram'] = False
         else:
             logger.info("Condivisione Instagram disabilitata")
+
+        # Instagram Story (richiede immagine)
+        if self.platforms['instagram_story']['enabled']:
+            if articolo.foto:
+                should_share = False
+                with transaction.atomic():
+                    already_published = SocialPublicationLog.objects.select_for_update().filter(
+                        articolo=articolo, platform='instagram_story', success=True
+                    ).exists()
+                    if already_published:
+                        logger.info(f"IG Story: '{articolo.titolo}' gia' pubblicata, skip")
+                        results['instagram_story'] = True
+                    else:
+                        log_entry, created = SocialPublicationLog.objects.get_or_create(
+                            articolo=articolo, platform='instagram_story',
+                            defaults={'success': False, 'error_message': 'In progress...'}
+                        )
+                        if not created:
+                            logger.info(f"IG Story: in corso da altro worker, skip")
+                            results['instagram_story'] = log_entry.success
+                        else:
+                            should_share = True
+                if should_share:
+                    success, error_msg = self._share_to_instagram_story(articolo)
+                    results['instagram_story'] = success
+                    SocialPublicationLog.objects.filter(
+                        articolo=articolo, platform='instagram_story'
+                    ).update(success=success,
+                             error_message=None if success else error_msg[:1000])
+            else:
+                logger.warning(f"IG Story saltata per '{articolo.titolo}': immagine obbligatoria")
+                results['instagram_story'] = False
+        else:
+            logger.info("Pubblicazione IG Story disabilitata")
+
+        # Instagram Reel (richiede immagine)
+        if self.platforms['instagram_reel']['enabled']:
+            if articolo.foto:
+                should_share = False
+                with transaction.atomic():
+                    already_published = SocialPublicationLog.objects.select_for_update().filter(
+                        articolo=articolo, platform='instagram_reel', success=True
+                    ).exists()
+                    if already_published:
+                        logger.info(f"IG Reel: '{articolo.titolo}' gia' pubblicato, skip")
+                        results['instagram_reel'] = True
+                    else:
+                        log_entry, created = SocialPublicationLog.objects.get_or_create(
+                            articolo=articolo, platform='instagram_reel',
+                            defaults={'success': False, 'error_message': 'In progress...'}
+                        )
+                        if not created:
+                            logger.info(f"IG Reel: in corso da altro worker, skip")
+                            results['instagram_reel'] = log_entry.success
+                        else:
+                            should_share = True
+                if should_share:
+                    success, error_msg = self._share_to_instagram_reel(articolo)
+                    results['instagram_reel'] = success
+                    SocialPublicationLog.objects.filter(
+                        articolo=articolo, platform='instagram_reel'
+                    ).update(success=success,
+                             error_message=None if success else error_msg[:1000])
+            else:
+                logger.warning(f"IG Reel saltato per '{articolo.titolo}': immagine obbligatoria")
+                results['instagram_reel'] = False
+        else:
+            logger.info("Pubblicazione IG Reel disabilitata")
 
         # Log risultati finali
         success_count = sum(1 for success in results.values() if success)
@@ -965,83 +1052,124 @@ class SocialMediaManager:
             logger.error(traceback.format_exc())
             return False, error
 
+    def _share_to_instagram_story(self, articolo) -> tuple[bool, str]:
+        """Genera e pubblica una Storia Instagram (video 1080x1920, 15s, con musica)."""
+        try:
+            from .instagram_story import ig_story_manager
+            config = self.platforms['instagram_story']
+            if not config['access_token'] or not config['account_id']:
+                return False, "Configurazione Instagram Story incompleta"
+            if not articolo.foto:
+                return False, "Instagram Story richiede un'immagine - skip"
+            page_token = self._get_page_access_token(config['access_token'],
+                                                     getattr(settings, 'FACEBOOK_PAGE_ID', ''))
+            if not page_token:
+                return False, "Impossibile ottenere Page Access Token per IG Story"
+            logger.info(f"IG Story: avvio generazione + upload per '{articolo.titolo}'")
+            success, info = ig_story_manager.publish(articolo, page_token)
+            if success:
+                logger.info(f"IG Story pubblicata (media_id={info}): {articolo.titolo}")
+            else:
+                logger.error(f"IG Story fallita per '{articolo.titolo}': {info}")
+            return success, info
+        except Exception as e:
+            error = f"Eccezione IG Story '{articolo.titolo}': {e}"
+            logger.error(error, exc_info=True)
+            return False, error
+
+    def _share_to_instagram_reel(self, articolo) -> tuple[bool, str]:
+        """Genera e pubblica un Reel Instagram (video 1080x1920, 15s, con musica)."""
+        try:
+            from .instagram_story import ig_reel_manager
+            config = self.platforms['instagram_reel']
+            if not config['access_token'] or not config['account_id']:
+                return False, "Configurazione Instagram Reel incompleta"
+            if not articolo.foto:
+                return False, "Instagram Reel richiede un'immagine - skip"
+            page_token = self._get_page_access_token(config['access_token'],
+                                                     getattr(settings, 'FACEBOOK_PAGE_ID', ''))
+            if not page_token:
+                return False, "Impossibile ottenere Page Access Token per IG Reel"
+            logger.info(f"IG Reel: avvio generazione + upload per '{articolo.titolo}'")
+            success, info = ig_reel_manager.publish(articolo, page_token)
+            if success:
+                logger.info(f"IG Reel pubblicato (media_id={info}): {articolo.titolo}")
+            else:
+                logger.error(f"IG Reel fallito per '{articolo.titolo}': {info}")
+            return success, info
+        except Exception as e:
+            error = f"Eccezione IG Reel '{articolo.titolo}': {e}"
+            logger.error(error, exc_info=True)
+            return False, error
+
     def _get_instagram_hashtags(self, categoria: str) -> str:
         """Genera hashtags appropriati basati sulla categoria dell'articolo"""
         base_hashtags = "#CarpiNews #OmbraDelPortico #Carpi"
-
         category_hashtags = {
             'Sport': '#Sport #CalcioCarpi #CarpiFC',
             'Politica': '#Politica #Amministrazione #ComuneCarpi',
             'Cultura & Eventi': '#Cultura #Eventi #EventiCarpi',
             'Cronaca': '#Cronaca #Notizie #News',
             'Economia': '#Economia #Business #Imprese',
-            'Attualità': '#Attualita #News #Oggi',
+            'Attualita': '#Attualita #News #Oggi',
         }
-
         category_specific = category_hashtags.get(categoria, '')
         return f"{base_hashtags} {category_specific}".strip()
 
     def get_platform_status(self) -> Dict[str, Dict]:
-        """Restituisce lo stato di configurazione delle piattaforme (Telegram, Facebook, Instagram)"""
+        """Stato configurazione di tutte le piattaforme."""
         status = {}
 
         # Telegram
-        telegram_config = self.platforms['telegram']
-        telegram_configured = bool(telegram_config['bot_token'] and telegram_config['chat_id'])
-
-        status['telegram'] = {
-            'name': telegram_config['name'],
-            'enabled': telegram_config['enabled'],
-            'configured': telegram_configured,
-            'ready': telegram_config['enabled'] and telegram_configured
-        }
+        tg = self.platforms['telegram']
+        tg_ok = bool(tg['bot_token'] and tg['chat_id'])
+        status['telegram'] = {'name': tg['name'], 'enabled': tg['enabled'],
+                               'configured': tg_ok, 'ready': tg['enabled'] and tg_ok}
 
         # Facebook
-        facebook_config = self.platforms['facebook']
-        facebook_configured = bool(facebook_config['access_token'] and facebook_config['page_id'])
+        fb = self.platforms['facebook']
+        fb_ok = bool(fb['access_token'] and fb['page_id'])
+        status['facebook'] = {'name': fb['name'], 'enabled': fb['enabled'],
+                               'configured': fb_ok, 'ready': fb['enabled'] and fb_ok}
 
-        status['facebook'] = {
-            'name': facebook_config['name'],
-            'enabled': facebook_config['enabled'],
-            'configured': facebook_configured,
-            'ready': facebook_config['enabled'] and facebook_configured
-        }
-
-        # Facebook Story (riusa credenziali della Pagina + flag FACEBOOK_STORY_ENABLED)
-        story_config = self.platforms['facebook_story']
-        status['facebook_story'] = {
-            'name': story_config['name'],
-            'enabled': story_config['enabled'],
-            'configured': bool(story_config['access_token'] and story_config['page_id']),
-            'ready': story_config['enabled'] and bool(story_config['access_token'] and story_config['page_id']),
-            'note': 'Richiede immagine - genera video 1080x1920 e lo pubblica come Storia'
-        }
+        # Facebook Story (video 1080x1920 con musica, pubblicato come Reel/Story)
+        fbr = self.platforms['facebook_story']
+        fbr_ok = bool(fbr['access_token'] and fbr['page_id'])
+        status['facebook_story'] = {'name': fbr['name'], 'enabled': fbr['enabled'],
+                                    'configured': fbr_ok, 'ready': fbr['enabled'] and fbr_ok,
+                                    'note': 'Video 1080x1920 con musica royalty-free'}
 
         # Instagram
-        instagram_config = self.platforms['instagram']
-        instagram_configured = bool(instagram_config['access_token'] and instagram_config['account_id'])
+        ig = self.platforms['instagram']
+        ig_ok = bool(ig['access_token'] and ig['account_id'])
+        status['instagram'] = {'name': ig['name'], 'enabled': ig['enabled'],
+                                'configured': ig_ok, 'ready': ig['enabled'] and ig_ok,
+                                'note': 'Richiede immagine - post solo testo non supportati'}
 
-        status['instagram'] = {
-            'name': instagram_config['name'],
-            'enabled': instagram_config['enabled'],
-            'configured': instagram_configured,
-            'ready': instagram_config['enabled'] and instagram_configured,
-            'note': 'Richiede immagine - post solo testo non supportati'
-        }
+        # IG Story
+        igs = self.platforms['instagram_story']
+        igs_ok = bool(igs['access_token'] and igs['account_id'])
+        status['instagram_story'] = {'name': igs['name'], 'enabled': igs['enabled'],
+                                      'configured': igs_ok, 'ready': igs['enabled'] and igs_ok,
+                                      'note': 'Video 1080x1920 - link sticker non supportato via API'}
 
-        # Aggiungi info sui social gestiti via RSS
+        # IG Reel
+        igr = self.platforms['instagram_reel']
+        igr_ok = bool(igr['access_token'] and igr['account_id'])
+        status['instagram_reel'] = {'name': igr['name'], 'enabled': igr['enabled'],
+                                     'configured': igr_ok, 'ready': igr['enabled'] and igr_ok,
+                                     'note': 'Video 1080x1920 con musica royalty-free'}
+
+        # RSS Twitter
         status['rss_managed'] = {
             'name': 'Twitter via RSS+IFTTT',
-            'enabled': True,  # RSS e' sempre attivo
-            'configured': True,  # Non richiede configurazione
-            'ready': True,
+            'enabled': True, 'configured': True, 'ready': True,
             'feeds': [
                 'https://ombradelportico.it/feed/rss/',
                 'https://ombradelportico.it/feed/recenti/',
                 'https://ombradelportico.it/feed/atom/'
             ]
         }
-
         return status
 
 
