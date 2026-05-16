@@ -1591,3 +1591,36 @@ def newsletter_preview(request):
     ctx['subscriber'] = None  # preview: nessun token reale
     ctx['is_preview'] = True
     return render(request, 'newsletter/preview.html', ctx)
+
+
+@cache_page(60 * 5)  # cache 5 minuti
+def link_in_bio(request):
+    """
+    Landing page per il link in bio Instagram.
+    Mostra gli ultimi articoli effettivamente condivisi su IG (post/storia/reel)
+    in layout lista verticale stile Linktree, mobile-first.
+
+    URL: /instagram/
+    """
+    from .models import SocialPublicationLog
+
+    # ID degli articoli con almeno una pubblicazione IG riuscita
+    ig_platforms = ['instagram', 'instagram_story', 'instagram_reel']
+    article_ids = (
+        SocialPublicationLog.objects
+        .filter(platform__in=ig_platforms, success=True)
+        .values_list('articolo_id', flat=True)
+        .distinct()
+    )
+
+    articoli = (
+        Articolo.objects
+        .filter(id__in=article_ids, approvato=True)
+        .only('id', 'titolo', 'sommario', 'categoria', 'slug', 'foto',
+              'foto_upload', 'data_pubblicazione')
+        .order_by('-data_pubblicazione')[:25]
+    )
+
+    return render(request, 'link_in_bio.html', {
+        'articoli': articoli,
+    })

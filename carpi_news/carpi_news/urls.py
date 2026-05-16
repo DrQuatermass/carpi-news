@@ -1,18 +1,5 @@
 """
 URL configuration for carpi_news project.
-
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/5.2/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
 from django.urls import path, include
@@ -24,7 +11,7 @@ from home.feeds import ArticoliFeedRSS, ArticoliFeedAtom, ArticoliRecentiFeed
 from home.image_proxy import image_proxy_view
 
 urlpatterns = [
-    path('',views.home, name='home'),
+    path('', views.home, name='home'),
     path('articolo/<slug:slug>/', views.dettaglio_articolo, name='dettaglio_articolo'),
     path('articolo/<slug:slug>/fonti/', views.fonti_articolo, name='fonti_articolo'),
     path('privacy-policy/', views.privacy_policy, name='privacy-policy'),
@@ -33,6 +20,9 @@ urlpatterns = [
     path('caplet/', views.caplet, name='caplet'),
     path('cinema/', views.programmazione_cinema, name='programmazione_cinema'),
     path('eventi/', views.calendario_eventi, name='calendario_eventi'),
+
+    # Link in bio Instagram: lista mobile-first degli articoli condivisi su IG
+    path('instagram/', views.link_in_bio, name='link_in_bio'),
 
     # Chatbot API
     path('api/chatbot/', views.chatbot_api, name='chatbot_api'),
