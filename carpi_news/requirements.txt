@@ -42,3 +42,7 @@ paypalrestsdk==1.13.3
 google-auth==2.23.0
 google-auth-httplib2==0.1.1
 django-redis==5.4.0
+
+# Facebook Reel generation (video composer + ffmpeg locator)
+numpy==1.26.4
+imageio-ffmpeg==0.5.1

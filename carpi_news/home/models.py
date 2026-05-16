@@ -556,6 +556,7 @@ class SocialPublicationLog(models.Model):
     PLATFORM_CHOICES = [
         ('telegram', 'Telegram'),
         ('facebook', 'Facebook'),
+        ('facebook_reel', 'Facebook Reel'),
         ('instagram', 'Instagram'),
     ]
 
