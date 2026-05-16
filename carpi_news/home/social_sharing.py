@@ -179,245 +179,95 @@ class SocialMediaManager:
             logger.error(f"Errore imprevisto validazione: {str(e)[:200]}")
             return False
 
-    def _add_title_overlay(self, img: Image.Image, title: str) -> Image.Image:
+    def _cleanup_instagram_local_file(self, articolo_slug: str) -> None:
         """
-        Aggiunge overlay con titolo all'immagine per Instagram.
-        Fascia grigia semi-trasparente in basso con titolo in Playfair Display.
-
-        Args:
-            img: Immagine PIL già processata
-            title: Titolo dell'articolo
-
-        Returns:
-            Immagine con overlay
+        Rimuove il template Instagram locale dopo pubblicazione riuscita.
+        Una volta che Meta ha scaricato l'immagine dall'URL e l'ha pubblicata,
+        il file in MEDIA_ROOT/images/instagram_temp/<slug>_ig.jpg non e' piu'
+        necessario (Instagram serve il post dalla propria CDN). Non blocca
+        nulla se il file e' gia' assente o non eliminabile.
         """
-        from PIL import ImageDraw, ImageFont
-        import textwrap
-
-        width, height = img.size
-
-        # Crea un layer trasparente per l'overlay
-        overlay = Image.new('RGBA', img.size, (0, 0, 0, 0))
-        draw = ImageDraw.Draw(overlay)
-
-        # Fascia grigia semi-trasparente in basso (20% altezza immagine)
-        overlay_height = int(height * 0.2)
-        overlay_y = height - overlay_height
-
-        # Rettangolo grigio semi-trasparente
-        draw.rectangle(
-            [(0, overlay_y), (width, height)],
-            fill=(50, 50, 50, 180)  # Grigio scuro con 70% opacità
-        )
-
-        # Carica font Playfair Display (prova diverse posizioni)
-        font_size = int(width * 0.045)  # Font size proporzionale alla larghezza
-        font = None
-
+        import os
+        from pathlib import Path
         try:
-            # Prova a caricare Playfair Display
-            font = ImageFont.truetype("/usr/share/fonts/truetype/playfair-display/PlayfairDisplay-Bold.ttf", font_size)
-        except:
-            try:
-                # Fallback: Prova path alternativo
-                font = ImageFont.truetype("C:\\Windows\\Fonts\\PlayfairDisplay-Bold.ttf", font_size)
-            except:
-                try:
-                    # Fallback: Usa Georgia (simile a Playfair)
-                    font = ImageFont.truetype("/usr/share/fonts/truetype/liberation/LiberationSerif-Bold.ttf", font_size)
-                except:
-                    try:
-                        # Ultimo fallback: Times New Roman
-                        font = ImageFont.truetype("C:\\Windows\\Fonts\\timesbd.ttf", font_size)
-                    except:
-                        # Default font
-                        font = ImageFont.load_default()
-                        logger.warning("Instagram: Font Playfair Display non trovato, uso font default")
+            local_path = Path(settings.MEDIA_ROOT) / "images" / "instagram_temp" / f"{articolo_slug}_ig.jpg"
+            if local_path.exists():
+                size_kb = local_path.stat().st_size // 1024
+                local_path.unlink()
+                logger.info(f"Instagram: file locale rimosso {local_path.name} ({size_kb} KB liberati)")
+        except OSError as e:
+            logger.warning(f"Instagram: cleanup file locale fallito per {articolo_slug}: {e}")
 
-        # Wrappa il testo per farlo stare nella larghezza
-        max_chars = int(width / (font_size * 0.6))  # Stima caratteri per riga
-        wrapped_text = textwrap.fill(title, width=max_chars)
-        lines = wrapped_text.split('\n')
-
-        # Limita a massimo 3 righe
-        if len(lines) > 3:
-            lines = lines[:3]
-            lines[2] = lines[2][:max_chars-3] + '...'
-
-        # Calcola posizione verticale centrata nell'overlay
-        line_height = font_size * 1.2
-        total_text_height = len(lines) * line_height
-        text_y = overlay_y + (overlay_height - total_text_height) // 2
-
-        # Disegna ogni riga di testo
-        for i, line in enumerate(lines):
-            # Calcola larghezza testo per centrarlo
-            bbox = draw.textbbox((0, 0), line, font=font)
-            text_width = bbox[2] - bbox[0]
-            text_x = (width - text_width) // 2
-
-            y_position = text_y + (i * line_height)
-
-            # Ombra nera per maggiore leggibilità
-            for offset_x, offset_y in [(2, 2), (-2, 2), (2, -2), (-2, -2)]:
-                draw.text(
-                    (text_x + offset_x, y_position + offset_y),
-                    line,
-                    font=font,
-                    fill=(0, 0, 0, 255)
-                )
-
-            # Testo bianco principale
-            draw.text(
-                (text_x, y_position),
-                line,
-                font=font,
-                fill=(255, 255, 255, 255)
-            )
-
-        # Converti immagine originale in RGBA
-        if img.mode != 'RGBA':
-            img = img.convert('RGBA')
-
-        # Componi overlay su immagine
-        img_with_overlay = Image.alpha_composite(img, overlay)
-
-        # Converti a RGB per JPEG
-        final_img = Image.new('RGB', img_with_overlay.size, (255, 255, 255))
-        final_img.paste(img_with_overlay, (0, 0), img_with_overlay)
-
-        logger.info(f"Instagram: Overlay titolo aggiunto ({len(lines)} righe)")
-        return final_img
-
-    def _prepare_instagram_image(self, image_url: str, articolo_slug: str, title: str = "") -> Optional[str]:
+    def _prepare_instagram_image(self, image_url: str, articolo_slug: str,
+                                  title: str = "", category: str = "Notizie") -> Optional[str]:
         """
-        Prepara l'immagine per Instagram, croppando se necessario per rispettare aspect ratio.
-        Instagram accetta aspect ratio tra 4:5 (0.8) e 1.91:1
+        Scarica l'immagine articolo, applica il template Instagram 1080x1080
+        coerente con il Reel (logo + card + badge categoria + titolo Playfair +
+        CTA "Leggi nel link in bio") e ritorna l'URL pubblico dell'immagine
+        salvata in MEDIA_ROOT/images/instagram_temp/<slug>_ig.jpg.
 
         Args:
-            image_url: URL assoluto dell'immagine originale
-            articolo_slug: Slug dell'articolo per naming file
+            image_url: URL assoluto dell'immagine originale dell'articolo
+            articolo_slug: slug per il nome file output
+            title: titolo dell'articolo (overlay)
+            category: categoria (badge sopra il titolo)
 
         Returns:
-            URL dell'immagine pronta (originale o croppata), None se errore
+            URL pubblico dell'immagine template, oppure None se errore.
         """
-        # Retry con backoff esponenziale per gestire problemi di rete temporanei
-        max_retries = 3
+        from .instagram_templates import render_instagram_post
 
+        # 1) Scarica l'immagine sorgente con retry esponenziale
+        max_retries = 3
+        response = None
         for attempt in range(max_retries):
             try:
-                # Headers HTTP completi per evitare blocchi anti-bot
                 headers = {
                     'User-Agent': 'Mozilla/5.0 (compatible; OmbraDelPortico/1.0; +https://ombradelportico.it)',
                     'Accept': 'image/webp,image/jpeg,image/png,image/*,*/*',
                     'Accept-Encoding': 'gzip, deflate',
                 }
-
-                timeout = 30  # Aumentato timeout per immagini grandi o server lenti
-                logger.info(f"Instagram: Download immagine (tentativo {attempt + 1}/{max_retries}): {image_url}")
-
-                response = requests.get(image_url, timeout=timeout, headers=headers)
-
-                if response.status_code != 200:
-                    logger.warning(f"HTTP {response.status_code} - tentativo {attempt + 1}/{max_retries}")
-                    if attempt < max_retries - 1:
-                        delay = 2 ** attempt  # 1s, 2s, 4s
-                        time.sleep(delay)
-                        continue
-                    else:
-                        logger.error(f"Download immagine fallito dopo {max_retries} tentativi: HTTP {response.status_code}")
-                        return None
-
-                # Download riuscito, prosegui con il processing
-                break
-
+                logger.info(f"Instagram: download immagine (tentativo {attempt + 1}/{max_retries}): {image_url}")
+                resp = requests.get(image_url, timeout=30, headers=headers)
+                if resp.status_code == 200:
+                    response = resp
+                    break
+                logger.warning(f"Instagram: HTTP {resp.status_code} (tentativo {attempt + 1}/{max_retries})")
             except requests.exceptions.RequestException as e:
-                if attempt < max_retries - 1:
-                    delay = 2 ** attempt  # 1s, 2s, 4s
-                    logger.warning(f"Errore download (tentativo {attempt + 1}/{max_retries}): {str(e)[:100]}. Retry tra {delay}s...")
-                    time.sleep(delay)
-                    continue
-                else:
-                    logger.error(f"Download immagine fallito dopo {max_retries} tentativi: {str(e)[:200]}")
-                    return None
+                logger.warning(f"Instagram: errore download tentativo {attempt + 1}/{max_retries}: {str(e)[:100]}")
+            if attempt < max_retries - 1:
+                time.sleep(2 ** attempt)
 
-        try:
-
-            img = Image.open(BytesIO(response.content))
-            original_width, original_height = img.size
-            aspect_ratio = original_width / original_height
-
-            # Instagram accetta aspect ratio tra 0.8 (4:5 verticale) e 1.91 (orizzontale)
-            needs_crop = not (0.8 <= aspect_ratio <= 1.91)
-
-            if needs_crop:
-                # Immagine troppo larga o troppo alta - crop al centro
-                logger.info(f"Instagram: Crop necessario - {original_width}x{original_height} (aspect ratio: {aspect_ratio:.2f})")
-            else:
-                logger.info(f"Instagram: Immagine già compatibile - {original_width}x{original_height} (aspect ratio: {aspect_ratio:.2f})")
-
-            if needs_crop:
-                if aspect_ratio > 1.91:
-                    # Troppo larga - usa aspect ratio 1.91:1 (massimo orizzontale Instagram)
-                    target_aspect = 1.91
-                    new_width = int(original_height * target_aspect)
-                    new_height = original_height
-                    logger.info(f"Instagram: Crop orizzontale a 1.91:1 -> {new_width}x{new_height}")
-                else:
-                    # Troppo alta - usa aspect ratio 0.8 (4:5, massimo verticale Instagram)
-                    target_aspect = 0.8
-                    new_width = original_width
-                    new_height = int(original_width / target_aspect)
-                    logger.info(f"Instagram: Crop verticale a 4:5 -> {new_width}x{new_height}")
-
-                # Crop al centro
-                left = (original_width - new_width) // 2
-                top = (original_height - new_height) // 2
-                right = left + new_width
-                bottom = top + new_height
-
-                processed_img = img.crop((left, top, right, bottom))
-            else:
-                # Nessun crop necessario, usa immagine originale
-                processed_img = img
-
-            # Converti in RGB se necessario
-            if processed_img.mode in ('RGBA', 'LA', 'P'):
-                background = Image.new('RGB', processed_img.size, (255, 255, 255))
-                if processed_img.mode == 'P':
-                    processed_img = processed_img.convert('RGBA')
-                background.paste(processed_img, mask=processed_img.split()[-1] if processed_img.mode == 'RGBA' else None)
-                processed_img = background
-
-            # Aggiungi overlay con titolo (se fornito)
-            if title:
-                processed_img = self._add_title_overlay(processed_img, title)
-                logger.info(f"Instagram: Overlay titolo applicato")
-
-            # Salva immagine processata temporaneamente
-            import os
-            from django.conf import settings
-
-            media_root = settings.MEDIA_ROOT
-            instagram_dir = os.path.join(media_root, 'images', 'instagram_temp')
-            os.makedirs(instagram_dir, exist_ok=True)
-
-            # Nome file basato su slug articolo
-            filename = f"{articolo_slug}_ig.jpg"
-            filepath = os.path.join(instagram_dir, filename)
-
-            processed_img.save(filepath, 'JPEG', quality=95, optimize=True)
-
-            # Ritorna URL assoluto dell'immagine processata
-            final_url = f"https://ombradelportico.it/media/images/instagram_temp/{filename}"
-            logger.info(f"Instagram: Immagine salvata -> {final_url}")
-            return final_url
-
-        except Exception as e:
-            logger.error(f"Errore preparazione immagine Instagram: {str(e)}")
-            import traceback
-            logger.error(traceback.format_exc())
+        if response is None:
+            logger.error(f"Instagram: download immagine fallito dopo {max_retries} tentativi")
             return None
+
+        # 2) Salva la sorgente in un file temp
+        import tempfile, os
+        tmp_fd, tmp_path = tempfile.mkstemp(prefix=f"ig_src_{articolo_slug}_", suffix=".img")
+        try:
+            with os.fdopen(tmp_fd, "wb") as tmp:
+                tmp.write(response.content)
+
+            # 3) Genera il template via il modulo dedicato
+            out_path = render_instagram_post(
+                image_path=tmp_path,
+                slug=articolo_slug,
+                title=title,
+                category=category or "Notizie",
+            )
+            if out_path is None:
+                logger.error(f"Instagram: render template fallito per slug={articolo_slug}")
+                return None
+
+            final_url = f"https://ombradelportico.it/media/images/instagram_temp/{out_path.name}"
+            logger.info(f"Instagram: template salvato -> {final_url}")
+            return final_url
+        finally:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
 
     def share_article_on_approval(self, articolo) -> Dict[str, bool]:
         """
@@ -1040,8 +890,13 @@ class SocialMediaManager:
                 logger.error(error)
                 return False, error
 
-            # Prepara immagine per Instagram (crop automatico e overlay titolo)
-            image_url = self._prepare_instagram_image(original_image_url, articolo.slug, articolo.titolo)
+            # Prepara immagine per Instagram (template 1080x1080 con logo, card, badge e CTA)
+            image_url = self._prepare_instagram_image(
+                original_image_url,
+                articolo.slug,
+                articolo.titolo,
+                articolo.categoria or "Notizie",
+            )
             if not image_url:
                 error = f"Impossibile preparare immagine per Instagram"
                 logger.error(error)
@@ -1091,6 +946,9 @@ class SocialMediaManager:
                 post_id = publish_response.json().get('id')
                 logger.info(f"Articolo condiviso su Instagram (Post ID: {post_id}): {articolo.titolo}")
                 logger.info("Instagram: Ricordati di mantenere il link del sito nella bio per gli utenti")
+                # Cleanup: Instagram ha gia' scaricato e processato l'immagine,
+                # il file locale non serve piu'. Su failure NON eliminiamo per debug.
+                self._cleanup_instagram_local_file(articolo.slug)
                 return True, ""
             else:
                 error = f"Errore pubblicazione Instagram: {publish_response.text}"
@@ -1171,7 +1029,7 @@ class SocialMediaManager:
         # Aggiungi info sui social gestiti via RSS
         status['rss_managed'] = {
             'name': 'Twitter via RSS+IFTTT',
-            'enabled': True,  # RSS è sempre attivo
+            'enabled': True,  # RSS e' sempre attivo
             'configured': True,  # Non richiede configurazione
             'ready': True,
             'feeds': [
