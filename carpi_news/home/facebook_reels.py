@@ -1,17 +1,17 @@
 """
-Generazione e pubblicazione automatica di Reel Facebook per Ombra del Portico.
+Generazione di video verticali e pubblicazione automatica come Storie Facebook.
 
 Il modulo si occupa di:
 1. Comporre un MP4 verticale 1080x1920 a partire da un Articolo (foto + titolo + CTA + logo).
 2. Aggiungere una traccia audio royalty-free presa da `FACEBOOK_REEL_MUSIC_DIR`
    (fallback su pad ambient procedurale se nessun file e' disponibile).
-3. Pubblicare il video sulla Pagina Facebook tramite Reels Publishing API (Graph v24.0).
+3. Pubblicare il video sulla Pagina Facebook tramite Stories API (Graph v24.0).
 
 Punto di ingresso pubblico:
     from home.facebook_reels import FacebookReelManager
     manager = FacebookReelManager()
     path = manager.generate(articolo)             # solo generazione locale
-    result = manager.publish(articolo)            # generazione + upload + publish
+    result = manager.publish(articolo)            # generazione + upload story + publish
 
 Dipendenze runtime (gia' in requirements.txt):
     Pillow, numpy, requests, imageio_ffmpeg
@@ -80,9 +80,13 @@ def _music_dir() -> Path:
     return _project_base_dir() / "media" / "reel_music"
 
 
-def _reels_output_dir() -> Path:
-    """Cartella dove salvare i Reel generati (puliti periodicamente)."""
-    d = _project_base_dir() / "media" / "reels"
+def _reels_output_dir(name: str = "reels") -> Path:
+    """Cartella dove salvare i video generati (puliti dopo upload).
+
+    Args:
+        name: nome della sottocartella sotto media/ (es. 'reels', 'stories')
+    """
+    d = _project_base_dir() / "media" / name
     d.mkdir(parents=True, exist_ok=True)
     return d
 
@@ -103,6 +107,9 @@ class ReelConfig:
     crf: int = 23                 # qualita' H.264 (18-28; piu' basso = piu' qualita')
     preset: str = "veryfast"      # x264 preset
     audio_bitrate: str = "128k"
+    # Personalizzazione output: sottoclassi (es. InstagramStoryGenerator) cambiano questi
+    cta_text: str = "Leggi su ombradelportico.it"
+    output_dir_name: str = "reels"   # cartella sotto media/
 
     @classmethod
     def from_settings(cls) -> "ReelConfig":
@@ -455,10 +462,10 @@ class FacebookReelGenerator:
 
 
 # =============================================================================
-# PUBLISHER REELS API (Graph v24.0)
+# PUBLISHER STORIES API (Graph v24.0)
 # =============================================================================
-class FacebookReelPublisher:
-    """Publica un MP4 sulla Pagina Facebook tramite Reels Publishing API (3 fasi)."""
+class FacebookStoryPublisher:
+    """Pubblica un MP4 sulla Storia della Pagina Facebook tramite Stories API."""
 
     GRAPH_VERSION = "v24.0"
 
@@ -466,11 +473,8 @@ class FacebookReelPublisher:
         self.page_id = page_id
         self.page_token = page_access_token
 
-    def publish(self, video_path: str, description: str) -> Tuple[bool, str]:
-        """
-        Esegue il flusso start -> upload -> finish.
-        Restituisce (success, error_message_or_post_id).
-        """
+    def publish(self, video_path: str) -> Tuple[bool, str]:
+        """Esegue il flusso start -> upload -> finish per una video story."""
         try:
             video_file = Path(video_path)
             if not video_file.exists():
@@ -485,40 +489,40 @@ class FacebookReelPublisher:
             upload_url = start.get("upload_url")
             if not (video_id and upload_url):
                 return False, f"Risposta START incompleta: {start}"
-            logger.info(f"Reel: START ok video_id={video_id}")
+            logger.info(f"Facebook Story: START ok video_id={video_id}")
 
             # FASE 2: UPLOAD binario
             if not self._upload_binary(upload_url, video_file, file_size):
                 return False, "Fase UPLOAD fallita"
-            logger.info(f"Reel: UPLOAD ok ({file_size} bytes)")
+            logger.info(f"Facebook Story: UPLOAD ok ({file_size} bytes)")
 
             # FASE 3: FINISH + PUBLISH
-            ok, info = self._finish_publish(video_id, description)
+            ok, info = self._finish_publish(video_id)
             if not ok:
                 return False, f"Fase FINISH fallita: {info}"
-            logger.info(f"Reel: FINISH ok, video_id={video_id}")
-            return True, video_id
+            logger.info(f"Facebook Story: FINISH ok, post_id={info}")
+            return True, info or video_id
 
         except requests.RequestException as e:
             return False, f"Errore HTTP: {e}"
         except Exception as e:
-            logger.error("Reel: eccezione publish", exc_info=True)
+            logger.error("Facebook Story: eccezione publish", exc_info=True)
             return False, str(e)
 
     def _start_upload(self, file_size: int) -> Optional[dict]:
-        url = f"https://graph.facebook.com/{self.GRAPH_VERSION}/{self.page_id}/video_reels"
+        url = f"https://graph.facebook.com/{self.GRAPH_VERSION}/{self.page_id}/video_stories"
         params = {
             "upload_phase": "start",
             "access_token": self.page_token,
         }
         resp = requests.post(url, params=params, timeout=30)
         if resp.status_code != 200:
-            logger.error(f"Reel START {resp.status_code}: {resp.text[:500]}")
+            logger.error(f"Facebook Story START {resp.status_code}: {resp.text[:500]}")
             return None
         return resp.json()
 
     def _upload_binary(self, upload_url: str, video_file: Path, file_size: int) -> bool:
-        # Reels Hosted Upload: POST con body binario e headers specifici
+        # Stories upload: stesso meccanismo rupload usato dai video verticali Meta.
         headers = {
             "Authorization": f"OAuth {self.page_token}",
             "offset": "0",
@@ -527,7 +531,7 @@ class FacebookReelPublisher:
         with open(video_file, "rb") as f:
             resp = requests.post(upload_url, headers=headers, data=f, timeout=300)
         if resp.status_code not in (200, 201):
-            logger.error(f"Reel UPLOAD {resp.status_code}: {resp.text[:500]}")
+            logger.error(f"Facebook Story UPLOAD {resp.status_code}: {resp.text[:500]}")
             return False
         # La risposta puo' contenere "success": true
         try:
@@ -536,26 +540,31 @@ class FacebookReelPublisher:
         except Exception:
             return True
 
-    def _finish_publish(self, video_id: str, description: str) -> Tuple[bool, str]:
-        url = f"https://graph.facebook.com/{self.GRAPH_VERSION}/{self.page_id}/video_reels"
+    def _finish_publish(self, video_id: str) -> Tuple[bool, str]:
+        url = f"https://graph.facebook.com/{self.GRAPH_VERSION}/{self.page_id}/video_stories"
         params = {
             "access_token": self.page_token,
             "video_id": video_id,
             "upload_phase": "finish",
-            "video_state": "PUBLISHED",
-            "description": description[:2200],  # limite description Reels
         }
         resp = requests.post(url, params=params, timeout=60)
         if resp.status_code != 200:
             return False, f"{resp.status_code}: {resp.text[:500]}"
-        return True, resp.text
+        try:
+            return True, resp.json().get("post_id", resp.text)
+        except Exception:
+            return True, resp.text
+
+
+# Compatibilita' con eventuali import esistenti.
+FacebookReelPublisher = FacebookStoryPublisher
 
 
 # =============================================================================
 # FACADE: orchestrazione generazione + pubblicazione
 # =============================================================================
 class FacebookReelManager:
-    """Facade che combina generazione locale e pubblicazione su Facebook."""
+    """Facade che combina generazione locale e pubblicazione su Facebook Stories."""
 
     def __init__(self):
         self.generator = FacebookReelGenerator()
@@ -566,7 +575,7 @@ class FacebookReelManager:
 
     def publish(self, articolo, page_token: str) -> Tuple[bool, str]:
         """
-        Genera + pubblica. Restituisce (success, error_or_video_id).
+        Genera + pubblica come Storia Facebook. Restituisce (success, error_or_post_id).
 
         Cleanup: in caso di successo il file MP4 locale viene rimosso
         (Facebook ospita gia' il video). In caso di fallimento il file resta
@@ -582,15 +591,14 @@ class FacebookReelManager:
         if not video_path:
             return False, "Generazione video fallita"
 
-        description = self._build_description(articolo)
-        publisher = FacebookReelPublisher(page_id, page_token)
-        success, info = publisher.publish(video_path, description)
+        publisher = FacebookStoryPublisher(page_id, page_token)
+        success, info = publisher.publish(video_path)
 
         if success:
             self._cleanup_local_file(video_path)
         else:
             logger.info(
-                f"Reel: mantengo file locale per debug -> {video_path} "
+                f"Facebook Story: mantengo file locale per debug -> {video_path} "
                 f"(motivo fallimento: {info[:200]})"
             )
 
@@ -604,34 +612,9 @@ class FacebookReelManager:
             if p.exists():
                 size_kb = p.stat().st_size // 1024
                 p.unlink()
-                logger.info(f"Reel: file locale rimosso {p.name} ({size_kb} KB liberati)")
+                logger.info(f"Facebook Story: file locale rimosso {p.name} ({size_kb} KB liberati)")
         except OSError as e:
-            logger.warning(f"Reel: cleanup fallito per {video_path}: {e}")
-
-    @staticmethod
-    def _build_description(articolo) -> str:
-        """Caption del Reel (max 2200 caratteri, mostrata accanto al video).
-
-        L'URL include ?social_share=1 come il resto del sistema (vedi
-        social_sharing.SocialMediaManager._get_social_article_url): serve a
-        forzare il dispatch dei metadata Open Graph dall'articolo invece che
-        da pagine evento o altre risorse derivate.
-        """
-        url = f"https://ombradelportico.it/articolo/{articolo.slug}/?social_share=1"
-        sommario = (articolo.sommario or "")[:600]
-        if articolo.sommario and len(articolo.sommario) > 600:
-            sommario += "..."
-        parts = [
-            articolo.titolo,
-            "",
-            sommario,
-            "",
-            f"Leggi l'articolo completo: {url}",
-            "",
-            "#OmbraDelPortico #Carpi #NotizieCarpi",
-        ]
-        return "\n".join(p for p in parts if p is not None)
-
+            logger.warning(f"Facebook Story: cleanup fallito per {video_path}: {e}")
 
 # Istanza condivisa pronta all'uso
 reel_manager = FacebookReelManager()

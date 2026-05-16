@@ -557,6 +557,7 @@ class SocialPublicationLog(models.Model):
         ('telegram', 'Telegram'),
         ('facebook', 'Facebook'),
         ('facebook_reel', 'Facebook Reel'),
+        ('facebook_story', 'Facebook Story'),
         ('instagram', 'Instagram'),
     ]
 
