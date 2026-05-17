@@ -130,9 +130,89 @@ class SocialMediaManager:
             url = f"https://ombradelportico.it/media/{foto_field}"
             return self._normalize_url(url)
 
+        # Path statico locale servito dal sito
+        if foto_field.startswith('/static/'):
+            return self._normalize_url(f"https://ombradelportico.it{foto_field}")
+
         # Fallback: aggiungi il dominio
         url = f"https://ombradelportico.it{foto_field}"
         return self._normalize_url(url)
+
+    def _log_enabled_platforms(self) -> None:
+        enabled = [name for name, cfg in self.platforms.items() if cfg.get('enabled')]
+        logger.info(
+            "Piattaforme social abilitate: %s",
+            ', '.join(enabled) if enabled else 'nessuna',
+        )
+
+    def _log_skipped_publication(self, articolo, platform: str, reason: str) -> None:
+        """Registra in admin un tentativo saltato (piattaforma disabilitata o senza foto)."""
+        from .models import SocialPublicationLog
+
+        SocialPublicationLog.objects.update_or_create(
+            articolo=articolo,
+            platform=platform,
+            defaults={
+                'success': False,
+                'error_message': reason[:1000],
+            },
+        )
+
+    def _prepare_publication_slot(self, articolo, platform: str) -> tuple[bool, bool]:
+        """
+        Gestisce lock/duplicati per una piattaforma.
+
+        Returns:
+            (should_share, already_published_successfully)
+        """
+        from .models import SocialPublicationLog
+        from django.db import transaction
+
+        with transaction.atomic():
+            if SocialPublicationLog.objects.select_for_update().filter(
+                articolo=articolo,
+                platform=platform,
+                success=True,
+            ).exists():
+                return False, True
+
+            log_entry = (
+                SocialPublicationLog.objects.select_for_update()
+                .filter(articolo=articolo, platform=platform)
+                .first()
+            )
+
+            if log_entry and log_entry.error_message == 'In progress...':
+                logger.info(f"{platform}: pubblicazione in corso da altro worker, skip")
+                return False, False
+
+            if log_entry:
+                log_entry.success = False
+                log_entry.error_message = 'In progress...'
+                log_entry.save(update_fields=['success', 'error_message'])
+            else:
+                SocialPublicationLog.objects.create(
+                    articolo=articolo,
+                    platform=platform,
+                    success=False,
+                    error_message='In progress...',
+                )
+
+        return True, False
+
+    def _finalize_publication(
+        self, articolo, platform: str, success: bool, error_message: Optional[str] = None
+    ) -> None:
+        from .models import SocialPublicationLog
+
+        SocialPublicationLog.objects.update_or_create(
+            articolo=articolo,
+            platform=platform,
+            defaults={
+                'success': success,
+                'error_message': None if success else (error_message or '')[:1000],
+            },
+        )
 
     def _refresh_facebook_link_preview(self, article_url: str, access_token: str) -> None:
         """
@@ -310,6 +390,7 @@ class SocialMediaManager:
         article_url = self._get_social_article_url(articolo)
 
         logger.info(f"Avvio condivisione social per articolo: {articolo.titolo} (Twitter via RSS+IFTTT)")
+        self._log_enabled_platforms()
 
         # Telegram
         if self.platforms['telegram']['enabled']:
@@ -402,44 +483,35 @@ class SocialMediaManager:
         # Facebook Story (indipendente dal post Pagina: richiede immagine)
         if self.platforms['facebook_story']['enabled']:
             if articolo.foto:
-                should_share = False
-                with transaction.atomic():
-                    already_published = SocialPublicationLog.objects.select_for_update().filter(
-                        articolo=articolo,
-                        platform='facebook_story',
-                        success=True
-                    ).exists()
-
-                    if already_published:
-                        logger.info(f"Facebook Story: Articolo '{articolo.titolo}' già pubblicato, skip")
-                        results['facebook_story'] = True
-                    else:
-                        log_entry, created = SocialPublicationLog.objects.get_or_create(
-                            articolo=articolo,
-                            platform='facebook_story',
-                            defaults={'success': False, 'error_message': 'In progress...'}
-                        )
-                        if not created:
-                            logger.info(f"Facebook Story: pubblicazione in corso da altro worker, skip")
-                            results['facebook_story'] = log_entry.success
-                        else:
-                            should_share = True
-
-                if should_share:
+                should_share, already_done = self._prepare_publication_slot(
+                    articolo, 'facebook_story'
+                )
+                if already_done:
+                    logger.info(f"Facebook Story: Articolo '{articolo.titolo}' già pubblicato, skip")
+                    results['facebook_story'] = True
+                elif should_share:
                     success, error_msg = self._share_to_facebook_story(articolo)
                     results['facebook_story'] = success
-                    SocialPublicationLog.objects.filter(
-                        articolo=articolo,
-                        platform='facebook_story'
-                    ).update(
-                        success=success,
-                        error_message=None if success else error_msg[:1000]
+                    self._finalize_publication(
+                        articolo, 'facebook_story', success,
+                        None if success else error_msg,
                     )
+                else:
+                    results['facebook_story'] = False
             else:
+                reason = "Facebook Story richiede un'immagine - post saltato"
                 logger.warning(f"Facebook Story saltata per '{articolo.titolo}': immagine obbligatoria")
+                self._log_skipped_publication(articolo, 'facebook_story', reason)
                 results['facebook_story'] = False
         else:
+            reason = (
+                "Disabilitato in .env: imposta FACEBOOK_STORY_ENABLED=True "
+                "o FACEBOOK_REEL_ENABLED=True (richiede anche FACEBOOK_AUTO_SHARE=True)"
+            )
+            if getattr(settings, 'FACEBOOK_AUTO_SHARE', False):
+                self._log_skipped_publication(articolo, 'facebook_story', reason)
             logger.info("Pubblicazione Facebook Story disabilitata")
+            results['facebook_story'] = False
 
         # Instagram (solo se c'è un'immagine)
         if self.platforms['instagram']['enabled']:
@@ -493,70 +565,68 @@ class SocialMediaManager:
         # Instagram Story (richiede immagine)
         if self.platforms['instagram_story']['enabled']:
             if articolo.foto:
-                should_share = False
-                with transaction.atomic():
-                    already_published = SocialPublicationLog.objects.select_for_update().filter(
-                        articolo=articolo, platform='instagram_story', success=True
-                    ).exists()
-                    if already_published:
-                        logger.info(f"IG Story: '{articolo.titolo}' gia' pubblicata, skip")
-                        results['instagram_story'] = True
-                    else:
-                        log_entry, created = SocialPublicationLog.objects.get_or_create(
-                            articolo=articolo, platform='instagram_story',
-                            defaults={'success': False, 'error_message': 'In progress...'}
-                        )
-                        if not created:
-                            logger.info(f"IG Story: in corso da altro worker, skip")
-                            results['instagram_story'] = log_entry.success
-                        else:
-                            should_share = True
-                if should_share:
+                should_share, already_done = self._prepare_publication_slot(
+                    articolo, 'instagram_story'
+                )
+                if already_done:
+                    logger.info(f"IG Story: '{articolo.titolo}' gia' pubblicata, skip")
+                    results['instagram_story'] = True
+                elif should_share:
                     success, error_msg = self._share_to_instagram_story(articolo)
                     results['instagram_story'] = success
-                    SocialPublicationLog.objects.filter(
-                        articolo=articolo, platform='instagram_story'
-                    ).update(success=success,
-                             error_message=None if success else error_msg[:1000])
+                    self._finalize_publication(
+                        articolo, 'instagram_story', success,
+                        None if success else error_msg,
+                    )
+                else:
+                    results['instagram_story'] = False
             else:
+                reason = "Instagram Story richiede un'immagine - post saltato"
                 logger.warning(f"IG Story saltata per '{articolo.titolo}': immagine obbligatoria")
+                self._log_skipped_publication(articolo, 'instagram_story', reason)
                 results['instagram_story'] = False
         else:
+            reason = (
+                "Disabilitato in .env: imposta INSTAGRAM_STORY_ENABLED=True "
+                "(richiede anche INSTAGRAM_AUTO_SHARE=True)"
+            )
+            if getattr(settings, 'INSTAGRAM_AUTO_SHARE', False):
+                self._log_skipped_publication(articolo, 'instagram_story', reason)
             logger.info("Pubblicazione IG Story disabilitata")
+            results['instagram_story'] = False
 
         # Instagram Reel (richiede immagine)
         if self.platforms['instagram_reel']['enabled']:
             if articolo.foto:
-                should_share = False
-                with transaction.atomic():
-                    already_published = SocialPublicationLog.objects.select_for_update().filter(
-                        articolo=articolo, platform='instagram_reel', success=True
-                    ).exists()
-                    if already_published:
-                        logger.info(f"IG Reel: '{articolo.titolo}' gia' pubblicato, skip")
-                        results['instagram_reel'] = True
-                    else:
-                        log_entry, created = SocialPublicationLog.objects.get_or_create(
-                            articolo=articolo, platform='instagram_reel',
-                            defaults={'success': False, 'error_message': 'In progress...'}
-                        )
-                        if not created:
-                            logger.info(f"IG Reel: in corso da altro worker, skip")
-                            results['instagram_reel'] = log_entry.success
-                        else:
-                            should_share = True
-                if should_share:
+                should_share, already_done = self._prepare_publication_slot(
+                    articolo, 'instagram_reel'
+                )
+                if already_done:
+                    logger.info(f"IG Reel: '{articolo.titolo}' gia' pubblicato, skip")
+                    results['instagram_reel'] = True
+                elif should_share:
                     success, error_msg = self._share_to_instagram_reel(articolo)
                     results['instagram_reel'] = success
-                    SocialPublicationLog.objects.filter(
-                        articolo=articolo, platform='instagram_reel'
-                    ).update(success=success,
-                             error_message=None if success else error_msg[:1000])
+                    self._finalize_publication(
+                        articolo, 'instagram_reel', success,
+                        None if success else error_msg,
+                    )
+                else:
+                    results['instagram_reel'] = False
             else:
+                reason = "Instagram Reel richiede un'immagine - post saltato"
                 logger.warning(f"IG Reel saltato per '{articolo.titolo}': immagine obbligatoria")
+                self._log_skipped_publication(articolo, 'instagram_reel', reason)
                 results['instagram_reel'] = False
         else:
+            reason = (
+                "Disabilitato in .env: imposta INSTAGRAM_REEL_ENABLED=True "
+                "(richiede anche INSTAGRAM_AUTO_SHARE=True)"
+            )
+            if getattr(settings, 'INSTAGRAM_AUTO_SHARE', False):
+                self._log_skipped_publication(articolo, 'instagram_reel', reason)
             logger.info("Pubblicazione IG Reel disabilitata")
+            results['instagram_reel'] = False
 
         # Log risultati finali
         success_count = sum(1 for success in results.values() if success)
@@ -641,14 +711,16 @@ class SocialMediaManager:
                     results['facebook_story'] = True
                 else:
                     logger.info(f"Facebook Story: tentativo retry...")
-                    success, error_msg = self._share_to_facebook_story(articolo)
-                    results['facebook_story'] = success
-                    SocialPublicationLog.objects.create(
-                        articolo=articolo,
-                        platform='facebook_story',
-                        success=success,
-                        error_message=None if success else error_msg[:1000]
-                    )
+                    should_share, _ = self._prepare_publication_slot(articolo, 'facebook_story')
+                    if should_share:
+                        success, error_msg = self._share_to_facebook_story(articolo)
+                        results['facebook_story'] = success
+                        self._finalize_publication(
+                            articolo, 'facebook_story', success,
+                            None if success else error_msg,
+                        )
+                    else:
+                        results['facebook_story'] = False
             else:
                 logger.warning(f"Facebook Story: immagine obbligatoria, skip retry")
                 results['facebook_story'] = False
@@ -670,15 +742,41 @@ class SocialMediaManager:
                     # Usa retry automatico anche per retry manuali
                     success, error_msg = self._share_to_instagram_with_retry(articolo, article_url)
                     results['instagram'] = success
-                    SocialPublicationLog.objects.create(
-                        articolo=articolo,
-                        platform='instagram',
-                        success=success,
-                        error_message=None if success else error_msg[:1000]
+                    self._finalize_publication(
+                        articolo, 'instagram', success,
+                        None if success else error_msg,
                     )
             else:
                 logger.warning(f"Instagram: immagine obbligatoria, skip retry")
                 results['instagram'] = False
+
+        # Instagram Story
+        if self.platforms['instagram_story']['enabled'] and articolo.foto:
+            if SocialPublicationLog.objects.filter(
+                articolo=articolo, platform='instagram_story', success=True
+            ).exists():
+                results['instagram_story'] = True
+            else:
+                success, error_msg = self._share_to_instagram_story(articolo)
+                results['instagram_story'] = success
+                self._finalize_publication(
+                    articolo, 'instagram_story', success,
+                    None if success else error_msg,
+                )
+
+        # Instagram Reel
+        if self.platforms['instagram_reel']['enabled'] and articolo.foto:
+            if SocialPublicationLog.objects.filter(
+                articolo=articolo, platform='instagram_reel', success=True
+            ).exists():
+                results['instagram_reel'] = True
+            else:
+                success, error_msg = self._share_to_instagram_reel(articolo)
+                results['instagram_reel'] = success
+                self._finalize_publication(
+                    articolo, 'instagram_reel', success,
+                    None if success else error_msg,
+                )
 
         success_count = sum(1 for success in results.values() if success)
         total_count = len(results)
@@ -1103,18 +1201,27 @@ class SocialMediaManager:
             return False, error
 
     def _get_instagram_hashtags(self, categoria: str) -> str:
-        """Genera hashtags appropriati basati sulla categoria dell'articolo"""
-        base_hashtags = "#CarpiNews #OmbraDelPortico #Carpi"
+        """
+        Genera un mix di hashtag iperlocali + categoria + generalisti.
+        Strategia: 5-10 hashtag mirati performano meglio di 30 generici
+        (algoritmo IG penalizza spam-hashtag e premia rilevanza territoriale).
+        """
+        # Base: brand + iperlocali Carpi/Modena/Emilia (alto reach territoriale)
+        base = "#OmbraDelPortico #Carpi #CarpiCity #Modena #ProvinciadiModena #EmiliaRomagna"
+
+        # Specifici per categoria con tag locali + tematici trending in Italia
         category_hashtags = {
-            'Sport': '#Sport #CalcioCarpi #CarpiFC',
-            'Politica': '#Politica #Amministrazione #ComuneCarpi',
-            'Cultura & Eventi': '#Cultura #Eventi #EventiCarpi',
-            'Cronaca': '#Cronaca #Notizie #News',
-            'Economia': '#Economia #Business #Imprese',
-            'Attualita': '#Attualita #News #Oggi',
+            'Sport': '#SportCarpi #CarpiFC #CalcioCarpi #SerieB #SportLocale',
+            'Politica': '#PoliticaCarpi #ComuneCarpi #AmministrazioneCarpi #PoliticaLocale #Cittadinanza',
+            'Cultura & Eventi': '#CulturaCarpi #EventiCarpi #CosaFareACarpi #WeekendCarpi #VisitCarpi',
+            'Cronaca': '#CronacaCarpi #CronacaModena #NotizieLocali #CarpiNews',
+            'Economia': '#EconomiaCarpi #ImpreseCarpi #BusinessModena #LavoroCarpi',
+            'Attualita': '#AttualitaCarpi #NotizieOggi #CarpiNews',
+            "L'Eco del Consiglio": '#ConsiglioComunale #PoliticaCarpi #ComuneCarpi',
+            'Editoriale': '#Editoriale #OpinioniCarpi #CarpiNews',
         }
-        category_specific = category_hashtags.get(categoria, '')
-        return f"{base_hashtags} {category_specific}".strip()
+        category_specific = category_hashtags.get(categoria, '#CarpiNews #NotizieLocali')
+        return f"{base} {category_specific}".strip()
 
     def get_platform_status(self) -> Dict[str, Dict]:
         """Stato configurazione di tutte le piattaforme."""
