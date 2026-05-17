@@ -58,6 +58,7 @@ class InstagramReelGenerator(FacebookReelGenerator):
             config = ReelConfig.from_settings()
         config.output_dir_name = "ig_reels"
         config.cta_text = "Leggi nel link in bio"
+        config.video_fade_in_seconds = 0
         super().__init__(config)
 
 
@@ -82,7 +83,12 @@ class InstagramVideoPublisher:
         self.page_token = page_access_token
         self.media_type = media_type
 
-    def publish(self, video_url: str, caption: str = "") -> Tuple[bool, str]:
+    def publish(self, video_url: str, caption: str = "",
+                link_comment: str = "",
+                location_id: str = "",
+                cover_url: str = "",
+                audio_name: str = "",
+                thumb_offset_ms: int = 1000) -> Tuple[bool, str]:
         """
         Esegue create_container -> wait -> media_publish.
 
@@ -105,6 +111,19 @@ class InstagramVideoPublisher:
                 # Caption supportata solo per Reels (max 2200 char)
                 data["caption"] = caption[:2200]
                 data["share_to_feed"] = "true"
+
+            # Metadati avanzati per discovery (entrambi i media_type)
+            if location_id:
+                data["location_id"] = location_id
+            # Cover e audio_name supportati solo per REELS
+            if self.media_type == "REELS":
+                if cover_url:
+                    data["cover_url"] = cover_url
+                elif thumb_offset_ms is not None:
+                    # Evita thumbnail nere quando Meta usa il frame 0 del video.
+                    data["thumb_offset"] = str(max(0, int(thumb_offset_ms)))
+                if audio_name:
+                    data["audio_name"] = audio_name[:50]  # limite IG ~50 char
 
             logger.info(f"IG {self.media_type}: creazione container per {video_url}")
             create_resp = requests.post(create_url, data=data, timeout=30)
@@ -137,6 +156,16 @@ class InstagramVideoPublisher:
                 return False, f"Publish fallito: {pub_resp.text[:500]}"
 
             media_id = pub_resp.json().get("id", "")
+
+            # Commento auto col link cliccabile (solo Reels; Storie non hanno commenti).
+            # Best-effort: fallimento NON deve far fallire il publish.
+            if link_comment and self.media_type == "REELS" and media_id:
+                ok, info = self._post_link_comment(media_id, link_comment)
+                if ok:
+                    logger.info(f"IG Reel: commento link pubblicato (id={info})")
+                else:
+                    logger.warning(f"IG Reel: commento link fallito (non blocca): {info}")
+
             return True, media_id
 
         except requests.RequestException as e:
@@ -144,6 +173,23 @@ class InstagramVideoPublisher:
         except Exception as e:
             logger.error(f"IG {self.media_type}: eccezione publish", exc_info=True)
             return False, str(e)
+
+    def _post_link_comment(self, media_id: str, message: str) -> Tuple[bool, str]:
+        """Pubblica un commento dalla Pagina sul Reel IG col link cliccabile.
+        Delay 3s perche' subito dopo il publish il Reel potrebbe non essere
+        ancora indicizzato per commenti."""
+        time.sleep(3)
+        url = f"https://graph.facebook.com/{self.GRAPH_VERSION}/{media_id}/comments"
+        try:
+            resp = requests.post(url, data={
+                "access_token": self.page_token,
+                "message": message[:2200],
+            }, timeout=30)
+            if resp.status_code == 200:
+                return True, resp.json().get("id", "")
+            return False, f"{resp.status_code}: {resp.text[:300]}"
+        except requests.RequestException as e:
+            return False, f"HTTP error: {e}"
 
     def _wait_container_ready(self, container_id: str, max_wait_s: int = 60,
                                poll_interval_s: int = 5) -> bool:
@@ -209,8 +255,24 @@ class _BaseIgVideoManager:
         video_url = f"https://ombradelportico.it/media/{self.OUTPUT_SUBDIR}/{video_filename}"
 
         caption = self._build_caption(articolo)
+        # Commento col link cliccabile: solo per Reels (le Storie IG non hanno commenti)
+        link_comment = self._build_link_comment(articolo) if self.MEDIA_TYPE == "REELS" else ""
+
+        # Metadati avanzati per discovery
+        location_id = getattr(settings, "CARPI_PLACE_ID", "")
+        audio_name = getattr(settings, "INSTAGRAM_REEL_AUDIO_NAME", "") if self.MEDIA_TYPE == "REELS" else ""
+        cover_url = self._build_cover_url(articolo) if self.MEDIA_TYPE == "REELS" else ""
+
         publisher = InstagramVideoPublisher(ig_user_id, page_token, media_type=self.MEDIA_TYPE)
-        success, info = publisher.publish(video_url, caption=caption)
+        success, info = publisher.publish(
+            video_url,
+            caption=caption,
+            link_comment=link_comment,
+            location_id=location_id,
+            cover_url=cover_url,
+            audio_name=audio_name,
+            thumb_offset_ms=1000,
+        )
 
         if success:
             self._cleanup_local_file(video_path)
@@ -233,12 +295,62 @@ class _BaseIgVideoManager:
             logger.warning(f"IG: cleanup fallito per {video_path}: {e}")
 
     @staticmethod
+    def _build_cover_url(articolo) -> str:
+        """
+        Genera cover thumbnail 1080x1920 per il Reel IG riusando il template
+        verticale del video. Meta raccomanda 9:16 per evitare crop/spazi vuoti;
+        se il Reel viene condiviso nel feed, Instagram ne ritaglia il centro 1:1.
+        """
+        try:
+            from home.facebook_reels import FacebookReelGenerator
+            import tempfile
+
+            config = ReelConfig.from_settings()
+            config.cta_text = "Leggi nel link in bio"
+            tmp_gen = FacebookReelGenerator(config)
+            image_path = tmp_gen._resolve_image_path(articolo)
+            if not image_path:
+                logger.warning(f"IG Reel cover: nessuna immagine valida per {articolo.slug}")
+                return ""
+
+            covers_dir = Path(settings.BASE_DIR) / "media" / "ig_reel_covers"
+            covers_dir.mkdir(parents=True, exist_ok=True)
+
+            with tempfile.TemporaryDirectory(prefix="ig_reel_cover_") as tmpdir:
+                frame_path = tmp_gen._compose_frame(
+                    image_path=image_path,
+                    title=articolo.titolo,
+                    category=articolo.categoria or "Notizie",
+                    out_dir=Path(tmpdir),
+                )
+                final = covers_dir / f"{articolo.slug}_cover.jpg"
+                Path(frame_path).replace(final)
+
+            url = f"https://ombradelportico.it/media/ig_reel_covers/{final.name}"
+            logger.info(f"IG Reel cover: generata {url}")
+            return url
+        except Exception as e:
+            logger.warning(f"IG Reel cover: generazione fallita ({e})")
+            return ""
+
+    @staticmethod
+    def _build_link_comment(articolo) -> str:
+        """Commento autopubblicato sul Reel IG col link cliccabile."""
+        url = (f"https://ombradelportico.it/articolo/{articolo.slug}/"
+               f"?utm_source=instagram&utm_medium=reel_comment")
+        return f"Leggi l'articolo completo qui: {url}"
+
+    @staticmethod
     def _build_caption(articolo) -> str:
-        """Caption del Reel IG (ignorata per Storia)."""
+        """Caption del Reel IG (ignorata per Storia). Hashtag iperlocali da social_sharing."""
         sommario = (articolo.sommario or "")[:500]
         if articolo.sommario and len(articolo.sommario) > 500:
             sommario += "..."
-        # Su IG i link non sono cliccabili nelle caption: rimandiamo al link in bio
+        try:
+            from home.social_sharing import social_manager
+            hashtags = social_manager._get_instagram_hashtags(articolo.categoria or "")
+        except Exception:
+            hashtags = "#OmbraDelPortico #Carpi #NotizieCarpi"
         parts = [
             articolo.titolo,
             "",
@@ -246,7 +358,7 @@ class _BaseIgVideoManager:
             "",
             "Link in bio per leggere l'articolo completo",
             "",
-            "#OmbraDelPortico #Carpi #NotizieCarpi",
+            hashtags,
         ]
         return "\n".join(p for p in parts if p is not None)[:2200]
 

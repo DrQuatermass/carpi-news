@@ -107,6 +107,7 @@ class ReelConfig:
     crf: int = 23                 # qualita' H.264 (18-28; piu' basso = piu' qualita')
     preset: str = "veryfast"      # x264 preset
     audio_bitrate: str = "128k"
+    video_fade_in_seconds: float = 0.6
     # Personalizzazione output: sottoclassi (es. InstagramStoryGenerator) cambiano questi
     cta_text: str = "Leggi su ombradelportico.it"
     output_dir_name: str = "reels"   # cartella sotto media/
@@ -439,9 +440,19 @@ class FacebookReelGenerator:
         cfg = self.config
         ffmpeg = _ffmpeg_binary()
         # Calcola i timestamp di fade out
+        fade_in_dur = max(0, float(getattr(cfg, "video_fade_in_seconds", 0.6)))
         fade_dur = 0.6
         video_fade_out_start = max(0, cfg.duration_seconds - fade_dur)
         audio_fade_out_start = max(0, cfg.duration_seconds - 2)
+        video_filters = [
+            f"scale={WIDTH}:{HEIGHT}",
+        ]
+        if fade_in_dur > 0:
+            video_filters.append(f"fade=t=in:st=0:d={fade_in_dur}")
+        video_filters.extend([
+            f"fade=t=out:st={video_fade_out_start}:d={fade_dur}",
+            "format=yuv420p",
+        ])
 
         # Per audio sorgente esterno serve farlo finire entro la durata richiesta.
         # Usiamo -t per troncare e -af per il fade.
@@ -453,12 +464,7 @@ class FacebookReelGenerator:
             "-i", str(frame_path),
             "-i", str(audio_path),
             "-t", str(cfg.duration_seconds),
-            "-vf", (
-                f"scale={WIDTH}:{HEIGHT},"
-                f"fade=t=in:st=0:d=0.6,"
-                f"fade=t=out:st={video_fade_out_start}:d={fade_dur},"
-                f"format=yuv420p"
-            ),
+            "-vf", ",".join(video_filters),
             "-af", (
                 "afade=t=in:st=0:d=0.5,"
                 f"afade=t=out:st={audio_fade_out_start}:d=2"
