@@ -160,16 +160,36 @@ class FacebookReelGenerator:
         Risolve il campo foto in un path locale. Se e' URL remoto lo scarica in temp.
         Restituisce None se non riusciamo a ottenere un'immagine valida.
         """
+        if getattr(articolo, "foto_upload", None):
+            try:
+                uploaded = Path(articolo.foto_upload.path)
+                if uploaded.exists():
+                    return uploaded
+            except (ValueError, AttributeError):
+                pass
+
         if not articolo.foto:
             return None
 
-        foto = str(articolo.foto)
+        foto = str(articolo.foto).strip()
 
         # URL remoto: scarica
         if foto.startswith("http://") or foto.startswith("https://"):
             return self._download_image(foto)
 
-        # Path relativo a MEDIA_URL: convertilo in path filesystem
+        # Path statico locale (es. articoli "Cosa fare oggi" -> /static/home/images/Oggi.webp)
+        if foto.startswith("/static/"):
+            local = Path(settings.BASE_DIR) / "home" / "static" / foto.replace("/static/", "", 1)
+            if local.exists():
+                return local
+
+        # Path media locale (/media/images/...)
+        if foto.startswith("/media/"):
+            local = Path(settings.MEDIA_ROOT) / foto.replace("/media/", "", 1)
+            if local.exists():
+                return local
+
+        # Path relativo a MEDIA_URL personalizzato
         media_url = getattr(settings, "MEDIA_URL", "/media/").rstrip("/")
         if foto.startswith(media_url + "/"):
             rel = foto[len(media_url) + 1:]
