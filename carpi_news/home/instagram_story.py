@@ -258,8 +258,10 @@ class _BaseIgVideoManager:
         # Commento col link cliccabile: solo per Reels (le Storie IG non hanno commenti)
         link_comment = self._build_link_comment(articolo) if self.MEDIA_TYPE == "REELS" else ""
 
-        # Metadati avanzati per discovery
-        location_id = getattr(settings, "CARPI_PLACE_ID", "")
+        # Metadati avanzati per discovery.
+        # Le Stories IG accettano un set di parametri piu' stretto dei Reel:
+        # il location tag viene inviato solo ai Reel per evitare reject del container.
+        location_id = getattr(settings, "CARPI_PLACE_ID", "") if self.MEDIA_TYPE == "REELS" else ""
         audio_name = getattr(settings, "INSTAGRAM_REEL_AUDIO_NAME", "") if self.MEDIA_TYPE == "REELS" else ""
         cover_url = self._build_cover_url(articolo) if self.MEDIA_TYPE == "REELS" else ""
 
