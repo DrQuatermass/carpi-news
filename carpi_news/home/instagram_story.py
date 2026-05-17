@@ -129,6 +129,27 @@ class InstagramVideoPublisher:
             create_resp = requests.post(create_url, data=data, timeout=30)
             logger.info(f"IG {self.media_type} container: {create_resp.status_code} - {create_resp.text[:500]}")
 
+            if create_resp.status_code != 200 and self.media_type == "REELS":
+                optional_keys = {"cover_url", "location_id", "audio_name"}
+                if optional_keys.intersection(data):
+                    fallback_data = {
+                        key: value
+                        for key, value in data.items()
+                        if key not in optional_keys
+                    }
+                    if thumb_offset_ms is not None:
+                        # Mantiene una thumbnail non nera senza dipendere da cover_url.
+                        fallback_data["thumb_offset"] = str(max(0, int(thumb_offset_ms)))
+                    logger.warning(
+                        "IG Reel: container con metadata extra fallito, retry minimale: %s",
+                        create_resp.text[:500],
+                    )
+                    create_resp = requests.post(create_url, data=fallback_data, timeout=30)
+                    logger.info(
+                        f"IG REELS fallback container: {create_resp.status_code} - "
+                        f"{create_resp.text[:500]}"
+                    )
+
             if create_resp.status_code != 200:
                 return False, f"Container fallito: {create_resp.text[:500]}"
 
