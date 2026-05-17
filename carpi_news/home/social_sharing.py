@@ -1,6 +1,8 @@
 import logging
+import re
 import requests
 import time
+import unicodedata
 from typing import Dict, Optional
 from django.conf import settings
 from PIL import Image
@@ -1080,7 +1082,7 @@ class SocialMediaManager:
             caption += f"\n\n🔗 Link in bio per leggere l'articolo completo"
 
             # Aggiungi hashtags basati sulla categoria
-            hashtags = self._get_instagram_hashtags(articolo.categoria)
+            hashtags = self._get_instagram_hashtags(articolo)
             caption += f"\n\n{hashtags}"
 
             # Limita a 2200 caratteri
@@ -1216,16 +1218,54 @@ class SocialMediaManager:
             logger.error(error, exc_info=True)
             return False, error
 
-    def _get_instagram_hashtags(self, categoria: str) -> str:
-        """
-        Genera un mix di hashtag iperlocali + categoria + generalisti.
-        Strategia: 5-10 hashtag mirati performano meglio di 30 generici
-        (algoritmo IG penalizza spam-hashtag e premia rilevanza territoriale).
-        """
-        # Base: brand + iperlocali Carpi/Modena/Emilia (alto reach territoriale)
-        base = "#OmbraDelPortico #Carpi #CarpiCity #Modena #ProvinciadiModena #EmiliaRomagna"
+    @staticmethod
+    def _hashtagify(value: str) -> str:
+        """Converte un tag editoriale/SEO in hashtag Instagram pulito."""
+        if not value:
+            return ""
 
-        # Specifici per categoria con tag locali + tematici trending in Italia
+        normalized = unicodedata.normalize("NFKD", str(value))
+        ascii_text = normalized.encode("ascii", "ignore").decode("ascii")
+        compact = re.sub(r"[^A-Za-z0-9]+", "", ascii_text)
+        if not compact or compact.isdigit():
+            return ""
+        return f"#{compact[:40]}"
+
+    def _get_instagram_hashtags(self, articolo_or_categoria=None, categoria: str = "") -> str:
+        """
+        Genera hashtag da tag SEO dell'articolo + pochi tag locali/brand.
+
+        I tag AI/editoriali sono piu' specifici della sola categoria; teniamo
+        comunque una base territoriale per discovery locale e deduplichiamo.
+        """
+        articolo = None
+        if hasattr(articolo_or_categoria, "tag_list"):
+            articolo = articolo_or_categoria
+            categoria = getattr(articolo, "categoria", "") or categoria
+        elif articolo_or_categoria:
+            categoria = str(articolo_or_categoria)
+
+        # Base corta: brand + iperlocali. Il resto arriva dai SEO tag.
+        tags = [
+            "#OmbraDelPortico",
+            "#Carpi",
+            "#CarpiNews",
+            "#Modena",
+            "#EmiliaRomagna",
+        ]
+
+        # Tag SEO specifici dell'articolo, generati dall'AI o inseriti in admin.
+        if articolo is not None:
+            for tag in getattr(articolo, "tag_list", [])[:6]:
+                hashtag = self._hashtagify(tag)
+                if hashtag:
+                    tags.append(hashtag)
+
+        category_tag = self._hashtagify(categoria)
+        if category_tag:
+            tags.append(category_tag)
+
+        # Fallback categoria: usato solo quando mancano tag SEO sufficienti.
         category_hashtags = {
             'Sport': '#SportCarpi #CarpiFC #CalcioCarpi #SerieB #SportLocale',
             'Politica': '#PoliticaCarpi #ComuneCarpi #AmministrazioneCarpi #PoliticaLocale #Cittadinanza',
@@ -1236,8 +1276,19 @@ class SocialMediaManager:
             "L'Eco del Consiglio": '#ConsiglioComunale #PoliticaCarpi #ComuneCarpi',
             'Editoriale': '#Editoriale #OpinioniCarpi #CarpiNews',
         }
-        category_specific = category_hashtags.get(categoria, '#CarpiNews #NotizieLocali')
-        return f"{base} {category_specific}".strip()
+        if len(tags) < 9:
+            fallback = category_hashtags.get(categoria, '#NotizieLocali')
+            tags.extend(fallback.split())
+
+        deduped = []
+        seen = set()
+        for tag in tags:
+            key = tag.lower()
+            if key not in seen:
+                seen.add(key)
+                deduped.append(tag)
+
+        return " ".join(deduped[:12]).strip()
 
     def get_platform_status(self) -> Dict[str, Dict]:
         """Stato configurazione di tutte le piattaforme."""

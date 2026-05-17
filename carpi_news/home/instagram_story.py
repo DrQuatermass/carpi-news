@@ -371,7 +371,7 @@ class _BaseIgVideoManager:
             sommario += "..."
         try:
             from home.social_sharing import social_manager
-            hashtags = social_manager._get_instagram_hashtags(articolo.categoria or "")
+            hashtags = social_manager._get_instagram_hashtags(articolo)
         except Exception:
             hashtags = "#OmbraDelPortico #Carpi #NotizieCarpi"
         parts = [
