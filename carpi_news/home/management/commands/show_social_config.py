@@ -96,7 +96,15 @@ class Command(BaseCommand):
 
             self.stdout.write(self.style.NOTICE(f"\n=== Articolo id={pk} ==="))
             self.stdout.write(f"  Titolo: {art.titolo}")
-            self.stdout.write(f"  Foto: {art.foto or '(vuota)'}")
+            self.stdout.write(f"  Foto (URL): {art.foto or '(vuota)'}")
+            upload = ""
+            if art.foto_upload:
+                try:
+                    upload = art.foto_upload.name
+                except (ValueError, AttributeError):
+                    upload = "(file mancante)"
+            self.stdout.write(f"  Foto upload: {upload or '(vuota)'}")
+            self.stdout.write(f"  Ha immagine per social: {art.has_shareable_image}")
             self.stdout.write(f"  Approvato: {art.approvato}")
 
             from home.facebook_reels import FacebookReelGenerator

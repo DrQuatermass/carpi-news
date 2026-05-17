@@ -138,6 +138,19 @@ class SocialMediaManager:
         url = f"https://ombradelportico.it{foto_field}"
         return self._normalize_url(url)
 
+    def _get_article_image_url(self, articolo) -> Optional[str]:
+        """URL assoluto immagine articolo (priorità: foto_upload, poi campo foto)."""
+        site_url = getattr(settings, 'SITE_URL', 'https://ombradelportico.it')
+        if getattr(articolo, 'foto_upload', None):
+            try:
+                if articolo.foto_upload.name:
+                    return self._normalize_url(f"{site_url}{articolo.foto_upload.url}")
+            except (ValueError, AttributeError):
+                pass
+        if articolo.foto:
+            return self._get_absolute_image_url(str(articolo.foto).strip())
+        return None
+
     def _log_enabled_platforms(self) -> None:
         enabled = [name for name, cfg in self.platforms.items() if cfg.get('enabled')]
         logger.info(
@@ -482,7 +495,7 @@ class SocialMediaManager:
 
         # Facebook Story (indipendente dal post Pagina: richiede immagine)
         if self.platforms['facebook_story']['enabled']:
-            if articolo.foto:
+            if articolo.has_shareable_image:
                 should_share, already_done = self._prepare_publication_slot(
                     articolo, 'facebook_story'
                 )
@@ -515,7 +528,7 @@ class SocialMediaManager:
 
         # Instagram (solo se c'è un'immagine)
         if self.platforms['instagram']['enabled']:
-            if articolo.foto:
+            if articolo.has_shareable_image:
                 should_share = False
                 with transaction.atomic():
                     # Controlla se già pubblicato con successo (lock a livello DB per prevenire race conditions)
@@ -564,7 +577,7 @@ class SocialMediaManager:
 
         # Instagram Story (richiede immagine)
         if self.platforms['instagram_story']['enabled']:
-            if articolo.foto:
+            if articolo.has_shareable_image:
                 should_share, already_done = self._prepare_publication_slot(
                     articolo, 'instagram_story'
                 )
@@ -597,7 +610,7 @@ class SocialMediaManager:
 
         # Instagram Reel (richiede immagine)
         if self.platforms['instagram_reel']['enabled']:
-            if articolo.foto:
+            if articolo.has_shareable_image:
                 should_share, already_done = self._prepare_publication_slot(
                     articolo, 'instagram_reel'
                 )
@@ -699,7 +712,7 @@ class SocialMediaManager:
 
         # Facebook Story - retry solo se non pubblicato con successo
         if self.platforms['facebook_story']['enabled']:
-            if articolo.foto:
+            if articolo.has_shareable_image:
                 already_published = SocialPublicationLog.objects.filter(
                     articolo=articolo,
                     platform='facebook_story',
@@ -727,7 +740,7 @@ class SocialMediaManager:
 
         # Instagram - retry solo se non pubblicato con successo
         if self.platforms['instagram']['enabled']:
-            if articolo.foto:
+            if articolo.has_shareable_image:
                 already_published = SocialPublicationLog.objects.filter(
                     articolo=articolo,
                     platform='instagram',
@@ -751,7 +764,7 @@ class SocialMediaManager:
                 results['instagram'] = False
 
         # Instagram Story
-        if self.platforms['instagram_story']['enabled'] and articolo.foto:
+        if self.platforms['instagram_story']['enabled'] and articolo.has_shareable_image:
             if SocialPublicationLog.objects.filter(
                 articolo=articolo, platform='instagram_story', success=True
             ).exists():
@@ -765,7 +778,7 @@ class SocialMediaManager:
                 )
 
         # Instagram Reel
-        if self.platforms['instagram_reel']['enabled'] and articolo.foto:
+        if self.platforms['instagram_reel']['enabled'] and articolo.has_shareable_image:
             if SocialPublicationLog.objects.filter(
                 articolo=articolo, platform='instagram_reel', success=True
             ).exists():
@@ -796,8 +809,8 @@ class SocialMediaManager:
             message = f"📰 *{articolo.titolo}*\n\n{articolo.sommario[:300]}...\n\n[Leggi tutto]({article_url})\n\n#CarpiNews #OmbraDelPortico"
             
             # Se l'articolo ha una foto, usa sendPhoto, altrimenti sendMessage
-            if articolo.foto:
-                absolute_image_url = self._get_absolute_image_url(articolo.foto)
+            if articolo.has_shareable_image:
+                absolute_image_url = self._get_article_image_url(articolo)
                 if absolute_image_url:
                     # URL dell'API Telegram per inviare foto
                     url = f"https://api.telegram.org/bot{config['bot_token']}/sendPhoto"
@@ -834,12 +847,15 @@ class SocialMediaManager:
             # Debug logging per analizzare la risposta dell'API
             logger.info(f"Telegram API response status: {response.status_code}")
             logger.info(f"Telegram API response body: {response.text}")
-            absolute_url = self._get_absolute_image_url(articolo.foto) if articolo.foto else None
-            logger.info(f"Telegram foto URL originale: {articolo.foto if articolo.foto else 'Nessuna foto'}")
+            absolute_url = self._get_article_image_url(articolo)
+            logger.info(
+                f"Telegram foto URL: {absolute_url or 'Nessuna foto'} "
+                f"(foto_upload={bool(getattr(articolo, 'foto_upload', None))}, foto={bool(articolo.foto)})"
+            )
             logger.info(f"Telegram foto URL assoluto: {absolute_url if absolute_url else 'Nessuna foto valida'}")
             
             if response.status_code == 200:
-                photo_info = " con foto" if articolo.foto else ""
+                photo_info = " con foto" if articolo.has_shareable_image else ""
                 logger.info(f"Articolo condiviso su Telegram{photo_info}: {articolo.titolo}")
                 return True
             else:
@@ -955,7 +971,7 @@ class SocialMediaManager:
                 return False, error
 
             # Le Stories video richiedono SEMPRE un'immagine sorgente per generare il video.
-            if not articolo.foto:
+            if not articolo.has_shareable_image:
                 error = "Facebook Story richiede un'immagine - post saltato"
                 logger.warning(error)
                 return False, error
@@ -1040,7 +1056,7 @@ class SocialMediaManager:
                 return False, error
 
             # Verifica che ci sia un'immagine
-            if not articolo.foto:
+            if not articolo.has_shareable_image:
                 error = "Instagram richiede un'immagine - post saltato"
                 logger.error(error)
                 return False, error
@@ -1072,9 +1088,9 @@ class SocialMediaManager:
                 caption = caption[:2197] + "..."
 
             # URL immagine assoluto
-            original_image_url = self._get_absolute_image_url(articolo.foto)
+            original_image_url = self._get_article_image_url(articolo)
             if not original_image_url:
-                error = f"URL immagine non valido: {articolo.foto}"
+                error = "URL immagine non valido (né foto né foto_upload utilizzabili)"
                 logger.error(error)
                 return False, error
 
@@ -1157,7 +1173,7 @@ class SocialMediaManager:
             config = self.platforms['instagram_story']
             if not config['access_token'] or not config['account_id']:
                 return False, "Configurazione Instagram Story incompleta"
-            if not articolo.foto:
+            if not articolo.has_shareable_image:
                 return False, "Instagram Story richiede un'immagine - skip"
             page_token = self._get_page_access_token(config['access_token'],
                                                      getattr(settings, 'FACEBOOK_PAGE_ID', ''))
@@ -1182,7 +1198,7 @@ class SocialMediaManager:
             config = self.platforms['instagram_reel']
             if not config['access_token'] or not config['account_id']:
                 return False, "Configurazione Instagram Reel incompleta"
-            if not articolo.foto:
+            if not articolo.has_shareable_image:
                 return False, "Instagram Reel richiede un'immagine - skip"
             page_token = self._get_page_access_token(config['access_token'],
                                                      getattr(settings, 'FACEBOOK_PAGE_ID', ''))

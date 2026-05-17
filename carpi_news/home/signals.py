@@ -550,7 +550,7 @@ def _share_article_background(article_id, article_title):
                     platform=platform,
                     success=True
                 ).exists()
-                for platform in platforms if articolo.foto or platform not in requires_photo
+                for platform in platforms if articolo.has_shareable_image or platform not in requires_photo
             )
 
             if already_shared_all:

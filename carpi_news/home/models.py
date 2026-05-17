@@ -256,6 +256,16 @@ class Articolo(models.Model):
         return ', '.join(dict.fromkeys(keywords))
 
     @property
+    def has_shareable_image(self) -> bool:
+        """True se l'articolo ha un'immagine per story/reel/IG (campo foto o upload)."""
+        if self.foto_upload:
+            try:
+                return bool(self.foto_upload.name)
+            except (ValueError, AttributeError):
+                pass
+        return bool(self.foto and str(self.foto).strip())
+
+    @property
     def social_image_mime_type(self):
         image_url = self.get_social_image_url().split('?', 1)[0].lower()
         if image_url.endswith('.webp'):
