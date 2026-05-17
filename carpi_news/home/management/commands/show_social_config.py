@@ -20,6 +20,11 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument("--article-id", type=int, help="Mostra log social per questo articolo")
         parser.add_argument("--slug", type=str, help="Slug articolo (alternativa a --article-id)")
+        parser.add_argument(
+            "--search",
+            type=str,
+            help="Cerca per titolo (substring, es. 'Processione' o 'Ascensione')",
+        )
 
     def handle(self, *args, **opts):
         self.stdout.write(self.style.NOTICE("=== Variabili .env (via Django settings) ==="))
@@ -43,11 +48,43 @@ class Command(BaseCommand):
 
         pk = opts.get("article_id")
         slug = opts.get("slug")
+        search = opts.get("search")
+
+        if search:
+            matches = list(
+                Articolo.objects.filter(titolo__icontains=search)
+                .order_by("-data_pubblicazione", "-data_creazione")[:10]
+            )
+            if not matches:
+                self.stderr.write(self.style.ERROR(f"Nessun articolo con titolo contenente '{search}'"))
+                return
+            if len(matches) > 1:
+                self.stdout.write(self.style.NOTICE(f"Trovati {len(matches)} articoli:"))
+                for a in matches:
+                    self.stdout.write(f"  id={a.id}  slug={a.slug}")
+                    self.stdout.write(f"         {a.titolo[:70]}")
+                self.stdout.write(
+                    "\nRipeti con --article-id ID oppure --slug SLUG_ESATTO"
+                )
+                return
+            pk = matches[0].pk
+            self.stdout.write(self.style.NOTICE(f"Articolo unico trovato: id={pk}, slug={matches[0].slug}\n"))
+
         if not pk and slug:
             try:
                 pk = Articolo.objects.values_list("pk", flat=True).get(slug=slug)
             except Articolo.DoesNotExist:
+                similar = list(
+                    Articolo.objects.filter(slug__icontains=slug[:20])
+                    .order_by("-data_pubblicazione")[:5]
+                )
                 self.stderr.write(self.style.ERROR(f"Articolo slug='{slug}' non trovato"))
+                if similar:
+                    self.stderr.write("Slug simili:")
+                    for a in similar:
+                        self.stderr.write(f"  id={a.id}  slug={a.slug}")
+                else:
+                    self.stderr.write("Prova: python manage.py show_social_config --search 'Processione'")
                 return
 
         if pk:

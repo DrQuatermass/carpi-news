@@ -21,6 +21,11 @@ class Command(BaseCommand):
         parser.add_argument("--id", type=int, help="ID articolo")
         parser.add_argument("--slug", type=str, help="Slug articolo")
         parser.add_argument(
+            "--search",
+            type=str,
+            help="Cerca per titolo se lo slug non è noto (es. 'Processione')",
+        )
+        parser.add_argument(
             "--failed-only",
             action="store_true",
             help="Riprova solo piattaforme senza log di successo",
@@ -41,7 +46,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **opts):
-        articolo = self._get_article(opts.get("id"), opts.get("slug"))
+        articolo = self._get_article(opts.get("id"), opts.get("slug"), opts.get("search"))
 
         if not articolo.approvato:
             raise CommandError(f"L'articolo '{articolo.titolo}' non è approvato.")
@@ -82,7 +87,7 @@ class Command(BaseCommand):
             err = f" — {log.error_message[:120]}" if log.error_message and not log.success else ""
             self.stdout.write(f"    [{status}] {log.platform}{err}")
 
-    def _get_article(self, pk, slug) -> Articolo:
+    def _get_article(self, pk, slug, search=None) -> Articolo:
         if pk:
             try:
                 return Articolo.objects.get(pk=pk)
@@ -92,5 +97,22 @@ class Command(BaseCommand):
             try:
                 return Articolo.objects.get(slug=slug)
             except Articolo.DoesNotExist:
-                raise CommandError(f"Articolo slug='{slug}' non trovato")
-        raise CommandError("Specifica --id o --slug")
+                raise CommandError(
+                    f"Articolo slug='{slug}' non trovato. "
+                    "Prova --search 'Processione' per trovare id e slug corretti."
+                )
+        if search:
+            matches = list(
+                Articolo.objects.filter(titolo__icontains=search)
+                .order_by("-data_pubblicazione", "-data_creazione")[:2]
+            )
+            if not matches:
+                raise CommandError(f"Nessun articolo con titolo contenente '{search}'")
+            if len(matches) > 1:
+                lines = [f"  id={a.id} slug={a.slug}" for a in matches]
+                raise CommandError(
+                    f"Trovati più articoli per '{search}':\n" + "\n".join(lines)
+                    + "\nSpecifica --id o --slug."
+                )
+            return matches[0]
+        raise CommandError("Specifica --id, --slug o --search")
