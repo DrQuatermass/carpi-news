@@ -198,6 +198,32 @@
             body { padding-top: 48px; }
             .brand-name { font-size: 26px; }
         }
+
+        /* INFINITE SCROLL: loader e end-of-list */
+        #sentinel { height: 1px; }
+        .loader {
+            display: flex; justify-content: center; gap: 8px;
+            padding: 28px 0 12px;
+        }
+        .loader-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: #d4af37; opacity: 0.4;
+            animation: loader-bounce 1.2s infinite ease-in-out both;
+        }
+        .loader-dot:nth-child(1) { animation-delay: -0.32s; }
+        .loader-dot:nth-child(2) { animation-delay: -0.16s; }
+        @keyframes loader-bounce {
+            0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+            40% { transform: scale(1); opacity: 1; }
+        }
+        .end-of-list {
+            text-align: center;
+            padding: 28px 12px 4px;
+            font-size: 12px;
+            color: #f5f0e1;
+            opacity: 0.4;
+            letter-spacing: 0.5px;
+        }
     </style>
 </head>
 <body>
@@ -216,41 +242,33 @@
         </div>
 
         {% if articoli %}
-        <div class="articles">
-            {% for articolo in articoli %}
-            <a href="{% url 'dettaglio_articolo' articolo.slug %}?utm_source=instagram&utm_medium=bio&utm_campaign=link_in_bio"
-               class="article-card"
-               aria-label="Leggi {{ articolo.titolo }}">
-
-                <div class="article-thumb">
-                    {% if articolo.foto_upload %}
-                        <img src="{{ articolo.foto_upload.url }}"
-                             alt="{{ articolo.titolo }}"
-                             loading="lazy" decoding="async">
-                    {% elif articolo.foto %}
-                        <img src="{{ articolo.foto }}"
-                             alt="{{ articolo.titolo }}"
-                             loading="lazy" decoding="async">
-                    {% endif %}
-                </div>
-
-                <div class="article-body">
-                    <div class="article-meta">
-                        <span class="article-cat">{{ articolo.categoria|default:"Notizie" }}</span>
-                        {% if articolo.data_pubblicazione %}
-                            <span class="article-date">{{ articolo.data_pubblicazione|date:"j M Y" }}</span>
-                        {% endif %}
-                    </div>
-                    <div class="article-title">{{ articolo.titolo }}</div>
-                    <span class="article-cta">Leggi l'articolo</span>
-                </div>
-            </a>
-            {% endfor %}
+        <div class="articles" id="articles">
+            {% include 'link_in_bio_cards.html' %}
         </div>
+
+        {% if articoli.has_next %}
+            <div id="sentinel"
+                 data-next-url="?page={{ articoli.next_page_number }}"></div>
+            <noscript>
+                <div style="text-align:center;margin-top:24px">
+                    <a href="?page={{ articoli.next_page_number }}"
+                       style="display:inline-block;padding:14px 28px;background:#d4af37;color:#0f1420;font-weight:600;border-radius:24px;text-decoration:none">
+                        Carica altri articoli
+                    </a>
+                </div>
+            </noscript>
+            <div id="loader" class="loader" hidden>
+                <div class="loader-dot"></div>
+                <div class="loader-dot"></div>
+                <div class="loader-dot"></div>
+            </div>
+        {% else %}
+            <div class="end-of-list">Hai visto tutti gli articoli</div>
+        {% endif %}
         {% else %}
         <div class="empty">
             <p>Nessun articolo ancora condiviso su Instagram.</p>
-            <p style="margin-top:18px"><a href="/" style="color:#d4af37;text-decoration:none;font-weight:600">Vai al sito →</a></p>
+            <p style="margin-top:18px"><a href="/" style="color:#d4af37;text-decoration:none;font-weight:600">Vai al sito &rarr;</a></p>
         </div>
         {% endif %}
 
@@ -259,5 +277,68 @@
             Notizie indipendenti di Carpi
         </div>
     </div>
+
+    <script>
+    (function() {
+        var sentinel = document.getElementById('sentinel');
+        var loader = document.getElementById('loader');
+        var articles = document.getElementById('articles');
+        if (!sentinel || !articles || !('IntersectionObserver' in window)) return;
+
+        var nextUrl = sentinel.dataset.nextUrl;
+        var loading = false;
+        var done = false;
+
+        function loadNext() {
+            if (loading || done || !nextUrl) return;
+            loading = true;
+            if (loader) loader.hidden = false;
+
+            fetch(nextUrl, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(function(r) {
+                    if (!r.ok) throw new Error('HTTP ' + r.status);
+                    return r.text();
+                })
+                .then(function(html) {
+                    var trimmed = html.trim();
+                    if (trimmed.length === 0) {
+                        done = true;
+                        observer.disconnect();
+                        if (loader) loader.hidden = true;
+                        var end = document.createElement('div');
+                        end.className = 'end-of-list';
+                        end.textContent = 'Hai visto tutti gli articoli';
+                        articles.parentNode.insertBefore(end, articles.nextSibling);
+                        sentinel.remove();
+                        return;
+                    }
+                    var tmp = document.createElement('div');
+                    tmp.innerHTML = trimmed;
+                    while (tmp.firstChild) articles.appendChild(tmp.firstChild);
+                    var match = nextUrl.match(/page=(\d+)/);
+                    if (match) {
+                        var current = parseInt(match[1], 10);
+                        nextUrl = '?page=' + (current + 1);
+                    } else {
+                        nextUrl = null;
+                    }
+                })
+                .catch(function(err) {
+                    console.error('Infinite scroll error:', err);
+                })
+                .finally(function() {
+                    loading = false;
+                    if (loader && !done) loader.hidden = true;
+                });
+        }
+
+        var observer = new IntersectionObserver(function(entries) {
+            entries.forEach(function(e) {
+                if (e.isIntersecting) loadNext();
+            });
+        }, { rootMargin: '400px 0px' });
+        observer.observe(sentinel);
+    })();
+    </script>
 </body>
 </html>

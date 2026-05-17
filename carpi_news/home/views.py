@@ -1594,17 +1594,22 @@ def newsletter_preview(request):
 
 
 @cache_page(60 * 5)  # cache 5 minuti
+@vary_on_headers('X-Requested-With')  # cache separata per richieste AJAX
 def link_in_bio(request):
     """
     Landing page per il link in bio Instagram.
-    Mostra gli ultimi articoli effettivamente condivisi su IG (post/storia/reel)
-    in layout lista verticale stile Linktree, mobile-first.
+    Mostra gli articoli condivisi su IG (post/storia/reel) in layout lista
+    verticale mobile-first stile Linktree, con infinite scroll.
+
+    Paginazione: 25 articoli per pagina via ?page=N.
+    Se richiesta AJAX (X-Requested-With: XMLHttpRequest), restituisce solo il
+    fragment delle card, per essere appeso dal JS lato client.
 
     URL: /instagram/
     """
     from .models import SocialPublicationLog
+    from django.core.paginator import Paginator
 
-    # ID degli articoli con almeno una pubblicazione IG riuscita
     ig_platforms = ['instagram', 'instagram_story', 'instagram_reel']
     article_ids = (
         SocialPublicationLog.objects
@@ -1613,14 +1618,18 @@ def link_in_bio(request):
         .distinct()
     )
 
-    articoli = (
+    articoli_qs = (
         Articolo.objects
         .filter(id__in=article_ids, approvato=True)
         .only('id', 'titolo', 'sommario', 'categoria', 'slug', 'foto',
               'foto_upload', 'data_pubblicazione')
-        .order_by('-data_pubblicazione')[:25]
+        .order_by('-data_pubblicazione')
     )
 
-    return render(request, 'link_in_bio.html', {
-        'articoli': articoli,
-    })
+    paginator = Paginator(articoli_qs, 25)
+    page = paginator.get_page(request.GET.get('page', 1))
+
+    # AJAX -> solo fragment delle cards (no header/footer)
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+    template = 'link_in_bio_cards.html' if is_ajax else 'link_in_bio.html'
+    return render(request, template, {'articoli': page})

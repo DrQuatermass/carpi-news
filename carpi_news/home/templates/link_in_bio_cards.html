@@ -1,0 +1,29 @@
+{% load static %}{% for articolo in articoli %}
+<a href="{% url 'dettaglio_articolo' articolo.slug %}?utm_source=instagram&utm_medium=bio&utm_campaign=link_in_bio"
+   class="article-card"
+   aria-label="Leggi {{ articolo.titolo }}">
+
+    <div class="article-thumb">
+        {% if articolo.foto_upload %}
+            <img src="{{ articolo.foto_upload.url }}"
+                 alt="{{ articolo.titolo }}"
+                 loading="lazy" decoding="async">
+        {% elif articolo.foto %}
+            <img src="{{ articolo.foto }}"
+                 alt="{{ articolo.titolo }}"
+                 loading="lazy" decoding="async">
+        {% endif %}
+    </div>
+
+    <div class="article-body">
+        <div class="article-meta">
+            <span class="article-cat">{{ articolo.categoria|default:"Notizie" }}</span>
+            {% if articolo.data_pubblicazione %}
+                <span class="article-date">{{ articolo.data_pubblicazione|date:"j M Y" }}</span>
+            {% endif %}
+        </div>
+        <div class="article-title">{{ articolo.titolo }}</div>
+        <span class="article-cta">Leggi l'articolo</span>
+    </div>
+</a>
+{% endfor %}
