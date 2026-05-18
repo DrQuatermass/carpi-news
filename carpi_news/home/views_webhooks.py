@@ -168,7 +168,7 @@ def _send_dm(sender_id: str, articolo, short_url: str) -> tuple[bool, str]:
             url,
             params={"access_token": token},
             json={"recipient": {"id": sender_id}, "message": {"text": text}},
-            timeout=3,
+            timeout=(3, 10),
         )
         if response.status_code == 200:
             return True, response.text[:500]
@@ -180,6 +180,18 @@ def _send_dm(sender_id: str, articolo, short_url: str) -> tuple[bool, str]:
 def _handle_event(sender_id: str, media_id: str, trigger_type: str, trigger_value: str, is_trigger: bool) -> None:
     if not sender_id:
         logger.warning("Instagram webhook: evento senza sender_id")
+        return
+
+    own_ids = {
+        str(value)
+        for value in (
+            getattr(settings, "INSTAGRAM_ACCOUNT_ID", ""),
+            getattr(settings, "FACEBOOK_PAGE_ID", ""),
+        )
+        if value
+    }
+    if sender_id in own_ids:
+        logger.info("Instagram webhook: evento generato dall'account business ignorato sender=%s", sender_id)
         return
 
     if (trigger_value or "").strip().upper() == "STOP":

@@ -92,6 +92,7 @@ class ShareLinkTests(TestCase):
     INSTAGRAM_WEBHOOK_VERIFY_TOKEN="verify-token",
     FACEBOOK_APP_SECRET="secret",
     INSTAGRAM_PAGE_ACCESS_TOKEN="page-token",
+    INSTAGRAM_ACCOUNT_ID="ig-business",
     CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}},
 )
 class InstagramWebhookTests(TestCase):
@@ -307,6 +308,24 @@ class InstagramWebhookTests(TestCase):
                     "sender": {"id": "real-sender-id"},
                     "recipient": {"id": "ig-business"},
                     "reaction": {"mid": "message-id", "emoji": "❤"},
+                }],
+            }],
+        }
+
+        response = self._signed_post(payload)
+        self.assertEqual(response.status_code, 200)
+        mock_post.assert_not_called()
+
+    @patch("home.views_webhooks.requests.post")
+    def test_own_business_message_is_ignored(self, mock_post):
+        payload = {
+            "object": "instagram",
+            "entry": [{
+                "id": "ig-business",
+                "messaging": [{
+                    "sender": {"id": "ig-business"},
+                    "recipient": {"id": "real-sender-id"},
+                    "message": {"text": "LINK"},
                 }],
             }],
         }
