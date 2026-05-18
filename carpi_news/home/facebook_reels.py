@@ -110,6 +110,7 @@ class ReelConfig:
     video_fade_in_seconds: float = 0.6
     # Personalizzazione output: sottoclassi (es. InstagramStoryGenerator) cambiano questi
     cta_text: str = "Leggi su ombradelportico.it"
+    cta_hint: str = ""                            # subtitle sotto la pillola (opzionale, lasciato per estensioni future)
     output_dir_name: str = "reels"   # cartella sotto media/
 
     @classmethod
@@ -130,9 +131,31 @@ class FacebookReelGenerator:
         self.config = config or ReelConfig.from_settings()
 
     # --- API PUBBLICA --------------------------------------------------------
+    # TTL del file generato: se un MP4 con stesso slug e' stato prodotto entro
+    # questo intervallo, lo riusiamo invece di rigenerarlo. Serve a evitare di
+    # encodare 2 volte lo stesso video quando IG Story e IG Reel condividono
+    # la stessa output dir (oppure quando si fa retry di un publish fallito).
+    GENERATED_REUSE_TTL_SECONDS = 600
+
     def generate(self, articolo) -> Optional[str]:
-        """Genera il Reel per un articolo. Restituisce il path al MP4 oppure None se fallisce."""
+        """Genera il Reel per un articolo. Restituisce il path al MP4 oppure None se fallisce.
+
+        Riusa il file esistente se generato di recente (vedi GENERATED_REUSE_TTL_SECONDS).
+        """
         try:
+            output_mp4 = _reels_output_dir(self.config.output_dir_name) / f"{articolo.slug}.mp4"
+
+            # Reuse: se l'MP4 esiste e e' recente, salta encoding
+            if output_mp4.exists():
+                age_s = time.time() - output_mp4.stat().st_mtime
+                if age_s <= self.GENERATED_REUSE_TTL_SECONDS:
+                    size_kb = output_mp4.stat().st_size // 1024
+                    logger.info(
+                        f"Reel: riuso video esistente {output_mp4.name} "
+                        f"({size_kb} KB, age={int(age_s)}s) -> nessuna rigenerazione"
+                    )
+                    return str(output_mp4)
+
             image_path = self._resolve_image_path(articolo)
             if not image_path:
                 logger.warning(f"Reel: nessuna immagine valida per articolo '{articolo.titolo}'")
@@ -147,7 +170,6 @@ class FacebookReelGenerator:
                     out_dir=tmp,
                 )
                 audio_path = self._prepare_audio(out_dir=tmp)
-                output_mp4 = _reels_output_dir(self.config.output_dir_name) / f"{articolo.slug}.mp4"
                 self._encode_video(frame_path, audio_path, output_mp4)
                 logger.info(f"Reel generato: {output_mp4} ({output_mp4.stat().st_size // 1024} KB)")
                 return str(output_mp4)
@@ -349,6 +371,19 @@ class FacebookReelGenerator:
             radius=40, fill=WHITE + (235,)
         )
         draw.text((cx, cy), cta, font=cta_font, fill=DARK_BG + (255,))
+
+        # Hint sotto la pillola (es. "Tocca il link in bio per leggere")
+        if self.config.cta_hint:
+            hint_font = self._load_font(30)
+            hint = self.config.cta_hint
+            hbb = draw.textbbox((0, 0), hint, font=hint_font)
+            hw = hbb[2] - hbb[0]
+            hx = (WIDTH - hw) // 2
+            hy = cy + 58 + pad_y + 26
+            # Ombra per leggibilita'
+            for ox, oy in [(1, 1), (-1, 1), (1, -1), (-1, -1)]:
+                draw.text((hx + ox, hy + oy), hint, font=hint_font, fill=(0, 0, 0, 200))
+            draw.text((hx, hy), hint, font=hint_font, fill=CREAM + (220,))
 
         return layer
 
@@ -642,5 +677,6 @@ class FacebookReelManager:
         except OSError as e:
             logger.warning(f"Facebook Story: cleanup fallito per {video_path}: {e}")
 
-# Istanza condivisa pronta all'uso
+
+# Istanza condivisa pronta all\'uso
 reel_manager = FacebookReelManager()

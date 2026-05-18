@@ -45,18 +45,22 @@ class InstagramStoryGenerator(FacebookReelGenerator):
     def __init__(self, config: Optional[ReelConfig] = None):
         if config is None:
             config = ReelConfig.from_settings()
-        config.output_dir_name = "stories"
+        # Cartella condivisa con InstagramReelGenerator (stesso CTA, stesso video):
+        # cosi' Story e Reel IG riusano lo stesso MP4 invece di rigenerarlo.
+        config.output_dir_name = "ig_video"
         config.cta_text = "Leggi nel link in bio"
         super().__init__(config)
 
 
 class InstagramReelGenerator(FacebookReelGenerator):
-    """Genera il video 1080x1920 destinato a Reel Instagram (15s)."""
+    """Genera il video 1080x1920 destinato a Reel Instagram (15s).
+    Condivide la cartella e il file di output con InstagramStoryGenerator
+    perche' i due video sono identici (stesso CTA, stesso template)."""
 
     def __init__(self, config: Optional[ReelConfig] = None):
         if config is None:
             config = ReelConfig.from_settings()
-        config.output_dir_name = "ig_reels"
+        config.output_dir_name = "ig_video"
         config.cta_text = "Leggi nel link in bio"
         config.video_fade_in_seconds = 0
         super().__init__(config)
@@ -298,7 +302,11 @@ class _BaseIgVideoManager:
         )
 
         if success:
-            self._cleanup_local_file(video_path)
+            # Non eliminiamo subito: l'altra piattaforma IG (Story/Reel) potrebbe
+            # ancora dover usare lo stesso file (output_dir_name='ig_video' condiviso).
+            # Il cleanup periodico (management command 'cleanup_social_media') rimuove
+            # i file piu' vecchi del TTL.
+            logger.info(f"IG {self.MEDIA_TYPE}: file locale mantenuto per reuse cross-platform: {video_path}")
         else:
             logger.info(
                 f"IG {self.MEDIA_TYPE}: mantengo file locale per debug -> {video_path} "
@@ -379,7 +387,7 @@ class _BaseIgVideoManager:
             "",
             sommario,
             "",
-            "Link in bio per leggere l'articolo completo",
+            "Link in bio per leggere l\'articolo completo",
             "",
             hashtags,
         ]
@@ -389,15 +397,15 @@ class _BaseIgVideoManager:
 class InstagramStoryManager(_BaseIgVideoManager):
     GENERATOR_CLASS = InstagramStoryGenerator
     MEDIA_TYPE = "STORIES"
-    OUTPUT_SUBDIR = "stories"
+    OUTPUT_SUBDIR = "ig_video"
 
 
 class InstagramReelManager(_BaseIgVideoManager):
     GENERATOR_CLASS = InstagramReelGenerator
     MEDIA_TYPE = "REELS"
-    OUTPUT_SUBDIR = "ig_reels"
+    OUTPUT_SUBDIR = "ig_video"
 
 
-# Istanze condivise pronte all'uso
+# Istanze condivise pronte all\'uso
 ig_story_manager = InstagramStoryManager()
 ig_reel_manager = InstagramReelManager()
