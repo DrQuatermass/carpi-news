@@ -205,9 +205,6 @@ def _handle_event(sender_id: str, media_id: str, trigger_type: str, trigger_valu
     if InstagramOptOut.objects.filter(ig_user_id=sender_id).exists():
         logger.info("Instagram webhook: utente %s in opt-out, DM saltato", sender_id)
         return
-    if not cache.add(f"igdm:{sender_id}", True, 60):
-        logger.info("Instagram webhook: rate limit DM per %s", sender_id)
-        return
 
     log = SocialPublicationLog.objects.filter(
         instagram_media_id=media_id,
@@ -216,6 +213,9 @@ def _handle_event(sender_id: str, media_id: str, trigger_type: str, trigger_valu
     ).select_related("articolo").order_by("-published_at").first()
     if not log:
         logger.warning("Instagram webhook: media_id non mappato, nessun DM inviato: %s", media_id)
+        return
+    if not cache.add(f"igdm:{sender_id}", True, 60):
+        logger.info("Instagram webhook: rate limit DM per %s", sender_id)
         return
 
     short_link = get_or_create_short_link(log.articolo, "instagram", "instagram_dm")

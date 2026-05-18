@@ -299,6 +299,41 @@ class InstagramWebhookTests(TestCase):
         self.assertEqual(mock_post.call_count, 1)
 
     @patch("home.views_webhooks.requests.post")
+    def test_unmapped_media_does_not_consume_rate_limit(self, mock_post):
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.text = "{}"
+        unmapped_payload = {
+            "object": "instagram",
+            "entry": [{
+                "changes": [{
+                    "field": "messages",
+                    "value": {
+                        "sender": {"id": "same-user"},
+                        "media": {"id": "missing-media"},
+                        "message": {"text": "LINK"},
+                    },
+                }]
+            }],
+        }
+        mapped_payload = {
+            "object": "instagram",
+            "entry": [{
+                "changes": [{
+                    "field": "messages",
+                    "value": {
+                        "sender": {"id": "same-user"},
+                        "media": {"id": "media-1"},
+                        "message": {"text": "LINK"},
+                    },
+                }]
+            }],
+        }
+
+        self.assertEqual(self._signed_post(unmapped_payload).status_code, 200)
+        self.assertEqual(self._signed_post(mapped_payload).status_code, 200)
+        self.assertEqual(mock_post.call_count, 1)
+
+    @patch("home.views_webhooks.requests.post")
     def test_messaging_payload_reaction_without_media_is_logged_not_sent(self, mock_post):
         payload = {
             "object": "instagram",
