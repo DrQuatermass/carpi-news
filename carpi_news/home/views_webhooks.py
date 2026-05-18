@@ -68,12 +68,26 @@ def _is_emoji_char(char: str) -> bool:
     )
 
 
+def _configured_text_triggers() -> list[str]:
+    raw_triggers = getattr(settings, "INSTAGRAM_AUTO_DM_TEXT_TRIGGERS", ["LINK", "INFO", "LEGGI"])
+    if isinstance(raw_triggers, str):
+        raw_items = raw_triggers.split(",")
+    else:
+        raw_items = raw_triggers
+
+    triggers = []
+    for item in raw_items:
+        trigger = str(item).strip().upper().strip("[](){}'\" ")
+        if trigger:
+            triggers.append(trigger)
+    return triggers or ["LINK", "INFO", "LEGGI"]
+
+
 def _text_trigger(text: str) -> bool:
     upper = (text or "").strip().upper()
     if upper == "STOP":
         return True
-    triggers = getattr(settings, "INSTAGRAM_AUTO_DM_TEXT_TRIGGERS", ["LINK", "INFO", "LEGGI"])
-    if any(trigger.upper() in upper for trigger in triggers):
+    if any(trigger in upper for trigger in _configured_text_triggers()):
         return True
     return _emoji_only(text)
 

@@ -240,6 +240,35 @@ class InstagramWebhookTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(mock_post.call_count, 1)
 
+    @override_settings(INSTAGRAM_AUTO_DM_TEXT_TRIGGERS=["['LINK'", "'INFO'", "'LEGGI']"])
+    @patch("home.views_webhooks.requests.post")
+    def test_reel_comment_link_triggers_with_malformed_env_tokens(self, mock_post):
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.text = "{}"
+        SocialPublicationLog.objects.create(
+            articolo=self.articolo,
+            platform="instagram_reel",
+            success=True,
+            instagram_media_id="reel-1",
+        )
+        payload = {
+            "object": "instagram",
+            "entry": [{
+                "changes": [{
+                    "field": "comments",
+                    "value": {
+                        "from": {"id": "commenter-id"},
+                        "media": {"id": "reel-1"},
+                        "text": "LINK",
+                    },
+                }]
+            }],
+        }
+
+        response = self._signed_post(payload)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(mock_post.call_count, 1)
+
     @patch("home.views_webhooks.requests.post")
     def test_messaging_payload_reaction_without_media_is_logged_not_sent(self, mock_post):
         payload = {
