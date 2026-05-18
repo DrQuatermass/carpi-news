@@ -22,7 +22,7 @@ class Command(BaseCommand):
     @staticmethod
     def _platform_medium(platform: str) -> tuple[str, str]:
         mapping = {
-            'facebook_story': ('facebook', 'reel'),
+            'facebook_story': ('facebook', 'story'),
             'facebook_reel': ('facebook', 'reel'),
             'instagram_story': ('instagram', 'story'),
             'instagram_reel': ('instagram', 'reel'),

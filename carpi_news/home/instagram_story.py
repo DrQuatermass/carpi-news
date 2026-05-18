@@ -48,7 +48,7 @@ class InstagramStoryGenerator(FacebookReelGenerator):
         # Cartella condivisa con InstagramReelGenerator (stesso CTA, stesso video):
         # cosi' Story e Reel IG riusano lo stesso MP4 invece di rigenerarlo.
         config.output_dir_name = "ig_video"
-        config.cta_text = "Link in bio\n❤️ per riceverlo nei DM"
+        config.cta_text = "Link in bio\n<3 per riceverlo nei DM"
         super().__init__(config)
 
 
@@ -61,7 +61,7 @@ class InstagramReelGenerator(FacebookReelGenerator):
         if config is None:
             config = ReelConfig.from_settings()
         config.output_dir_name = "ig_video"
-        config.cta_text = "Link in bio\n❤️ per riceverlo nei DM"
+        config.cta_text = "Link in bio\n<3 per riceverlo nei DM"
         config.video_fade_in_seconds = 0
         super().__init__(config)
 
@@ -337,7 +337,7 @@ class _BaseIgVideoManager:
             import tempfile
 
             config = ReelConfig.from_settings()
-            config.cta_text = "Link in bio\n❤️ per riceverlo nei DM"
+            config.cta_text = "Link in bio\n<3 per riceverlo nei DM"
             tmp_gen = FacebookReelGenerator(config)
             image_path = tmp_gen._resolve_image_path(articolo)
             if not image_path:
@@ -392,7 +392,7 @@ class _BaseIgVideoManager:
             "",
             sommario,
             "",
-            "👉 Link nel primo commento e in bio",
+            "Link nel primo commento e in bio",
             "",
             hashtags,
         ]

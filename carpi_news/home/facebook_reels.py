@@ -122,7 +122,7 @@ class ReelConfig:
     audio_bitrate: str = "128k"
     video_fade_in_seconds: float = 0.6
     # Personalizzazione output: sottoclassi (es. InstagramStoryGenerator) cambiano questi
-    cta_text: str = "👇 Link in descrizione"
+    cta_text: str = "Leggi su ombradelportico.it"
     cta_hint: str = ""                            # subtitle sotto la pillola (opzionale, lasciato per estensioni future)
     output_dir_name: str = "reels"   # cartella sotto media/
 

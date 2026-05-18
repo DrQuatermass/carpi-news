@@ -222,7 +222,7 @@ def render_instagram_post(
     title: str,
     category: str = "Notizie",
     cta_line_1: str = "Link in bio",
-    cta_line_2: str = "❤️ per riceverlo nei DM",
+    cta_line_2: str = "<3 per riceverlo nei DM",
 ) -> Optional[Path]:
     """
     Genera il template Instagram 1080x1080 a partire dall'immagine dell'articolo.

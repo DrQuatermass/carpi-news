@@ -533,7 +533,7 @@ class SocialMediaManager:
                 elif should_share:
                     success, error_msg = self._share_to_facebook_story(articolo)
                     results['facebook_story'] = success
-                    shared_url, short_link = self._tracking_link(articolo, 'facebook', 'reel')
+                    shared_url, short_link = self._tracking_link(articolo, 'facebook', 'story')
                     self._finalize_publication(
                         articolo, 'facebook_story', success,
                         None if success else error_msg,
