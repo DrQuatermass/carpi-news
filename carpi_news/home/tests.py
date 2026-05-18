@@ -216,6 +216,48 @@ class InstagramWebhookTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(mock_post.call_count, 1)
 
+    @patch("home.views_webhooks.requests.post")
+    def test_messaging_payload_story_reply_sends_dm(self, mock_post):
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.text = "{}"
+        payload = {
+            "object": "instagram",
+            "entry": [{
+                "id": "ig-business",
+                "messaging": [{
+                    "sender": {"id": "real-sender-id"},
+                    "recipient": {"id": "ig-business"},
+                    "message": {
+                        "mid": "message-id",
+                        "text": "LINK",
+                        "reply_to": {"story": {"id": "media-1"}},
+                    },
+                }],
+            }],
+        }
+
+        response = self._signed_post(payload)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(mock_post.call_count, 1)
+
+    @patch("home.views_webhooks.requests.post")
+    def test_messaging_payload_reaction_without_media_is_logged_not_sent(self, mock_post):
+        payload = {
+            "object": "instagram",
+            "entry": [{
+                "id": "ig-business",
+                "messaging": [{
+                    "sender": {"id": "real-sender-id"},
+                    "recipient": {"id": "ig-business"},
+                    "reaction": {"mid": "message-id", "emoji": "❤"},
+                }],
+            }],
+        }
+
+        response = self._signed_post(payload)
+        self.assertEqual(response.status_code, 200)
+        mock_post.assert_not_called()
+
 
 @override_settings(
     DEBUG=True,

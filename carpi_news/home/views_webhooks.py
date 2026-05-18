@@ -2,7 +2,6 @@ import hashlib
 import hmac
 import json
 import logging
-import re
 import unicodedata
 from typing import Any
 
@@ -16,6 +15,10 @@ from .models import InstagramAutoDMLog, InstagramOptOut, SocialPublicationLog
 from .share_links import build_short_share_url, get_or_create_short_link
 
 logger = logging.getLogger("home.instagram_webhook")
+
+
+def _log_safe(value) -> str:
+    return str(value).encode("unicode_escape").decode("ascii")[:300]
 
 
 def _valid_signature(request) -> bool:
@@ -69,6 +72,25 @@ def _text_trigger(text: str) -> bool:
 
 def _extract_events(payload: dict[str, Any]):
     for entry in payload.get("entry", []):
+        for item in entry.get("messaging", []):
+            sender_id = item.get("sender", {}).get("id")
+            reaction = item.get("reaction", {}) or {}
+            message = item.get("message", {}) or {}
+            text = message.get("text") or item.get("text") or ""
+            media_id = (
+                message.get("reply_to", {}).get("story", {}).get("id")
+                or message.get("reply_to", {}).get("media", {}).get("id")
+                or message.get("reply_to", {}).get("id")
+                or item.get("media", {}).get("id")
+                or item.get("media_id")
+            )
+            emoji_value = reaction.get("emoji") or item.get("emoji") or ""
+
+            if emoji_value:
+                yield sender_id, media_id, "story_reaction", emoji_value, True
+            elif text:
+                yield sender_id, media_id, "story_reply", text, _text_trigger(text)
+
         for change in entry.get("changes", []):
             field = change.get("field")
             if field not in {"messages", "message_reactions", "comments"}:
@@ -133,6 +155,7 @@ def _handle_event(sender_id: str, media_id: str, trigger_type: str, trigger_valu
         return
 
     if not is_trigger:
+        logger.info("Instagram webhook: trigger ignorato sender=%s type=%s value=%s", sender_id, trigger_type, trigger_value)
         return
     if InstagramOptOut.objects.filter(ig_user_id=sender_id).exists():
         logger.info("Instagram webhook: utente %s in opt-out, DM saltato", sender_id)
@@ -183,6 +206,7 @@ def instagram_webhook(request):
         return JsonResponse({"ok": False}, status=405)
 
     if not _valid_signature(request):
+        logger.warning("Instagram webhook: signature non valida")
         return HttpResponseForbidden("Signature non valida")
 
     try:
@@ -191,8 +215,26 @@ def instagram_webhook(request):
         logger.warning("Instagram webhook: JSON non valido")
         return JsonResponse({"ok": True})
 
-    for event in _extract_events(payload):
+    events = list(_extract_events(payload))
+    logger.info(
+        "Instagram webhook: POST ricevuto object=%s entries=%s events=%s",
+        payload.get("object"),
+        len(payload.get("entry", [])),
+        len(events),
+    )
+    if not events:
+        logger.info("Instagram webhook: nessun evento estraibile payload=%s", json.dumps(payload)[:1000])
+
+    for event in events:
         try:
+            logger.info(
+                "Instagram webhook: evento estratto sender=%s media=%s type=%s value=%s trigger=%s",
+                event[0],
+                event[1],
+                event[2],
+                _log_safe(event[3]),
+                event[4],
+            )
             _handle_event(*event)
         except Exception:
             logger.exception("Instagram webhook: errore gestione evento")
