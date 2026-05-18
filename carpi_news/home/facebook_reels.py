@@ -371,7 +371,7 @@ class FacebookReelGenerator:
             y += line_height
 
         # CTA in basso, leggibile su qualunque foto.
-        cta_font = self._load_font(46)
+        cta_font = self._load_cta_font(44)
         cta_lines = [line.strip() for line in self.config.cta_text.splitlines() if line.strip()]
         line_h = 58
         emoji_font = self._load_emoji_font(46)
@@ -381,7 +381,7 @@ class FacebookReelGenerator:
             line_w, _ = self._mixed_text_size(draw, line, cta_font, emoji_font)
             x = (WIDTH - line_w) // 2
             y = box_y + 23 + idx * line_h
-            for ox, oy in [(3, 3), (-3, 3), (3, -3), (-3, -3)]:
+            for ox, oy in [(2, 2), (-2, 2), (2, -2), (-2, -2)]:
                 self._draw_mixed_text(draw, (x + ox, y + oy), line, cta_font, emoji_font, (0, 0, 0, 230))
             self._draw_mixed_text(draw, (x, y), line, cta_font, emoji_font, WHITE + (255,))
 
@@ -412,6 +412,20 @@ class FacebookReelGenerator:
             except Exception:
                 return ImageFont.load_default()
 
+    def _load_cta_font(self, size: int) -> ImageFont.ImageFont:
+        candidates = [
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+            "C:/Windows/Fonts/arialbd.ttf",
+            "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
+        ]
+        for path in candidates:
+            try:
+                if Path(path).exists():
+                    return ImageFont.truetype(path, size)
+            except Exception:
+                continue
+        return self._load_font(size)
+
     def _load_emoji_font(self, size: int) -> ImageFont.ImageFont:
         path = _emoji_font_path()
         if path:
@@ -430,27 +444,76 @@ class FacebookReelGenerator:
             or 0x2600 <= code <= 0x27BF
         )
 
+    @staticmethod
+    def _heart_size(text_font) -> int:
+        return max(24, int(getattr(text_font, "size", 46) * 0.72))
+
+    @staticmethod
+    def _heart_gap(text_font) -> int:
+        return max(8, int(getattr(text_font, "size", 46) * 0.22))
+
+    @staticmethod
+    def _draw_heart(draw: ImageDraw.ImageDraw, xy: tuple[int, int], size: int, fill) -> None:
+        x, y = xy
+        radius = size * 0.28
+        left = (x + size * 0.08, y + size * 0.02, x + size * 0.08 + radius * 2, y + size * 0.02 + radius * 2)
+        right = (x + size * 0.42, y + size * 0.02, x + size * 0.42 + radius * 2, y + size * 0.02 + radius * 2)
+        draw.ellipse(left, fill=fill)
+        draw.ellipse(right, fill=fill)
+        points = [
+            (x + size * 0.03, y + size * 0.32),
+            (x + size * 0.97, y + size * 0.32),
+            (x + size * 0.50, y + size * 0.98),
+        ]
+        draw.polygon(points, fill=fill)
+
     def _mixed_text_size(self, draw: ImageDraw.ImageDraw, text: str, text_font, emoji_font) -> tuple[int, int]:
         width = 0
         height = 0
-        for char in text:
+        i = 0
+        heart_token = "{heart}"
+        while i < len(text):
+            if text.startswith(heart_token, i):
+                size = self._heart_size(text_font)
+                width += size + self._heart_gap(text_font)
+                height = max(height, size)
+                i += len(heart_token)
+                continue
+            char = text[i]
             if ord(char) == 0xFE0F:
+                i += 1
                 continue
             font = emoji_font if self._is_emoji_char(char) else text_font
             bbox = draw.textbbox((0, 0), char, font=font)
             width += bbox[2] - bbox[0]
             height = max(height, bbox[3] - bbox[1])
+            i += 1
         return width, height
 
     def _draw_mixed_text(self, draw: ImageDraw.ImageDraw, xy: tuple[int, int], text: str, text_font, emoji_font, fill) -> None:
         x, y = xy
-        for char in text:
+        i = 0
+        heart_token = "{heart}"
+        while i < len(text):
+            if text.startswith(heart_token, i):
+                size = self._heart_size(text_font)
+                heart_y = y + max(0, int(getattr(text_font, "size", size) * 0.18))
+                heart_fill = (238, 64, 88, fill[3] if len(fill) > 3 else 255)
+                if fill[0] == 0 and fill[1] == 0 and fill[2] == 0:
+                    heart_fill = fill
+                self._draw_heart(draw, (int(x), int(heart_y)), size, heart_fill)
+                x += size + self._heart_gap(text_font)
+                i += len(heart_token)
+                continue
+            char = text[i]
             if ord(char) == 0xFE0F:
+                i += 1
                 continue
             font = emoji_font if self._is_emoji_char(char) else text_font
             draw.text((x, y), char, font=font, fill=fill)
             bbox = draw.textbbox((0, 0), char, font=font)
             x += bbox[2] - bbox[0]
+            i += 1
 
     @staticmethod
     def _wrap(text: str, font: ImageFont.FreeTypeFont, max_width: int):

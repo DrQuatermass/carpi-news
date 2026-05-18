@@ -94,6 +94,21 @@ def _load_font(size: int) -> ImageFont.FreeTypeFont:
             return ImageFont.load_default()
 
 
+def _load_cta_font(size: int) -> ImageFont.ImageFont:
+    candidates = [
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        "C:/Windows/Fonts/arialbd.ttf",
+        "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
+    ]
+    for path in candidates:
+        try:
+            if Path(path).exists():
+                return ImageFont.truetype(path, size)
+        except Exception:
+            continue
+    return _load_font(size)
+
+
 def _load_emoji_font(size: int) -> ImageFont.ImageFont:
     path = _emoji_font_path()
     if path:
@@ -116,25 +131,76 @@ def _is_emoji_char(char: str) -> bool:
 def _mixed_text_size(draw: ImageDraw.ImageDraw, text: str, text_font, emoji_font) -> tuple[int, int]:
     width = 0
     height = 0
-    for char in text:
+    i = 0
+    heart_token = "{heart}"
+    while i < len(text):
+        if text.startswith(heart_token, i):
+            size = _heart_size(text_font)
+            width += size + _heart_gap(text_font)
+            height = max(height, size)
+            i += len(heart_token)
+            continue
+        char = text[i]
         if ord(char) == 0xFE0F:
+            i += 1
             continue
         font = emoji_font if _is_emoji_char(char) else text_font
         bbox = draw.textbbox((0, 0), char, font=font)
         width += bbox[2] - bbox[0]
         height = max(height, bbox[3] - bbox[1])
+        i += 1
     return width, height
 
 
 def _draw_mixed_text(draw: ImageDraw.ImageDraw, xy: tuple[int, int], text: str, text_font, emoji_font, fill) -> None:
     x, y = xy
-    for char in text:
+    i = 0
+    heart_token = "{heart}"
+    while i < len(text):
+        if text.startswith(heart_token, i):
+            size = _heart_size(text_font)
+            heart_y = y + max(0, int(getattr(text_font, "size", size) * 0.18))
+            heart_fill = (238, 64, 88, fill[3] if len(fill) > 3 else 255)
+            if fill[0] == 0 and fill[1] == 0 and fill[2] == 0:
+                heart_fill = fill
+            _draw_heart(draw, (int(x), int(heart_y)), size, heart_fill)
+            x += size + _heart_gap(text_font)
+            i += len(heart_token)
+            continue
+        char = text[i]
         if ord(char) == 0xFE0F:
+            i += 1
             continue
         font = emoji_font if _is_emoji_char(char) else text_font
         draw.text((x, y), char, font=font, fill=fill)
         bbox = draw.textbbox((0, 0), char, font=font)
         x += bbox[2] - bbox[0]
+        i += 1
+
+
+def _heart_size(text_font) -> int:
+    return max(18, int(getattr(text_font, "size", 34) * 0.72))
+
+
+def _heart_gap(text_font) -> int:
+    return max(7, int(getattr(text_font, "size", 34) * 0.22))
+
+
+def _draw_heart(draw: ImageDraw.ImageDraw, xy: tuple[int, int], size: int, fill) -> None:
+    x, y = xy
+    radius = size * 0.28
+    left = (x + size * 0.08, y + size * 0.02, x + size * 0.08 + radius * 2, y + size * 0.02 + radius * 2)
+    right = (x + size * 0.42, y + size * 0.02, x + size * 0.42 + radius * 2, y + size * 0.02 + radius * 2)
+    draw.ellipse(left, fill=fill)
+    draw.ellipse(right, fill=fill)
+    draw.polygon(
+        [
+            (x + size * 0.03, y + size * 0.32),
+            (x + size * 0.97, y + size * 0.32),
+            (x + size * 0.50, y + size * 0.98),
+        ],
+        fill=fill,
+    )
 
 
 def _make_background(image: Image.Image) -> Image.Image:
@@ -222,7 +288,7 @@ def render_instagram_post(
     title: str,
     category: str = "Notizie",
     cta_line_1: str = "Link in bio",
-    cta_line_2: str = "<3 per riceverlo nei DM",
+    cta_line_2: str = "{heart} per riceverlo nei DM",
 ) -> Optional[Path]:
     """
     Genera il template Instagram 1080x1080 a partire dall'immagine dell'articolo.
@@ -287,7 +353,7 @@ def render_instagram_post(
             y += line_h
 
         # CTA a due righe, centrata nel terzo inferiore e leggibile su foto.
-        cta_font = _load_font(34)
+        cta_font = _load_cta_font(33)
         emoji_font = _load_emoji_font(34)
         cta_lines = [cta_line_1, cta_line_2]
         line_h = 44
