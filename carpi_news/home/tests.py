@@ -270,6 +270,34 @@ class InstagramWebhookTests(TestCase):
         self.assertEqual(mock_post.call_count, 1)
 
     @patch("home.views_webhooks.requests.post")
+    def test_reel_comment_with_emoji_triggers_dm(self, mock_post):
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.text = "{}"
+        SocialPublicationLog.objects.create(
+            articolo=self.articolo,
+            platform="instagram_reel",
+            success=True,
+            instagram_media_id="reel-emoji",
+        )
+        payload = {
+            "object": "instagram",
+            "entry": [{
+                "changes": [{
+                    "field": "comments",
+                    "value": {
+                        "from": {"id": "emoji-commenter-id"},
+                        "media": {"id": "reel-emoji"},
+                        "text": "Grande \U0001f525",
+                    },
+                }]
+            }],
+        }
+
+        response = self._signed_post(payload)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(mock_post.call_count, 1)
+
+    @patch("home.views_webhooks.requests.post")
     def test_messaging_payload_reaction_without_media_is_logged_not_sent(self, mock_post):
         payload = {
             "object": "instagram",

@@ -59,6 +59,17 @@ def _emoji_only(text: str) -> bool:
         )
 
 
+def _contains_emoji(text: str) -> bool:
+    if not getattr(settings, "INSTAGRAM_AUTO_DM_ACCEPT_ANY_EMOJI", True):
+        return False
+    try:
+        import emoji
+
+        return emoji.emoji_count(text or "") > 0
+    except Exception:
+        return any(_is_emoji_char(char) for char in (text or ""))
+
+
 def _is_emoji_char(char: str) -> bool:
     code = ord(char)
     return (
@@ -89,7 +100,7 @@ def _text_trigger(text: str) -> bool:
         return True
     if any(trigger in upper for trigger in _configured_text_triggers()):
         return True
-    return _emoji_only(text)
+    return _contains_emoji(text) or _emoji_only(text)
 
 
 def _extract_events(payload: dict[str, Any]):
