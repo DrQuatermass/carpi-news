@@ -236,6 +236,13 @@ LOGGING = {
             'backupCount': 3,
             'formatter': 'verbose',
         },
+        'instagram_webhook_file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': BASE_DIR / 'logs' / 'instagram_webhook.log',
+            'maxBytes': 1024*1024*5,
+            'backupCount': 3,
+            'formatter': 'verbose',
+        },
     },
     'loggers': {
         'home.views': {
@@ -255,6 +262,11 @@ LOGGING = {
         },
         'home.youtube_transcript': {
             'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'home.instagram_webhook': {
+            'handlers': ['console', 'instagram_webhook_file'],
             'level': 'INFO',
             'propagate': False,
         },
@@ -389,6 +401,22 @@ INSTAGRAM_ACCOUNT_ID = os.getenv('INSTAGRAM_ACCOUNT_ID', '')
 # pubblicato come Storia (sparisce in 24h) e/o Reel (permanente).
 INSTAGRAM_STORY_ENABLED = os.getenv('INSTAGRAM_STORY_ENABLED', 'False').lower() in ['true', '1', 'yes']
 INSTAGRAM_REEL_ENABLED = os.getenv('INSTAGRAM_REEL_ENABLED', 'False').lower() in ['true', '1', 'yes']
+INSTAGRAM_WEBHOOK_VERIFY_TOKEN = os.getenv('INSTAGRAM_WEBHOOK_VERIFY_TOKEN', '')
+INSTAGRAM_PAGE_ACCESS_TOKEN = os.getenv('INSTAGRAM_PAGE_ACCESS_TOKEN', FACEBOOK_ACCESS_TOKEN)
+INSTAGRAM_AUTO_DM_ACCEPT_ANY_EMOJI = os.getenv('INSTAGRAM_AUTO_DM_ACCEPT_ANY_EMOJI', 'True').lower() in ['true', '1', 'yes']
+INSTAGRAM_AUTO_DM_TEXT_TRIGGERS = [
+    item.strip().upper()
+    for item in os.getenv('INSTAGRAM_AUTO_DM_TEXT_TRIGGERS', 'LINK,INFO,LEGGI').split(',')
+    if item.strip()
+]
+
+# Metadati avanzati Reel/Storia per migliorare discovery
+# CARPI_PLACE_ID: Facebook Place ID di Carpi. Usato come location tag su FB Reel
+# e IG Reel/Story. Per trovarlo: https://developers.facebook.com/tools/explorer/
+# query "pages/search?q=Carpi&type=place". Senza, il tag non viene applicato.
+CARPI_PLACE_ID = os.getenv('CARPI_PLACE_ID', '')
+# Audio name brandizzato sul Reel IG ('Audio originale di <nome>' visto dagli utenti)
+INSTAGRAM_REEL_AUDIO_NAME = os.getenv('INSTAGRAM_REEL_AUDIO_NAME', 'Ombra del Portico - Notizie di Carpi')
 
 # CKEditor Configuration
 CKEDITOR_CONFIGS = {
