@@ -334,7 +334,52 @@ class InstagramWebhookTests(TestCase):
         self.assertEqual(mock_post.call_count, 1)
 
     @patch("home.views_webhooks.requests.post")
-    def test_messaging_payload_reaction_without_media_is_logged_not_sent(self, mock_post):
+    def test_story_reaction_unmapped_media_falls_back_to_recent_story(self, mock_post):
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.text = "{}"
+        payload = {
+            "object": "instagram",
+            "entry": [{
+                "changes": [{
+                    "field": "message_reactions",
+                    "value": {
+                        "sender": {"id": "story-emoji-user"},
+                        "media": {"id": "meta-story-id-not-saved"},
+                        "reaction": {"emoji": "\u2764\ufe0f"},
+                    },
+                }]
+            }],
+        }
+
+        response = self._signed_post(payload)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(mock_post.call_count, 1)
+
+    @override_settings(INSTAGRAM_AUTO_DM_STORY_FALLBACK_MINUTES=0)
+    @patch("home.views_webhooks.requests.post")
+    def test_story_fallback_can_be_disabled(self, mock_post):
+        payload = {
+            "object": "instagram",
+            "entry": [{
+                "changes": [{
+                    "field": "message_reactions",
+                    "value": {
+                        "sender": {"id": "story-emoji-user"},
+                        "media": {"id": "meta-story-id-not-saved"},
+                        "reaction": {"emoji": "\u2764\ufe0f"},
+                    },
+                }]
+            }],
+        }
+
+        response = self._signed_post(payload)
+        self.assertEqual(response.status_code, 200)
+        mock_post.assert_not_called()
+
+    @patch("home.views_webhooks.requests.post")
+    def test_messaging_payload_reaction_without_media_falls_back_to_recent_story(self, mock_post):
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.text = "{}"
         payload = {
             "object": "instagram",
             "entry": [{
@@ -349,7 +394,7 @@ class InstagramWebhookTests(TestCase):
 
         response = self._signed_post(payload)
         self.assertEqual(response.status_code, 200)
-        mock_post.assert_not_called()
+        self.assertEqual(mock_post.call_count, 1)
 
     @patch("home.views_webhooks.requests.post")
     def test_own_business_message_is_ignored(self, mock_post):

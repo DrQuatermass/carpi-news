@@ -3,12 +3,14 @@ import hmac
 import json
 import logging
 import unicodedata
+from datetime import timedelta
 from typing import Any
 
 import requests
 from django.conf import settings
 from django.core.cache import cache
 from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
+from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 
 from .models import InstagramAutoDMLog, InstagramOptOut, SocialPublicationLog
@@ -177,6 +179,35 @@ def _send_dm(sender_id: str, articolo, short_url: str) -> tuple[bool, str]:
         return False, str(e)
 
 
+def _find_publication_log(media_id: str, trigger_type: str):
+    log = SocialPublicationLog.objects.filter(
+        instagram_media_id=media_id,
+        platform__in=["instagram_story", "instagram_reel"],
+        success=True,
+    ).select_related("articolo").order_by("-published_at").first()
+    if log or trigger_type == "reel_comment":
+        return log
+
+    fallback_minutes = int(getattr(settings, "INSTAGRAM_AUTO_DM_STORY_FALLBACK_MINUTES", 180))
+    if fallback_minutes <= 0:
+        return None
+
+    since = timezone.now() - timedelta(minutes=fallback_minutes)
+    fallback_log = SocialPublicationLog.objects.filter(
+        platform="instagram_story",
+        success=True,
+        published_at__gte=since,
+    ).select_related("articolo").order_by("-published_at").first()
+    if fallback_log:
+        logger.warning(
+            "Instagram webhook: media_id %s non mappato, fallback alla story recente %s per articolo %s",
+            media_id,
+            fallback_log.instagram_media_id,
+            fallback_log.articolo_id,
+        )
+    return fallback_log
+
+
 def _handle_event(sender_id: str, media_id: str, trigger_type: str, trigger_value: str, is_trigger: bool) -> None:
     if not sender_id:
         logger.warning("Instagram webhook: evento senza sender_id")
@@ -206,11 +237,7 @@ def _handle_event(sender_id: str, media_id: str, trigger_type: str, trigger_valu
         logger.info("Instagram webhook: utente %s in opt-out, DM saltato", sender_id)
         return
 
-    log = SocialPublicationLog.objects.filter(
-        instagram_media_id=media_id,
-        platform__in=["instagram_story", "instagram_reel"],
-        success=True,
-    ).select_related("articolo").order_by("-published_at").first()
+    log = _find_publication_log(media_id, trigger_type)
     if not log:
         logger.warning("Instagram webhook: media_id non mappato, nessun DM inviato: %s", media_id)
         return
