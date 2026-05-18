@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('home', '0016_add_fonti_web_field'),
+        ('home', '0036_socialpublicationlog'),
     ]
 
     operations = [

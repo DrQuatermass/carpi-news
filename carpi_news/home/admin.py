@@ -7,7 +7,18 @@ from django.shortcuts import redirect, render
 from django.contrib import messages
 from django.contrib.admin import SimpleListFilter
 from django import forms
-from .models import Articolo, MonitorConfig, APIUsage, ChatbotConversation, SocialPublicationLog, NewsletterSubscriber, NewsletterLog
+from .models import (
+    APIUsage,
+    Articolo,
+    ChatbotConversation,
+    InstagramAutoDMLog,
+    InstagramOptOut,
+    MonitorConfig,
+    NewsletterLog,
+    NewsletterSubscriber,
+    ShortLink,
+    SocialPublicationLog,
+)
 import threading
 import urllib.parse
 import subprocess
@@ -1358,10 +1369,10 @@ class ChatbotConversationAdmin(admin.ModelAdmin):
 @admin.register(SocialPublicationLog)
 class SocialPublicationLogAdmin(admin.ModelAdmin):
     """Admin per il log delle pubblicazioni social"""
-    list_display = ['status_icon', 'platform', 'articolo_title', 'published_at']
+    list_display = ['status_icon', 'platform', 'articolo_title', 'shared_url', 'instagram_media_id', 'published_at']
     list_filter = ['platform', 'success', 'published_at']
-    search_fields = ['articolo__titolo', 'articolo__slug']
-    readonly_fields = ['articolo', 'platform', 'success', 'published_at', 'error_message']
+    search_fields = ['articolo__titolo', 'articolo__slug', 'shared_url', 'instagram_media_id']
+    readonly_fields = ['articolo', 'platform', 'success', 'published_at', 'error_message', 'shared_url', 'short_link', 'instagram_media_id']
     date_hierarchy = 'published_at'
     ordering = ['-published_at']
 
@@ -1384,6 +1395,32 @@ class SocialPublicationLogAdmin(admin.ModelAdmin):
     def has_add_permission(self, request):
         """Non permettere creazione manuale"""
         return False
+
+
+@admin.register(ShortLink)
+class ShortLinkAdmin(admin.ModelAdmin):
+    list_display = ['token', 'articolo', 'platform', 'medium', 'clicks_count', 'created_at']
+    list_filter = ['platform', 'medium', 'created_at']
+    search_fields = ['token', 'articolo__titolo', 'articolo__slug']
+    readonly_fields = ['created_at', 'updated_at', 'clicks_count', 'last_referer']
+    date_hierarchy = 'created_at'
+
+
+@admin.register(InstagramAutoDMLog)
+class InstagramAutoDMLogAdmin(admin.ModelAdmin):
+    list_display = ['articolo', 'ig_user_id', 'trigger_type', 'trigger_value', 'dm_sent', 'created_at']
+    list_filter = ['trigger_type', 'dm_sent', 'created_at']
+    search_fields = ['articolo__titolo', 'ig_user_id', 'media_id', 'trigger_value']
+    readonly_fields = ['articolo', 'ig_user_id', 'trigger_type', 'trigger_value', 'media_id', 'short_link', 'dm_sent', 'dm_error', 'created_at']
+    date_hierarchy = 'created_at'
+
+
+@admin.register(InstagramOptOut)
+class InstagramOptOutAdmin(admin.ModelAdmin):
+    list_display = ['ig_user_id', 'created_at']
+    search_fields = ['ig_user_id']
+    readonly_fields = ['created_at']
+    date_hierarchy = 'created_at'
 
 
 # Aggiungi link alla dashboard nella lista APIUsage

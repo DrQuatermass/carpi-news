@@ -1,8 +1,16 @@
 from unittest.mock import patch
+import hashlib
+import hmac
+import json
+from datetime import timedelta
 
-from django.test import SimpleTestCase
+from django.test import Client, SimpleTestCase, TestCase, override_settings
+from django.urls import reverse
+from django.utils import timezone
 
 from home.content_polisher import content_polisher
+from home.models import Articolo, InstagramOptOut, ShortLink, SocialPublicationLog
+from home.share_links import build_share_url, build_short_share_url
 from home.universal_news_monitor import parse_ai_article_json
 
 
@@ -41,3 +49,208 @@ Il risultato arriva dopo mesi di tensione.
         self.assertIn("<p>Secondo paragrafo.</p>", polished["contenuto"])
         self.assertNotIn("\\n", polished["contenuto"])
         self.assertNotIn("\\n", polished["sommario"])
+
+
+@override_settings(
+    DEBUG=True,
+    SITE_URL="https://testserver",
+    CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}},
+)
+class ShareLinkTests(TestCase):
+    def setUp(self):
+        self.articolo = Articolo.objects.create(
+            titolo="Titolo test",
+            contenuto="Contenuto",
+            sommario="Sommario",
+            categoria="Cronaca",
+            approvato=True,
+            data_pubblicazione=timezone.now(),
+        )
+
+    def test_build_share_url(self):
+        url = build_share_url(self.articolo, "instagram", "reel")
+        self.assertIn("/articolo/", url)
+        self.assertIn("utm_source=instagram", url)
+        self.assertIn("utm_medium=reel", url)
+        self.assertIn("utm_campaign=share", url)
+
+    def test_short_link_and_redirect_tracking(self):
+        short_url = build_short_share_url(self.articolo, "instagram", "bio")
+        short_link = ShortLink.objects.get(articolo=self.articolo, platform="instagram", medium="bio")
+        self.assertIn(f"/s/{short_link.token}/", short_url)
+
+        response = self.client.get(reverse("short_link_redirect", kwargs={"token": short_link.token}))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("utm_source=instagram", response["Location"])
+        short_link.refresh_from_db()
+        self.assertEqual(short_link.clicks_count, 1)
+
+
+@override_settings(
+    DEBUG=True,
+    SITE_URL="https://testserver",
+    INSTAGRAM_WEBHOOK_VERIFY_TOKEN="verify-token",
+    FACEBOOK_APP_SECRET="secret",
+    INSTAGRAM_PAGE_ACCESS_TOKEN="page-token",
+    CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}},
+)
+class InstagramWebhookTests(TestCase):
+    def setUp(self):
+        self.client = Client()
+        self.articolo = Articolo.objects.create(
+            titolo="Articolo IG",
+            contenuto="Contenuto",
+            sommario="Sommario",
+            categoria="Cronaca",
+            approvato=True,
+            data_pubblicazione=timezone.now(),
+        )
+        self.short_link = ShortLink.objects.create(
+            articolo=self.articolo,
+            platform="instagram",
+            medium="story",
+            token="abc123",
+        )
+        SocialPublicationLog.objects.create(
+            articolo=self.articolo,
+            platform="instagram_story",
+            success=True,
+            instagram_media_id="media-1",
+        )
+
+    def _signed_post(self, payload):
+        body = json.dumps(payload).encode("utf-8")
+        signature = hmac.new(b"secret", body, hashlib.sha256).hexdigest()
+        return self.client.post(
+            reverse("instagram_webhook"),
+            data=body,
+            content_type="application/json",
+            HTTP_X_HUB_SIGNATURE_256=f"sha256={signature}",
+        )
+
+    def test_get_challenge_ok_and_ko(self):
+        ok = self.client.get(reverse("instagram_webhook"), {
+            "hub.verify_token": "verify-token",
+            "hub.challenge": "123",
+        })
+        self.assertEqual(ok.status_code, 200)
+        self.assertEqual(ok.content, b"123")
+
+        ko = self.client.get(reverse("instagram_webhook"), {
+            "hub.verify_token": "wrong",
+            "hub.challenge": "123",
+        })
+        self.assertEqual(ko.status_code, 403)
+
+    def test_invalid_signature(self):
+        response = self.client.post(
+            reverse("instagram_webhook"),
+            data=b"{}",
+            content_type="application/json",
+            HTTP_X_HUB_SIGNATURE_256="sha256=bad",
+        )
+        self.assertEqual(response.status_code, 403)
+
+    @patch("home.views_webhooks.requests.post")
+    def test_valid_reaction_sends_dm_and_rate_limits(self, mock_post):
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.text = "{}"
+        payload = {
+            "entry": [{
+                "changes": [{
+                    "field": "message_reactions",
+                    "value": {
+                        "sender": {"id": "ig-user"},
+                        "media": {"id": "media-1"},
+                        "reaction": {"emoji": "❤️"},
+                    },
+                }]
+            }]
+        }
+
+        response = self._signed_post(payload)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(mock_post.call_count, 1)
+
+        response = self._signed_post(payload)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(mock_post.call_count, 1)
+
+    @patch("home.views_webhooks.requests.post")
+    def test_stop_opt_out(self, mock_post):
+        payload = {
+            "entry": [{
+                "changes": [{
+                    "field": "messages",
+                    "value": {
+                        "sender": {"id": "ig-stop"},
+                        "media": {"id": "media-1"},
+                        "message": {"text": "STOP"},
+                    },
+                }]
+            }]
+        }
+        response = self._signed_post(payload)
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(InstagramOptOut.objects.filter(ig_user_id="ig-stop").exists())
+        mock_post.assert_not_called()
+
+    @patch("home.views_webhooks.requests.post")
+    def test_text_emoji_reply_sends_dm(self, mock_post):
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.text = "{}"
+        payload = {
+            "entry": [{
+                "changes": [{
+                    "field": "messages",
+                    "value": {
+                        "sender": {"id": "ig-user-text-heart"},
+                        "media": {"id": "media-1"},
+                        "message": {"text": "❤️"},
+                    },
+                }]
+            }]
+        }
+
+        response = self._signed_post(payload)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(mock_post.call_count, 1)
+
+
+@override_settings(
+    DEBUG=True,
+    SITE_URL="https://testserver",
+    CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}},
+)
+class LinkInBioTests(TestCase):
+    def _article(self, title, days=0, category="Cronaca"):
+        return Articolo.objects.create(
+            titolo=title,
+            contenuto="Contenuto",
+            sommario="Sommario",
+            categoria=category,
+            approvato=True,
+            data_pubblicazione=timezone.now() - timedelta(days=days),
+        )
+
+    def test_filters_last_7_days_and_highlights_story(self):
+        recent = self._article("Recente")
+        old = self._article("Vecchio", days=10)
+        SocialPublicationLog.objects.create(articolo=recent, platform="instagram_story", success=True)
+        old_log = SocialPublicationLog.objects.create(articolo=old, platform="instagram", success=True)
+        SocialPublicationLog.objects.filter(pk=old_log.pk).update(published_at=timezone.now() - timedelta(days=10))
+
+        response = self.client.get(reverse("link_in_bio"))
+        self.assertContains(response, "Recente")
+        self.assertNotContains(response, "Vecchio")
+        self.assertContains(response, "Appena pubblicato su Story")
+
+    def test_search_filters_title_and_category(self):
+        wanted = self._article("Cultura in piazza", category="Cultura & Eventi")
+        other = self._article("Cronaca locale")
+        SocialPublicationLog.objects.create(articolo=wanted, platform="instagram", success=True)
+        SocialPublicationLog.objects.create(articolo=other, platform="instagram", success=True)
+
+        response = self.client.get(reverse("link_in_bio_search"), {"q": "Cultura"})
+        self.assertContains(response, "Cultura in piazza")
+        self.assertNotContains(response, "Cronaca locale")

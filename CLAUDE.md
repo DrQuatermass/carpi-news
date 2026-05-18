@@ -398,3 +398,45 @@ Additional guides available:
 - `UNIVERSAL_MONITOR_GUIDE.md`: Comprehensive guide to the monitoring system (legacy)
 - `YOUTUBE_SETUP_GUIDE.md`: YouTube integration setup
 - `POLISHING_SYSTEM_GUIDE.md`: Content polishing system documentation
+
+## Social sharing & link tracking
+
+Nuovi modelli:
+- `ShortLink`: collega `Articolo`, `platform`, `medium` e token `/s/<token>/`, con `clicks_count` e ultimo referer.
+- `SocialPublicationLog`: conserva `shared_url`, `short_link` e `instagram_media_id` per mappare Story/Reel IG all'articolo corretto.
+- `InstagramAutoDMLog`: traccia trigger IG e invio DM.
+- `InstagramOptOut`: utenti IG che hanno risposto `STOP`.
+
+Endpoint:
+- `/s/<token>/`: incrementa i click con rate limit cache-based e reindirizza all'articolo con UTM.
+- `/instagram/`: smart link in bio, ultimi 7 giorni di contenuti Instagram.
+- `/instagram/search/`: ricerca AJAX per titolo/categoria.
+- `/webhooks/instagram/`: webhook Meta per reazioni, risposte e commenti.
+
+Convention UTM:
+- `utm_source=<platform>`
+- `utm_medium=<medium>`
+- `utm_campaign=share`
+
+Limiti Meta:
+- Instagram Story: Link Sticker non disponibile via Graph API.
+- Instagram Reel: link in caption non cliccabile; il link viene messo nel primo commento e in bio.
+- Facebook Reel/Story pubblicati via `/video_stories`: si prova a inviare `description`/`text`; se Meta rifiuta, la pubblicazione viene ritentata senza descrizione per non bloccare la pipeline.
+
+Variabili ambiente:
+- `SITE_URL`
+- `INSTAGRAM_WEBHOOK_VERIFY_TOKEN`
+- `INSTAGRAM_PAGE_ACCESS_TOKEN`
+- `INSTAGRAM_AUTO_DM_ACCEPT_ANY_EMOJI`
+- `INSTAGRAM_AUTO_DM_TEXT_TRIGGERS`
+
+## Instagram Webhook Setup
+
+1. App configurata su flusso Instagram API + Facebook Login, use case "Manage Pages" + Instagram Graph. Verificare che `instagram_manage_messages` e `pages_messaging` siano "Ready for testing".
+2. Meta Developer dashboard -> app -> Webhooks -> Instagram: subscribe ai campi `messages`, `message_reactions`, `comments`.
+3. Callback URL: `https://ombradelportico.it/webhooks/instagram/`.
+4. Verify token: valore di `INSTAGRAM_WEBHOOK_VERIFY_TOKEN` in `.env`.
+5. Sottoscrivere anche la Pagina Facebook collegata all'account IG: `POST /{page-id}/subscribed_apps?subscribed_fields=messages,message_reactions,messaging_postbacks&access_token=<page_token>`.
+6. Permission da richiedere in App Review: `instagram_manage_messages`, `instagram_manage_comments`, `pages_messaging`, `pages_show_list`, `pages_read_engagement`.
+7. Durante sviluppo aggiungere utenti come Tester / Instagram Tester in App Roles.
+8. Token per inviare DM: Page Access Token dell'IG Business Account in `INSTAGRAM_PAGE_ACCESS_TOKEN`.
