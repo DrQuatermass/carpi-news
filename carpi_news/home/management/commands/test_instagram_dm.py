@@ -27,8 +27,7 @@ class Command(BaseCommand):
         message = (
             "Ciao! 👋 Ecco l'articolo che ti interessava:\n\n"
             f"{articolo.titolo}\n{short_url}\n\n"
-            "Grazie per seguirci su Ombra del Portico! 🙏\n\n"
-            "(Per non ricevere più questi messaggi rispondi STOP)"
+            "Grazie per seguirci su Ombra del Portico! 🙏"
         )
 
         self.stdout.write(self.style.NOTICE("Anteprima DM Instagram"))
