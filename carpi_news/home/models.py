@@ -578,6 +578,15 @@ class SocialPublicationLog(models.Model):
     success = models.BooleanField(help_text="Pubblicazione riuscita")
     published_at = models.DateTimeField(auto_now_add=True)
     error_message = models.TextField(blank=True, null=True, help_text="Messaggio di errore se fallita")
+    shared_url = models.URLField(max_length=500, blank=True, help_text="URL pubblicato effettivamente")
+    short_link = models.ForeignKey(
+        'ShortLink',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='social_publications',
+    )
+    instagram_media_id = models.CharField(max_length=100, blank=True, db_index=True)
 
     class Meta:
         verbose_name = "Log Pubblicazione Social"
@@ -590,6 +599,74 @@ class SocialPublicationLog(models.Model):
     def __str__(self):
         status = "✓" if self.success else "✗"
         return f"{status} {self.platform} - {self.articolo.titolo[:50]} ({self.published_at.strftime('%Y-%m-%d %H:%M')})"
+
+
+class ShortLink(models.Model):
+    """Short link tracciato per articolo/piattaforma/medium."""
+
+    articolo = models.ForeignKey(Articolo, on_delete=models.CASCADE, related_name='short_links')
+    platform = models.CharField(max_length=50, db_index=True)
+    medium = models.CharField(max_length=50, db_index=True)
+    token = models.CharField(max_length=12, unique=True, db_index=True)
+    clicks_count = models.PositiveIntegerField(default=0)
+    last_referer = models.URLField(max_length=500, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Short Link"
+        verbose_name_plural = "Short Link"
+        unique_together = [('articolo', 'platform', 'medium')]
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['articolo', 'platform', 'medium']),
+        ]
+
+    def __str__(self):
+        return f"/s/{self.token}/ - {self.articolo.titolo[:50]}"
+
+
+class InstagramAutoDMLog(models.Model):
+    TRIGGER_CHOICES = [
+        ('story_reaction', 'Reazione Story'),
+        ('story_reply', 'Risposta Story'),
+        ('reel_comment', 'Commento Reel'),
+    ]
+
+    articolo = models.ForeignKey(Articolo, on_delete=models.SET_NULL, null=True, blank=True, related_name='instagram_dm_logs')
+    ig_user_id = models.CharField(max_length=100, db_index=True)
+    trigger_type = models.CharField(max_length=30, choices=TRIGGER_CHOICES)
+    trigger_value = models.CharField(max_length=255, blank=True)
+    media_id = models.CharField(max_length=100, blank=True, db_index=True)
+    short_link = models.ForeignKey(ShortLink, on_delete=models.SET_NULL, null=True, blank=True, related_name='instagram_dm_logs')
+    dm_sent = models.BooleanField(default=False)
+    dm_error = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Log Instagram Auto-DM"
+        verbose_name_plural = "Log Instagram Auto-DM"
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['ig_user_id', '-created_at']),
+            models.Index(fields=['media_id', '-created_at']),
+        ]
+
+    def __str__(self):
+        return f"{self.ig_user_id} - {self.trigger_type} - {self.created_at:%Y-%m-%d %H:%M}"
+
+
+class InstagramOptOut(models.Model):
+    ig_user_id = models.CharField(max_length=100, unique=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Opt-out Instagram"
+        verbose_name_plural = "Opt-out Instagram"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return self.ig_user_id
 
 
 class MonitorConfig(models.Model):

@@ -1,5 +1,5 @@
 {% load static %}{% for articolo in articoli %}
-<a href="{% url 'dettaglio_articolo' articolo.slug %}?utm_source=instagram&utm_medium=bio&utm_campaign=link_in_bio"
+<a href="{{ articolo.bio_short_url }}"
    class="article-card"
    aria-label="Leggi {{ articolo.titolo }}">
 
@@ -17,6 +17,9 @@
 
     <div class="article-body">
         <div class="article-meta">
+            {% if articolo.is_recent_story %}
+                <span class="article-story">Appena su Story</span>
+            {% endif %}
             <span class="article-cat">{{ articolo.categoria|default:"Notizie" }}</span>
             {% if articolo.data_pubblicazione %}
                 <span class="article-date">{{ articolo.data_pubblicazione|date:"j M Y" }}</span>

@@ -23,6 +23,9 @@ urlpatterns = [
 
     # Link in bio Instagram: lista mobile-first degli articoli condivisi su IG
     path('instagram/', views.link_in_bio, name='link_in_bio'),
+    path('instagram/search/', views.link_in_bio_search, name='link_in_bio_search'),
+    path('s/<str:token>/', views.short_link_redirect, name='short_link_redirect'),
+    path('webhooks/instagram/', include('home.webhook_urls')),
 
     # Chatbot API
     path('api/chatbot/', views.chatbot_api, name='chatbot_api'),

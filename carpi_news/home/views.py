@@ -1593,9 +1593,41 @@ def newsletter_preview(request):
     return render(request, 'newsletter/preview.html', ctx)
 
 
+def short_link_redirect(request, token):
+    """Redirect tracciato per short link social."""
+    from django.core.cache import cache
+    from django.db.models import F
+    from django.http import Http404, HttpResponseRedirect
+    from .models import ShortLink
+    from .share_links import build_share_url
+
+    try:
+        short_link = ShortLink.objects.select_related('articolo').get(token=token)
+    except ShortLink.DoesNotExist:
+        raise Http404("Short link non trovato")
+
+    ip = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR', '')).split(',')[0].strip()
+    user_agent = request.META.get('HTTP_USER_AGENT', '')[:80]
+    cache_key = f"shortlink:{short_link.pk}:{ip}:{hash(user_agent)}"
+    if not cache.get(cache_key):
+        referer = request.META.get('HTTP_REFERER', '')[:500]
+        ShortLink.objects.filter(pk=short_link.pk).update(
+            clicks_count=F('clicks_count') + 1,
+            last_referer=referer,
+        )
+        cache.set(cache_key, True, 60)
+
+    return HttpResponseRedirect(build_share_url(short_link.articolo, short_link.platform, short_link.medium))
+
+
+def link_in_bio_search(request):
+    """Fragment AJAX per ricerca nella smart link in bio."""
+    return link_in_bio(request, search_only=True)
+
+
 @cache_page(60 * 5)  # cache 5 minuti
 @vary_on_headers('X-Requested-With')  # cache separata per richieste AJAX
-def link_in_bio(request):
+def link_in_bio(request, search_only=False):
     """
     Landing page per il link in bio Instagram.
     Mostra gli articoli condivisi su IG (post/storia/reel) in layout lista
@@ -1608,28 +1640,64 @@ def link_in_bio(request):
     URL: /instagram/
     """
     from .models import SocialPublicationLog
+    from .share_links import build_short_share_url
     from django.core.paginator import Paginator
+    from django.db.models import Max, Q
+    from django.utils import timezone
+    from datetime import timedelta
 
     ig_platforms = ['instagram', 'instagram_story', 'instagram_reel']
+    now = timezone.now()
+    last_7_days = now - timedelta(days=7)
+    last_24_hours = now - timedelta(hours=24)
+    search_query = request.GET.get('q', '').strip()
+
     article_ids = (
         SocialPublicationLog.objects
-        .filter(platform__in=ig_platforms, success=True)
+        .filter(platform__in=ig_platforms, success=True, published_at__gte=last_7_days)
         .values_list('articolo_id', flat=True)
         .distinct()
     )
 
+    story_ids = set(
+        SocialPublicationLog.objects.filter(
+            platform='instagram_story',
+            success=True,
+            published_at__gte=last_24_hours,
+            articolo_id__in=article_ids,
+        ).values_list('articolo_id', flat=True)
+    )
+
+    from django.db.models import Case, IntegerField, Value, When
+    recent_story_order = Case(
+        When(id__in=story_ids, then=Value(1)),
+        default=Value(0),
+        output_field=IntegerField(),
+    )
     articoli_qs = (
         Articolo.objects
         .filter(id__in=article_ids, approvato=True)
+        .annotate(last_ig_publication=Max('social_publications__published_at'), recent_story_order=recent_story_order)
         .only('id', 'titolo', 'sommario', 'categoria', 'slug', 'foto',
               'foto_upload', 'data_pubblicazione')
-        .order_by('-data_pubblicazione')
+        .order_by('-recent_story_order', '-data_pubblicazione', '-last_ig_publication')
     )
+    if search_query:
+        articoli_qs = articoli_qs.filter(
+            Q(titolo__icontains=search_query) | Q(categoria__icontains=search_query)
+        )
 
     paginator = Paginator(articoli_qs, 25)
     page = paginator.get_page(request.GET.get('page', 1))
+    for articolo in page.object_list:
+        articolo.bio_short_url = build_short_share_url(articolo, 'instagram', 'bio')
+        articolo.is_recent_story = articolo.pk in story_ids
 
     # AJAX -> solo fragment delle cards (no header/footer)
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
-    template = 'link_in_bio_cards.html' if is_ajax else 'link_in_bio.html'
-    return render(request, template, {'articoli': page})
+    template = 'link_in_bio_cards.html' if (is_ajax or search_only) else 'link_in_bio.html'
+    return render(request, template, {
+        'articoli': page,
+        'search_query': search_query,
+        'has_recent_story': bool(story_ids),
+    })

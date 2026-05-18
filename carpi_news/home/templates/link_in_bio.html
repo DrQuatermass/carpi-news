@@ -21,9 +21,6 @@
             -webkit-font-smoothing: antialiased;
         }
         body {
-            background-image:
-                radial-gradient(circle at 20% 10%, rgba(212, 175, 55, 0.08), transparent 50%),
-                radial-gradient(circle at 80% 90%, rgba(212, 175, 55, 0.05), transparent 50%);
             padding: 28px 18px 40px;
         }
         .container { max-width: 480px; margin: 0 auto; }
@@ -86,6 +83,40 @@
             opacity: 0.65;
             line-height: 1.5;
         }
+        .search-form {
+            margin: 0 0 18px;
+            display: flex;
+            gap: 8px;
+        }
+        .search-input {
+            width: 100%;
+            border: 1px solid rgba(212, 175, 55, 0.28);
+            background: rgba(255, 255, 255, 0.06);
+            color: #f5f0e1;
+            border-radius: 8px;
+            padding: 13px 14px;
+            font: inherit;
+            outline: none;
+        }
+        .search-input:focus { border-color: rgba(212, 175, 55, 0.75); }
+        .search-input::placeholder { color: rgba(245, 240, 225, 0.5); }
+        .search-button {
+            border: 0;
+            border-radius: 8px;
+            padding: 0 16px;
+            background: #d4af37;
+            color: #0f1420;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .story-section-title {
+            margin: 4px 0 12px;
+            font-size: 13px;
+            color: #d4af37;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
 
         /* CARD LISTA */
         .articles { display: flex; flex-direction: column; gap: 14px; }
@@ -139,6 +170,17 @@
             background: #d4af37;
             padding: 4px 10px;
             border-radius: 10px;
+        }
+        .article-story {
+            display: inline-block;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.7px;
+            text-transform: uppercase;
+            color: #f5f0e1;
+            border: 1px solid rgba(245, 240, 225, 0.35);
+            padding: 4px 10px;
+            border-radius: 8px;
         }
         .article-date {
             font-size: 11px;
@@ -241,7 +283,15 @@
             <p>Tocca per leggere l'articolo completo sul sito</p>
         </div>
 
+        <form class="search-form" action="{% url 'link_in_bio_search' %}" method="get" role="search">
+            <input class="search-input" type="search" name="q" value="{{ search_query }}" placeholder="Cerca titolo o categoria" aria-label="Cerca articoli">
+            <button class="search-button" type="submit">Cerca</button>
+        </form>
+
         {% if articoli %}
+        {% if has_recent_story %}
+        <div class="story-section-title">🔥 Appena pubblicato su Story</div>
+        {% endif %}
         <div class="articles" id="articles">
             {% include 'link_in_bio_cards.html' %}
         </div>
@@ -283,6 +333,16 @@
         var sentinel = document.getElementById('sentinel');
         var loader = document.getElementById('loader');
         var articles = document.getElementById('articles');
+        var form = document.querySelector('.search-form');
+        if (form && articles) {
+            form.addEventListener('submit', function(event) {
+                event.preventDefault();
+                var params = new URLSearchParams(new FormData(form));
+                fetch(form.action + '?' + params.toString(), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                    .then(function(r) { return r.text(); })
+                    .then(function(html) { articles.innerHTML = html; });
+            });
+        }
         if (!sentinel || !articles || !('IntersectionObserver' in window)) return;
 
         var nextUrl = sentinel.dataset.nextUrl;
@@ -316,9 +376,10 @@
                     tmp.innerHTML = trimmed;
                     while (tmp.firstChild) articles.appendChild(tmp.firstChild);
                     var match = nextUrl.match(/page=(\d+)/);
+                    var search = new URLSearchParams(window.location.search).get('q');
                     if (match) {
                         var current = parseInt(match[1], 10);
-                        nextUrl = '?page=' + (current + 1);
+                        nextUrl = '?page=' + (current + 1) + (search ? '&q=' + encodeURIComponent(search) : '');
                     } else {
                         nextUrl = null;
                     }
@@ -338,6 +399,7 @@
             });
         }, { rootMargin: '400px 0px' });
         observer.observe(sentinel);
+
     })();
     </script>
 </body>
