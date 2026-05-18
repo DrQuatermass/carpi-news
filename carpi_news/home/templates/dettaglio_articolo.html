@@ -32,7 +32,6 @@
 <meta property="article:published_time" content="{{ articolo.data_pubblicazione|date:'c' }}">
 <meta property="article:modified_time" content="{{ articolo.data_modifica|date:'c' }}">
 <meta property="article:section" content="{{ articolo.categoria }}">
-<meta property="article:publisher" content="{{ FACEBOOK_PAGE_URL }}">
 {% for tag in articolo.tag_list %}
 <meta property="article:tag" content="{{ tag }}">
 {% endfor %}
