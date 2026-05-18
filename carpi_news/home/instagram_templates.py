@@ -73,6 +73,10 @@ def _logo_path() -> Path:
     return _project_base_dir() / "home" / "static" / "home" / "images" / "portico_logo.png"
 
 
+def _heart_cta_path() -> Path:
+    return _project_base_dir() / "home" / "static" / "home" / "images" / "instagram_heart_cta.png"
+
+
 def _output_dir() -> Path:
     """Cartella di output (mantiene la convenzione esistente)."""
     d = _project_base_dir() / "media" / "images" / "instagram_temp"
@@ -152,18 +156,16 @@ def _mixed_text_size(draw: ImageDraw.ImageDraw, text: str, text_font, emoji_font
     return width, height
 
 
-def _draw_mixed_text(draw: ImageDraw.ImageDraw, xy: tuple[int, int], text: str, text_font, emoji_font, fill) -> None:
+def _draw_mixed_text(layer: Image.Image, draw: ImageDraw.ImageDraw, xy: tuple[int, int], text: str, text_font, emoji_font, fill) -> None:
     x, y = xy
     i = 0
     heart_token = "{heart}"
     while i < len(text):
         if text.startswith(heart_token, i):
             size = _heart_size(text_font)
-            heart_y = y + max(0, int(getattr(text_font, "size", size) * 0.18))
-            heart_fill = (238, 64, 88, fill[3] if len(fill) > 3 else 255)
-            if fill[0] == 0 and fill[1] == 0 and fill[2] == 0:
-                heart_fill = fill
-            _draw_heart(draw, (int(x), int(heart_y)), size, heart_fill)
+            heart_y = y + max(0, int(getattr(text_font, "size", size) * 0.02))
+            icon = _load_heart_icon(size, fill)
+            layer.alpha_composite(icon, (int(x), int(heart_y)))
             x += size + _heart_gap(text_font)
             i += len(heart_token)
             continue
@@ -179,28 +181,35 @@ def _draw_mixed_text(draw: ImageDraw.ImageDraw, xy: tuple[int, int], text: str, 
 
 
 def _heart_size(text_font) -> int:
-    return max(18, int(getattr(text_font, "size", 34) * 0.72))
+    return max(30, int(getattr(text_font, "size", 34) * 1.04))
 
 
 def _heart_gap(text_font) -> int:
     return max(7, int(getattr(text_font, "size", 34) * 0.22))
 
 
-def _draw_heart(draw: ImageDraw.ImageDraw, xy: tuple[int, int], size: int, fill) -> None:
-    x, y = xy
-    radius = size * 0.28
-    left = (x + size * 0.08, y + size * 0.02, x + size * 0.08 + radius * 2, y + size * 0.02 + radius * 2)
-    right = (x + size * 0.42, y + size * 0.02, x + size * 0.42 + radius * 2, y + size * 0.02 + radius * 2)
-    draw.ellipse(left, fill=fill)
-    draw.ellipse(right, fill=fill)
-    draw.polygon(
-        [
-            (x + size * 0.03, y + size * 0.32),
-            (x + size * 0.97, y + size * 0.32),
-            (x + size * 0.50, y + size * 0.98),
-        ],
-        fill=fill,
-    )
+def _make_colored_icon(icon: Image.Image, fill) -> Image.Image:
+    alpha = icon.getchannel("A")
+    colored = Image.new("RGBA", icon.size, fill)
+    colored.putalpha(alpha)
+    return colored
+
+
+def _load_heart_icon(size: int, fill) -> Image.Image:
+    try:
+        icon = Image.open(_heart_cta_path()).convert("RGBA")
+        bbox = icon.getbbox()
+        if bbox:
+            icon = icon.crop(bbox)
+        icon.thumbnail((size, size), Image.LANCZOS)
+        if fill[0] == 0 and fill[1] == 0 and fill[2] == 0:
+            return _make_colored_icon(icon, fill)
+        return icon
+    except Exception:
+        fallback = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(fallback)
+        draw.ellipse((0, 0, size, size), fill=(238, 64, 88, fill[3] if len(fill) > 3 else 255))
+        return fallback
 
 
 def _make_background(image: Image.Image) -> Image.Image:
@@ -365,6 +374,7 @@ def render_instagram_post(
             y = box_y + 18 + idx * line_h
             for ox, oy in [(2, 2), (-2, 2), (2, -2), (-2, -2)]:
                 _draw_mixed_text(
+                    overlay,
                     draw,
                     (x + ox, y + oy),
                     line,
@@ -373,6 +383,7 @@ def render_instagram_post(
                     (0, 0, 0, 230),
                 )
             _draw_mixed_text(
+                overlay,
                 draw,
                 (x, y),
                 line,

@@ -85,6 +85,10 @@ def _logo_path() -> Path:
     return _project_base_dir() / "home" / "static" / "home" / "images" / "portico_logo.png"
 
 
+def _heart_cta_path() -> Path:
+    return _project_base_dir() / "home" / "static" / "home" / "images" / "instagram_heart_cta.png"
+
+
 def _music_dir() -> Path:
     """Cartella della libreria musicale royalty-free."""
     custom = getattr(settings, "FACEBOOK_REEL_MUSIC_DIR", "")
@@ -382,8 +386,8 @@ class FacebookReelGenerator:
             x = (WIDTH - line_w) // 2
             y = box_y + 23 + idx * line_h
             for ox, oy in [(2, 2), (-2, 2), (2, -2), (-2, -2)]:
-                self._draw_mixed_text(draw, (x + ox, y + oy), line, cta_font, emoji_font, (0, 0, 0, 230))
-            self._draw_mixed_text(draw, (x, y), line, cta_font, emoji_font, WHITE + (255,))
+                self._draw_mixed_text(layer, draw, (x + ox, y + oy), line, cta_font, emoji_font, (0, 0, 0, 230))
+            self._draw_mixed_text(layer, draw, (x, y), line, cta_font, emoji_font, WHITE + (255,))
 
         # Hint sotto la pillola (es. "Tocca il link in bio per leggere")
         if self.config.cta_hint:
@@ -446,26 +450,34 @@ class FacebookReelGenerator:
 
     @staticmethod
     def _heart_size(text_font) -> int:
-        return max(24, int(getattr(text_font, "size", 46) * 0.72))
+        return max(38, int(getattr(text_font, "size", 46) * 1.04))
 
     @staticmethod
     def _heart_gap(text_font) -> int:
         return max(8, int(getattr(text_font, "size", 46) * 0.22))
 
     @staticmethod
-    def _draw_heart(draw: ImageDraw.ImageDraw, xy: tuple[int, int], size: int, fill) -> None:
-        x, y = xy
-        radius = size * 0.28
-        left = (x + size * 0.08, y + size * 0.02, x + size * 0.08 + radius * 2, y + size * 0.02 + radius * 2)
-        right = (x + size * 0.42, y + size * 0.02, x + size * 0.42 + radius * 2, y + size * 0.02 + radius * 2)
-        draw.ellipse(left, fill=fill)
-        draw.ellipse(right, fill=fill)
-        points = [
-            (x + size * 0.03, y + size * 0.32),
-            (x + size * 0.97, y + size * 0.32),
-            (x + size * 0.50, y + size * 0.98),
-        ]
-        draw.polygon(points, fill=fill)
+    def _make_colored_icon(icon: Image.Image, fill) -> Image.Image:
+        alpha = icon.getchannel("A")
+        colored = Image.new("RGBA", icon.size, fill)
+        colored.putalpha(alpha)
+        return colored
+
+    def _load_heart_icon(self, size: int, fill) -> Image.Image:
+        try:
+            icon = Image.open(_heart_cta_path()).convert("RGBA")
+            bbox = icon.getbbox()
+            if bbox:
+                icon = icon.crop(bbox)
+            icon.thumbnail((size, size), Image.LANCZOS)
+            if fill[0] == 0 and fill[1] == 0 and fill[2] == 0:
+                return self._make_colored_icon(icon, fill)
+            return icon
+        except Exception:
+            fallback = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+            draw = ImageDraw.Draw(fallback)
+            draw.ellipse((0, 0, size, size), fill=(238, 64, 88, fill[3] if len(fill) > 3 else 255))
+            return fallback
 
     def _mixed_text_size(self, draw: ImageDraw.ImageDraw, text: str, text_font, emoji_font) -> tuple[int, int]:
         width = 0
@@ -490,18 +502,16 @@ class FacebookReelGenerator:
             i += 1
         return width, height
 
-    def _draw_mixed_text(self, draw: ImageDraw.ImageDraw, xy: tuple[int, int], text: str, text_font, emoji_font, fill) -> None:
+    def _draw_mixed_text(self, layer: Image.Image, draw: ImageDraw.ImageDraw, xy: tuple[int, int], text: str, text_font, emoji_font, fill) -> None:
         x, y = xy
         i = 0
         heart_token = "{heart}"
         while i < len(text):
             if text.startswith(heart_token, i):
                 size = self._heart_size(text_font)
-                heart_y = y + max(0, int(getattr(text_font, "size", size) * 0.18))
-                heart_fill = (238, 64, 88, fill[3] if len(fill) > 3 else 255)
-                if fill[0] == 0 and fill[1] == 0 and fill[2] == 0:
-                    heart_fill = fill
-                self._draw_heart(draw, (int(x), int(heart_y)), size, heart_fill)
+                heart_y = y + max(0, int(getattr(text_font, "size", size) * 0.02))
+                icon = self._load_heart_icon(size, fill)
+                layer.alpha_composite(icon, (int(x), int(heart_y)))
                 x += size + self._heart_gap(text_font)
                 i += len(heart_token)
                 continue
