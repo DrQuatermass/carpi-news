@@ -173,6 +173,17 @@ class SocialMediaManager:
             },
         )
 
+    def _tracking_link(self, articolo, platform: str, medium: str):
+        """Restituisce (short_url, ShortLink) per salvare il tracking nel log."""
+        try:
+            from .share_links import build_short_share_url, get_or_create_short_link
+
+            short_link = get_or_create_short_link(articolo, platform, medium)
+            return build_short_share_url(articolo, platform, medium), short_link
+        except Exception as e:
+            logger.warning(f"Tracking link non generato per {platform}/{medium}: {e}")
+            return "", None
+
     def _prepare_publication_slot(self, articolo, platform: str) -> tuple[bool, bool]:
         """
         Gestisce lock/duplicati per una piattaforma.
@@ -216,17 +227,32 @@ class SocialMediaManager:
         return True, False
 
     def _finalize_publication(
-        self, articolo, platform: str, success: bool, error_message: Optional[str] = None
+        self,
+        articolo,
+        platform: str,
+        success: bool,
+        error_message: Optional[str] = None,
+        shared_url: str = "",
+        short_link=None,
+        instagram_media_id: str = "",
     ) -> None:
         from .models import SocialPublicationLog
+
+        defaults = {
+            'success': success,
+            'error_message': None if success else (error_message or '')[:1000],
+        }
+        if shared_url:
+            defaults['shared_url'] = shared_url
+        if short_link is not None:
+            defaults['short_link'] = short_link
+        if instagram_media_id:
+            defaults['instagram_media_id'] = instagram_media_id
 
         SocialPublicationLog.objects.update_or_create(
             articolo=articolo,
             platform=platform,
-            defaults={
-                'success': success,
-                'error_message': None if success else (error_message or '')[:1000],
-            },
+            defaults=defaults,
         )
 
     def _refresh_facebook_link_preview(self, article_url: str, access_token: str) -> None:
@@ -507,9 +533,12 @@ class SocialMediaManager:
                 elif should_share:
                     success, error_msg = self._share_to_facebook_story(articolo)
                     results['facebook_story'] = success
+                    shared_url, short_link = self._tracking_link(articolo, 'facebook', 'reel')
                     self._finalize_publication(
                         articolo, 'facebook_story', success,
                         None if success else error_msg,
+                        shared_url=shared_url,
+                        short_link=short_link,
                     )
                 else:
                     results['facebook_story'] = False
@@ -589,9 +618,13 @@ class SocialMediaManager:
                 elif should_share:
                     success, error_msg = self._share_to_instagram_story(articolo)
                     results['instagram_story'] = success
+                    shared_url, short_link = self._tracking_link(articolo, 'instagram', 'story')
                     self._finalize_publication(
                         articolo, 'instagram_story', success,
                         None if success else error_msg,
+                        shared_url=shared_url,
+                        short_link=short_link,
+                        instagram_media_id=error_msg if success else "",
                     )
                 else:
                     results['instagram_story'] = False
@@ -622,9 +655,13 @@ class SocialMediaManager:
                 elif should_share:
                     success, error_msg = self._share_to_instagram_reel(articolo)
                     results['instagram_reel'] = success
+                    shared_url, short_link = self._tracking_link(articolo, 'instagram', 'reel')
                     self._finalize_publication(
                         articolo, 'instagram_reel', success,
                         None if success else error_msg,
+                        shared_url=shared_url,
+                        short_link=short_link,
+                        instagram_media_id=error_msg if success else "",
                     )
                 else:
                     results['instagram_reel'] = False

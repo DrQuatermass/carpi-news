@@ -67,6 +67,19 @@ def _font_path() -> Path:
     return _project_base_dir() / "home" / "static" / "home" / "fonts" / "PlayfairDisplay-Bold.ttf"
 
 
+def _emoji_font_path() -> Optional[Path]:
+    """Font emoji di sistema, se disponibile."""
+    candidates = [
+        Path("C:/Windows/Fonts/seguiemj.ttf"),
+        Path("/System/Library/Fonts/Apple Color Emoji.ttc"),
+        Path("/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf"),
+    ]
+    for path in candidates:
+        if path.exists():
+            return path
+    return None
+
+
 def _logo_path() -> Path:
     """Path del logo principale (illustrazione portico + wordmark + payoff)."""
     return _project_base_dir() / "home" / "static" / "home" / "images" / "portico_logo.png"
@@ -109,7 +122,7 @@ class ReelConfig:
     audio_bitrate: str = "128k"
     video_fade_in_seconds: float = 0.6
     # Personalizzazione output: sottoclassi (es. InstagramStoryGenerator) cambiano questi
-    cta_text: str = "Leggi su ombradelportico.it"
+    cta_text: str = "👇 Link in descrizione"
     cta_hint: str = ""                            # subtitle sotto la pillola (opzionale, lasciato per estensioni future)
     output_dir_name: str = "reels"   # cartella sotto media/
 
@@ -357,20 +370,20 @@ class FacebookReelGenerator:
             draw.text((x, y), line, font=title_font, fill=WHITE + (255,))
             y += line_height
 
-        # CTA in basso (configurabile via ReelConfig.cta_text)
+        # CTA in basso, leggibile su qualunque foto.
         cta_font = self._load_font(46)
-        cta = self.config.cta_text
-        bbox = draw.textbbox((0, 0), cta, font=cta_font)
-        cw = bbox[2] - bbox[0]
-        cx = (WIDTH - cw) // 2
-        cy = HEIGHT - 200
-        pad_x = 36
-        pad_y = 18
-        draw.rounded_rectangle(
-            [(cx - pad_x, cy - pad_y), (cx + cw + pad_x, cy + 60 + pad_y)],
-            radius=40, fill=WHITE + (235,)
-        )
-        draw.text((cx, cy), cta, font=cta_font, fill=DARK_BG + (255,))
+        cta_lines = [line.strip() for line in self.config.cta_text.splitlines() if line.strip()]
+        line_h = 58
+        emoji_font = self._load_emoji_font(46)
+        widths = [self._mixed_text_size(draw, line, cta_font, emoji_font)[0] for line in cta_lines]
+        box_y = HEIGHT - 265
+        for idx, line in enumerate(cta_lines):
+            line_w, _ = self._mixed_text_size(draw, line, cta_font, emoji_font)
+            x = (WIDTH - line_w) // 2
+            y = box_y + 23 + idx * line_h
+            for ox, oy in [(3, 3), (-3, 3), (3, -3), (-3, -3)]:
+                self._draw_mixed_text(draw, (x + ox, y + oy), line, cta_font, emoji_font, (0, 0, 0, 230))
+            self._draw_mixed_text(draw, (x, y), line, cta_font, emoji_font, WHITE + (255,))
 
         # Hint sotto la pillola (es. "Tocca il link in bio per leggere")
         if self.config.cta_hint:
@@ -398,6 +411,46 @@ class FacebookReelGenerator:
                 )
             except Exception:
                 return ImageFont.load_default()
+
+    def _load_emoji_font(self, size: int) -> ImageFont.ImageFont:
+        path = _emoji_font_path()
+        if path:
+            try:
+                return ImageFont.truetype(str(path), size)
+            except Exception:
+                logger.warning("Reel: font emoji non caricabile, fallback al font principale")
+        return self._load_font(size)
+
+    @staticmethod
+    def _is_emoji_char(char: str) -> bool:
+        code = ord(char)
+        return (
+            code in (0x2764, 0xFE0F)
+            or 0x1F300 <= code <= 0x1FAFF
+            or 0x2600 <= code <= 0x27BF
+        )
+
+    def _mixed_text_size(self, draw: ImageDraw.ImageDraw, text: str, text_font, emoji_font) -> tuple[int, int]:
+        width = 0
+        height = 0
+        for char in text:
+            if ord(char) == 0xFE0F:
+                continue
+            font = emoji_font if self._is_emoji_char(char) else text_font
+            bbox = draw.textbbox((0, 0), char, font=font)
+            width += bbox[2] - bbox[0]
+            height = max(height, bbox[3] - bbox[1])
+        return width, height
+
+    def _draw_mixed_text(self, draw: ImageDraw.ImageDraw, xy: tuple[int, int], text: str, text_font, emoji_font, fill) -> None:
+        x, y = xy
+        for char in text:
+            if ord(char) == 0xFE0F:
+                continue
+            font = emoji_font if self._is_emoji_char(char) else text_font
+            draw.text((x, y), char, font=font, fill=fill)
+            bbox = draw.textbbox((0, 0), char, font=font)
+            x += bbox[2] - bbox[0]
 
     @staticmethod
     def _wrap(text: str, font: ImageFont.FreeTypeFont, max_width: int):
@@ -534,7 +587,7 @@ class FacebookStoryPublisher:
         self.page_id = page_id
         self.page_token = page_access_token
 
-    def publish(self, video_path: str) -> Tuple[bool, str]:
+    def publish(self, video_path: str, description: str = "") -> Tuple[bool, str]:
         """Esegue il flusso start -> upload -> finish per una video story."""
         try:
             video_file = Path(video_path)
@@ -558,7 +611,7 @@ class FacebookStoryPublisher:
             logger.info(f"Facebook Story: UPLOAD ok ({file_size} bytes)")
 
             # FASE 3: FINISH + PUBLISH
-            ok, info = self._finish_publish(video_id)
+            ok, info = self._finish_publish(video_id, description=description)
             if not ok:
                 return False, f"Fase FINISH fallita: {info}"
             logger.info(f"Facebook Story: FINISH ok, post_id={info}")
@@ -601,14 +654,28 @@ class FacebookStoryPublisher:
         except Exception:
             return True
 
-    def _finish_publish(self, video_id: str) -> Tuple[bool, str]:
+    def _finish_publish(self, video_id: str, description: str = "") -> Tuple[bool, str]:
         url = f"https://graph.facebook.com/{self.GRAPH_VERSION}/{self.page_id}/video_stories"
         params = {
             "access_token": self.page_token,
             "video_id": video_id,
             "upload_phase": "finish",
         }
+        if description:
+            params["description"] = description[:2200]
+            params["text"] = description[:2200]
         resp = requests.post(url, params=params, timeout=60)
+        if resp.status_code != 200 and description:
+            logger.warning(
+                "Facebook Story FINISH con description/text rifiutato, retry senza testo: %s",
+                resp.text[:500],
+            )
+            fallback = {
+                "access_token": self.page_token,
+                "video_id": video_id,
+                "upload_phase": "finish",
+            }
+            resp = requests.post(url, params=fallback, timeout=60)
         if resp.status_code != 200:
             return False, f"{resp.status_code}: {resp.text[:500]}"
         try:
@@ -652,8 +719,16 @@ class FacebookReelManager:
         if not video_path:
             return False, "Generazione video fallita"
 
+        try:
+            from .share_links import build_short_share_url
+
+            short_url = build_short_share_url(articolo, "facebook", "reel")
+        except Exception:
+            short_url = getattr(settings, "SITE_URL", "https://ombradelportico.it").rstrip("/") + f"/articolo/{articolo.slug}/"
+        description = f"{articolo.titolo}\n\nLeggi tutto: {short_url}"
+
         publisher = FacebookStoryPublisher(page_id, page_token)
-        success, info = publisher.publish(video_path)
+        success, info = publisher.publish(video_path, description=description)
 
         if success:
             self._cleanup_local_file(video_path)
