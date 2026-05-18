@@ -907,16 +907,37 @@ class SocialMediaManager:
 
     def _get_page_access_token(self, user_token: str, page_id: str) -> Optional[str]:
         """
-        Ottiene il Page Access Token dalla pagina usando il User Access Token
+        Ottiene il Page Access Token.
+
+        Accetta sia:
+        - User token con permesso pages_show_list/pages_manage_posts, da cui ricava
+          il Page token della pagina.
+        - Page token gia' pronto, che viene restituito direttamente se appartiene
+          alla pagina configurata.
 
         Args:
-            user_token: User Access Token
+            user_token: User Access Token oppure Page Access Token
             page_id: ID della pagina Facebook
 
         Returns:
             Page Access Token o None se non disponibile
         """
+        if not user_token or not page_id:
+            return None
         try:
+            # Se nel .env e' gia' stato configurato un Page Access Token,
+            # /me restituisce direttamente la pagina.
+            me_resp = requests.get(
+                "https://graph.facebook.com/v24.0/me",
+                params={"fields": "id,name", "access_token": user_token},
+                timeout=10,
+            )
+            if me_resp.status_code == 200:
+                me_data = me_resp.json()
+                if str(me_data.get("id")) == str(page_id):
+                    logger.info(f"FACEBOOK_ACCESS_TOKEN e' gia' Page Access Token per page {page_id}")
+                    return user_token
+
             url = f"https://graph.facebook.com/v24.0/{page_id}"
             params = {
                 'fields': 'access_token',
