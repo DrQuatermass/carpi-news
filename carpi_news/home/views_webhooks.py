@@ -22,15 +22,23 @@ def _log_safe(value) -> str:
 
 
 def _valid_signature(request) -> bool:
-    app_secret = getattr(settings, "FACEBOOK_APP_SECRET", "")
-    if not app_secret:
-        logger.warning("Instagram webhook: FACEBOOK_APP_SECRET non configurato")
+    secrets = [
+        ("FACEBOOK_APP_SECRET", getattr(settings, "FACEBOOK_APP_SECRET", "")),
+        ("INSTAGRAM_APP_SECRET", getattr(settings, "INSTAGRAM_APP_SECRET", "")),
+    ]
+    secrets = [(name, secret) for name, secret in secrets if secret]
+    if not secrets:
+        logger.warning("Instagram webhook: nessun app secret configurato")
         return False
     header = request.headers.get("X-Hub-Signature-256", "")
     if not header.startswith("sha256="):
         return False
-    expected = hmac.new(app_secret.encode("utf-8"), request.body, hashlib.sha256).hexdigest()
-    return hmac.compare_digest(header, f"sha256={expected}")
+    for name, secret in secrets:
+        expected = hmac.new(secret.encode("utf-8"), request.body, hashlib.sha256).hexdigest()
+        if hmac.compare_digest(header, f"sha256={expected}"):
+            logger.info("Instagram webhook: signature valida con %s", name)
+            return True
+    return False
 
 
 def _emoji_only(text: str) -> bool:
