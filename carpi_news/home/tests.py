@@ -117,6 +117,7 @@ class RetryFailedSocialSharesCommandTests(TestCase):
         items = RetryFailedSocialSharesCommand()._retry_items({
             "platform": ["instagram_story"],
             "older_than_minutes": 15,
+            "newer_than_minutes": 0,
             "limit": 20,
             "article_limit": 0,
             "in_progress_only": False,
@@ -145,12 +146,54 @@ class RetryFailedSocialSharesCommandTests(TestCase):
         items = RetryFailedSocialSharesCommand()._retry_items({
             "platform": ["instagram_story"],
             "older_than_minutes": 15,
+            "newer_than_minutes": 0,
             "limit": 20,
             "article_limit": 0,
             "in_progress_only": False,
         })
 
         self.assertEqual(items, [])
+
+    def test_retry_items_can_limit_to_recent_window(self):
+        recent_log = SocialPublicationLog.objects.create(
+            articolo=self.articolo,
+            platform="instagram_story",
+            success=False,
+            error_message="Container non ready",
+        )
+        SocialPublicationLog.objects.filter(pk=recent_log.pk).update(
+            published_at=timezone.now() - timedelta(minutes=30)
+        )
+
+        old_article = Articolo.objects.create(
+            titolo="Articolo vecchio fallito",
+            contenuto="Contenuto",
+            sommario="Sommario",
+            categoria="Cronaca",
+            approvato=True,
+            data_pubblicazione=timezone.now(),
+        )
+        old_log = SocialPublicationLog.objects.create(
+            articolo=old_article,
+            platform="instagram_story",
+            success=False,
+            error_message="Container non ready",
+        )
+        SocialPublicationLog.objects.filter(pk=old_log.pk).update(
+            published_at=timezone.now() - timedelta(minutes=120)
+        )
+
+        items = RetryFailedSocialSharesCommand()._retry_items({
+            "platform": ["instagram_story"],
+            "older_than_minutes": 15,
+            "newer_than_minutes": 60,
+            "limit": 20,
+            "article_limit": 0,
+            "in_progress_only": False,
+        })
+
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0][0], self.articolo)
 
 
 @override_settings(

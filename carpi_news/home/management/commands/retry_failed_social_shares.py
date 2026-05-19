@@ -4,7 +4,7 @@ Ritenta in batch le pubblicazioni social fallite.
 Esempi:
     python manage.py retry_failed_social_shares
     python manage.py retry_failed_social_shares --platform instagram_story --platform instagram_reel
-    python manage.py retry_failed_social_shares --older-than-minutes 15 --limit 10 --execute
+    python manage.py retry_failed_social_shares --older-than-minutes 15 --newer-than-minutes 60 --limit 10 --execute
 """
 
 from collections import OrderedDict
@@ -42,6 +42,15 @@ class Command(BaseCommand):
             type=int,
             default=15,
             help="Considera solo fallimenti piu' vecchi di N minuti. Default: 15.",
+        )
+        parser.add_argument(
+            "--newer-than-minutes",
+            type=int,
+            default=0,
+            help=(
+                "Considera solo fallimenti piu' recenti di N minuti. "
+                "Default: 0, nessun limite superiore di eta'."
+            ),
         )
         parser.add_argument(
             "--limit",
@@ -109,6 +118,7 @@ class Command(BaseCommand):
     def _retry_items(self, opts):
         cutoff = timezone.now() - timedelta(minutes=opts["older_than_minutes"])
         selected_platforms = opts["platform"] or PLATFORMS
+        newer_than_minutes = opts.get("newer_than_minutes") or 0
 
         qs = (
             SocialPublicationLog.objects
@@ -121,6 +131,9 @@ class Command(BaseCommand):
             .select_related("articolo")
             .order_by("published_at")
         )
+        if newer_than_minutes > 0:
+            floor = timezone.now() - timedelta(minutes=newer_than_minutes)
+            qs = qs.filter(published_at__gte=floor)
         if opts["in_progress_only"]:
             qs = qs.filter(error_message="In progress...")
 
