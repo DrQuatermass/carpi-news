@@ -4,7 +4,7 @@ Storia e Reel automatici Instagram per Ombra del Portico.
 Riusa la pipeline di generazione video di home.facebook_reels (stesso template
 grafico 1080x1920 con logo, card, badge, titolo, musica royalty-free) ma:
 - Salva in media/stories/ o media/ig_reels/ a seconda del target
-- CTA "Link in bio / Leggi su ombradelportico.it" (gli URL non sono cliccabili ne' nelle Storie
+- CTA "Leggi nel link in bio" (gli URL non sono cliccabili ne' nelle Storie
   ne' nelle caption dei Reel Instagram, solo via Link Sticker che pero' non
   e' esposto via Graph API)
 - Pubblica via Instagram Graph API con media_type=STORIES o REELS
@@ -48,7 +48,7 @@ class InstagramStoryGenerator(FacebookReelGenerator):
         # Cartella condivisa con InstagramReelGenerator (stesso CTA, stesso video):
         # cosi' Story e Reel IG riusano lo stesso MP4 invece di rigenerarlo.
         config.output_dir_name = "ig_video"
-        config.cta_text = "Link in bio\nLeggi su ombradelportico.it"
+        config.cta_text = "Leggi nel link in bio"
         super().__init__(config)
 
 
@@ -61,7 +61,7 @@ class InstagramReelGenerator(FacebookReelGenerator):
         if config is None:
             config = ReelConfig.from_settings()
         config.output_dir_name = "ig_video"
-        config.cta_text = "Link in bio\nLeggi su ombradelportico.it"
+        config.cta_text = "Leggi nel link in bio"
         config.video_fade_in_seconds = 0
         super().__init__(config)
 
@@ -337,7 +337,7 @@ class _BaseIgVideoManager:
             import tempfile
 
             config = ReelConfig.from_settings()
-            config.cta_text = "Link in bio\nLeggi su ombradelportico.it"
+            config.cta_text = "Leggi nel link in bio"
             tmp_gen = FacebookReelGenerator(config)
             image_path = tmp_gen._resolve_image_path(articolo)
             if not image_path:
@@ -392,8 +392,7 @@ class _BaseIgVideoManager:
             "",
             sommario,
             "",
-            "Link all'articolo in bio",
-            "Leggi su https://ombradelportico.it",
+            "Leggi nel link in bio",
             "",
             hashtags,
         ]

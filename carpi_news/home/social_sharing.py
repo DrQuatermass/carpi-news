@@ -1170,8 +1170,7 @@ class SocialMediaManager:
                 caption += "..."
 
             # Finche' l'app Meta non ha Advanced Access ai DM IG, usa una CTA pubblica.
-            caption += "\n\nLink all'articolo in bio"
-            caption += "\nLeggi su https://ombradelportico.it"
+            caption += "\n\nLeggi nel link in bio"
 
             # Aggiungi hashtags basati sulla categoria
             hashtags = self._get_instagram_hashtags(articolo)

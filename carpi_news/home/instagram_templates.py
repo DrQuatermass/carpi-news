@@ -6,7 +6,7 @@ Produce un'immagine 1080x1080 in stile coerente con il Reel:
 - Card quadrata con foto articolo + bordo oro
 - Badge categoria
 - Titolo Playfair Display (max 2 righe, ellipsis automatica)
-- CTA "Link in bio / Leggi su ombradelportico.it"
+- CTA "Leggi nel link in bio"
 - Sfondo blurred dell'articolo stesso, scurito per leggibilita'
 
 Punto d'ingresso pubblico:
@@ -296,8 +296,8 @@ def render_instagram_post(
     slug: str,
     title: str,
     category: str = "Notizie",
-    cta_line_1: str = "Link in bio",
-    cta_line_2: str = "Leggi su ombradelportico.it",
+    cta_line_1: str = "Leggi nel link in bio",
+    cta_line_2: str = "",
 ) -> Optional[Path]:
     """
     Genera il template Instagram 1080x1080 a partire dall'immagine dell'articolo.
@@ -361,10 +361,10 @@ def render_instagram_post(
             draw.text((x, y), line, font=title_font, fill=WHITE + (255,))
             y += line_h
 
-        # CTA a due righe, centrata nel terzo inferiore e leggibile su foto.
+        # CTA centrata nel terzo inferiore e leggibile su foto.
         cta_font = _load_cta_font(33)
         emoji_font = _load_emoji_font(34)
-        cta_lines = [cta_line_1, cta_line_2]
+        cta_lines = [line.strip() for line in [cta_line_1, cta_line_2] if line.strip()]
         line_h = 44
         widths = [_mixed_text_size(draw, line, cta_font, emoji_font)[0] for line in cta_lines]
         box_y = 912
