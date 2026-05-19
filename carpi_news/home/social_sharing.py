@@ -193,6 +193,8 @@ class SocialMediaManager:
         """
         from .models import SocialPublicationLog
         from django.db import transaction
+        from django.utils import timezone
+        from datetime import timedelta
 
         with transaction.atomic():
             if SocialPublicationLog.objects.select_for_update().filter(
@@ -209,8 +211,13 @@ class SocialMediaManager:
             )
 
             if log_entry and log_entry.error_message == 'In progress...':
-                logger.info(f"{platform}: pubblicazione in corso da altro worker, skip")
-                return False, False
+                stale_after = timezone.now() - timedelta(minutes=15)
+                if log_entry.published_at and log_entry.published_at > stale_after:
+                    logger.info(f"{platform}: pubblicazione in corso da altro worker, skip")
+                    return False, False
+                logger.warning(
+                    f"{platform}: slot 'In progress...' obsoleto per articolo {articolo.id}, ritento"
+                )
 
             if log_entry:
                 log_entry.success = False
@@ -811,9 +818,13 @@ class SocialMediaManager:
             else:
                 success, error_msg = self._share_to_instagram_story(articolo)
                 results['instagram_story'] = success
+                shared_url, short_link = self._tracking_link(articolo, 'instagram', 'story')
                 self._finalize_publication(
                     articolo, 'instagram_story', success,
                     None if success else error_msg,
+                    shared_url=shared_url,
+                    short_link=short_link,
+                    instagram_media_id=error_msg if success else "",
                 )
 
         # Instagram Reel
@@ -825,9 +836,13 @@ class SocialMediaManager:
             else:
                 success, error_msg = self._share_to_instagram_reel(articolo)
                 results['instagram_reel'] = success
+                shared_url, short_link = self._tracking_link(articolo, 'instagram', 'reel')
                 self._finalize_publication(
                     articolo, 'instagram_reel', success,
                     None if success else error_msg,
+                    shared_url=shared_url,
+                    short_link=short_link,
+                    instagram_media_id=error_msg if success else "",
                 )
 
         success_count = sum(1 for success in results.values() if success)

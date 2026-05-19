@@ -411,6 +411,7 @@ INSTAGRAM_AUTO_DM_TEXT_TRIGGERS = [
     if item.strip()
 ]
 INSTAGRAM_AUTO_DM_STORY_FALLBACK_MINUTES = int(os.getenv('INSTAGRAM_AUTO_DM_STORY_FALLBACK_MINUTES', '180'))
+INSTAGRAM_AUTO_DM_REEL_FALLBACK_MINUTES = int(os.getenv('INSTAGRAM_AUTO_DM_REEL_FALLBACK_MINUTES', '180'))
 
 # Metadati avanzati Reel/Storia per migliorare discovery
 # CARPI_PLACE_ID: Facebook Place ID di Carpi. Usato come location tag su FB Reel

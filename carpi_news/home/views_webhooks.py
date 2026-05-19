@@ -185,8 +185,28 @@ def _find_publication_log(media_id: str, trigger_type: str):
         platform__in=["instagram_story", "instagram_reel"],
         success=True,
     ).select_related("articolo").order_by("-published_at").first()
-    if log or trigger_type == "reel_comment":
+    if log:
         return log
+
+    if trigger_type == "reel_comment":
+        fallback_minutes = int(getattr(settings, "INSTAGRAM_AUTO_DM_REEL_FALLBACK_MINUTES", 180))
+        if fallback_minutes <= 0:
+            return None
+
+        since = timezone.now() - timedelta(minutes=fallback_minutes)
+        fallback_log = SocialPublicationLog.objects.filter(
+            platform="instagram_reel",
+            success=True,
+            published_at__gte=since,
+        ).select_related("articolo").order_by("-published_at").first()
+        if fallback_log:
+            logger.warning(
+                "Instagram webhook: media_id reel %s non mappato, fallback al reel recente %s per articolo %s",
+                media_id,
+                fallback_log.instagram_media_id,
+                fallback_log.articolo_id,
+            )
+        return fallback_log
 
     fallback_minutes = int(getattr(settings, "INSTAGRAM_AUTO_DM_STORY_FALLBACK_MINUTES", 180))
     if fallback_minutes <= 0:

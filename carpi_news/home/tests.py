@@ -299,6 +299,61 @@ class InstagramWebhookTests(TestCase):
         self.assertEqual(mock_post.call_count, 1)
 
     @patch("home.views_webhooks.requests.post")
+    def test_reel_comment_unmapped_media_falls_back_to_recent_reel(self, mock_post):
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.text = "{}"
+        SocialPublicationLog.objects.create(
+            articolo=self.articolo,
+            platform="instagram_reel",
+            success=True,
+            instagram_media_id="recent-reel",
+        )
+        payload = {
+            "object": "instagram",
+            "entry": [{
+                "changes": [{
+                    "field": "comments",
+                    "value": {
+                        "from": {"id": "commenter-id"},
+                        "media": {"id": "missing-reel"},
+                        "text": "LINK",
+                    },
+                }]
+            }],
+        }
+
+        response = self._signed_post(payload)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(mock_post.call_count, 1)
+
+    @override_settings(INSTAGRAM_AUTO_DM_REEL_FALLBACK_MINUTES=0)
+    @patch("home.views_webhooks.requests.post")
+    def test_reel_fallback_can_be_disabled(self, mock_post):
+        SocialPublicationLog.objects.create(
+            articolo=self.articolo,
+            platform="instagram_reel",
+            success=True,
+            instagram_media_id="recent-reel",
+        )
+        payload = {
+            "object": "instagram",
+            "entry": [{
+                "changes": [{
+                    "field": "comments",
+                    "value": {
+                        "from": {"id": "commenter-id"},
+                        "media": {"id": "missing-reel"},
+                        "text": "LINK",
+                    },
+                }]
+            }],
+        }
+
+        response = self._signed_post(payload)
+        self.assertEqual(response.status_code, 200)
+        mock_post.assert_not_called()
+
+    @patch("home.views_webhooks.requests.post")
     def test_unmapped_media_does_not_consume_rate_limit(self, mock_post):
         mock_post.return_value.status_code = 200
         mock_post.return_value.text = "{}"
