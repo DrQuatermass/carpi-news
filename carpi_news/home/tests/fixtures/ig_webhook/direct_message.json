@@ -1,0 +1,18 @@
+{
+  "object": "instagram",
+  "entry": [
+    {
+      "id": "ig-business",
+      "messaging": [
+        {
+          "sender": {"id": "fixture-direct-message-user"},
+          "recipient": {"id": "ig-business"},
+          "message": {
+            "mid": "message-id",
+            "text": "LINK"
+          }
+        }
+      ]
+    }
+  ]
+}

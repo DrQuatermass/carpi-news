@@ -1,0 +1,15 @@
+{
+  "object": "instagram",
+  "entry": [
+    {
+      "id": "ig-business",
+      "messaging": [
+        {
+          "sender": {"id": "fixture-story-reaction-user"},
+          "recipient": {"id": "ig-business"},
+          "reaction": {"mid": "message-id", "emoji": "❤️"}
+        }
+      ]
+    }
+  ]
+}

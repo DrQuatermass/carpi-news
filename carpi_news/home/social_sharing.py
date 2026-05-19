@@ -256,11 +256,17 @@ class SocialMediaManager:
         if instagram_media_id:
             defaults['instagram_media_id'] = instagram_media_id
 
-        SocialPublicationLog.objects.update_or_create(
+        log, _created = SocialPublicationLog.objects.update_or_create(
             articolo=articolo,
             platform=platform,
             defaults=defaults,
         )
+        if instagram_media_id:
+            media_ids = list(log.instagram_media_ids or [])
+            if instagram_media_id not in media_ids:
+                media_ids.append(instagram_media_id)
+                log.instagram_media_ids = media_ids[-50:]
+                log.save(update_fields=['instagram_media_ids'])
 
     def _refresh_facebook_link_preview(self, article_url: str, access_token: str) -> None:
         """

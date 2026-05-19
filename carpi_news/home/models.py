@@ -587,6 +587,8 @@ class SocialPublicationLog(models.Model):
         related_name='social_publications',
     )
     instagram_media_id = models.CharField(max_length=100, blank=True, db_index=True)
+    instagram_media_ids = models.JSONField(default=list, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         verbose_name = "Log Pubblicazione Social"
@@ -594,6 +596,7 @@ class SocialPublicationLog(models.Model):
         ordering = ['-published_at']
         indexes = [
             models.Index(fields=['articolo', 'platform', 'success']),
+            models.Index(fields=['platform', 'success', '-updated_at'], name='home_soc_plat_succ_upd_idx'),
         ]
 
     def __str__(self):

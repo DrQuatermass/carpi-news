@@ -1,0 +1,19 @@
+{
+  "object": "instagram",
+  "entry": [
+    {
+      "id": "ig-business",
+      "messaging": [
+        {
+          "sender": {"id": "fixture-story-reply-user"},
+          "recipient": {"id": "ig-business"},
+          "message": {
+            "mid": "message-id",
+            "text": "LINK",
+            "reply_to": {"story": {"id": "fixture-story-media"}}
+          }
+        }
+      ]
+    }
+  ]
+}

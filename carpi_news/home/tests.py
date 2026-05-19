@@ -203,6 +203,7 @@ class RetryFailedSocialSharesCommandTests(TestCase):
     FACEBOOK_APP_SECRET="secret",
     INSTAGRAM_PAGE_ACCESS_TOKEN="page-token",
     INSTAGRAM_ACCOUNT_ID="ig-business",
+    INSTAGRAM_WEBHOOK_HANDLE_SYNC=True,
     CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}},
 )
 class InstagramWebhookTests(TestCase):
@@ -227,6 +228,7 @@ class InstagramWebhookTests(TestCase):
             platform="instagram_story",
             success=True,
             instagram_media_id="media-1",
+            instagram_media_ids=["media-1"],
         )
 
     def _signed_post(self, payload):
@@ -286,6 +288,90 @@ class InstagramWebhookTests(TestCase):
         response = self._signed_post(payload)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(mock_post.call_count, 1)
+
+    @patch("home.views_webhooks.requests.post")
+    def test_media_history_matches_old_instagram_media_id(self, mock_post):
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.text = "{}"
+        SocialPublicationLog.objects.filter(articolo=self.articolo, platform="instagram_story").update(
+            instagram_media_id="new-media",
+            instagram_media_ids=["media-1", "old-media", "new-media"],
+        )
+        payload = {
+            "entry": [{
+                "changes": [{
+                    "field": "messages",
+                    "value": {
+                        "sender": {"id": "history-user"},
+                        "media": {"id": "old-media"},
+                        "message": {"text": "LINK"},
+                    },
+                }]
+            }]
+        }
+
+        response = self._signed_post(payload)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(mock_post.call_count, 1)
+
+    @patch("home.views_webhooks.requests.post")
+    def test_linkedin_does_not_match_link_trigger(self, mock_post):
+        payload = {
+            "entry": [{
+                "changes": [{
+                    "field": "messages",
+                    "value": {
+                        "sender": {"id": "linkedin-user"},
+                        "media": {"id": "media-1"},
+                        "message": {"text": "LINKEDIN"},
+                    },
+                }]
+            }]
+        }
+
+        response = self._signed_post(payload)
+        self.assertEqual(response.status_code, 200)
+        mock_post.assert_not_called()
+
+    @patch("home.views_webhooks.requests.post")
+    def test_rate_limit_released_on_dm_failure(self, mock_post):
+        fail_response = type("Resp", (), {})()
+        fail_response.status_code = 400
+        fail_response.text = '{"error":{"message":"fail","code":10,"fbtrace_id":"trace"}}'
+        fail_response.json = lambda: {"error": {"message": "fail", "code": 10, "fbtrace_id": "trace"}}
+        ok_response = type("Resp", (), {})()
+        ok_response.status_code = 200
+        ok_response.text = "{}"
+        ok_response.json = lambda: {}
+        mock_post.side_effect = [fail_response, ok_response]
+        first_payload = {
+            "entry": [{
+                "changes": [{
+                    "field": "messages",
+                    "value": {
+                        "sender": {"id": "retry-user"},
+                        "media": {"id": "media-1"},
+                        "message": {"text": "LINK"},
+                    },
+                }]
+            }]
+        }
+        second_payload = {
+            "entry": [{
+                "changes": [{
+                    "field": "messages",
+                    "value": {
+                        "sender": {"id": "retry-user"},
+                        "media": {"id": "media-1"},
+                        "message": {"text": "INFO"},
+                    },
+                }]
+            }]
+        }
+
+        self.assertEqual(self._signed_post(first_payload).status_code, 200)
+        self.assertEqual(self._signed_post(second_payload).status_code, 200)
+        self.assertEqual(mock_post.call_count, 2)
 
     @patch("home.views_webhooks.requests.post")
     def test_stop_opt_out(self, mock_post):

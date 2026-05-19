@@ -1369,10 +1369,14 @@ class ChatbotConversationAdmin(admin.ModelAdmin):
 @admin.register(SocialPublicationLog)
 class SocialPublicationLogAdmin(admin.ModelAdmin):
     """Admin per il log delle pubblicazioni social"""
-    list_display = ['status_icon', 'platform', 'articolo_title', 'shared_url', 'instagram_media_id', 'published_at']
+    list_display = ['status_icon', 'platform', 'articolo_title', 'shared_url', 'instagram_media_id', 'published_at', 'updated_at']
     list_filter = ['platform', 'success', 'published_at']
-    search_fields = ['articolo__titolo', 'articolo__slug', 'shared_url', 'instagram_media_id']
-    readonly_fields = ['articolo', 'platform', 'success', 'published_at', 'error_message', 'shared_url', 'short_link', 'instagram_media_id']
+    search_fields = ['articolo__titolo', 'articolo__slug', 'shared_url', 'instagram_media_id', 'instagram_media_ids']
+    readonly_fields = [
+        'articolo', 'platform', 'success', 'published_at', 'updated_at',
+        'error_message', 'shared_url', 'short_link', 'instagram_media_id',
+        'instagram_media_ids',
+    ]
     date_hierarchy = 'published_at'
     ordering = ['-published_at']
 

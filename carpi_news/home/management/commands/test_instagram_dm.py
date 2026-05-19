@@ -1,8 +1,13 @@
+import json
+from pathlib import Path
+from unittest.mock import patch
+
+from django.conf import settings
 from django.core.management.base import BaseCommand, CommandError
 
 from home.models import InstagramAutoDMLog, SocialPublicationLog
 from home.share_links import build_short_share_url, get_or_create_short_link
-from home.views_webhooks import _send_dm
+from home.views_webhooks import _extract_events, _handle_event, _send_dm
 
 
 class Command(BaseCommand):
@@ -14,12 +19,26 @@ class Command(BaseCommand):
         parser.add_argument("--sender-id", type=str, help="IG sender id ricevuto dal webhook")
         parser.add_argument("--trigger", type=str, default="reaction", help="Valore trigger da loggare")
         parser.add_argument(
+            "--fixture",
+            type=str,
+            help="Nome file fixture in home/tests/fixtures/ig_webhook/ oppure path JSON completo.",
+        )
+        parser.add_argument(
+            "--handle-fixture",
+            action="store_true",
+            help="Esegue _handle_event sugli eventi estratti dalla fixture. Senza --send mocka l'invio DM.",
+        )
+        parser.add_argument(
             "--send",
             action="store_true",
             help="Invia davvero il DM. Senza questo flag stampa solo anteprima messaggio/link.",
         )
 
     def handle(self, *args, **options):
+        if options.get("fixture"):
+            self._handle_fixture(options)
+            return
+
         log = self._find_log(options.get("article_id"), options.get("media_id"))
         articolo = log.articolo
         short_link = get_or_create_short_link(articolo, "instagram", "instagram_dm")
@@ -78,3 +97,42 @@ class Command(BaseCommand):
         if not log:
             raise CommandError("Nessun SocialPublicationLog IG valido trovato con media_id valorizzato.")
         return log
+
+    def _handle_fixture(self, options):
+        path = self._fixture_path(options["fixture"])
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        events = list(_extract_events(payload))
+        self.stdout.write(self.style.NOTICE(f"Fixture: {path}"))
+        self.stdout.write(f"Eventi estratti: {len(events)}")
+        for event in events:
+            self.stdout.write(
+                f"  sender={event[0]} media={event[1]} type={event[2]} value={event[3]} trigger={event[4]}"
+            )
+
+        if not options["handle_fixture"]:
+            self.stdout.write(self.style.WARNING("Dry-run: parsing soltanto. Usa --handle-fixture per gestire gli eventi."))
+            return
+
+        if options["send"]:
+            for event in events:
+                _handle_event(*event)
+            return
+
+        with patch("home.views_webhooks._send_dm", return_value=(True, "mock")):
+            for event in events:
+                _handle_event(*event)
+        self.stdout.write(self.style.SUCCESS("Fixture gestita con invio DM mockato."))
+
+    def _fixture_path(self, value: str) -> Path:
+        candidate = Path(value)
+        if candidate.exists():
+            return candidate
+        fixture_dir = Path(settings.BASE_DIR) / "home" / "tests" / "fixtures" / "ig_webhook"
+        candidate = fixture_dir / value
+        if candidate.exists():
+            return candidate
+        if not value.endswith(".json"):
+            candidate = fixture_dir / f"{value}.json"
+            if candidate.exists():
+                return candidate
+        raise CommandError(f"Fixture non trovata: {value}")

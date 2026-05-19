@@ -403,7 +403,7 @@ Additional guides available:
 
 Nuovi modelli:
 - `ShortLink`: collega `Articolo`, `platform`, `medium` e token `/s/<token>/`, con `clicks_count` e ultimo referer.
-- `SocialPublicationLog`: conserva `shared_url`, `short_link` e `instagram_media_id` per mappare Story/Reel IG all'articolo corretto.
+- `SocialPublicationLog`: conserva `shared_url`, `short_link`, `instagram_media_id`, storico `instagram_media_ids` e `updated_at` per mappare Story/Reel IG all'articolo corretto anche dopo retry/ripubblicazioni.
 - `InstagramAutoDMLog`: traccia trigger IG e invio DM.
 - `InstagramOptOut`: utenti IG che hanno risposto `STOP`.
 
@@ -429,6 +429,24 @@ Variabili ambiente:
 - `INSTAGRAM_PAGE_ACCESS_TOKEN`
 - `INSTAGRAM_AUTO_DM_ACCEPT_ANY_EMOJI`
 - `INSTAGRAM_AUTO_DM_TEXT_TRIGGERS`
+- `INSTAGRAM_AUTO_DM_STORY_FALLBACK_MINUTES` default `1440` (24 ore)
+- `INSTAGRAM_AUTO_DM_REEL_FALLBACK_MINUTES` default `4320` (72 ore)
+- `INSTAGRAM_WEBHOOK_HANDLE_SYNC` default `False`; usare `True` solo nei test/manual debug.
+
+## Diagnostica DM IG
+
+Comandi utili:
+- `python manage.py test_instagram_dm --fixture story_reaction`: parse fixture senza inviare DM.
+- `python manage.py test_instagram_dm --fixture story_reply --handle-fixture`: gestisce fixture con invio DM mockato.
+- `python manage.py test_instagram_dm --media-id <ig_media_id> --sender-id <ig_sender_id> --send`: invia davvero un DM di test.
+- `python manage.py check_ig_dm_token`: controlla `/debug_token`, validità, scadenza e scope del token DM.
+- `python manage.py check_ig_subscriptions`: legge `/{page-id}/subscribed_apps` e stampa i campi webhook sottoscritti.
+
+Note operative:
+- Il webhook risponde subito `200` e gestisce gli eventi in background, salvo `INSTAGRAM_WEBHOOK_HANDLE_SYNC=True`.
+- Eventi duplicati Meta vengono deduplicati in cache per 24 ore.
+- Il rate limit per utente dura 60 secondi ma viene liberato se l'invio DM fallisce.
+- Trigger testuali sono matchati per parola intera: `LINK` matcha, `LINKEDIN` non matcha.
 
 ## Instagram Webhook Setup
 

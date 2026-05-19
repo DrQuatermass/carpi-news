@@ -1,0 +1,17 @@
+{
+  "object": "instagram",
+  "entry": [
+    {
+      "changes": [
+        {
+          "field": "comments",
+          "value": {
+            "from": {"id": "fixture-reel-comment-user"},
+            "media": {"id": "fixture-reel-media"},
+            "text": "LINK"
+          }
+        }
+      ]
+    }
+  ]
+}
