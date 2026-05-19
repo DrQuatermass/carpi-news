@@ -1169,8 +1169,9 @@ class SocialMediaManager:
             if len(articolo.sommario) > 450:
                 caption += "..."
 
-            # Invece del link completo, invita a visitare il link in bio
-            caption += f"\n\n🔗 Link in bio per leggere l'articolo completo"
+            # Finche' l'app Meta non ha Advanced Access ai DM IG, usa una CTA pubblica.
+            caption += "\n\nLink all'articolo in bio"
+            caption += "\nLeggi su https://ombradelportico.it"
 
             # Aggiungi hashtags basati sulla categoria
             hashtags = self._get_instagram_hashtags(articolo)
