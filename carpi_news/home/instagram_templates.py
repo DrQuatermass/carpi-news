@@ -6,7 +6,7 @@ Produce un'immagine 1080x1080 in stile coerente con il Reel:
 - Card quadrata con foto articolo + bordo oro
 - Badge categoria
 - Titolo Playfair Display (max 2 righe, ellipsis automatica)
-- CTA "Leggi nel link in bio" in pillola bianca
+- CTA "Link in bio / Scrivi cuore o LINK nei DM"
 - Sfondo blurred dell'articolo stesso, scurito per leggibilita'
 
 Punto d'ingresso pubblico:
@@ -297,7 +297,7 @@ def render_instagram_post(
     title: str,
     category: str = "Notizie",
     cta_line_1: str = "Link in bio",
-    cta_line_2: str = "{heart} per riceverlo nei DM",
+    cta_line_2: str = "Scrivi {heart} o LINK nei DM",
 ) -> Optional[Path]:
     """
     Genera il template Instagram 1080x1080 a partire dall'immagine dell'articolo.
