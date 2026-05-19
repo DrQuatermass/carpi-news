@@ -694,7 +694,7 @@ class SocialMediaManager:
 
         return results
 
-    def retry_failed_platforms_only(self, articolo) -> Dict[str, bool]:
+    def retry_failed_platforms_only(self, articolo, only_platforms=None) -> Dict[str, bool]:
         """
         Riprova la condivisione SOLO sulle piattaforme che non hanno avuto successo.
         Utile quando Instagram fallisce temporaneamente e serve un retry manuale.
@@ -709,11 +709,15 @@ class SocialMediaManager:
 
         results = {}
         article_url = self._get_social_article_url(articolo)
+        only_platforms = set(only_platforms) if only_platforms else None
+
+        def should_retry_platform(platform: str) -> bool:
+            return only_platforms is None or platform in only_platforms
 
         logger.info(f"Retry condivisione solo piattaforme fallite per: {articolo.titolo}")
 
         # Telegram - retry solo se non pubblicato con successo
-        if self.platforms['telegram']['enabled']:
+        if self.platforms['telegram']['enabled'] and should_retry_platform('telegram'):
             already_published = SocialPublicationLog.objects.filter(
                 articolo=articolo,
                 platform='telegram',
@@ -735,7 +739,7 @@ class SocialMediaManager:
                 )
 
         # Facebook - retry solo se non pubblicato con successo
-        if self.platforms['facebook']['enabled']:
+        if self.platforms['facebook']['enabled'] and should_retry_platform('facebook'):
             already_published = SocialPublicationLog.objects.filter(
                 articolo=articolo,
                 platform='facebook',
@@ -757,7 +761,7 @@ class SocialMediaManager:
                 )
 
         # Facebook Story - retry solo se non pubblicato con successo
-        if self.platforms['facebook_story']['enabled']:
+        if self.platforms['facebook_story']['enabled'] and should_retry_platform('facebook_story'):
             if articolo.has_shareable_image:
                 already_published = SocialPublicationLog.objects.filter(
                     articolo=articolo,
@@ -785,7 +789,7 @@ class SocialMediaManager:
                 results['facebook_story'] = False
 
         # Instagram - retry solo se non pubblicato con successo
-        if self.platforms['instagram']['enabled']:
+        if self.platforms['instagram']['enabled'] and should_retry_platform('instagram'):
             if articolo.has_shareable_image:
                 already_published = SocialPublicationLog.objects.filter(
                     articolo=articolo,
@@ -810,7 +814,11 @@ class SocialMediaManager:
                 results['instagram'] = False
 
         # Instagram Story
-        if self.platforms['instagram_story']['enabled'] and articolo.has_shareable_image:
+        if (
+            self.platforms['instagram_story']['enabled']
+            and should_retry_platform('instagram_story')
+            and articolo.has_shareable_image
+        ):
             if SocialPublicationLog.objects.filter(
                 articolo=articolo, platform='instagram_story', success=True
             ).exists():
@@ -828,7 +836,11 @@ class SocialMediaManager:
                 )
 
         # Instagram Reel
-        if self.platforms['instagram_reel']['enabled'] and articolo.has_shareable_image:
+        if (
+            self.platforms['instagram_reel']['enabled']
+            and should_retry_platform('instagram_reel')
+            and articolo.has_shareable_image
+        ):
             if SocialPublicationLog.objects.filter(
                 articolo=articolo, platform='instagram_reel', success=True
             ).exists():

@@ -9,6 +9,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from home.content_polisher import content_polisher
+from home.management.commands.retry_failed_social_shares import Command as RetryFailedSocialSharesCommand
 from home.models import Articolo, InstagramOptOut, ShortLink, SocialPublicationLog
 from home.share_links import build_share_url, build_short_share_url
 from home.universal_news_monitor import parse_ai_article_json
@@ -84,6 +85,72 @@ class ShareLinkTests(TestCase):
         self.assertIn("utm_source=instagram", response["Location"])
         short_link.refresh_from_db()
         self.assertEqual(short_link.clicks_count, 1)
+
+
+@override_settings(
+    DEBUG=True,
+    SITE_URL="https://testserver",
+    CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}},
+)
+class RetryFailedSocialSharesCommandTests(TestCase):
+    def setUp(self):
+        self.articolo = Articolo.objects.create(
+            titolo="Articolo fallito",
+            contenuto="Contenuto",
+            sommario="Sommario",
+            categoria="Cronaca",
+            approvato=True,
+            data_pubblicazione=timezone.now(),
+        )
+
+    def test_retry_items_selects_old_failed_logs(self):
+        SocialPublicationLog.objects.create(
+            articolo=self.articolo,
+            platform="instagram_story",
+            success=False,
+            error_message="Container non ready",
+        )
+        SocialPublicationLog.objects.filter(articolo=self.articolo).update(
+            published_at=timezone.now() - timedelta(minutes=30)
+        )
+
+        items = RetryFailedSocialSharesCommand()._retry_items({
+            "platform": ["instagram_story"],
+            "older_than_minutes": 15,
+            "limit": 20,
+            "article_limit": 0,
+            "in_progress_only": False,
+        })
+
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0][0], self.articolo)
+        self.assertEqual(items[0][1], "instagram_story")
+
+    def test_retry_items_skips_platform_with_success_log(self):
+        SocialPublicationLog.objects.create(
+            articolo=self.articolo,
+            platform="instagram_story",
+            success=False,
+            error_message="Container non ready",
+        )
+        SocialPublicationLog.objects.create(
+            articolo=self.articolo,
+            platform="instagram_story",
+            success=True,
+        )
+        SocialPublicationLog.objects.filter(articolo=self.articolo).update(
+            published_at=timezone.now() - timedelta(minutes=30)
+        )
+
+        items = RetryFailedSocialSharesCommand()._retry_items({
+            "platform": ["instagram_story"],
+            "older_than_minutes": 15,
+            "limit": 20,
+            "article_limit": 0,
+            "in_progress_only": False,
+        })
+
+        self.assertEqual(items, [])
 
 
 @override_settings(
