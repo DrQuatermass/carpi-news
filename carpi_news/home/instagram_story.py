@@ -161,8 +161,10 @@ class InstagramVideoPublisher:
 
             # FASE 2: attendi processing (Instagram impiega tempo per i video)
             # Per i video serve un po' di tempo: 5-15s di solito basta
-            ok = self._wait_container_ready(container_id, max_wait_s=60)
+            ok, wait_error = self._wait_container_ready(container_id, max_wait_s=60)
             if not ok:
+                if wait_error:
+                    return False, wait_error
                 return False, f"Container {container_id} non e' diventato READY in tempo"
 
             # FASE 3: pubblica
@@ -189,7 +191,7 @@ class InstagramVideoPublisher:
             return False, str(e)
 
     def _wait_container_ready(self, container_id: str, max_wait_s: int = 60,
-                               poll_interval_s: int = 5) -> bool:
+                               poll_interval_s: int = 5) -> tuple[bool, str]:
         """
         Polla lo status del container fino a 'FINISHED' o errore.
         I video Instagram passano da IN_PROGRESS -> FINISHED in ~5-15s.
@@ -203,20 +205,63 @@ class InstagramVideoPublisher:
             try:
                 resp = requests.get(url, params=params, timeout=15)
                 if resp.status_code != 200:
-                    logger.warning(f"IG: poll status fallito {resp.status_code}: {resp.text[:200]}")
+                    error_msg = self._format_graph_error(resp)
+                    logger.warning(f"IG: poll status fallito {resp.status_code}: {error_msg}")
+                    if self._is_rate_limited_response(resp):
+                        return False, f"Meta rate limit durante poll container {container_id}: {error_msg}"
                     continue
                 payload = resp.json()
                 status_code = payload.get("status_code", "")
                 logger.info(f"IG container {container_id}: status_code={status_code} (elapsed={elapsed}s)")
                 if status_code == "FINISHED":
-                    return True
+                    return True, ""
                 if status_code in ("ERROR", "EXPIRED"):
                     logger.error(f"IG container in stato terminale {status_code}: {payload}")
-                    return False
+                    return False, f"Container {container_id} in stato terminale {status_code}: {payload}"
             except requests.RequestException as e:
                 logger.warning(f"IG: errore poll status {e}")
         logger.error(f"IG container {container_id}: timeout dopo {max_wait_s}s")
-        return False
+        return False, ""
+
+    @staticmethod
+    def _format_graph_error(resp: requests.Response) -> str:
+        try:
+            payload = resp.json()
+        except ValueError:
+            return resp.text[:500]
+
+        error = payload.get("error") if isinstance(payload, dict) else None
+        if not isinstance(error, dict):
+            return str(payload)[:500]
+
+        message = error.get("message", "")
+        code = error.get("code", "")
+        subcode = error.get("error_subcode", "")
+        transient = error.get("is_transient", "")
+        parts = [str(message)[:300]]
+        if code != "":
+            parts.append(f"code={code}")
+        if subcode != "":
+            parts.append(f"subcode={subcode}")
+        if transient != "":
+            parts.append(f"is_transient={transient}")
+        for header_name in ("x-app-usage", "x-page-usage", "x-business-use-case-usage"):
+            header_value = resp.headers.get(header_name)
+            if header_value:
+                parts.append(f"{header_name}={header_value[:200]}")
+        return " | ".join(part for part in parts if part)
+
+    @staticmethod
+    def _is_rate_limited_response(resp: requests.Response) -> bool:
+        try:
+            payload = resp.json()
+        except ValueError:
+            return resp.status_code == 429
+
+        error = payload.get("error") if isinstance(payload, dict) else None
+        if not isinstance(error, dict):
+            return resp.status_code == 429
+        return resp.status_code == 429 or error.get("code") in (4, 17, 32, 613)
 
 
 # -----------------------------------------------------------------------------
