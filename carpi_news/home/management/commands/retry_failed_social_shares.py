@@ -107,9 +107,14 @@ class Command(BaseCommand):
             self.stdout.write(self.style.NOTICE(
                 f"Retry articolo {articolo.id} piattaforme: {', '.join(platforms)}"
             ))
+            # Se l'utente non ha limitato esplicitamente le piattaforme, per ogni
+            # articolo selezionato ricontrolla tutti i canali abilitati: puo'
+            # capitare che il log fallito sia IG, ma manchino anche Telegram,
+            # Facebook o Facebook Story.
+            only_platforms = platforms if opts["platform"] else None
             results = social_manager.retry_failed_platforms_only(
                 articolo,
-                only_platforms=platforms,
+                only_platforms=only_platforms,
             )
             for platform, ok in results.items():
                 style = self.style.SUCCESS if ok else self.style.ERROR

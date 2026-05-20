@@ -361,36 +361,47 @@ def render_instagram_post(
             draw.text((x, y), line, font=title_font, fill=WHITE + (255,))
             y += line_h
 
-        # CTA centrata nel terzo inferiore e leggibile su foto.
+        # CTA centrata in pill bianca e leggibile su foto.
         cta_font = _load_cta_font(33)
         emoji_font = _load_emoji_font(34)
         cta_lines = [line.strip() for line in [cta_line_1, cta_line_2] if line.strip()]
         line_h = 44
-        widths = [_mixed_text_size(draw, line, cta_font, emoji_font)[0] for line in cta_lines]
-        box_y = 912
-        for idx, line in enumerate(cta_lines):
-            line_w, _ = _mixed_text_size(draw, line, cta_font, emoji_font)
-            x = (SIZE - line_w) // 2
-            y = box_y + 18 + idx * line_h
-            for ox, oy in [(2, 2), (-2, 2), (2, -2), (-2, -2)]:
+        if cta_lines:
+            widths = [_mixed_text_size(draw, line, cta_font, emoji_font)[0] for line in cta_lines]
+            max_line_w = max(widths)
+            pad_x = 42
+            pad_y = 18
+            pill_w = min(SIZE - 150, max_line_w + pad_x * 2)
+            pill_h = len(cta_lines) * line_h + pad_y * 2
+            pill_x = (SIZE - pill_w) // 2
+            pill_y = 916
+            radius = pill_h // 2
+            draw.rounded_rectangle(
+                [(pill_x + 3, pill_y + 5), (pill_x + pill_w + 3, pill_y + pill_h + 5)],
+                radius=radius,
+                fill=(0, 0, 0, 90),
+            )
+            draw.rounded_rectangle(
+                [(pill_x, pill_y), (pill_x + pill_w, pill_y + pill_h)],
+                radius=radius,
+                fill=(255, 255, 255, 238),
+                outline=(255, 255, 255, 255),
+                width=2,
+            )
+
+            for idx, line in enumerate(cta_lines):
+                line_w, _ = _mixed_text_size(draw, line, cta_font, emoji_font)
+                x = (SIZE - line_w) // 2
+                y = pill_y + pad_y + idx * line_h
                 _draw_mixed_text(
                     overlay,
                     draw,
-                    (x + ox, y + oy),
+                    (x, y),
                     line,
                     cta_font,
                     emoji_font,
-                    (0, 0, 0, 230),
+                    DARK_BG + (255,),
                 )
-            _draw_mixed_text(
-                overlay,
-                draw,
-                (x, y),
-                line,
-                cta_font,
-                emoji_font,
-                WHITE + (255,),
-            )
 
         final = Image.alpha_composite(bg, overlay).convert("RGB")
         out_path = _output_dir() / f"{slug}_ig.jpg"

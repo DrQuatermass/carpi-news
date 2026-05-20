@@ -374,20 +374,39 @@ class FacebookReelGenerator:
             draw.text((x, y), line, font=title_font, fill=WHITE + (255,))
             y += line_height
 
-        # CTA in basso, leggibile su qualunque foto.
+        # CTA in basso in pill bianca, leggibile su qualunque foto.
         cta_font = self._load_cta_font(44)
         cta_lines = [line.strip() for line in self.config.cta_text.splitlines() if line.strip()]
         line_h = 58
         emoji_font = self._load_emoji_font(46)
-        widths = [self._mixed_text_size(draw, line, cta_font, emoji_font)[0] for line in cta_lines]
-        box_y = HEIGHT - 265
-        for idx, line in enumerate(cta_lines):
-            line_w, _ = self._mixed_text_size(draw, line, cta_font, emoji_font)
-            x = (WIDTH - line_w) // 2
-            y = box_y + 23 + idx * line_h
-            for ox, oy in [(2, 2), (-2, 2), (2, -2), (-2, -2)]:
-                self._draw_mixed_text(layer, draw, (x + ox, y + oy), line, cta_font, emoji_font, (0, 0, 0, 230))
-            self._draw_mixed_text(layer, draw, (x, y), line, cta_font, emoji_font, WHITE + (255,))
+        if cta_lines:
+            widths = [self._mixed_text_size(draw, line, cta_font, emoji_font)[0] for line in cta_lines]
+            max_line_w = max(widths)
+            pad_x = 54
+            pad_y = 24
+            pill_w = min(WIDTH - 160, max_line_w + pad_x * 2)
+            pill_h = len(cta_lines) * line_h + pad_y * 2
+            pill_x = (WIDTH - pill_w) // 2
+            pill_y = HEIGHT - 285
+            radius = pill_h // 2
+            draw.rounded_rectangle(
+                [(pill_x + 4, pill_y + 6), (pill_x + pill_w + 4, pill_y + pill_h + 6)],
+                radius=radius,
+                fill=(0, 0, 0, 90),
+            )
+            draw.rounded_rectangle(
+                [(pill_x, pill_y), (pill_x + pill_w, pill_y + pill_h)],
+                radius=radius,
+                fill=(255, 255, 255, 238),
+                outline=(255, 255, 255, 255),
+                width=2,
+            )
+
+            for idx, line in enumerate(cta_lines):
+                line_w, _ = self._mixed_text_size(draw, line, cta_font, emoji_font)
+                x = (WIDTH - line_w) // 2
+                y = pill_y + pad_y + idx * line_h
+                self._draw_mixed_text(layer, draw, (x, y), line, cta_font, emoji_font, DARK_BG + (255,))
 
         # Hint sotto la pillola (es. "Tocca il link in bio per leggere")
         if self.config.cta_hint:
@@ -396,7 +415,7 @@ class FacebookReelGenerator:
             hbb = draw.textbbox((0, 0), hint, font=hint_font)
             hw = hbb[2] - hbb[0]
             hx = (WIDTH - hw) // 2
-            hy = cy + 58 + pad_y + 26
+            hy = (pill_y + pill_h + 26) if cta_lines else HEIGHT - 145
             # Ombra per leggibilita'
             for ox, oy in [(1, 1), (-1, 1), (1, -1), (-1, -1)]:
                 draw.text((hx + ox, hy + oy), hint, font=hint_font, fill=(0, 0, 0, 200))

@@ -4,9 +4,8 @@ Storia e Reel automatici Instagram per Ombra del Portico.
 Riusa la pipeline di generazione video di home.facebook_reels (stesso template
 grafico 1080x1920 con logo, card, badge, titolo, musica royalty-free) ma:
 - Salva in media/stories/ o media/ig_reels/ a seconda del target
-- CTA "Leggi nel link in bio" (gli URL non sono cliccabili ne' nelle Storie
-  ne' nelle caption dei Reel Instagram, solo via Link Sticker che pero' non
-  e' esposto via Graph API)
+- CTA "Leggi nel link in bio"; nei Reel il link tracciato viene inserito
+  nella descrizione/caption.
 - Pubblica via Instagram Graph API con media_type=STORIES o REELS
 
 Limitazioni Meta (importanti da sapere):
@@ -88,7 +87,6 @@ class InstagramVideoPublisher:
         self.media_type = media_type
 
     def publish(self, video_url: str, caption: str = "",
-                link_comment: str = "",
                 location_id: str = "",
                 cover_url: str = "",
                 audio_name: str = "",
@@ -114,7 +112,7 @@ class InstagramVideoPublisher:
             if self.media_type == "REELS" and caption:
                 # Caption supportata solo per Reels (max 2200 char)
                 data["caption"] = caption[:2200]
-                data["share_to_feed"] = "true"
+                data["share_to_feed"] = "false"
 
             # Metadati avanzati per discovery (entrambi i media_type)
             if location_id:
@@ -182,15 +180,6 @@ class InstagramVideoPublisher:
 
             media_id = pub_resp.json().get("id", "")
 
-            # Commento auto col link cliccabile (solo Reels; Storie non hanno commenti).
-            # Best-effort: fallimento NON deve far fallire il publish.
-            if link_comment and self.media_type == "REELS" and media_id:
-                ok, info = self._post_link_comment(media_id, link_comment)
-                if ok:
-                    logger.info(f"IG Reel: commento link pubblicato (id={info})")
-                else:
-                    logger.warning(f"IG Reel: commento link fallito (non blocca): {info}")
-
             return True, media_id
 
         except requests.RequestException as e:
@@ -198,23 +187,6 @@ class InstagramVideoPublisher:
         except Exception as e:
             logger.error(f"IG {self.media_type}: eccezione publish", exc_info=True)
             return False, str(e)
-
-    def _post_link_comment(self, media_id: str, message: str) -> Tuple[bool, str]:
-        """Pubblica un commento dalla Pagina sul Reel IG col link cliccabile.
-        Delay 3s perche' subito dopo il publish il Reel potrebbe non essere
-        ancora indicizzato per commenti."""
-        time.sleep(3)
-        url = f"https://graph.facebook.com/{self.GRAPH_VERSION}/{media_id}/comments"
-        try:
-            resp = requests.post(url, data={
-                "access_token": self.page_token,
-                "message": message[:2200],
-            }, timeout=30)
-            if resp.status_code == 200:
-                return True, resp.json().get("id", "")
-            return False, f"{resp.status_code}: {resp.text[:300]}"
-        except requests.RequestException as e:
-            return False, f"HTTP error: {e}"
 
     def _wait_container_ready(self, container_id: str, max_wait_s: int = 60,
                                poll_interval_s: int = 5) -> bool:
@@ -280,8 +252,6 @@ class _BaseIgVideoManager:
         video_url = f"https://ombradelportico.it/media/{self.OUTPUT_SUBDIR}/{video_filename}"
 
         caption = self._build_caption(articolo)
-        # Commento col link cliccabile: solo per Reels (le Storie IG non hanno commenti)
-        link_comment = self._build_link_comment(articolo) if self.MEDIA_TYPE == "REELS" else ""
 
         # Metadati avanzati per discovery.
         # Le Stories IG accettano un set di parametri piu' stretto dei Reel:
@@ -294,7 +264,6 @@ class _BaseIgVideoManager:
         success, info = publisher.publish(
             video_url,
             caption=caption,
-            link_comment=link_comment,
             location_id=location_id,
             cover_url=cover_url,
             audio_name=audio_name,
@@ -365,8 +334,8 @@ class _BaseIgVideoManager:
             return ""
 
     @staticmethod
-    def _build_link_comment(articolo) -> str:
-        """Commento autopubblicato sul Reel IG col link cliccabile."""
+    def _build_reel_description_link(articolo) -> str:
+        """Link tracciato da inserire nella descrizione del Reel IG."""
         try:
             from home.share_links import build_short_share_url
 
@@ -374,10 +343,9 @@ class _BaseIgVideoManager:
         except Exception:
             url = (f"https://ombradelportico.it/articolo/{articolo.slug}/"
                    f"?utm_source=instagram&utm_medium=reel&utm_campaign=share")
-        return f"Leggi l'articolo completo qui: {url}"
+        return url
 
-    @staticmethod
-    def _build_caption(articolo) -> str:
+    def _build_caption(self, articolo) -> str:
         """Caption del Reel IG (ignorata per Storia). Hashtag iperlocali da social_sharing."""
         sommario = (articolo.sommario or "")[:500]
         if articolo.sommario and len(articolo.sommario) > 500:
@@ -392,7 +360,8 @@ class _BaseIgVideoManager:
             "",
             sommario,
             "",
-            "Leggi nel link in bio",
+            "Leggi l'articolo completo:",
+            self._build_reel_description_link(articolo),
             "",
             hashtags,
         ]

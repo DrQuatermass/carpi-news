@@ -1,9 +1,11 @@
 from unittest.mock import patch
+from io import StringIO
 import hashlib
 import hmac
 import json
 from datetime import timedelta
 
+from django.core.management import call_command
 from django.test import Client, SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
@@ -194,6 +196,54 @@ class RetryFailedSocialSharesCommandTests(TestCase):
 
         self.assertEqual(len(items), 1)
         self.assertEqual(items[0][0], self.articolo)
+
+    @patch("home.management.commands.retry_failed_social_shares.social_manager.retry_failed_platforms_only")
+    def test_handle_rechecks_all_platforms_when_no_platform_filter(self, retry_mock):
+        retry_mock.return_value = {"telegram": True, "facebook": True, "instagram_story": True}
+        SocialPublicationLog.objects.create(
+            articolo=self.articolo,
+            platform="instagram_story",
+            success=False,
+            error_message="Container non ready",
+        )
+        SocialPublicationLog.objects.filter(articolo=self.articolo).update(
+            published_at=timezone.now() - timedelta(minutes=30)
+        )
+
+        call_command(
+            "retry_failed_social_shares",
+            "--execute",
+            "--older-than-minutes",
+            "15",
+            stdout=StringIO(),
+        )
+
+        retry_mock.assert_called_once_with(self.articolo, only_platforms=None)
+
+    @patch("home.management.commands.retry_failed_social_shares.social_manager.retry_failed_platforms_only")
+    def test_handle_respects_explicit_platform_filter(self, retry_mock):
+        retry_mock.return_value = {"instagram_story": True}
+        SocialPublicationLog.objects.create(
+            articolo=self.articolo,
+            platform="instagram_story",
+            success=False,
+            error_message="Container non ready",
+        )
+        SocialPublicationLog.objects.filter(articolo=self.articolo).update(
+            published_at=timezone.now() - timedelta(minutes=30)
+        )
+
+        call_command(
+            "retry_failed_social_shares",
+            "--execute",
+            "--platform",
+            "instagram_story",
+            "--older-than-minutes",
+            "15",
+            stdout=StringIO(),
+        )
+
+        retry_mock.assert_called_once_with(self.articolo, only_platforms=["instagram_story"])
 
 
 @override_settings(
