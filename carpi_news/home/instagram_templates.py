@@ -362,15 +362,15 @@ def render_instagram_post(
             y += line_h
 
         # CTA centrata in pill bianca e leggibile su foto.
-        cta_font = _load_cta_font(33)
+        cta_font = _load_font(34)
         emoji_font = _load_emoji_font(34)
         cta_lines = [line.strip() for line in [cta_line_1, cta_line_2] if line.strip()]
-        line_h = 44
+        line_h = 42
         if cta_lines:
             widths = [_mixed_text_size(draw, line, cta_font, emoji_font)[0] for line in cta_lines]
             max_line_w = max(widths)
-            pad_x = 42
-            pad_y = 18
+            pad_x = 38
+            pad_y = 16
             pill_w = min(SIZE - 150, max_line_w + pad_x * 2)
             pill_h = len(cta_lines) * line_h + pad_y * 2
             pill_x = (SIZE - pill_w) // 2
@@ -379,14 +379,13 @@ def render_instagram_post(
             draw.rounded_rectangle(
                 [(pill_x + 3, pill_y + 5), (pill_x + pill_w + 3, pill_y + pill_h + 5)],
                 radius=radius,
-                fill=(0, 0, 0, 90),
+                fill=(0, 0, 0, 70),
             )
             draw.rounded_rectangle(
                 [(pill_x, pill_y), (pill_x + pill_w, pill_y + pill_h)],
                 radius=radius,
-                fill=(255, 255, 255, 238),
+                fill=(255, 255, 255, 246),
                 outline=(255, 255, 255, 255),
-                width=2,
             )
 
             for idx, line in enumerate(cta_lines):

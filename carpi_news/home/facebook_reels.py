@@ -375,31 +375,30 @@ class FacebookReelGenerator:
             y += line_height
 
         # CTA in basso in pill bianca, leggibile su qualunque foto.
-        cta_font = self._load_cta_font(44)
+        cta_font = self._load_font(44)
         cta_lines = [line.strip() for line in self.config.cta_text.splitlines() if line.strip()]
-        line_h = 58
-        emoji_font = self._load_emoji_font(46)
+        line_h = 54
+        emoji_font = self._load_emoji_font(44)
         if cta_lines:
             widths = [self._mixed_text_size(draw, line, cta_font, emoji_font)[0] for line in cta_lines]
             max_line_w = max(widths)
-            pad_x = 54
-            pad_y = 24
+            pad_x = 46
+            pad_y = 20
             pill_w = min(WIDTH - 160, max_line_w + pad_x * 2)
             pill_h = len(cta_lines) * line_h + pad_y * 2
             pill_x = (WIDTH - pill_w) // 2
             pill_y = HEIGHT - 285
             radius = pill_h // 2
             draw.rounded_rectangle(
-                [(pill_x + 4, pill_y + 6), (pill_x + pill_w + 4, pill_y + pill_h + 6)],
+                [(pill_x + 3, pill_y + 5), (pill_x + pill_w + 3, pill_y + pill_h + 5)],
                 radius=radius,
-                fill=(0, 0, 0, 90),
+                fill=(0, 0, 0, 70),
             )
             draw.rounded_rectangle(
                 [(pill_x, pill_y), (pill_x + pill_w, pill_y + pill_h)],
                 radius=radius,
-                fill=(255, 255, 255, 238),
+                fill=(255, 255, 255, 246),
                 outline=(255, 255, 255, 255),
-                width=2,
             )
 
             for idx, line in enumerate(cta_lines):
