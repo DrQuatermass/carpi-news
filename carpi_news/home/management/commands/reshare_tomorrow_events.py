@@ -7,6 +7,7 @@ from django.db import models
 from home.models import Articolo, SocialPublicationLog
 from home.social_sharing import social_manager
 from datetime import date, timedelta
+from contextlib import contextmanager
 import logging
 
 logger = logging.getLogger(__name__)
@@ -132,10 +133,11 @@ class Command(BaseCommand):
                 SocialPublicationLog.objects.filter(articolo=articolo).delete()
 
                 # Esegui la condivisione (ora share_article_on_approval non troverà log e condividerà)
-                results = social_manager.retry_failed_platforms_only(
-                    articolo,
-                    only_platforms=reshare_platforms,
-                )
+                with self._force_event_facebook_reel():
+                    results = social_manager.retry_failed_platforms_only(
+                        articolo,
+                        only_platforms=reshare_platforms,
+                    )
 
                 # Mostra risultati per piattaforma
                 for platform, success in results.items():
@@ -171,15 +173,32 @@ class Command(BaseCommand):
 
     @staticmethod
     def _event_reshare_platforms():
-        """Piattaforme per reminder evento: Facebook link sostituito da Facebook Reel."""
+        """Piattaforme per reminder evento: Facebook link sostituito da Facebook Reel.
+
+        Il Reel Facebook viene forzato anche se FACEBOOK_REEL_ENABLED=False: questa
+        regola vale solo per il reminder del giorno prima dell'evento.
+        """
         platforms = []
         for platform, config in social_manager.platforms.items():
             if platform == 'facebook':
                 continue
             if platform == 'facebook_reel':
-                if config.get('enabled'):
+                if config.get('access_token') and config.get('page_id'):
                     platforms.append(platform)
                 continue
             if config.get('enabled'):
                 platforms.append(platform)
         return platforms
+
+    @staticmethod
+    @contextmanager
+    def _force_event_facebook_reel():
+        """Abilita facebook_reel solo durante il reminder eventi, se configurato."""
+        config = social_manager.platforms.get('facebook_reel', {})
+        previous = config.get('enabled')
+        if config.get('access_token') and config.get('page_id'):
+            config['enabled'] = True
+        try:
+            yield
+        finally:
+            config['enabled'] = previous
