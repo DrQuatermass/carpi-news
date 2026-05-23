@@ -35,14 +35,19 @@ class SocialMediaManager:
             },
             'facebook_story': {
                 'name': 'Facebook Story',
-                # Riusa il video verticale del Reel, ma pubblica una Storia.
-                # FACEBOOK_REEL_ENABLED resta come alias legacy per evitare cambi .env immediati.
+                # Riusa il video verticale, ma pubblica una Storia.
                 'enabled': (
                     getattr(settings, 'FACEBOOK_AUTO_SHARE', False)
-                    and (
-                        getattr(settings, 'FACEBOOK_STORY_ENABLED', False)
-                        or getattr(settings, 'FACEBOOK_REEL_ENABLED', False)
-                    )
+                    and getattr(settings, 'FACEBOOK_STORY_ENABLED', False)
+                ),
+                'page_id': getattr(settings, 'FACEBOOK_PAGE_ID', None),
+                'access_token': getattr(settings, 'FACEBOOK_ACCESS_TOKEN', None),
+            },
+            'facebook_reel': {
+                'name': 'Facebook Reel',
+                'enabled': (
+                    getattr(settings, 'FACEBOOK_AUTO_SHARE', False)
+                    and getattr(settings, 'FACEBOOK_REEL_ENABLED', False)
                 ),
                 'page_id': getattr(settings, 'FACEBOOK_PAGE_ID', None),
                 'access_token': getattr(settings, 'FACEBOOK_ACCESS_TOKEN', None),
@@ -563,12 +568,48 @@ class SocialMediaManager:
         else:
             reason = (
                 "Disabilitato in .env: imposta FACEBOOK_STORY_ENABLED=True "
-                "o FACEBOOK_REEL_ENABLED=True (richiede anche FACEBOOK_AUTO_SHARE=True)"
+                "(richiede anche FACEBOOK_AUTO_SHARE=True)"
             )
             if getattr(settings, 'FACEBOOK_AUTO_SHARE', False):
                 self._log_skipped_publication(articolo, 'facebook_story', reason)
             logger.info("Pubblicazione Facebook Story disabilitata")
             results['facebook_story'] = False
+
+        # Facebook Reel (vero Reel Facebook via /video_reels)
+        if self.platforms['facebook_reel']['enabled']:
+            if articolo.has_shareable_image:
+                should_share, already_done = self._prepare_publication_slot(
+                    articolo, 'facebook_reel'
+                )
+                if already_done:
+                    logger.info(f"Facebook Reel: Articolo '{articolo.titolo}' gia' pubblicato, skip")
+                    results['facebook_reel'] = True
+                elif should_share:
+                    success, error_msg = self._share_to_facebook_reel(articolo)
+                    results['facebook_reel'] = success
+                    shared_url, short_link = self._tracking_link(articolo, 'facebook', 'reel')
+                    self._finalize_publication(
+                        articolo, 'facebook_reel', success,
+                        None if success else error_msg,
+                        shared_url=shared_url,
+                        short_link=short_link,
+                    )
+                else:
+                    results['facebook_reel'] = False
+            else:
+                reason = "Facebook Reel richiede un'immagine - post saltato"
+                logger.warning(f"Facebook Reel saltato per '{articolo.titolo}': immagine obbligatoria")
+                self._log_skipped_publication(articolo, 'facebook_reel', reason)
+                results['facebook_reel'] = False
+        else:
+            reason = (
+                "Disabilitato in .env: imposta FACEBOOK_REEL_ENABLED=True "
+                "(richiede anche FACEBOOK_AUTO_SHARE=True)"
+            )
+            if getattr(settings, 'FACEBOOK_AUTO_SHARE', False):
+                self._log_skipped_publication(articolo, 'facebook_reel', reason)
+            logger.info("Pubblicazione Facebook Reel disabilitata")
+            results['facebook_reel'] = False
 
         # Instagram (solo se c'è un'immagine)
         if self.platforms['instagram']['enabled']:
@@ -793,6 +834,37 @@ class SocialMediaManager:
             else:
                 logger.warning(f"Facebook Story: immagine obbligatoria, skip retry")
                 results['facebook_story'] = False
+
+        # Facebook Reel - retry solo se non pubblicato con successo
+        if self.platforms['facebook_reel']['enabled'] and should_retry_platform('facebook_reel'):
+            if articolo.has_shareable_image:
+                already_published = SocialPublicationLog.objects.filter(
+                    articolo=articolo,
+                    platform='facebook_reel',
+                    success=True
+                ).exists()
+
+                if already_published:
+                    logger.info("Facebook Reel: gia' pubblicato con successo, skip retry")
+                    results['facebook_reel'] = True
+                else:
+                    logger.info("Facebook Reel: tentativo retry...")
+                    should_share, _ = self._prepare_publication_slot(articolo, 'facebook_reel')
+                    if should_share:
+                        success, error_msg = self._share_to_facebook_reel(articolo)
+                        results['facebook_reel'] = success
+                        shared_url, short_link = self._tracking_link(articolo, 'facebook', 'reel')
+                        self._finalize_publication(
+                            articolo, 'facebook_reel', success,
+                            None if success else error_msg,
+                            shared_url=shared_url,
+                            short_link=short_link,
+                        )
+                    else:
+                        results['facebook_reel'] = False
+            else:
+                logger.warning("Facebook Reel: immagine obbligatoria, skip retry")
+                results['facebook_reel'] = False
 
         # Instagram - retry solo se non pubblicato con successo
         if self.platforms['instagram']['enabled'] and should_retry_platform('instagram'):
@@ -1086,6 +1158,42 @@ class SocialMediaManager:
 
         except Exception as e:
             error = f"Eccezione Facebook Story '{articolo.titolo}': {e}"
+            logger.error(error, exc_info=True)
+            return False, error
+
+    def _share_to_facebook_reel(self, articolo) -> tuple[bool, str]:
+        """Genera un video verticale e lo pubblica come vero Reel Facebook."""
+        try:
+            from .facebook_reels import facebook_reel_manager
+
+            config = self.platforms['facebook_reel']
+            if not config['access_token'] or not config['page_id']:
+                error = "Configurazione Facebook Reel incompleta"
+                logger.warning(error)
+                return False, error
+
+            if not articolo.has_shareable_image:
+                error = "Facebook Reel richiede un'immagine - post saltato"
+                logger.warning(error)
+                return False, error
+
+            page_token = self._get_page_access_token(config['access_token'], config['page_id'])
+            if not page_token:
+                error = "Impossibile ottenere Page Access Token per Facebook Reel"
+                logger.error(error)
+                return False, error
+
+            logger.info(f"Facebook Reel: avvio generazione + upload per '{articolo.titolo}'")
+            success, info = facebook_reel_manager.publish(articolo, page_token)
+            if success:
+                logger.info(f"Facebook Reel pubblicato (id={info}): {articolo.titolo}")
+                return True, info
+
+            logger.error(f"Facebook Reel fallito per '{articolo.titolo}': {info}")
+            return False, info
+
+        except Exception as e:
+            error = f"Eccezione Facebook Reel '{articolo.titolo}': {e}"
             logger.error(error, exc_info=True)
             return False, error
 
@@ -1397,12 +1505,19 @@ class SocialMediaManager:
         status['facebook'] = {'name': fb['name'], 'enabled': fb['enabled'],
                                'configured': fb_ok, 'ready': fb['enabled'] and fb_ok}
 
-        # Facebook Story (video 1080x1920 con musica, pubblicato come Reel/Story)
+        # Facebook Story (video 1080x1920 con musica)
         fbr = self.platforms['facebook_story']
         fbr_ok = bool(fbr['access_token'] and fbr['page_id'])
         status['facebook_story'] = {'name': fbr['name'], 'enabled': fbr['enabled'],
                                     'configured': fbr_ok, 'ready': fbr['enabled'] and fbr_ok,
                                     'note': 'Video 1080x1920 con musica royalty-free'}
+
+        # Facebook Reel (vero Reel via /video_reels)
+        fbrl = self.platforms['facebook_reel']
+        fbrl_ok = bool(fbrl['access_token'] and fbrl['page_id'])
+        status['facebook_reel'] = {'name': fbrl['name'], 'enabled': fbrl['enabled'],
+                                   'configured': fbrl_ok, 'ready': fbrl['enabled'] and fbrl_ok,
+                                   'note': 'Video 1080x1920 pubblicato via /video_reels'}
 
         # Instagram
         ig = self.platforms['instagram']

@@ -34,7 +34,7 @@ class Command(BaseCommand):
             "--platform",
             type=str,
             choices=[
-                "telegram", "facebook", "facebook_story",
+                "telegram", "facebook", "facebook_story", "facebook_reel",
                 "instagram", "instagram_story", "instagram_reel",
             ],
             help="Ripubblica solo questa piattaforma (cancella il log precedente)",

@@ -667,12 +667,13 @@ class FacebookReelGenerator:
 
 
 # =============================================================================
-# PUBLISHER STORIES API (Graph v24.0)
+# PUBLISHER STORIES / REELS API (Graph v24.0)
 # =============================================================================
 class FacebookStoryPublisher:
     """Pubblica un MP4 sulla Storia della Pagina Facebook tramite Stories API."""
 
     GRAPH_VERSION = "v24.0"
+    LABEL = "Facebook Story"
 
     def __init__(self, page_id: str, page_access_token: str):
         self.page_id = page_id
@@ -694,24 +695,24 @@ class FacebookStoryPublisher:
             upload_url = start.get("upload_url")
             if not (video_id and upload_url):
                 return False, f"Risposta START incompleta: {start}"
-            logger.info(f"Facebook Story: START ok video_id={video_id}")
+            logger.info(f"{self.LABEL}: START ok video_id={video_id}")
 
             # FASE 2: UPLOAD binario
             if not self._upload_binary(upload_url, video_file, file_size):
                 return False, "Fase UPLOAD fallita"
-            logger.info(f"Facebook Story: UPLOAD ok ({file_size} bytes)")
+            logger.info(f"{self.LABEL}: UPLOAD ok ({file_size} bytes)")
 
             # FASE 3: FINISH + PUBLISH
             ok, info = self._finish_publish(video_id, description=description)
             if not ok:
                 return False, f"Fase FINISH fallita: {info}"
-            logger.info(f"Facebook Story: FINISH ok, post_id={info}")
+            logger.info(f"{self.LABEL}: FINISH ok, post_id={info}")
             return True, info or video_id
 
         except requests.RequestException as e:
             return False, f"Errore HTTP: {e}"
         except Exception as e:
-            logger.error("Facebook Story: eccezione publish", exc_info=True)
+            logger.error(f"{self.LABEL}: eccezione publish", exc_info=True)
             return False, str(e)
 
     def _start_upload(self, file_size: int) -> Optional[dict]:
@@ -773,6 +774,61 @@ class FacebookStoryPublisher:
             return True, resp.json().get("post_id", resp.text)
         except Exception:
             return True, resp.text
+
+
+class FacebookPageReelPublisher(FacebookStoryPublisher):
+    """Pubblica un MP4 come Reel della Pagina Facebook tramite Reels API."""
+
+    LABEL = "Facebook Reel"
+
+    def _start_upload(self, file_size: int) -> Optional[dict]:
+        url = f"https://graph.facebook.com/{self.GRAPH_VERSION}/{self.page_id}/video_reels"
+        params = {
+            "upload_phase": "start",
+            "access_token": self.page_token,
+        }
+        resp = requests.post(url, params=params, timeout=30)
+        if resp.status_code != 200:
+            logger.error(f"Facebook Reel START {resp.status_code}: {resp.text[:500]}")
+            return None
+        return resp.json()
+
+    def _upload_binary(self, upload_url: str, video_file: Path, file_size: int) -> bool:
+        headers = {
+            "Authorization": f"OAuth {self.page_token}",
+            "offset": "0",
+            "file_size": str(file_size),
+        }
+        with open(video_file, "rb") as f:
+            resp = requests.post(upload_url, headers=headers, data=f, timeout=300)
+        if resp.status_code not in (200, 201):
+            logger.error(f"Facebook Reel UPLOAD {resp.status_code}: {resp.text[:500]}")
+            return False
+        try:
+            data = resp.json()
+            return bool(data.get("success", True))
+        except Exception:
+            return True
+
+    def _finish_publish(self, video_id: str, description: str = "") -> Tuple[bool, str]:
+        url = f"https://graph.facebook.com/{self.GRAPH_VERSION}/{self.page_id}/video_reels"
+        params = {
+            "access_token": self.page_token,
+            "video_id": video_id,
+            "upload_phase": "finish",
+            "video_state": "PUBLISHED",
+        }
+        if description:
+            params["description"] = description[:2200]
+            params["title"] = description.splitlines()[0][:255]
+        resp = requests.post(url, params=params, timeout=60)
+        if resp.status_code != 200:
+            return False, f"{resp.status_code}: {resp.text[:500]}"
+        try:
+            data = resp.json()
+            return True, data.get("post_id") or data.get("id") or video_id
+        except Exception:
+            return True, video_id
 
 
 # Compatibilita' con eventuali import esistenti.
@@ -846,3 +902,43 @@ class FacebookReelManager:
 
 # Istanza condivisa pronta all\'uso
 reel_manager = FacebookReelManager()
+
+
+class FacebookPageReelManager(FacebookReelManager):
+    """Facade che genera il video verticale e lo pubblica come vero Reel Facebook."""
+
+    def publish(self, articolo, page_token: str) -> Tuple[bool, str]:
+        page_id = getattr(settings, "FACEBOOK_PAGE_ID", "")
+        if not page_id:
+            return False, "FACEBOOK_PAGE_ID non configurato"
+        if not page_token:
+            return False, "Page access token mancante"
+
+        video_path = self.generate(articolo)
+        if not video_path:
+            return False, "Generazione video fallita"
+
+        try:
+            from .share_links import build_short_share_url
+
+            short_url = build_short_share_url(articolo, "facebook", "reel")
+        except Exception:
+            short_url = getattr(settings, "SITE_URL", "https://ombradelportico.it").rstrip("/") + f"/articolo/{articolo.slug}/"
+        description = f"{articolo.titolo}\n\nLeggi tutto: {short_url}"
+
+        publisher = FacebookPageReelPublisher(page_id, page_token)
+        success, info = publisher.publish(video_path, description=description)
+
+        if success:
+            self._cleanup_local_file(video_path)
+            logger.info(f"Facebook Reel pubblicato (id={info}): {articolo.titolo}")
+        else:
+            logger.info(
+                f"Facebook Reel: mantengo file locale per debug -> {video_path} "
+                f"(motivo fallimento: {info[:200]})"
+            )
+
+        return success, info
+
+
+facebook_reel_manager = FacebookPageReelManager()

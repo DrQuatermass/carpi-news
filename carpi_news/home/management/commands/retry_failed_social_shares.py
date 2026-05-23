@@ -21,6 +21,7 @@ PLATFORMS = [
     "telegram",
     "facebook",
     "facebook_story",
+    "facebook_reel",
     "instagram",
     "instagram_story",
     "instagram_reel",

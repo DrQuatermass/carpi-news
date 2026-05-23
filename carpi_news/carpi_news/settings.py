@@ -380,10 +380,10 @@ FACEBOOK_ACCESS_TOKEN = os.getenv('FACEBOOK_ACCESS_TOKEN', '')
 FACEBOOK_APP_ID = os.getenv('FACEBOOK_APP_ID', '')
 FACEBOOK_APP_SECRET = os.getenv('FACEBOOK_APP_SECRET', '')
 
-# Facebook Story auto-publishing
+# Facebook Story/Reel auto-publishing
 # Quando True, alla pubblicazione del post Pagina viene generato e pubblicato
 # anche un video verticale 1080x1920 con foto+titolo+CTA+musica royalty-free
-# come Storia. FACEBOOK_REEL_ENABLED resta come alias legacy.
+# come Storia e/o vero Reel Facebook via /video_reels.
 FACEBOOK_REEL_ENABLED = os.getenv('FACEBOOK_REEL_ENABLED', 'False').lower() in ['true', '1', 'yes']
 FACEBOOK_STORY_ENABLED = os.getenv('FACEBOOK_STORY_ENABLED', 'False').lower() in ['true', '1', 'yes']
 FACEBOOK_REEL_DURATION = int(os.getenv('FACEBOOK_REEL_DURATION', '15'))
