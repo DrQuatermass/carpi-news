@@ -5,7 +5,8 @@ import random
 import re
 from django.shortcuts import render, get_object_or_404
 from django.core.paginator import Paginator
-from django.http import JsonResponse, HttpResponse
+from django.core.cache import cache
+from django.http import Http404, JsonResponse, HttpResponse
 from django.template import loader
 from django.conf import settings
 from django.utils import timezone
@@ -22,6 +23,16 @@ import uuid
 
 
 logger = logging.getLogger(__name__)
+
+
+CATEGORIA_MAP = {
+    'attualita': 'Attualit\u00e0',
+    'cronaca': 'Cronaca',
+    'sport': 'Sport',
+    'cultura-eventi': 'Cultura & Eventi',
+    'politica': 'Politica',
+    'rubriche': 'Rubriche',
+}
 
 
 def get_published_articles_query():
@@ -42,7 +53,8 @@ def get_published_articles_query():
 @vary_on_headers('X-Requested-With')
 def home(request):
     # Filtro per categoria (opzionale)
-    categoria = request.GET.get('categoria', None)
+    categoria = getattr(request, '_categoria_nome', None) or request.GET.get('categoria', None)
+    categoria_slug = getattr(request, '_categoria_slug', None)
 
     # Query base: solo articoli pubblicabili (approvati e, se pubbliredazionali, pagati) e pubblicati (non futuri)
     articoli_query = get_published_articles_query().filter(
@@ -74,6 +86,12 @@ def home(request):
     paginator = Paginator(articoli_list, 8)
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
+    site_url = getattr(settings, 'SITE_URL', 'https://ombradelportico.it').rstrip('/')
+    canonical_path = f"/categoria/{categoria_slug}/" if categoria_slug else "/"
+    if page_obj.number > 1:
+        canonical_url = f"{site_url}{canonical_path}?page={page_obj.number}"
+    else:
+        canonical_url = f"{site_url}{canonical_path}"
 
     # LOGICA BANNER: 1 banner per riga, mai in posizione 0 o 11, mai adiacenti
     # Riga 1 (0,1,2): banner in 1 o 2
@@ -236,7 +254,8 @@ def home(request):
         'has_next': page_obj.has_next(),
         'categoria_attiva': categoria,
         'categorie_disponibili': list(categorie_disponibili),
-        'current_year': 2025,
+        'current_year': timezone.now().year,
+        'canonical_url': canonical_url,
         'banner_positions': banner_positions,
         'active_banners_count': len(active_banners),
     }
@@ -298,23 +317,67 @@ def home(request):
     
     return render(request, "homepage.html", context)
 
+
+@cache_page(300)
+@vary_on_headers('X-Requested-With')
+def categoria_articoli(request, categoria_slug):
+    categoria = CATEGORIA_MAP.get(categoria_slug)
+    if not categoria:
+        raise Http404("Categoria non trovata")
+    request._categoria_slug = categoria_slug
+    request._categoria_nome = categoria
+    return home(request)
+
 def dettaglio_articolo(request, slug):
     # Recupera articolo pubblicabile (approvato e, se pubbliredazionale, pagato)
     from django.db.models import Q
-    articolo = get_object_or_404(
-        Articolo,
-        slug=slug
+    publishable_filter = (
+        Q(is_pubbliredazionale=False, approvato=True) |
+        Q(is_pubbliredazionale=True, approvato=True, payment_status='completed')
     )
+    cache_key = f"articolo_ctx_{slug}"
+    cached_ctx = cache.get(cache_key)
 
-    # Verifica che sia pubblicabile
-    is_publishable = (
-        (not articolo.is_pubbliredazionale and articolo.approvato) or
-        (articolo.is_pubbliredazionale and articolo.approvato and articolo.payment_status == 'completed')
-    )
+    if cached_ctx:
+        articolo = cached_ctx['articolo']
+        # Non cachiamo la decisione di pubblicabilita': la rivalidiamo sempre,
+        # cosi' un pubbliredazionale cambiato di stato non resta servito.
+        if not Articolo.objects.filter(publishable_filter, pk=articolo.pk).exists():
+            cache.delete(cache_key)
+            raise Http404("Articolo non disponibile")
+        categorie_disponibili = cached_ctx['categorie_disponibili']
+        articoli_correlati = cached_ctx['articoli_correlati']
+    else:
+        articolo = get_object_or_404(
+            Articolo.objects.filter(publishable_filter),
+            slug=slug
+        )
 
-    if not is_publishable:
-        from django.http import Http404
-        raise Http404("Articolo non disponibile")
+        # Ottieni liste categorie per il menu di navigazione
+        categorie_raw = get_published_articles_query().values_list('categoria', flat=True).distinct()
+        categorie_disponibili = []
+        has_rubriche = False
+
+        for cat in sorted(categorie_raw):
+            if cat in ['Editoriale', "L'Eco del Consiglio"]:
+                if not has_rubriche:
+                    categorie_disponibili.append('Rubriche')
+                    has_rubriche = True
+            else:
+                categorie_disponibili.append(cat)
+
+        # Articoli correlati: ultimi 6 della stessa categoria (escluso quello corrente, solo pubblicati)
+        articoli_correlati = list(Articolo.objects.filter(
+            approvato=True,
+            data_pubblicazione__lte=timezone.now(),
+            categoria=articolo.categoria
+        ).exclude(pk=articolo.pk).order_by('-data_pubblicazione')[:6])
+
+        cache.set(cache_key, {
+            'articolo': articolo,
+            'categorie_disponibili': list(categorie_disponibili),
+            'articoli_correlati': articoli_correlati,
+        }, 600)
 
     # Incrementa il contatore delle views solo se non visto in questa sessione
     session_key = f'viewed_article_{articolo.pk}'
@@ -330,35 +393,12 @@ def dettaglio_articolo(request, slug):
             Articolo.objects.filter(pk=articolo.pk).update(views=F('views') + 1)
             # Segna come visto in questa sessione (scade con la sessione)
             request.session[session_key] = True
-            articolo.refresh_from_db()
+            articolo.views = (articolo.views or 0) + 1
             logger.info(f"Visualizzazione unica articolo: {articolo.titolo} (views: {articolo.views})")
         else:
             logger.debug(f"Bot rilevato, view non contata: {articolo.titolo} (UA: {user_agent[:100]})")
     else:
         logger.debug(f"Articolo già visto in questa sessione: {articolo.titolo}")
-
-    # Ricarica l'oggetto comunque per avere dati aggiornati
-    articolo.refresh_from_db()
-    
-    # Ottieni liste categorie per il menu di navigazione
-    categorie_raw = get_published_articles_query().values_list('categoria', flat=True).distinct()
-    categorie_disponibili = []
-    has_rubriche = False
-    
-    for cat in sorted(categorie_raw):
-        if cat in ['Editoriale', "L'Eco del Consiglio"]:
-            if not has_rubriche:
-                categorie_disponibili.append('Rubriche')
-                has_rubriche = True
-        else:
-            categorie_disponibili.append(cat)
-    
-    # Articoli correlati: ultimi 6 della stessa categoria (escluso quello corrente, solo pubblicati)
-    articoli_correlati = Articolo.objects.filter(
-        approvato=True,
-        data_pubblicazione__lte=timezone.now(),
-        categoria=articolo.categoria
-    ).exclude(pk=articolo.pk).order_by('-data_pubblicazione')[:6]
 
     site_url = getattr(settings, 'SITE_URL', 'https://ombradelportico.it').rstrip('/')
     canonical_url = f"{site_url}{request.path}"
@@ -368,7 +408,7 @@ def dettaglio_articolo(request, slug):
         'articoli_correlati': articoli_correlati,
         'categorie_disponibili': list(categorie_disponibili),
         'categoria_attiva': None,  # Nessuna categoria attiva nel dettaglio
-        'current_year': 2025,
+        'current_year': timezone.now().year,
         'canonical_url': canonical_url,
         'share_url': canonical_url,
     }
@@ -392,7 +432,7 @@ def privacy_policy(request):
     
     context = {
         'categorie_disponibili': list(categorie_disponibili),
-        'current_year': 2025,
+        'current_year': timezone.now().year,
     }
     
     return render(request, "privacy_policy.html", context)
@@ -539,7 +579,7 @@ def fonti_articolo(request, slug):
         'articolo': articolo,
         'categorie_disponibili': list(categorie_disponibili),
         'categoria_attiva': None,
-        'current_year': 2025,
+        'current_year': timezone.now().year,
     }
 
     return render(request, "fonti.html", context)
@@ -605,7 +645,7 @@ def caplet(request):
         'puzzle_zones_json': puzzle_zones_json,
         'categorie_disponibili': list(categorie_disponibili),
         'categoria_attiva': None,
-        'current_year': 2025,
+        'current_year': timezone.now().year,
     }
 
     return render(request, "caplet.html", context)
@@ -627,7 +667,7 @@ def about(request):
 
     context = {
         'categorie_disponibili': list(categorie_disponibili),
-        'current_year': 2025,
+        'current_year': timezone.now().year,
     }
 
     return render(request, "about.html", context)
@@ -714,7 +754,7 @@ def pubblicita(request):
 
     context = {
         'categorie_disponibili': list(categorie_disponibili),
-        'current_year': 2025,
+        'current_year': timezone.now().year,
         'esempi_publi': esempi_publi,
         'ctr_max': ctr_max,
         'max_impressions': max_impressions,
@@ -850,7 +890,7 @@ def chatbot_results(request):
         'total_results': len(articles),
         'categorie_disponibili': list(categorie_disponibili),
         'categoria_attiva': None,
-        'current_year': 2025,
+        'current_year': timezone.now().year,
         'banner_positions': banner_positions,
     }
 

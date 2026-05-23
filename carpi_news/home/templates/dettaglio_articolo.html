@@ -9,7 +9,7 @@
 
 {% block og_type %}article{% endblock %}
 {% block og_url %}https://ombradelportico.it{{ request.path }}{% endblock %}
-{% block og_title %}{{ articolo.titolo }}{% endblock %}
+{% block og_title %}{% if articolo.titolo_seo %}{{ articolo.titolo_seo }}{% else %}{{ articolo.titolo }}{% endif %}{% endblock %}
 {% block og_description %}{{ articolo.sommario|striptags|truncate_sentences:300 }}{% endblock %}
 {% block og_image %}{{ articolo.get_social_image_url }}{% endblock %}
 {% block og_image_alt %}{{ articolo.titolo }}{% endblock %}
@@ -48,7 +48,7 @@
 {
   "@context": "https://schema.org",
   "@type": "NewsArticle",
-  "headline": "{{ articolo.titolo|truncatechars:110|escapejs }}",
+  "headline": "{% if articolo.titolo_seo %}{{ articolo.titolo_seo|escapejs }}{% else %}{{ articolo.titolo|truncatechars:110|escapejs }}{% endif %}",
   "image": {
     "@type": "ImageObject",
     "url": "{{ articolo.get_social_image_url }}",
@@ -68,9 +68,9 @@
     "url": "https://ombradelportico.it",
     "logo": {
       "@type": "ImageObject",
-      "url": "https://ombradelportico.it{% static 'home/images/portico_logo_nopayoff-600w.webp' %}",
-      "width": 600,
-      "height": 325
+      "url": "https://ombradelportico.it{% static 'home/images/portico_logo_news_60h.png' %}",
+      "width": 110,
+      "height": 60
     }
   },
   "description": "{{ articolo.sommario|striptags|escapejs }}",

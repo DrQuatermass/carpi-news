@@ -6,6 +6,7 @@ import json
 from datetime import timedelta
 
 from django.core.management import call_command
+from django.core.cache import cache
 from django.test import Client, SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
@@ -61,6 +62,7 @@ Il risultato arriva dopo mesi di tensione.
 )
 class ShareLinkTests(TestCase):
     def setUp(self):
+        cache.clear()
         self.articolo = Articolo.objects.create(
             titolo="Titolo test",
             contenuto="Contenuto",
@@ -87,6 +89,49 @@ class ShareLinkTests(TestCase):
         self.assertIn("utm_source=instagram", response["Location"])
         short_link.refresh_from_db()
         self.assertEqual(short_link.clicks_count, 1)
+
+    def test_clean_category_url_has_canonical_and_no_noindex(self):
+        self.articolo.categoria = "Sport"
+        self.articolo.save(update_fields=["categoria"])
+
+        response = self.client.get(reverse("categoria_articoli", kwargs={"categoria_slug": "sport"}))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '<link rel="canonical" href="https://testserver/categoria/sport/">')
+        self.assertNotContains(response, 'name="robots" content="noindex, follow"')
+
+    def test_clean_category_url_keeps_page_in_canonical(self):
+        self.articolo.categoria = "Sport"
+        self.articolo.save(update_fields=["categoria"])
+        for index in range(9):
+            Articolo.objects.create(
+                titolo=f"Sport {index}",
+                contenuto="Contenuto",
+                sommario="Sommario",
+                categoria="Sport",
+                approvato=True,
+                data_pubblicazione=timezone.now() - timedelta(minutes=index + 1),
+            )
+
+        response = self.client.get(reverse("categoria_articoli", kwargs={"categoria_slug": "sport"}), {"page": "2"})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '<link rel="canonical" href="https://testserver/categoria/sport/?page=2">')
+
+    def test_cached_article_detail_revalidates_pubbliredazionale_status(self):
+        self.articolo.is_pubbliredazionale = True
+        self.articolo.payment_status = "completed"
+        self.articolo.save(update_fields=["is_pubbliredazionale", "payment_status"])
+
+        response = self.client.get(reverse("dettaglio_articolo", kwargs={"slug": self.articolo.slug}))
+        self.assertEqual(response.status_code, 200)
+        self.assertIsNotNone(cache.get(f"articolo_ctx_{self.articolo.slug}"))
+
+        Articolo.objects.filter(pk=self.articolo.pk).update(payment_status="pending")
+        response = self.client.get(reverse("dettaglio_articolo", kwargs={"slug": self.articolo.slug}))
+
+        self.assertEqual(response.status_code, 404)
+        self.assertIsNone(cache.get(f"articolo_ctx_{self.articolo.slug}"))
 
 
 @override_settings(

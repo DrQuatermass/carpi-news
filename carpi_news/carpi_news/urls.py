@@ -40,7 +40,7 @@ urlpatterns = [
     path('feed/recenti/', ArticoliRecentiFeed(), name='recenti-feed'),
 
     # Favicon
-    path('favicon.ico', RedirectView.as_view(url='/static/home/images/portico_logo_square_512.png', permanent=True)),
+    path('favicon.ico', RedirectView.as_view(url='/static/home/images/favicon.ico', permanent=True)),
 
     # SEO e bot management
     path('robots.txt', TemplateView.as_view(template_name='robots.txt', content_type='text/plain'), name='robots'),
@@ -62,6 +62,8 @@ urlpatterns = [
 
     # Admin panel per banner e gestione
     path('gestionale/', include('admin_panel.urls')),
+
+    path('categoria/<slug:categoria_slug>/', views.categoria_articoli, name='categoria_articoli'),
 
     path('admin/', admin.site.urls),
 ]
