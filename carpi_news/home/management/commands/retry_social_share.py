@@ -9,6 +9,7 @@ Esempi:
 """
 
 from django.core.management.base import BaseCommand, CommandError
+from contextlib import contextmanager
 
 from home.models import Articolo, SocialPublicationLog
 from home.social_sharing import social_manager
@@ -67,10 +68,11 @@ class Command(BaseCommand):
         social_manager._log_enabled_platforms()
 
         if opts.get("platform"):
-            results = social_manager.retry_failed_platforms_only(
-                articolo,
-                only_platforms=[opts["platform"]],
-            )
+            with self._force_facebook_reel_if_requested(opts["platform"]):
+                results = social_manager.retry_failed_platforms_only(
+                    articolo,
+                    only_platforms=[opts["platform"]],
+                )
         elif opts.get("failed_only"):
             results = social_manager.retry_failed_platforms_only(articolo)
         else:
@@ -121,3 +123,15 @@ class Command(BaseCommand):
                 )
             return matches[0]
         raise CommandError("Specifica --id, --slug o --search")
+
+    @staticmethod
+    @contextmanager
+    def _force_facebook_reel_if_requested(platform):
+        config = social_manager.platforms.get("facebook_reel", {})
+        previous = config.get("enabled")
+        if platform == "facebook_reel" and config.get("access_token") and config.get("page_id"):
+            config["enabled"] = True
+        try:
+            yield
+        finally:
+            config["enabled"] = previous

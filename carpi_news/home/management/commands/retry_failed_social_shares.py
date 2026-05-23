@@ -8,6 +8,7 @@ Esempi:
 """
 
 from collections import OrderedDict
+from contextlib import contextmanager
 from datetime import timedelta
 
 from django.core.management.base import BaseCommand
@@ -113,10 +114,11 @@ class Command(BaseCommand):
             # capitare che il log fallito sia IG, ma manchino anche Telegram,
             # Facebook o Facebook Story.
             only_platforms = platforms if opts["platform"] else None
-            results = social_manager.retry_failed_platforms_only(
-                articolo,
-                only_platforms=only_platforms,
-            )
+            with self._force_facebook_reel_if_requested(platforms):
+                results = social_manager.retry_failed_platforms_only(
+                    articolo,
+                    only_platforms=only_platforms,
+                )
             for platform, ok in results.items():
                 style = self.style.SUCCESS if ok else self.style.ERROR
                 self.stdout.write(style(f"  {platform}: {'OK' if ok else 'FALLITO'}"))
@@ -168,3 +170,16 @@ class Command(BaseCommand):
             items.append((log.articolo, platform, log))
 
         return items
+
+    @staticmethod
+    @contextmanager
+    def _force_facebook_reel_if_requested(platforms):
+        """Permette al retry cron di recuperare facebook_reel anche se il flag .env e' spento."""
+        config = social_manager.platforms.get("facebook_reel", {})
+        previous = config.get("enabled")
+        if "facebook_reel" in platforms and config.get("access_token") and config.get("page_id"):
+            config["enabled"] = True
+        try:
+            yield
+        finally:
+            config["enabled"] = previous
