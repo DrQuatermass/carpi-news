@@ -5,7 +5,6 @@ import time
 import unicodedata
 from typing import Dict, Optional
 from django.conf import settings
-from django.utils import timezone
 from PIL import Image
 from io import BytesIO
 
@@ -178,14 +177,6 @@ class SocialMediaManager:
                 'error_message': reason[:1000],
             },
         )
-
-    def _defer_facebook_reel_until_event_reminder(self, articolo) -> bool:
-        """
-        I Reel Facebook per eventi futuri sono reminder: li crea
-        reshare_tomorrow_events il giorno prima, non la pubblicazione iniziale.
-        """
-        event_date = getattr(articolo, 'data_evento', None)
-        return bool(event_date and event_date > timezone.localdate())
 
     def _tracking_link(self, articolo, platform: str, medium: str):
         """Restituisce (short_url, ShortLink) per salvare il tracking nel log."""
@@ -584,49 +575,10 @@ class SocialMediaManager:
             logger.info("Pubblicazione Facebook Story disabilitata")
             results['facebook_story'] = False
 
-        # Facebook Reel (vero Reel Facebook via /video_reels).
-        # Per eventi futuri viene rimandato al reminder del giorno prima.
-        if self._defer_facebook_reel_until_event_reminder(articolo):
-            logger.info(
-                "Facebook Reel rimandato al giorno prima dell'evento per '%s' (data_evento=%s)",
-                articolo.titolo,
-                articolo.data_evento,
-            )
-            results['facebook_reel'] = False
-        elif self.platforms['facebook_reel']['enabled']:
-            if articolo.has_shareable_image:
-                should_share, already_done = self._prepare_publication_slot(
-                    articolo, 'facebook_reel'
-                )
-                if already_done:
-                    logger.info(f"Facebook Reel: Articolo '{articolo.titolo}' gia' pubblicato, skip")
-                    results['facebook_reel'] = True
-                elif should_share:
-                    success, error_msg = self._share_to_facebook_reel(articolo)
-                    results['facebook_reel'] = success
-                    shared_url, short_link = self._tracking_link(articolo, 'facebook', 'reel')
-                    self._finalize_publication(
-                        articolo, 'facebook_reel', success,
-                        None if success else error_msg,
-                        shared_url=shared_url,
-                        short_link=short_link,
-                    )
-                else:
-                    results['facebook_reel'] = False
-            else:
-                reason = "Facebook Reel richiede un'immagine - post saltato"
-                logger.warning(f"Facebook Reel saltato per '{articolo.titolo}': immagine obbligatoria")
-                self._log_skipped_publication(articolo, 'facebook_reel', reason)
-                results['facebook_reel'] = False
-        else:
-            reason = (
-                "Disabilitato in .env: imposta FACEBOOK_REEL_ENABLED=True "
-                "(richiede anche FACEBOOK_AUTO_SHARE=True)"
-            )
-            if getattr(settings, 'FACEBOOK_AUTO_SHARE', False):
-                self._log_skipped_publication(articolo, 'facebook_reel', reason)
-            logger.info("Pubblicazione Facebook Reel disabilitata")
-            results['facebook_reel'] = False
+        # Facebook Reel non parte mai alla pubblicazione iniziale.
+        # Viene creato solo da flussi espliciti: reminder eventi del giorno prima
+        # o comandi manuali di retry/forzatura.
+        logger.info("Facebook Reel non incluso nella condivisione immediata")
 
         # Instagram (solo se c'è un'immagine)
         if self.platforms['instagram']['enabled']:
