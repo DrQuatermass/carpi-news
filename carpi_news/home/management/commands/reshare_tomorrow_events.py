@@ -92,7 +92,7 @@ class Command(BaseCommand):
                 self.stdout.write(f'  Categoria: {articolo.categoria}')
                 self.stdout.write(f'  Data evento: {articolo.data_evento.strftime("%d/%m/%Y")}')
                 self.stdout.write(f'  URL: /articolo/{articolo.slug}/')
-                self.stdout.write(f'  Immagine: {"Sì" if articolo.foto else "No"}')
+                self.stdout.write(f'  Immagine: {"Sì" if articolo.has_shareable_image else "No"}')
                 self.stdout.write(f'  Piattaforme: {", ".join(reshare_platforms)}')
             self.stdout.write('\n' + '='*70)
             self.stdout.write(self.style.WARNING('Esegui senza --dry-run per condividere realmente'))
