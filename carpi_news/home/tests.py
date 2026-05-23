@@ -14,6 +14,7 @@ from home.content_polisher import content_polisher
 from home.management.commands.retry_failed_social_shares import Command as RetryFailedSocialSharesCommand
 from home.models import Articolo, InstagramOptOut, ShortLink, SocialPublicationLog
 from home.share_links import build_share_url, build_short_share_url
+from home.social_sharing import social_manager
 from home.universal_news_monitor import parse_ai_article_json
 
 
@@ -87,6 +88,14 @@ class ShareLinkTests(TestCase):
         self.assertIn("utm_source=instagram", response["Location"])
         short_link.refresh_from_db()
         self.assertEqual(short_link.clicks_count, 1)
+
+    def test_facebook_reel_deferred_for_future_event(self):
+        self.articolo.data_evento = timezone.localdate() + timedelta(days=3)
+        self.assertTrue(social_manager._defer_facebook_reel_until_event_reminder(self.articolo))
+
+    def test_facebook_reel_not_deferred_without_future_event(self):
+        self.articolo.data_evento = None
+        self.assertFalse(social_manager._defer_facebook_reel_until_event_reminder(self.articolo))
 
 
 @override_settings(
