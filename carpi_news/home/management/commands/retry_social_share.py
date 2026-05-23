@@ -66,7 +66,12 @@ class Command(BaseCommand):
         ))
         social_manager._log_enabled_platforms()
 
-        if opts.get("failed_only"):
+        if opts.get("platform"):
+            results = social_manager.retry_failed_platforms_only(
+                articolo,
+                only_platforms=[opts["platform"]],
+            )
+        elif opts.get("failed_only"):
             results = social_manager.retry_failed_platforms_only(articolo)
         else:
             results = social_manager.share_article_on_approval(articolo)

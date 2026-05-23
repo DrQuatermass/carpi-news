@@ -167,22 +167,11 @@ class InstagramVideoPublisher:
                     return False, wait_error
                 return False, f"Container {container_id} non e' diventato READY in tempo"
 
-            # FASE 3: pubblica
-            publish_url = f"https://graph.facebook.com/{self.GRAPH_VERSION}/{self.ig_user_id}/media_publish"
-            publish_data = {
-                "access_token": self.page_token,
-                "creation_id": container_id,
-            }
-            logger.info(f"IG {self.media_type}: pubblicazione container {container_id}")
-            pub_resp = requests.post(publish_url, data=publish_data, timeout=30)
-            logger.info(f"IG {self.media_type} publish: {pub_resp.status_code} - {pub_resp.text[:500]}")
-
-            if pub_resp.status_code != 200:
-                return False, f"Publish fallito: {pub_resp.text[:500]}"
-
-            media_id = pub_resp.json().get("id", "")
-
-            return True, media_id
+            # FASE 3: pubblica. Alcuni container video IG non sono piu' leggibili
+            # via GET /{container_id} anche se sono stati creati dal token corrente:
+            # in quel caso il polling viene bypassato e il publish fa retry finche'
+            # Meta completa la lavorazione.
+            return self._publish_container(container_id)
 
         except requests.RequestException as e:
             return False, f"Errore HTTP: {e}"
@@ -206,9 +195,19 @@ class InstagramVideoPublisher:
                 resp = requests.get(url, params=params, timeout=15)
                 if resp.status_code != 200:
                     error_msg = self._format_graph_error(resp)
-                    logger.warning(f"IG: poll status fallito {resp.status_code}: {error_msg}")
+                    logger.warning(
+                        f"IG container {container_id}: poll status fallito "
+                        f"{resp.status_code}: {error_msg}"
+                    )
                     if self._is_rate_limited_response(resp):
                         return False, f"Meta rate limit durante poll container {container_id}: {error_msg}"
+                    if self._is_container_poll_permission_error(resp):
+                        logger.warning(
+                            f"IG container {container_id}: status non leggibile dal token, "
+                            "procedo con media_publish con retry"
+                        )
+                        time.sleep(10)
+                        return True, ""
                     continue
                 payload = resp.json()
                 status_code = payload.get("status_code", "")
@@ -222,6 +221,40 @@ class InstagramVideoPublisher:
                 logger.warning(f"IG: errore poll status {e}")
         logger.error(f"IG container {container_id}: timeout dopo {max_wait_s}s")
         return False, ""
+
+    def _publish_container(self, container_id: str, max_wait_s: int = 90,
+                           retry_interval_s: int = 10) -> Tuple[bool, str]:
+        publish_url = f"https://graph.facebook.com/{self.GRAPH_VERSION}/{self.ig_user_id}/media_publish"
+        publish_data = {
+            "access_token": self.page_token,
+            "creation_id": container_id,
+        }
+        elapsed = 0
+        last_error = ""
+
+        while elapsed <= max_wait_s:
+            logger.warning(
+                f"IG {self.media_type}: media_publish container {container_id} "
+                f"(elapsed={elapsed}s)"
+            )
+            pub_resp = requests.post(publish_url, data=publish_data, timeout=30)
+            logger.warning(
+                f"IG {self.media_type} publish container {container_id}: "
+                f"{pub_resp.status_code} - {pub_resp.text[:500]}"
+            )
+
+            if pub_resp.status_code == 200:
+                media_id = pub_resp.json().get("id", "")
+                return True, media_id
+
+            last_error = self._format_graph_error(pub_resp)
+            if not self._is_publish_retryable_response(pub_resp):
+                return False, f"Publish fallito container {container_id}: {pub_resp.text[:500]}"
+
+            time.sleep(retry_interval_s)
+            elapsed += retry_interval_s
+
+        return False, f"Publish timeout container {container_id}: {last_error}"
 
     @staticmethod
     def _format_graph_error(resp: requests.Response) -> str:
@@ -262,6 +295,47 @@ class InstagramVideoPublisher:
         if not isinstance(error, dict):
             return resp.status_code == 429
         return resp.status_code == 429 or error.get("code") in (4, 17, 32, 613)
+
+    @staticmethod
+    def _graph_error(resp: requests.Response) -> dict:
+        try:
+            payload = resp.json()
+        except ValueError:
+            return {}
+        error = payload.get("error") if isinstance(payload, dict) else None
+        return error if isinstance(error, dict) else {}
+
+    @classmethod
+    def _is_container_poll_permission_error(cls, resp: requests.Response) -> bool:
+        error = cls._graph_error(resp)
+        return (
+            resp.status_code == 400
+            and error.get("code") == 100
+            and error.get("error_subcode") == 33
+        )
+
+    @classmethod
+    def _is_publish_retryable_response(cls, resp: requests.Response) -> bool:
+        if cls._is_rate_limited_response(resp):
+            return True
+
+        error = cls._graph_error(resp)
+        message = str(error.get("message", "")).lower()
+        code = error.get("code")
+        subcode = error.get("error_subcode")
+
+        retryable_fragments = (
+            "not ready",
+            "not finished",
+            "in progress",
+            "processing",
+            "try again",
+            "temporarily",
+        )
+        if any(fragment in message for fragment in retryable_fragments):
+            return True
+
+        return code in (1, 2, 4, 17, 32, 613) or subcode in (2207008, 2207027)
 
 
 # -----------------------------------------------------------------------------
