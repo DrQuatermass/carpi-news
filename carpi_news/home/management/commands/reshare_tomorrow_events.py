@@ -48,6 +48,15 @@ class Command(BaseCommand):
 
         self.stdout.write(f'\n{"="*70}')
         self.stdout.write(self.style.WARNING(f'Ricondivisione eventi per {target_date.strftime("%d/%m/%Y")}'))
+        reshare_platforms = self._event_reshare_platforms()
+        self.stdout.write(
+            self.style.NOTICE(
+                "\nPiattaforme ricondivisione eventi: "
+                + ", ".join(reshare_platforms)
+                + " (facebook link sostituito da facebook_reel)"
+            )
+        )
+
         if dry_run:
             self.stdout.write(self.style.WARNING('MODALITÀ DRY-RUN: Nessuna condivisione verrà effettuata'))
         if force:
@@ -83,6 +92,7 @@ class Command(BaseCommand):
                 self.stdout.write(f'  Data evento: {articolo.data_evento.strftime("%d/%m/%Y")}')
                 self.stdout.write(f'  URL: /articolo/{articolo.slug}/')
                 self.stdout.write(f'  Immagine: {"Sì" if articolo.foto else "No"}')
+                self.stdout.write(f'  Piattaforme: {", ".join(reshare_platforms)}')
             self.stdout.write('\n' + '='*70)
             self.stdout.write(self.style.WARNING('Esegui senza --dry-run per condividere realmente'))
             return
@@ -110,7 +120,8 @@ class Command(BaseCommand):
                     total_skipped += 1
                     continue
 
-            # Condividi su tutte le piattaforme abilitate
+            # Condividi sulle piattaforme abilitate per reminder evento:
+            # Facebook link (/feed) viene sostituito dal vero Reel Facebook.
             # IMPORTANTE: Per la ricondivisione, rimuoviamo temporaneamente i log delle pubblicazioni precedenti
             # per forzare la condivisione anche se l'articolo è già stato pubblicato in passato
             try:
@@ -121,7 +132,10 @@ class Command(BaseCommand):
                 SocialPublicationLog.objects.filter(articolo=articolo).delete()
 
                 # Esegui la condivisione (ora share_article_on_approval non troverà log e condividerà)
-                results = social_manager.share_article_on_approval(articolo)
+                results = social_manager.retry_failed_platforms_only(
+                    articolo,
+                    only_platforms=reshare_platforms,
+                )
 
                 # Mostra risultati per piattaforma
                 for platform, success in results.items():
@@ -154,3 +168,18 @@ class Command(BaseCommand):
         if total_failed > 0:
             self.stdout.write(self.style.ERROR(f'  Falliti:              {total_failed}'))
         self.stdout.write(f'{"="*70}\n')
+
+    @staticmethod
+    def _event_reshare_platforms():
+        """Piattaforme per reminder evento: Facebook link sostituito da Facebook Reel."""
+        platforms = []
+        for platform, config in social_manager.platforms.items():
+            if platform == 'facebook':
+                continue
+            if platform == 'facebook_reel':
+                if config.get('enabled'):
+                    platforms.append(platform)
+                continue
+            if config.get('enabled'):
+                platforms.append(platform)
+        return platforms

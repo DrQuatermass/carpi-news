@@ -540,10 +540,10 @@ def _share_article_background(article_id, article_title):
 
             # Doppio controllo: verifica se è già stato condiviso su TUTTE le piattaforme
             # Questo previene duplicati anche se il lock scade prematuramente.
-            # facebook_story e instagram richiedono foto: vengono ignorati nel check se manca.
-            platforms = ['telegram', 'facebook', 'facebook_story', 'instagram',
+            # facebook_story/facebook_reel e instagram richiedono foto: ignorati se manca.
+            platforms = ['telegram', 'facebook', 'facebook_story', 'facebook_reel', 'instagram',
                          'instagram_story', 'instagram_reel']
-            requires_photo = {'facebook_story', 'instagram', 'instagram_story', 'instagram_reel'}
+            requires_photo = {'facebook_story', 'facebook_reel', 'instagram', 'instagram_story', 'instagram_reel'}
             already_shared_all = all(
                 SocialPublicationLog.objects.filter(
                     articolo=articolo,
