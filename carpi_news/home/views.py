@@ -6,7 +6,7 @@ import re
 from django.shortcuts import render, get_object_or_404
 from django.core.paginator import Paginator
 from django.core.cache import cache
-from django.http import Http404, JsonResponse, HttpResponse
+from django.http import Http404, JsonResponse, HttpResponse, HttpResponsePermanentRedirect
 from django.template import loader
 from django.conf import settings
 from django.utils import timezone
@@ -16,7 +16,7 @@ from django.views.decorators.vary import vary_on_headers
 from django.views.decorators.http import require_http_methods
 from django.db import models
 from datetime import datetime, timedelta
-from .models import Articolo, ChatbotConversation, NewsletterSubscriber, NewsletterLog
+from .models import Articolo, ArticoloRedirect, ChatbotConversation, NewsletterSubscriber, NewsletterLog
 from .chatbot_service import ChatbotService
 from .utils import canonical_article_url
 import time
@@ -332,6 +332,16 @@ def categoria_articoli(request, categoria_slug):
 @cache_page(300)
 @vary_on_headers('Accept-Encoding')
 def dettaglio_articolo(request, slug):
+    try:
+        redirect_obj = ArticoloRedirect.objects.select_related('articolo').get(
+            old_slug=slug
+        )
+        return HttpResponsePermanentRedirect(
+            f"/articolo/{redirect_obj.new_slug}/"
+        )
+    except ArticoloRedirect.DoesNotExist:
+        pass
+
     # Recupera articolo pubblicabile (approvato e, se pubbliredazionale, pagato)
     from django.db.models import Q
     publishable_filter = (

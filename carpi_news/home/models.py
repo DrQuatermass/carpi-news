@@ -1,5 +1,4 @@
 from django.db import models
-from django.utils.text import slugify
 from django.utils import timezone
 from django.templatetags.static import static
 from django.core.cache import cache
@@ -195,43 +194,27 @@ class Articolo(models.Model):
         self.categoria = self.normalize_category(self.categoria)
 
         if not self.slug:
-            # Stop words italiane da rimuovere per slug più puliti e SEO-friendly
-            stop_words = {
-                'il', 'lo', 'la', 'i', 'gli', 'le', 'un', 'uno', 'una',
-                'di', 'a', 'da', 'in', 'con', 'su', 'per', 'tra', 'fra',
-                'del', 'dello', 'della', 'dei', 'degli', 'delle',
-                'al', 'allo', 'alla', 'ai', 'agli', 'alle',
-                'dal', 'dallo', 'dalla', 'dai', 'dagli', 'dalle',
-                'nel', 'nello', 'nella', 'nei', 'negli', 'nelle',
-                'sul', 'sullo', 'sulla', 'sui', 'sugli', 'sulle',
-                'e', 'o', 'ma', 'che', 'chi', 'cui'
-            }
+            from .utils import is_slug_malformed, safe_slugify
 
-            # Dividi il titolo in parole e rimuovi stop words
-            parole = self.titolo.lower().split()
-            parole_filtrate = [p for p in parole if p not in stop_words or len(parole) <= 3]
-            titolo_ottimizzato = ' '.join(parole_filtrate) if parole_filtrate else self.titolo
+            # Priorita': titolo_seo (gia' ottimizzato max 70 char) -> titolo.
+            source = (self.titolo_seo or '').strip() or self.titolo
+            base_slug = safe_slugify(source, max_length=75)
 
-            # Genera slug base (max 80 caratteri per lasciare spazio alla data)
-            base_slug = slugify(titolo_ottimizzato, allow_unicode=False)[:80]
-
-            # Se lo slug è troppo corto, usa l'originale senza filtro
-            if len(base_slug) < 10:
-                base_slug = slugify(self.titolo, allow_unicode=False)[:80]
+            bad, _reason = is_slug_malformed(base_slug)
+            if bad and self.titolo_seo:
+                base_slug = safe_slugify(self.titolo, max_length=75)
 
             slug = base_slug
+            n = 1
+            while Articolo.objects.filter(slug=slug).exclude(pk=self.pk).exists():
+                n += 1
+                suffix = f"-{n}"
+                slug = base_slug[:75 - len(suffix)] + suffix
+                last_dash_before_suffix = slug[:-len(suffix)].rfind('-')
+                if last_dash_before_suffix > 10:
+                    slug = slug[:last_dash_before_suffix] + suffix
 
-            # Se lo slug esiste già, aggiungi la data invece di un contatore
-            if Articolo.objects.filter(slug=slug).exclude(pk=self.pk).exists():
-                data_suffix = timezone.now().strftime('%Y-%m-%d')
-                slug = f"{base_slug}-{data_suffix}"
-
-                # Se anche con la data esiste, aggiungi l'ora
-                if Articolo.objects.filter(slug=slug).exclude(pk=self.pk).exists():
-                    ora_suffix = timezone.now().strftime('%H%M')
-                    slug = f"{base_slug}-{data_suffix}-{ora_suffix}"
-
-            self.slug = slug[:100]  # Assicurati che non superi mai 100 caratteri
+            self.slug = slug[:100]
 
         if not self.sommario:
             # Rimuovi tag HTML dal contenuto per il sommario
@@ -562,6 +545,26 @@ Ombra del Portico - Sistema pubbliredazionali
         if self.is_pubbliredazionale:
             return f"[PUBB] {self.nome_azienda} - {self.titolo}"
         return self.titolo
+
+
+class ArticoloRedirect(models.Model):
+    """Redirect 301 da vecchio slug articolo a nuovo slug."""
+    old_slug = models.SlugField(max_length=100, unique=True, db_index=True)
+    new_slug = models.SlugField(max_length=100, db_index=True)
+    articolo = models.ForeignKey(
+        'Articolo', on_delete=models.CASCADE, related_name='redirects'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    motivo = models.CharField(
+        max_length=120, default='slug-malformato',
+        help_text='Motivo del rename'
+    )
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.old_slug} -> {self.new_slug}"
 
 
 class SocialPublicationLog(models.Model):
