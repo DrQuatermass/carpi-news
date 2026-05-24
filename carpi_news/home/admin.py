@@ -242,17 +242,17 @@ class ArticoloAdminForm(forms.ModelForm):
 @admin.register(Articolo)
 class ArticoloAdmin(admin.ModelAdmin):
     form = ArticoloAdminForm
-    list_display = ("titolo", "titolo_seo", "categoria", "tags", "spotlight_display", "is_pubbliredazionale", "payment_status_display", "approvato", "escludi_newsletter", "data_pubblicazione", "views", "fonti_web_count")
+    list_display = ("titolo", "titolo_seo", "autore", "categoria", "tags", "spotlight_display", "is_pubbliredazionale", "payment_status_display", "approvato", "escludi_newsletter", "data_pubblicazione", "views", "fonti_web_count")
     list_editable = ("escludi_newsletter",)
     list_filter = ['approvato', 'spotlight', 'categoria', 'escludi_newsletter', IsPubbliredazionaleFilter, 'payment_status', HasWebSourcesFilter]
-    search_fields = ['titolo', 'titolo_seo', 'slug', 'tags', 'nome_azienda', 'sito_web', 'pubbliredazionale_user__username']
+    search_fields = ['titolo', 'titolo_seo', 'autore', 'slug', 'tags', 'nome_azienda', 'sito_web', 'pubbliredazionale_user__username']
 
     def get_fieldsets(self, request, obj=None):
         """Fieldsets dinamici: diversi per pubbliredazionali e articoli normali"""
         if obj and obj.is_pubbliredazionale:
             return (
                 ('Informazioni Base', {
-                    'fields': ('titolo', 'titolo_seo', 'slug', 'contenuto', 'sommario', 'categoria', 'tags', 'foto', 'foto_upload')
+                    'fields': ('titolo', 'titolo_seo', 'slug', 'contenuto', 'sommario', 'categoria', 'tags', 'autore', 'foto', 'foto_upload')
                 }),
                 ('Pubbliredazionale - Informazioni Azienda', {
                     'fields': ('nome_azienda', 'sito_web', 'pubbliredazionale_user')
@@ -277,7 +277,7 @@ class ArticoloAdmin(admin.ModelAdmin):
         else:
             return (
                 ('Informazioni Base', {
-                    'fields': ('titolo', 'titolo_seo', 'slug', 'contenuto', 'sommario', 'categoria', 'tags', 'data_evento', 'foto', 'foto_upload')
+                    'fields': ('titolo', 'titolo_seo', 'slug', 'contenuto', 'sommario', 'categoria', 'tags', 'autore', 'data_evento', 'foto', 'foto_upload')
                 }),
                 ('Pubblicazione', {
                     'fields': ('approvato', 'spotlight', 'escludi_newsletter', 'fonte', 'data_pubblicazione', 'views')

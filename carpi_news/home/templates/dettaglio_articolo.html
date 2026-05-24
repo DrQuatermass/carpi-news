@@ -25,6 +25,8 @@
 {% block meta_keywords %}{{ articolo.meta_keywords }}{% endblock %}
 
 {% block extra_css %}
+<meta name="news_keywords" content="{{ articolo.meta_keywords }}">
+
 <!-- Canonical URL -->
 <link rel="canonical" href="{{ canonical_url }}">
 
@@ -58,9 +60,9 @@
   "datePublished": "{{ articolo.data_pubblicazione|date:'c' }}",
   "dateModified": "{{ articolo.data_modifica|date:'c' }}",
   "author": {
-    "@type": "Person",
-    "name": "Sven Rinaldi",
-    "url": "https://ombradelportico.it"
+    "@type": "Organization",
+    "name": "{{ articolo.autore|default:'Redazione Ombra del Portico'|escapejs }}",
+    "url": "https://ombradelportico.it/about/"
   },
   "publisher": {
     "@type": "Organization",

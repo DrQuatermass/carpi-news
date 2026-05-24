@@ -18,6 +18,7 @@ from django.db import models
 from datetime import datetime, timedelta
 from .models import Articolo, ChatbotConversation, NewsletterSubscriber, NewsletterLog
 from .chatbot_service import ChatbotService
+from .utils import canonical_article_url
 import time
 import uuid
 
@@ -402,8 +403,7 @@ def dettaglio_articolo(request, slug):
     else:
         logger.debug(f"Articolo già visto in questa sessione: {articolo.titolo}")
 
-    site_url = getattr(settings, 'SITE_URL', 'https://ombradelportico.it').rstrip('/')
-    canonical_url = f"{site_url}{request.path}"
+    canonical_url = canonical_article_url(articolo)
 
     context = {
         'articolo': articolo,
@@ -416,6 +416,7 @@ def dettaglio_articolo(request, slug):
     }
     
     return render(request, "dettaglio_articolo.html", context)
+
 
 def privacy_policy(request):
     """Vista per la pagina della Privacy Policy"""

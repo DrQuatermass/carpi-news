@@ -6,10 +6,9 @@
     ServerName ombradelportico.it
     ServerAlias www.ombradelportico.it
 
-    # Redirect all HTTP traffic to HTTPS
+    # Redirect all HTTP traffic to HTTPS non-www
     RewriteEngine On
-    RewriteCond %{HTTPS} off
-    RewriteRule ^(.*)$ https://%{HTTP_HOST}$1 [R=301,L]
+    RewriteRule ^(.*)$ https://ombradelportico.it$1 [R=301,L]
 
     # Log files
     ErrorLog ${APACHE_LOG_DIR}/carpi-news-error.log
@@ -33,6 +32,11 @@
     Header always set X-Frame-Options "DENY"
     Header always set X-XSS-Protection "1; mode=block"
     Header always set Referrer-Policy "strict-origin-when-cross-origin"
+
+    # Canonical host: www -> non-www
+    RewriteEngine On
+    RewriteCond %{HTTP_HOST} ^www\.ombradelportico\.it$ [NC]
+    RewriteRule ^(.*)$ https://ombradelportico.it$1 [R=301,L]
 
     # Django Application (Gunicorn via Unix Socket)
     ProxyPreserveHost On
