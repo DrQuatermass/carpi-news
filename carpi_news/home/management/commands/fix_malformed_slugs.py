@@ -82,13 +82,23 @@ class Command(BaseCommand):
                 skipped_popular += 1
                 continue
 
-            source = (art.titolo_seo or '').strip() or art.titolo
-            new_slug = safe_slugify(source, max_length=75)
-            bad_new, _ = is_slug_malformed(new_slug)
-            if bad_new and art.titolo_seo:
-                new_slug = safe_slugify(art.titolo, max_length=75)
-                bad_new, _ = is_slug_malformed(new_slug)
-            if bad_new:
+            candidates = []
+            if art.titolo_seo and art.titolo_seo.strip():
+                candidates.append(('titolo_seo', art.titolo_seo.strip()))
+            if art.titolo and art.titolo.strip():
+                candidates.append(('titolo', art.titolo.strip()))
+
+            new_slug = None
+            new_source = None
+            for source_name, text in candidates:
+                candidate_slug = safe_slugify(text, max_length=75)
+                bad_cand, _ = is_slug_malformed(candidate_slug)
+                if not bad_cand and candidate_slug != art.slug:
+                    new_slug = candidate_slug
+                    new_source = source_name
+                    break
+
+            if not new_slug:
                 skipped_unfixable += 1
                 continue
 
@@ -98,7 +108,7 @@ class Command(BaseCommand):
                 continue
 
             if opts['limit'] is None or len(problematici) < opts['limit']:
-                problematici.append((art, reason, new_slug))
+                problematici.append((art, reason, new_slug, new_source))
 
         self.stdout.write(self.style.NOTICE(
             f'\nTotale slug malformati identificati: {total_malformed}'
@@ -114,8 +124,10 @@ class Command(BaseCommand):
             self.stdout.write(f'Skippati per nuovo slug ancora problematico: {skipped_unfixable}')
         self.stdout.write('')
 
-        for art, reason, new_slug in problematici[:30]:
-            self.stdout.write(f'  ID {art.pk}: {reason} (views={art.views or 0})')
+        for art, reason, new_slug, new_source in problematici[:30]:
+            self.stdout.write(
+                f'  ID {art.pk}: {reason} (views={art.views or 0}, from={new_source})'
+            )
             self.stdout.write(f'    OLD: {art.slug}')
             self.stdout.write(f'    NEW: {new_slug}\n')
 
@@ -130,7 +142,7 @@ class Command(BaseCommand):
 
         if opts['apply']:
             with transaction.atomic():
-                for art, reason, new_slug in problematici:
+                for art, reason, new_slug, new_source in problematici:
                     old_slug = art.slug
                     ArticoloRedirect.objects.get_or_create(
                         old_slug=old_slug,

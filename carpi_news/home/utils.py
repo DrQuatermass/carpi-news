@@ -53,9 +53,43 @@ def safe_slugify(text: str, max_length: int = 75) -> str:
     return truncated
 
 
+_VALID_3CHAR_WORDS = {
+    'tre', 'via', 'mio', 'mia', 'tuo', 'tua', 'sua', 'sui', 'lui', 'lei',
+    'noi', 'voi', 'con', 'per', 'tra', 'fra', 'gia', 'piu', 'ben', 'mai',
+    'qui', 'qua', 'pro', 'eta', 'oro', 'usa', 'art', 'web', 'app', 'tax',
+    'job', 'top', 'big', 'pop', 'rap', 'mix', 'box', 'gas', 'sms', 'gps',
+    'dvd', 'cd', 'pc', 'tv', 'iva', 'don', 'san', 'oss', 'fbi', 'ceo',
+    'cfo', 'cto', 'srl', 'spa', 'eur', 'usd', 'gbp', 'min', 'max', 'sub',
+    'set', 'red', 'rai', 'gym', 'pub', 'led',
+}
+
+
+_VALID_4CHAR_WORDS = {
+    'casa', 'anno', 'cosa', 'vita', 'mano', 'parte', 'modo', 'fine',
+    'caso', 'capo', 'mese', 'paese', 'mondo', 'punto', 'fatto', 'gente',
+    'soli', 'oggi', 'ieri', 'sera', 'sole', 'mare', 'cielo',
+    'idea', 'gioia', 'dono', 'foto', 'auto', 'moto', 'film', 'show',
+    'gara', 'pace', 'volo', 'rosa', 'fior', 'rosso', 'verde', 'oltre',
+    'fino', 'sopra', 'sotto', 'forse', 'mezzo', 'sempre', 'mille', 'cento',
+    'venti', 'altre', 'altro', 'altri', 'altra', 'molto', 'molti', 'molte',
+    'tanto', 'tanti', 'tutte', 'tutto', 'tutti', 'tutta', 'dopo',
+    'prima', 'verso', 'circa', 'meno', 'piu', 'meglio', 'peggio', 'ecco',
+    'come', 'dove', 'quando', 'perche', 'chi',
+    '2023', '2024', '2025', '2026', '2027',
+}
+
+
 def is_slug_malformed(slug: str) -> tuple[bool, str]:
     """
     Ritorna (is_malformed, reason) per uno slug esistente.
+
+    Regole:
+    - vuoto o > 90 char = malformato
+    - ultima parola < 3 char (non numero) = malformato
+    - ultima parola di 3 char NON in whitelist = malformato
+    - ultima parola di 4 char NON in whitelist E che termina con consonante = malformato
+    - ultima parola di 5 char con doppia consonante finale = malformato
+    - qualsiasi parola con cluster consonantici improbabili = malformato
     """
     if not slug:
         return True, 'vuoto'
@@ -66,9 +100,19 @@ def is_slug_malformed(slug: str) -> tuple[bool, str]:
     if not parts:
         return True, 'no-parole'
 
-    last = parts[-1]
+    last = parts[-1].lower()
     if len(last) < 3 and not last.isdigit():
         return True, f'ultima-parola-troncata:{last}'
+
+    if re.match(r'^\d+$', last):
+        pass
+    elif len(last) == 3 and last not in _VALID_3CHAR_WORDS:
+        return True, f'ultima-sillaba-3-char:{last}'
+    elif len(last) == 4 and last not in _VALID_4CHAR_WORDS:
+        if last[-1] not in 'aeiouy':
+            return True, f'ultima-sillaba-4-char:{last}'
+    elif len(last) == 5 and last[-1] not in 'aeiouy' and last[-2] not in 'aeiouy':
+        return True, f'ultima-sillaba-5-char:{last}'
 
     for word in parts:
         if re.search(r'\d', word):
