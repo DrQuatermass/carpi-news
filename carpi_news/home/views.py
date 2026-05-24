@@ -328,6 +328,8 @@ def categoria_articoli(request, categoria_slug):
     request._categoria_nome = categoria
     return home(request)
 
+@cache_page(300)
+@vary_on_headers('Accept-Encoding')
 def dettaglio_articolo(request, slug):
     # Recupera articolo pubblicabile (approvato e, se pubbliredazionale, pagato)
     from django.db.models import Q

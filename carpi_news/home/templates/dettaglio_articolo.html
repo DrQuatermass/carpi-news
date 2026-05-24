@@ -570,6 +570,47 @@
             <div id="article-h2-banner-2" style="display: none;">{% show_banner 'article_middle' %}</div>
             <div id="article-h2-banner-3" style="display: none;">{% show_banner 'article_middle' %}</div>
             <div id="article-h2-banner-4" style="display: none;">{% show_banner 'article_middle' %}</div>
+            <script>
+            (function() {
+                const articleContent = document.getElementById('article-content');
+                if (!articleContent) return;
+                const headings = articleContent.querySelectorAll('h2');
+                const maxBanners = 5;
+                let bannerIndex = 0;
+                for (let i = 1; i < headings.length && bannerIndex < maxBanners; i++) {
+                    const banner = document.getElementById('article-h2-banner-' + bannerIndex);
+                    if (!banner) break;
+                    const h2 = headings[i];
+                    h2.parentNode.insertBefore(banner, h2);
+                    banner.style.display = '';
+                    banner.style.margin = '30px 0';
+                    banner.querySelectorAll('ins.adsbygoogle').forEach(function(ins) {
+                        if (!ins.getAttribute('data-adsbygoogle-status')) {
+                            (window.adsbygoogle = window.adsbygoogle || []).push({});
+                        }
+                    });
+                    bannerIndex++;
+                }
+                if (bannerIndex === 0) {
+                    const banner = document.getElementById('article-h2-banner-0');
+                    if (!banner) return;
+                    const paragraphs = articleContent.querySelectorAll('p');
+                    if (paragraphs.length > 3) {
+                        const middleParagraph = paragraphs[Math.floor(paragraphs.length / 2)];
+                        if (middleParagraph && middleParagraph.parentNode) {
+                            middleParagraph.parentNode.insertBefore(banner, middleParagraph.nextSibling);
+                            banner.style.display = '';
+                            banner.style.margin = '30px 0';
+                            banner.querySelectorAll('ins.adsbygoogle').forEach(function(ins) {
+                                if (!ins.getAttribute('data-adsbygoogle-status')) {
+                                    (window.adsbygoogle = window.adsbygoogle || []).push({});
+                                }
+                            });
+                        }
+                    }
+                }
+            })();
+            </script>
 
             <!-- Banner fine articolo -->
             {% show_banner 'article_bottom' %}
@@ -966,53 +1007,6 @@
                 });
             }
         });
-    })();
-
-    // Inserisce banner dopo ogni H2 a partire dal 2°
-    (function() {
-        const articleContent = document.getElementById('article-content');
-        if (!articleContent) return;
-
-        const headings = articleContent.querySelectorAll('h2');
-        const maxBanners = 5;
-        let bannerIndex = 0;
-
-        // Parti dal secondo H2 (index 1)
-        for (let i = 1; i < headings.length && bannerIndex < maxBanners; i++) {
-            const banner = document.getElementById('article-h2-banner-' + bannerIndex);
-            if (!banner) break;
-
-            const h2 = headings[i];
-            h2.parentNode.insertBefore(banner, h2);
-            banner.style.display = '';
-            banner.style.margin = '30px 0';
-            banner.querySelectorAll('ins.adsbygoogle').forEach(function(ins) {
-                if (!ins.getAttribute('data-adsbygoogle-status')) {
-                    (window.adsbygoogle = window.adsbygoogle || []).push({});
-                }
-            });
-            bannerIndex++;
-        }
-
-        // Fallback: se non ci sono abbastanza H2, inserisci il primo banner a metà paragrafi
-        if (bannerIndex === 0) {
-            const banner = document.getElementById('article-h2-banner-0');
-            if (!banner) return;
-            const paragraphs = articleContent.querySelectorAll('p');
-            if (paragraphs.length > 3) {
-                const middleParagraph = paragraphs[Math.floor(paragraphs.length / 2)];
-                if (middleParagraph && middleParagraph.parentNode) {
-                    middleParagraph.parentNode.insertBefore(banner, middleParagraph.nextSibling);
-                    banner.style.display = '';
-                    banner.style.margin = '30px 0';
-                    banner.querySelectorAll('ins.adsbygoogle').forEach(function(ins) {
-                        if (!ins.getAttribute('data-adsbygoogle-status')) {
-                            (window.adsbygoogle = window.adsbygoogle || []).push({});
-                        }
-                    });
-                }
-            }
-        }
     })();
 
     // Preview mode per selezione banner

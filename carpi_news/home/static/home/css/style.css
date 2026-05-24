@@ -3177,3 +3177,13 @@ footer .footer-section.footer-links-section .footer-useful-links a:hover {
     }
 }
 
+/* CLS fix: riserva spazio per i banner article_middle prima
+   che il JS li sposti in posizione */
+#article-h2-banner-0,
+#article-h2-banner-1,
+#article-h2-banner-2,
+#article-h2-banner-3,
+#article-h2-banner-4 {
+    contain: layout style;
+}
+

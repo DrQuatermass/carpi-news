@@ -2,3 +2,4 @@
 .banner-horizontal-reserved,.banner-horizontal-section .banner-header-slot{max-width:728px !important}
 .banner-horizontal-reserved,.banner-horizontal-section .banner-header-slot{margin-left:auto !important;margin-right:auto !important}
 @media (max-width:768px){.banner-card-slot.has-adsense{aspect-ratio:auto !important;contain:none !important}.banner-card-slot.has-adsense .adsbygoogle{min-height:0 !important}.banner-horizontal-reserved,.banner-horizontal-section .banner-header-slot{aspect-ratio:auto !important;max-width:100% !important;contain:none !important}.banner-horizontal-reserved .adsbygoogle,.banner-horizontal-section .adsbygoogle{min-height:0 !important}}
+#article-h2-banner-0,#article-h2-banner-1,#article-h2-banner-2,#article-h2-banner-3,#article-h2-banner-4{contain:layout style}
