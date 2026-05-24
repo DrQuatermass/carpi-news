@@ -26,6 +26,24 @@
 
 {% block extra_css %}
 <meta name="news_keywords" content="{{ articolo.meta_keywords }}">
+<style>
+.article-byline {
+  color: #666;
+  font-size: 0.9rem;
+  margin: 0 0 1.5rem 0;
+  font-style: italic;
+  border-left: 3px solid #b32b1a;
+  padding-left: 12px;
+}
+.article-byline strong {
+  color: #222;
+  font-weight: 600;
+  font-style: normal;
+}
+.article-byline .updated {
+  color: #888;
+}
+</style>
 
 <!-- Canonical URL -->
 <link rel="canonical" href="{{ canonical_url }}">
@@ -59,11 +77,30 @@
   },
   "datePublished": "{{ articolo.data_pubblicazione|date:'c' }}",
   "dateModified": "{{ articolo.data_modifica|date:'c' }}",
+{% if articolo.autore == "Redazione Ombra del Portico" or articolo.autore == "" or not articolo.autore %}
   "author": {
     "@type": "Organization",
-    "name": "{{ articolo.autore|default:'Redazione Ombra del Portico'|escapejs }}",
-    "url": "https://ombradelportico.it/about/"
+    "name": "Redazione Ombra del Portico",
+    "url": "https://ombradelportico.it/about/",
+    "logo": {
+      "@type": "ImageObject",
+      "url": "https://ombradelportico.it{% static 'home/images/portico_logo_news_60h.png' %}",
+      "width": 110,
+      "height": 60
+    }
   },
+{% else %}
+  "author": {
+    "@type": "Person",
+    "name": "{{ articolo.autore|escapejs }}",
+    "url": "https://ombradelportico.it/about/",
+    "worksFor": {
+      "@type": "Organization",
+      "name": "Ombra del Portico",
+      "url": "https://ombradelportico.it/"
+    }
+  },
+{% endif %}
   "publisher": {
     "@type": "Organization",
     "name": "Ombra del Portico",
@@ -545,6 +582,15 @@
             </div>
             <br>
             <h1 class="article-title">{{ articolo.titolo }}</h1>
+            <p class="article-byline">
+              di <strong>{{ articolo.autore }}</strong>
+              · <time datetime="{{ articolo.data_pubblicazione|date:'c' }}">
+                {{ articolo.data_pubblicazione|date:"j F Y" }}
+              </time>
+              {% if articolo.data_modifica > articolo.data_pubblicazione %}
+                · <span class="updated">aggiornato {{ articolo.data_modifica|date:"j F Y" }}</span>
+              {% endif %}
+            </p>
             <br>
 
             <!-- Banner inizio articolo -->

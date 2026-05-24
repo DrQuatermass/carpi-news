@@ -5,6 +5,54 @@ Rimuove emoji, simboli e uniforma il layout
 import re
 from typing import Dict, Any
 
+from .utils import _has_bad_consonant_cluster
+
+
+_REJECT_PATTERNS = [
+    re.compile(r'\brivoluzione\s+silenziosa\b', re.IGNORECASE),
+    re.compile(r'^\s*quando\s+(la|il|lo|le|gli|i|una|un)\b', re.IGNORECASE),
+    re.compile(r'\bspira\s+mirabilis\b', re.IGNORECASE),
+    re.compile(r'\b(svela|svelano|svelato|svelano)\s+(il|la|lo|i|le|gli)\b', re.IGNORECASE),
+    re.compile(r'\bnon\s+crederai\b', re.IGNORECASE),
+    re.compile(r'\becco\s+(il|la|lo|i|le|gli)\s+motivo\b', re.IGNORECASE),
+    re.compile(r'^(?!.*musica)(?!.*concerto)\w+\s+rock\b', re.IGNORECASE),
+    re.compile(r'\bin\s+pochi\s+(minuti|secondi)\b', re.IGNORECASE),
+    re.compile(r'\bgarantite?\s+(risate|emozioni|sorrisi)\b', re.IGNORECASE),
+    re.compile(r'\bemozioni\s+a\s+fior\s+di\s+pelle\b', re.IGNORECASE),
+]
+
+
+def is_natural_italian_title(title: str) -> tuple[bool, str]:
+    """
+    Ritorna (is_ok, reason). False = titolo problematico.
+    """
+    if not title or len(title) < 10:
+        return False, 'troppo-corto'
+    if len(title) > 130:
+        return False, f'troppo-lungo-{len(title)}'
+
+    for pat in _REJECT_PATTERNS:
+        match = pat.search(title)
+        if match:
+            return False, f'pattern-clickbait:{match.group()[:40]}'
+
+    for word in re.findall(r"\b[a-zA-Zàèéìòùç']+\b", title):
+        if len(word) >= 5 and _has_bad_consonant_cluster(word):
+            return False, f'consonanti-improbabili:{word}'
+
+    return True, ''
+
+
+def is_natural_seo_title(title: str) -> tuple[bool, str]:
+    """
+    Validatore specifico per titolo_seo: max 70 char per Google.
+    """
+    if not title:
+        return False, 'vuoto'
+    if len(title) > 70:
+        return False, f'troppo-lungo-per-seo-{len(title)}'
+    return is_natural_italian_title(title)
+
 
 class ContentPolisher:
     """Classe per pulire e uniformare il contenuto degli articoli"""
@@ -113,6 +161,12 @@ class ContentPolisher:
         title = re.sub(r'^[:\-\s]+', '', title)
         
         return title
+
+    def is_natural_italian_title(self, title: str) -> tuple[bool, str]:
+        return is_natural_italian_title(title)
+
+    def is_natural_seo_title(self, title: str) -> tuple[bool, str]:
+        return is_natural_seo_title(title)
 
     def _normalize_sentence_dashes(self, text: str) -> str:
         """Sostituisce i trattini usati come inciso con virgole."""

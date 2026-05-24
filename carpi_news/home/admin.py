@@ -244,7 +244,7 @@ class ArticoloAdmin(admin.ModelAdmin):
     form = ArticoloAdminForm
     list_display = ("titolo", "titolo_seo", "autore", "categoria", "tags", "spotlight_display", "is_pubbliredazionale", "payment_status_display", "approvato", "escludi_newsletter", "data_pubblicazione", "views", "fonti_web_count")
     list_editable = ("escludi_newsletter",)
-    list_filter = ['approvato', 'spotlight', 'categoria', 'escludi_newsletter', IsPubbliredazionaleFilter, 'payment_status', HasWebSourcesFilter]
+    list_filter = ['approvato', 'spotlight', 'categoria', 'autore', 'escludi_newsletter', IsPubbliredazionaleFilter, 'payment_status', HasWebSourcesFilter]
     search_fields = ['titolo', 'titolo_seo', 'autore', 'slug', 'tags', 'nome_azienda', 'sito_web', 'pubbliredazionale_user__username']
 
     def get_fieldsets(self, request, obj=None):

@@ -57,7 +57,7 @@ REGOLE DI OUTPUT OBBLIGATORIE:
 - Rispondi solo con JSON valido, senza markdown, senza blocchi ``` e senza testo fuori dal JSON.
 - Il JSON deve avere esattamente questi campi: "titolo", "titolo_seo", "sommario", "contenuto", "tags".
 - "titolo": titolo editoriale narrativo e coinvolgente per il lettore.
-- "titolo_seo": title tag per Google, MAX 60 caratteri, struttura SOGGETTO + LUOGO + AZIONE, deve contenere le parole chiave esatte che qualcuno cercherebbe su Google per questa notizia. Includi sempre "Carpi" o il nome specifico della persona/luogo. Esempio: "AIMAG Carpi: Morelli chiede trasparenza sulle nomine" invece di "AIMAG, Morelli lancia il guanto al sindaco". Se non riesci a creare un titolo_seo migliore del titolo, usa una stringa vuota "".
+- "titolo_seo": title tag per Google, MAX 60 caratteri, struttura SOGGETTO + LUOGO + AZIONE, deve contenere le parole chiave esatte che qualcuno cercherebbe su Google per questa notizia. Includi sempre "Carpi" o il nome specifico della persona/luogo. STILE: cronaca giornalistica italiana naturale come voce.it, sulpanaro.net, modenatoday.it. VIETATI: titoli clickbait ("rivoluzione silenziosa", "non crederai", "svela il segreto"), frasi che iniziano con "Quando la/il", metafore astratte, "X rock" fuori contesto musica, parole inventate o storpiate. Esempio buono: "AIMAG Carpi: Morelli chiede trasparenza sulle nomine". Esempio CATTIVO: "Tortellini rock quando pasta diventa rivoluzione silenziosa". Se non riesci a creare un titolo_seo migliore del titolo, usa "".
 - "sommario" deve essere plain text, senza HTML.
 - "contenuto" deve contenere HTML con <p>, <strong>, <h2>/<h3> dove serve, mai <h1>.
 - "tags" deve essere un array di stringhe.
@@ -3216,8 +3216,27 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
 
             if parsed_article:
                 self.logger.warning("[DEBUG] Risposta AI JSON valida")
-                titolo = content_polisher.clean_title_plain(parsed_article.get('titolo', ''))[:200]
-                titolo_seo = content_polisher.clean_title_plain(parsed_article.get('titolo_seo', ''))[:70]
+                raw_titolo = content_polisher.clean_title_plain(parsed_article.get('titolo', ''))[:200]
+                ok, reason = content_polisher.is_natural_italian_title(raw_titolo)
+                if not ok:
+                    self.logger.warning(
+                        f"[TITOLO REJECTED] '{raw_titolo}' - {reason}"
+                    )
+                titolo = raw_titolo
+
+                raw_titolo_seo = content_polisher.clean_title_plain(parsed_article.get('titolo_seo', ''))[:70]
+                if raw_titolo_seo:
+                    ok, reason = content_polisher.is_natural_seo_title(raw_titolo_seo)
+                    if ok:
+                        titolo_seo = raw_titolo_seo
+                    else:
+                        self.logger.warning(
+                            f"[TITOLO_SEO REJECTED] '{raw_titolo_seo}' - {reason} "
+                            f"- uso titolo regular come fallback"
+                        )
+                        titolo_seo = ''
+                else:
+                    titolo_seo = ''
                 contenuto = parsed_article.get('contenuto', '')
                 sommario = content_polisher.clean_content_plain(parsed_article.get('sommario', ''))
                 tags_estratti = normalize_ai_tags(parsed_article.get('tags'), category)

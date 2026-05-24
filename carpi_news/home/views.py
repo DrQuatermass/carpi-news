@@ -478,8 +478,8 @@ def sitemap_index(request):
         data_pubblicazione__lte=now
     ).aggregate(max_date=models.Max('data_pubblicazione'))['max_date'] or now
 
-    # Data ultimo aggiornamento sitemap news (ultime 48 ore)
-    news_cutoff = now - timedelta(hours=48)
+    # Data ultimo aggiornamento sitemap news (ultime 72 ore)
+    news_cutoff = now - timedelta(hours=72)
     news_lastmod = Articolo.objects.filter(
         approvato=True,
         data_pubblicazione__gte=news_cutoff,
@@ -487,7 +487,7 @@ def sitemap_index(request):
     ).exclude(
         titolo__istartswith='test'
     ).exclude(
-        categoria__in=['Editoriale', 'Cosa fare oggi']
+        categoria='Cosa fare oggi'
     ).aggregate(max_date=models.Max('data_pubblicazione'))['max_date'] or now
 
     template = loader.get_template('sitemap_index.xml')
@@ -545,19 +545,18 @@ def sitemap_archive(request):
     return HttpResponse(template.render(context, request), content_type='application/xml')
 
 def news_sitemap(request):
-    """Vista per la sitemap Google News (ultime 48 ore)"""
-    # Solo articoli approvati delle ultime 48 ore (non futuri)
+    """Vista per la sitemap Google News (ultime 72 ore)"""
     now = timezone.now()
-    cutoff_date = now - timedelta(hours=48)
+    cutoff_date = now - timedelta(hours=72)
     articles = Articolo.objects.filter(
         approvato=True,
         data_pubblicazione__gte=cutoff_date,
         data_pubblicazione__lte=now,
-        is_pubbliredazionale=False  # Escludi pubbliredazionali da Google News
+        is_pubbliredazionale=False
     ).exclude(
-        titolo__istartswith='test'  # Escludi articoli di test
+        titolo__istartswith='test'
     ).exclude(
-        categoria__in=['Editoriale', 'Cosa fare oggi']  # Google News preferisce notizie, non editoriali o agende
+        categoria='Cosa fare oggi'
     ).order_by('-data_pubblicazione')
 
     for article in articles:

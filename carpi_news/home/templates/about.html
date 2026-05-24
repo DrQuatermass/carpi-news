@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}About - Ombra del Portico{% endblock %}
 
@@ -6,46 +7,41 @@
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
-  "@type": "NewsMediaOrganization",
-  "@id": "https://ombradelportico.it/#organization",
-  "name": "Ombra del Portico",
-  "url": "https://ombradelportico.it",
-  "foundingDate": "2025-09-08",
-  "description": "Portale di informazione locale della città di Carpi. Copertura continua di notizie, eventi, sport e cultura con supervisione editoriale umana.",
-  "logo": {
-    "@type": "ImageObject",
-    "url": "https://ombradelportico.it/static/home/images/portico_logo.svg"
-  },
-  "founder": {
-    "@type": "Person",
-    "name": "Sven Rinaldi"
-  },
-  "employee": {
-    "@type": "Person",
-    "name": "Sven Rinaldi",
-    "jobTitle": "Fondatore e Direttore"
-  },
-  "contactPoint": {
-    "@type": "ContactPoint",
-    "email": "redazione@ombradelportico.it",
-    "telephone": "+393463332864",
-    "contactType": "editorial"
-  },
-  "address": {
-    "@type": "PostalAddress",
-    "addressLocality": "Carpi",
-    "addressRegion": "MO",
-    "addressCountry": "IT"
-  },
-  "areaServed": {
-    "@type": "City",
-    "name": "Carpi"
-  },
-  "sameAs": [
-    "https://t.me/ombradelportico",
-    "https://www.facebook.com/profile.php?id=61580488251783",
-    "https://x.com/ombradelportico",
-    "https://www.instagram.com/ombra_del_portico/"
+  "@graph": [
+    {
+      "@type": "NewsMediaOrganization",
+      "@id": "https://ombradelportico.it/about/#organization",
+      "name": "Ombra del Portico",
+      "alternateName": "Redazione Ombra del Portico",
+      "url": "https://ombradelportico.it/",
+      "logo": "https://ombradelportico.it{% static 'home/images/portico_logo_news_60h.png' %}",
+      "sameAs": [
+        "https://www.facebook.com/ombradelportico/",
+        "https://www.instagram.com/ombradelportico/"
+      ],
+      "founder": {"@id": "https://ombradelportico.it/about/#sven"},
+      "areaServed": {
+        "@type": "City",
+        "name": "Carpi",
+        "containedInPlace": {
+          "@type": "AdministrativeArea",
+          "name": "Emilia-Romagna"
+        }
+      },
+      "diversityPolicy": "https://ombradelportico.it/about/",
+      "ethicsPolicy": "https://ombradelportico.it/about/",
+      "ownershipFundingInfo": "https://ombradelportico.it/about/",
+      "actionableFeedbackPolicy": "https://ombradelportico.it/about/",
+      "correctionsPolicy": "https://ombradelportico.it/about/"
+    },
+    {
+      "@type": "Person",
+      "@id": "https://ombradelportico.it/about/#sven",
+      "name": "Sven Rinaldi",
+      "jobTitle": "Fondatore",
+      "url": "https://ombradelportico.it/about/",
+      "worksFor": {"@id": "https://ombradelportico.it/about/#organization"}
+    }
   ]
 }
 </script>
@@ -74,6 +70,20 @@
             </div>
         </section>
 
+        <section>
+            <h2>Politica editoriale</h2>
+            <p>Selezioniamo le notizie monitorando fonti ufficiali (Comune di Carpi, ANSA, La Voce di Carpi, SulPanaro, TempoNews) e attivita' locali. Alcuni articoli sono redatti con assistenza di sistemi di intelligenza artificiale a partire dalle fonti citate, sotto supervisione editoriale della Redazione. Ogni articolo riporta sempre la fonte originale quando disponibile.</p>
+        </section>
+
+        <section>
+            <h2>Correzioni</h2>
+            <p>Per segnalare errori o richiedere rettifiche scrivere a <a href="mailto:redazione@ombradelportico.it">redazione@ombradelportico.it</a>. Le correzioni sostanziali vengono riportate in fondo all'articolo con data e descrizione della modifica.</p>
+        </section>
+
+        <section>
+            <h2>Trasparenza e finanziamento</h2>
+            <p>Ombra del Portico e' una pubblicazione indipendente. Le entrate derivano da pubblicita' display, pubbliredazionali (segnalati come tali) e contributi volontari dei lettori. Il sito non riceve finanziamenti pubblici ne' contributi politici.</p>
+        </section>
         <section>
             <h2>Perché Ombra del Portico?</h2>
             <div class="feature-card value-prop">

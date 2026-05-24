@@ -45,8 +45,13 @@ class Articolo(models.Model):
     )
     autore = models.CharField(
         max_length=120,
-        default="Sven Rinaldi",
-        help_text="Autore dell'articolo (firma redazionale o personale)"
+        default="Redazione Ombra del Portico",
+        db_index=True,
+        help_text=(
+            "Autore dell'articolo. Default 'Redazione Ombra del Portico'. "
+            "Usa nome persona reale per editoriali firmati o pubbliredazionali "
+            "con firma dell'autore."
+        )
     )
     slug = models.SlugField(max_length=100, unique=True, blank=True)
     approvato = models.BooleanField(default=False, db_index=True)
