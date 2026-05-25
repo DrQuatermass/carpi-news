@@ -108,6 +108,9 @@
     }
   },
   "description": "{{ articolo.sommario|striptags|escapejs }}",
+  "wordCount": {{ articolo.article_word_count }},
+  "articleBody": "{{ articolo.article_plain_text|escapejs }}",
+  "keywords": "{{ articolo.meta_keywords|escapejs }}",
   "articleSection": "{{ articolo.categoria|escapejs }}",
   "inLanguage": "it-IT",
   "contentLocation": {

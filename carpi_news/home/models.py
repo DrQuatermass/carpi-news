@@ -3,7 +3,9 @@ from django.utils import timezone
 from django.templatetags.static import static
 from django.core.cache import cache
 from django.conf import settings
+from django.utils.html import strip_tags
 from urllib.parse import quote
+import html
 import re
 import requests
 import json
@@ -274,6 +276,17 @@ class Articolo(models.Model):
         keywords = self.tag_list or [self.categoria]
         keywords = keywords + [self.categoria, 'Carpi', 'Emilia-Romagna']
         return ', '.join(dict.fromkeys(keywords))
+
+    @property
+    def article_plain_text(self):
+        text = re.sub(r'<[^>]+>', ' ', self.contenuto or '')
+        text = strip_tags(text)
+        text = html.unescape(text)
+        return re.sub(r'\s+', ' ', text).strip()
+
+    @property
+    def article_word_count(self):
+        return len(re.findall(r'\b[\wÀ-ÿ]+\b', self.article_plain_text))
 
     @property
     def has_shareable_image(self) -> bool:

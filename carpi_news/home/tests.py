@@ -336,6 +336,19 @@ class ShareLinkTests(TestCase):
         self.assertContains(response, '"addressLocality": "Carpi"')
         self.assertContains(response, '"postalCode": "41012"')
 
+    def test_newsarticle_renders_body_word_count_and_keywords(self):
+        self.articolo.tags = "Soliera, Giovani"
+        self.articolo.contenuto = "<p>Primo testo dell'articolo.</p><p>Secondo testo con &amp; dettagli.</p>"
+        self.articolo.save(update_fields=["tags", "contenuto"])
+        cache.delete(f"articolo_ctx_{self.articolo.slug}")
+
+        response = self.client.get(reverse("dettaglio_articolo", kwargs={"slug": self.articolo.slug}))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '"wordCount": 8')
+        self.assertContains(response, '"articleBody": "Primo testo dell\\u0027articolo. Secondo testo con \\u0026 dettagli."')
+        self.assertContains(response, '"keywords": "Soliera, Giovani, Cronaca, Carpi, Emilia\\u002DRomagna"')
+
 
 @override_settings(
     DEBUG=True,
