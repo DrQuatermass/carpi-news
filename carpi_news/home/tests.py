@@ -1,5 +1,5 @@
 from unittest.mock import patch
-from io import StringIO
+from io import BytesIO, StringIO
 import hashlib
 import hmac
 import json
@@ -9,6 +9,7 @@ from pathlib import Path
 
 from django.core.management import call_command
 from django.core.cache import cache
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
@@ -234,6 +235,47 @@ class ShareLinkTests(TestCase):
 
                 self.assertIn("Articoli aggiornati: 1", out.getvalue())
                 self.assertEqual(self.articolo.image_16x9.name, "images/articles/titolo-test-16x9.webp")
+
+    def test_uploaded_article_image_uses_slug_based_original_filename(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            media_root = Path(tmpdir)
+            image_buffer = BytesIO()
+            Image.new("RGB", (1600, 1000), (80, 80, 80)).save(image_buffer, "JPEG")
+            image_bytes = image_buffer.getvalue()
+
+            with override_settings(MEDIA_ROOT=str(media_root), MEDIA_URL="/media/"), patch("home.signals.threading.Thread"):
+                articolo = Articolo.objects.create(
+                    titolo="Nome immagine articolo",
+                    contenuto="Contenuto",
+                    sommario="Sommario",
+                    categoria="Cronaca",
+                    approvato=False,
+                    foto_upload=SimpleUploadedFile("facebook_name.jpg", image_bytes, content_type="image/jpeg"),
+                    data_pubblicazione=timezone.now(),
+                )
+
+                self.assertEqual(articolo.foto_upload.name, "images/uploaded/nome-immagine-articolo-original.webp")
+
+    def test_regenerate_article_images_can_write_nginx_redirect_map(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            media_root = Path(tmpdir)
+            source_dir = media_root / "images"
+            source_dir.mkdir()
+            source_path = source_dir / "source.jpg"
+            redirect_path = media_root / "image_redirects.conf"
+            Image.new("RGB", (1600, 1000), (40, 120, 180)).save(source_path, "JPEG")
+
+            with override_settings(MEDIA_ROOT=str(media_root), MEDIA_URL="/media/"):
+                Articolo.objects.filter(pk=self.articolo.pk).update(foto="/media/images/source.jpg")
+                out = StringIO()
+
+                call_command("regenerate_article_images", redirect_map=str(redirect_path), stdout=out)
+
+                redirect_conf = redirect_path.read_text(encoding="utf-8")
+                self.assertIn(
+                    "location = /media/images/source.jpg { return 301 /media/images/articles/titolo-test-16x9.webp; }",
+                    redirect_conf,
+                )
 
     def test_detect_municipality_prefers_local_place_over_carpi_fallback(self):
         self.articolo.titolo = "A Soliera apre il nuovo spazio giovani"

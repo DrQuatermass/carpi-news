@@ -261,12 +261,7 @@ def download_and_save_image(image_url: str, article_slug: str) -> str:
         return image_url
 
     try:
-        url_hash = hashlib.md5(image_url.encode()).hexdigest()[:12]
-        ext = image_url.split('?')[0].rsplit('.', 1)[-1].lower()
-        if ext not in ['jpg', 'jpeg', 'png', 'webp', 'gif']:
-            ext = 'jpg'
-        filename = f"{article_slug[:40]}-{url_hash}.{ext}"
-
+        filename = f"{article_slug[:80]}-original.webp"
         save_dir = Path(settings.MEDIA_ROOT) / 'images' / 'downloaded'
         save_dir.mkdir(parents=True, exist_ok=True)
         save_path = save_dir / filename
@@ -276,16 +271,25 @@ def download_and_save_image(image_url: str, article_slug: str) -> str:
             return media_url
 
         headers = {'User-Agent': 'Mozilla/5.0'}
-        response = requests.get(image_url, timeout=10, headers=headers, stream=True)
+        response = requests.get(image_url, timeout=10, headers=headers)
         if response.status_code == 200:
             content_type = response.headers.get('content-type', '')
             if 'image' not in content_type and 'octet' not in content_type:
                 return image_url
 
-            with open(save_path, 'wb') as f:
-                for chunk in response.iter_content(chunk_size=8192):
-                    if chunk:
-                        f.write(chunk)
+            with Image.open(io.BytesIO(response.content)) as img:
+                if img.mode in ('RGBA', 'LA', 'P'):
+                    background = Image.new('RGB', img.size, (255, 255, 255))
+                    if img.mode == 'P':
+                        img = img.convert('RGBA')
+                    if img.mode in ('RGBA', 'LA'):
+                        background.paste(img, mask=img.split()[-1])
+                    else:
+                        background.paste(img)
+                    img = background
+                elif img.mode != 'RGB':
+                    img = img.convert('RGB')
+                img.save(save_path, 'WebP', quality=75, method=6)
             return media_url
 
     except Exception as e:

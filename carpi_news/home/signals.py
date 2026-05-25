@@ -181,7 +181,7 @@ def convert_foto_upload_to_webp(sender, instance, **kwargs):
     if webp_content:
         # Genera nuovo nome file con estensione .webp
         original_name = Path(instance.foto_upload.name).stem
-        webp_name = f"{original_name}.webp"
+        webp_name = f"{instance.slug or original_name}-original.webp"
 
         # Sostituisci il file con la versione WebP
         instance.foto_upload.save(webp_name, webp_content, save=False)
