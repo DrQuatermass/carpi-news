@@ -256,7 +256,7 @@
                 <div class="share-section" style="margin: 25px 0;">
                     <h3 style="color: #2c3e50; margin-bottom: 15px; font-size: 1.2rem;">Condividi Caplet:</h3>
                     <div class="social-share-buttons" style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin: 20px 0;">
-                        <a id="facebook-share" href="https://www.facebook.com/sharer/sharer.php?u={{ request.build_absolute_uri }}&quote=Ho%20riempito%20il%20piatto!%20Sai%20fare%20di%20meglio?%20Prova%20Caplet%20su%20Ombra%20del%20Portico"
+                        <a id="facebook-share" href="https://www.facebook.com/sharer/sharer.php?u={{ request.build_absolute_uri }}"
                            target="_blank" rel="noopener noreferrer"
                            class="social-btn facebook" style="background: linear-gradient(135deg, #4267B2, #365899); color: white; text-decoration: none; padding: 15px; border-radius: 50%; font-weight: 500; transition: transform 0.2s; display: inline-flex; align-items: center; justify-content: center;">
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
@@ -749,7 +749,7 @@ class CapletGame {
 
         // Aggiorna Facebook
         const facebookLink = document.getElementById('facebook-share');
-        facebookLink.href = `https://www.facebook.com/sharer/sharer.php?u=${baseUrl}&quote=${shareTextEncoded}`;
+        facebookLink.href = `https://www.facebook.com/sharer/sharer.php?u=${baseUrl}`;
 
         // Aggiorna X/Twitter
         const twitterLink = document.getElementById('twitter-share');

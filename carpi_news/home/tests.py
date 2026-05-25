@@ -192,6 +192,30 @@ class ShareLinkTests(TestCase):
             '"image": ["https://testserver/media/images/articles/titolo-test-16x9.webp", "https://testserver/media/images/articles/titolo-test-4x3.webp", "https://testserver/media/images/articles/titolo-test-1x1.webp"]',
         )
 
+    def test_article_detail_renders_minor_social_meta_and_facebook_share_without_quote(self):
+        self.articolo.image_16x9 = "images/articles/titolo-test-16x9.webp"
+        self.articolo.save(update_fields=["image_16x9"])
+        cache.delete(f"articolo_ctx_{self.articolo.slug}")
+
+        response = self.client.get(reverse("dettaglio_articolo", kwargs={"slug": self.articolo.slug}))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '<meta name="theme-color" content="#966C42">')
+        self.assertContains(
+            response,
+            '<meta property="og:image:secure_url" content="https://testserver/media/images/articles/titolo-test-16x9.webp">',
+        )
+        self.assertContains(response, '<meta name="twitter:creator" content="@ombradelportico">')
+        self.assertContains(response, "https://www.facebook.com/sharer/sharer.php?u=")
+        self.assertNotContains(response, "&quote=")
+
+    def test_caplet_facebook_share_without_quote(self):
+        response = self.client.get(reverse("caplet"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "https://www.facebook.com/sharer/sharer.php?u=")
+        self.assertNotContains(response, "&quote=")
+
     def test_generate_article_image_variants_creates_expected_sizes(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             media_root = Path(tmpdir)
