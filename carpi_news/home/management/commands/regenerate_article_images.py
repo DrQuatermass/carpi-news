@@ -1,4 +1,6 @@
+from django.db.models import Q
 from django.core.management.base import BaseCommand
+from django.utils import timezone
 
 from home.image_variants import ArticleImageVariantError, generate_article_image_variants
 from home.models import Articolo
@@ -28,6 +30,11 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument("--force", action="store_true", help="Rigenera anche le varianti gia' presenti.")
         parser.add_argument("--limit", type=int, default=None, help="Numero massimo di articoli da processare.")
+        parser.add_argument(
+            "--include-unpublished",
+            action="store_true",
+            help="Processa anche articoli non pubblicati, bozze, futuri e pubbliredazionali non pagati.",
+        )
         parser.add_argument("--redirect-map", help="Path file in cui scrivere redirect 301 dai vecchi URL immagine alla nuova 16:9.")
         parser.add_argument(
             "--redirect-format",
@@ -39,6 +46,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         force = options["force"]
         limit = options["limit"]
+        include_unpublished = options["include_unpublished"]
         redirect_map = options["redirect_map"]
         redirect_format = options["redirect_format"]
         processed = 0
@@ -48,6 +56,12 @@ class Command(BaseCommand):
         redirect_lines = []
 
         queryset = Articolo.objects.order_by("-data_pubblicazione", "-id")
+        if not include_unpublished:
+            queryset = queryset.filter(
+                Q(is_pubbliredazionale=False, approvato=True)
+                | Q(is_pubbliredazionale=True, approvato=True, payment_status="completed"),
+                data_pubblicazione__lte=timezone.now(),
+            )
         if limit:
             queryset = queryset[:limit]
 

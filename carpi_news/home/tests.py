@@ -336,6 +336,75 @@ class ShareLinkTests(TestCase):
                 self.assertIn(f"{self.articolo.slug}: immagine non processabile, salto.", err.getvalue())
                 self.assertIn("Falliti: 1", out.getvalue())
 
+    def test_regenerate_article_images_processes_only_published_articles_by_default(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            media_root = Path(tmpdir)
+            source_dir = media_root / "images"
+            source_dir.mkdir()
+            source_path = source_dir / "source.jpg"
+            Image.new("RGB", (1600, 1000), (40, 120, 180)).save(source_path, "JPEG")
+
+            draft = Articolo.objects.create(
+                titolo="Bozza con immagine",
+                contenuto="Contenuto",
+                sommario="Sommario",
+                categoria="Cronaca",
+                approvato=False,
+                foto="/media/images/source.jpg",
+                data_pubblicazione=timezone.now(),
+            )
+            future = Articolo.objects.create(
+                titolo="Futuro con immagine",
+                contenuto="Contenuto",
+                sommario="Sommario",
+                categoria="Cronaca",
+                approvato=True,
+                foto="/media/images/source.jpg",
+                data_pubblicazione=timezone.now() + timedelta(days=1),
+            )
+
+            with override_settings(MEDIA_ROOT=str(media_root), MEDIA_URL="/media/"):
+                Articolo.objects.filter(pk=self.articolo.pk).update(foto="/media/images/source.jpg")
+                out = StringIO()
+
+                call_command("regenerate_article_images", stdout=out)
+                self.articolo.refresh_from_db()
+                draft.refresh_from_db()
+                future.refresh_from_db()
+
+                self.assertEqual(self.articolo.image_16x9.name, "images/articles/titolo-test-16x9.webp")
+                self.assertFalse(draft.image_16x9)
+                self.assertFalse(future.image_16x9)
+                self.assertIn("Processati: 1.", out.getvalue())
+
+    def test_regenerate_article_images_can_include_unpublished_articles(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            media_root = Path(tmpdir)
+            source_dir = media_root / "images"
+            source_dir.mkdir()
+            source_path = source_dir / "source.jpg"
+            Image.new("RGB", (1600, 1000), (40, 120, 180)).save(source_path, "JPEG")
+
+            draft = Articolo.objects.create(
+                titolo="Bozza con immagine",
+                contenuto="Contenuto",
+                sommario="Sommario",
+                categoria="Cronaca",
+                approvato=False,
+                foto="/media/images/source.jpg",
+                data_pubblicazione=timezone.now(),
+            )
+
+            with override_settings(MEDIA_ROOT=str(media_root), MEDIA_URL="/media/"):
+                Articolo.objects.filter(pk=self.articolo.pk).update(foto="/media/images/source.jpg")
+                out = StringIO()
+
+                call_command("regenerate_article_images", include_unpublished=True, stdout=out)
+                draft.refresh_from_db()
+
+                self.assertEqual(draft.image_16x9.name, "images/articles/bozza-con-immagine-16x9.webp")
+                self.assertIn("Processati: 2.", out.getvalue())
+
     def test_detect_municipality_prefers_local_place_over_carpi_fallback(self):
         self.articolo.titolo = "A Soliera apre il nuovo spazio giovani"
         self.articolo.tags = "Carpi, Soliera, giovani"
