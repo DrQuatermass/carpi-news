@@ -3,15 +3,19 @@ from io import StringIO
 import hashlib
 import hmac
 import json
+import tempfile
 from datetime import timedelta
+from pathlib import Path
 
 from django.core.management import call_command
 from django.core.cache import cache
 from django.test import Client, SimpleTestCase, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
+from PIL import Image
 
 from home.content_polisher import content_polisher
+from home.image_variants import generate_article_image_variants
 from home.management.commands.retry_failed_social_shares import Command as RetryFailedSocialSharesCommand
 from home.models import Articolo, InstagramOptOut, ShortLink, SocialPublicationLog
 from home.share_links import build_share_url, build_short_share_url
@@ -132,6 +136,103 @@ class ShareLinkTests(TestCase):
 
         self.assertEqual(response.status_code, 404)
         self.assertIsNone(cache.get(f"articolo_ctx_{self.articolo.slug}"))
+
+    def test_article_detail_uses_editorial_headline_everywhere(self):
+        self.articolo.titolo = "Headline editoriale unica"
+        self.articolo.titolo_seo = "Titolo SEO diverso"
+        self.articolo.save(update_fields=["titolo", "titolo_seo"])
+        cache.delete(f"articolo_ctx_{self.articolo.slug}")
+
+        response = self.client.get(reverse("dettaglio_articolo", kwargs={"slug": self.articolo.slug}))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "<title>Headline editoriale unica — Ombra del Portico</title>")
+        self.assertContains(response, '<meta property="og:title" content="Headline editoriale unica">')
+        self.assertContains(response, '<meta name="twitter:title" content="Headline editoriale unica">')
+        self.assertContains(response, '<h1 class="article-title">Headline editoriale unica</h1>')
+        self.assertContains(response, '"headline": "Headline editoriale unica"')
+        self.assertNotContains(response, "Titolo SEO diverso")
+
+    def test_audit_headlines_outputs_articles_over_limit(self):
+        long_title = "Titolo molto lungo " + ("x" * 90)
+        with self.assertWarns(RuntimeWarning):
+            article = Articolo.objects.create(
+                titolo=long_title,
+                contenuto="Contenuto",
+                sommario="Sommario",
+                categoria="Cronaca",
+                approvato=True,
+                data_pubblicazione=timezone.now(),
+            )
+
+        out = StringIO()
+        call_command("audit_headlines", stdout=out)
+
+        output = out.getvalue()
+        self.assertIn(article.slug, output)
+        self.assertIn(str(len(long_title)), output)
+        self.assertIn(long_title, output)
+
+    def test_newsarticle_uses_three_image_variants_when_available(self):
+        self.articolo.image_16x9 = "images/articles/titolo-test-16x9.webp"
+        self.articolo.image_4x3 = "images/articles/titolo-test-4x3.webp"
+        self.articolo.image_1x1 = "images/articles/titolo-test-1x1.webp"
+        self.articolo.save(update_fields=["image_16x9", "image_4x3", "image_1x1"])
+        cache.delete(f"articolo_ctx_{self.articolo.slug}")
+
+        response = self.client.get(reverse("dettaglio_articolo", kwargs={"slug": self.articolo.slug}))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '<meta property="og:image" content="https://testserver/media/images/articles/titolo-test-16x9.webp">')
+        self.assertContains(response, '<meta name="twitter:image" content="https://testserver/media/images/articles/titolo-test-16x9.webp">')
+        self.assertContains(
+            response,
+            '"image": ["https://testserver/media/images/articles/titolo-test-16x9.webp", "https://testserver/media/images/articles/titolo-test-4x3.webp", "https://testserver/media/images/articles/titolo-test-1x1.webp"]',
+        )
+
+    def test_generate_article_image_variants_creates_expected_sizes(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            media_root = Path(tmpdir)
+            source_dir = media_root / "images"
+            source_dir.mkdir()
+            source_path = source_dir / "source.jpg"
+            Image.new("RGB", (1600, 1000), (180, 40, 40)).save(source_path, "JPEG")
+
+            with override_settings(MEDIA_ROOT=str(media_root), MEDIA_URL="/media/"):
+                self.articolo.foto = "/media/images/source.jpg"
+                created = generate_article_image_variants(self.articolo, force=True)
+                self.articolo.refresh_from_db()
+
+                self.assertEqual(set(created), {"image_16x9", "image_4x3", "image_1x1"})
+                expected = {
+                    "image_16x9": (1200, 675),
+                    "image_4x3": (1200, 900),
+                    "image_1x1": (1200, 1200),
+                }
+                for field_name, size in expected.items():
+                    image_path = media_root / getattr(self.articolo, field_name).name
+                    self.assertTrue(image_path.exists())
+                    with Image.open(image_path) as img:
+                        self.assertEqual(img.size, size)
+
+    def test_regenerate_article_images_command_processes_existing_article(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            media_root = Path(tmpdir)
+            source_dir = media_root / "images"
+            source_dir.mkdir()
+            source_path = source_dir / "source.jpg"
+            Image.new("RGB", (1600, 1000), (40, 120, 180)).save(source_path, "JPEG")
+
+            with override_settings(MEDIA_ROOT=str(media_root), MEDIA_URL="/media/"):
+                Articolo.objects.filter(pk=self.articolo.pk).update(foto="/media/images/source.jpg")
+                self.articolo.foto = "/media/images/source.jpg"
+                out = StringIO()
+
+                call_command("regenerate_article_images", stdout=out)
+                self.articolo.refresh_from_db()
+
+                self.assertIn("Articoli aggiornati: 1", out.getvalue())
+                self.assertEqual(self.articolo.image_16x9.name, "images/articles/titolo-test-16x9.webp")
 
 
 @override_settings(

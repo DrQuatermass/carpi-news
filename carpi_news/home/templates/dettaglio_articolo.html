@@ -5,11 +5,11 @@
 {% load banner_tags %}
 {% load webp_images %}
 
-{% block title %}{% if articolo.titolo_seo %}{{ articolo.titolo_seo }} - Ombra del Portico{% else %}{{ articolo.titolo }} - Ombra del Portico{% endif %}{% endblock %}
+{% block title %}{{ articolo.editorial_headline }} — Ombra del Portico{% endblock %}
 
 {% block og_type %}article{% endblock %}
 {% block og_url %}https://ombradelportico.it{{ request.path }}{% endblock %}
-{% block og_title %}{% if articolo.titolo_seo %}{{ articolo.titolo_seo }}{% else %}{{ articolo.titolo }}{% endif %}{% endblock %}
+{% block og_title %}{{ articolo.editorial_headline }}{% endblock %}
 {% block og_description %}{{ articolo.sommario|striptags|truncate_sentences:300 }}{% endblock %}
 {% block og_image %}{{ articolo.get_social_image_url }}{% endblock %}
 {% block og_image_alt %}{{ articolo.titolo }}{% endblock %}
@@ -17,7 +17,7 @@
 
 {% block twitter_card %}summary_large_image{% endblock %}
 {% block twitter_url %}https://ombradelportico.it{{ request.path }}{% endblock %}
-{% block twitter_title %}{{ articolo.titolo }}{% endblock %}
+{% block twitter_title %}{{ articolo.editorial_headline }}{% endblock %}
 {% block twitter_description %}{{ articolo.sommario|striptags|truncate_sentences:200 }}{% endblock %}
 {% block twitter_image %}{{ articolo.get_social_image_url }}{% endblock %}
 
@@ -68,13 +68,8 @@
 {
   "@context": "https://schema.org",
   "@type": "NewsArticle",
-  "headline": "{% if articolo.titolo_seo %}{{ articolo.titolo_seo|escapejs }}{% else %}{{ articolo.titolo|truncatechars:110|escapejs }}{% endif %}",
-  "image": {
-    "@type": "ImageObject",
-    "url": "{{ articolo.get_social_image_url }}",
-    "width": 1200,
-    "height": 630
-  },
+  "headline": "{{ articolo.editorial_headline|escapejs }}",
+  "image": [{% for image_url in articolo.get_newsarticle_image_urls %}"{{ image_url }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
   "datePublished": "{{ articolo.data_pubblicazione|date:'c' }}",
   "dateModified": "{{ articolo.data_modifica|date:'c' }}",
 {% if articolo.autore == "Redazione Ombra del Portico" or articolo.autore == "" or not articolo.autore %}
@@ -570,7 +565,7 @@
                         <a href="{% url 'home' %}?categoria={{ articolo.categoria|urlencode }}">{{ articolo.categoria }}</a>
                     </li>
                     <li class="active">
-                        <span>{{ articolo.titolo }}</span>
+                        <span>{{ articolo.editorial_headline }}</span>
                     </li>
                 </ol>
             </nav>
@@ -581,7 +576,7 @@
                 </time>
             </div>
             <br>
-            <h1 class="article-title">{{ articolo.titolo }}</h1>
+            <h1 class="article-title">{{ articolo.editorial_headline }}</h1>
             <p class="article-byline">
               di <strong>{{ articolo.autore }}</strong>
               · <time datetime="{{ articolo.data_pubblicazione|date:'c' }}">

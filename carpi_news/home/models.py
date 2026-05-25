@@ -9,10 +9,13 @@ import requests
 import json
 import logging
 import uuid
+import warnings
 logger = logging.getLogger(__name__)
 
 
 class Articolo(models.Model):
+    HEADLINE_MAX_LENGTH = 95
+
     CATEGORIA_CHOICES = [
         ('Attualità', 'Attualità'),
         ('Cronaca', 'Cronaca'),
@@ -58,6 +61,9 @@ class Articolo(models.Model):
     fonte = models.URLField(max_length=500, blank=True, null=True)
     foto = models.TextField(blank=True, null=True)
     foto_upload = models.ImageField(upload_to='images/uploaded/', blank=True, null=True, help_text="Upload di un'immagine per l'articolo")
+    image_16x9 = models.ImageField(upload_to='images/articles/', blank=True, null=True, help_text="Versione WebP 1200x675 per social e NewsArticle")
+    image_4x3 = models.ImageField(upload_to='images/articles/', blank=True, null=True, help_text="Versione WebP 1200x900 per NewsArticle")
+    image_1x1 = models.ImageField(upload_to='images/articles/', blank=True, null=True, help_text="Versione WebP 1200x1200 per NewsArticle")
     richieste_modifica = models.TextField(blank=True, null=True, help_text="Richieste specifiche per la rigenerazione AI dell'articolo")
     fonti_web = models.JSONField(blank=True, null=True, help_text="Fonti web utilizzate durante la generazione AI con ricerca web")
     ai_model_used = models.CharField(max_length=50, blank=True, null=True, help_text="Modello AI utilizzato per generare l'articolo (es. claude-3-7-sonnet, gpt-4-turbo)")
@@ -133,6 +139,27 @@ class Articolo(models.Model):
     # Note amministrative
     admin_notes = models.TextField('Note amministrative', blank=True, help_text='Visibili solo agli admin')
 
+    @property
+    def editorial_headline(self):
+        """Fonte unica per H1, title social e headline NewsArticle."""
+        return (self.titolo or '').strip()
+
+    def _warn_if_headline_too_long(self):
+        headline = self.editorial_headline
+        if len(headline) <= self.HEADLINE_MAX_LENGTH:
+            return
+
+        message = (
+            f"Headline oltre {self.HEADLINE_MAX_LENGTH} caratteri "
+            f"({len(headline)}): slug={self.slug or '<senza-slug>'} titolo={headline!r}"
+        )
+        logger.warning(message)
+        warnings.warn(message, RuntimeWarning, stacklevel=2)
+
+    def clean(self):
+        super().clean()
+        self._warn_if_headline_too_long()
+
     @staticmethod
     def normalize_category(categoria):
         """
@@ -195,6 +222,8 @@ class Articolo(models.Model):
         return 'Attualità'
 
     def save(self, *args, **kwargs):
+        self._warn_if_headline_too_long()
+
         # Normalizza categoria prima del salvataggio
         self.categoria = self.normalize_category(self.categoria)
 
@@ -264,6 +293,28 @@ class Articolo(models.Model):
         if image_url.endswith('.png'):
             return 'image/png'
         return 'image/jpeg'
+
+    def _absolute_media_field_url(self, field):
+        if not field:
+            return ''
+        try:
+            if not field.name:
+                return ''
+            site_url = getattr(settings, 'SITE_URL', 'https://ombradelportico.it')
+            return f"{site_url}{field.url}"
+        except (ValueError, AttributeError):
+            return ''
+
+    def get_newsarticle_image_urls(self):
+        urls = [
+            self._absolute_media_field_url(self.image_16x9),
+            self._absolute_media_field_url(self.image_4x3),
+            self._absolute_media_field_url(self.image_1x1),
+        ]
+        urls = [url for url in urls if url]
+        if len(urls) == 3:
+            return urls
+        return [self.get_social_image_url()]
 
     def get_image_url(self):
         """Restituisce l'URL dell'immagine o il fallback se non disponibile/raggiungibile"""
@@ -372,6 +423,11 @@ class Articolo(models.Model):
 
         site_url = getattr(settings, 'SITE_URL', 'https://ombradelportico.it')
         fallback_image = f"{site_url}{static('home/images/portico_logo_nopayoff.png')}"
+
+        if self.image_16x9:
+            image_16x9_url = self._absolute_media_field_url(self.image_16x9)
+            if image_16x9_url:
+                return image_16x9_url
 
         # Priorità: foto_upload prima di foto URL
         if self.foto_upload:
