@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 
 from django.conf import settings
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
 
 logger = logging.getLogger(__name__)
 
@@ -13,6 +13,10 @@ ARTICLE_IMAGE_VARIANTS = {
     "1x1": (1200, 1200),
 }
 MAX_IMAGE_SLUG_LENGTH = 80
+
+
+class ArticleImageVariantError(Exception):
+    pass
 
 
 def _to_rgb(image):
@@ -113,7 +117,12 @@ def generate_article_image_variants(article, source_path=None, force=False, qual
         if current and current.name and output_path.exists() and not force:
             continue
 
-        crop_resize_webp(source_path, output_path, size, quality=quality)
+        try:
+            crop_resize_webp(source_path, output_path, size, quality=quality)
+        except (OSError, UnidentifiedImageError) as exc:
+            raise ArticleImageVariantError(
+                f"Impossibile generare variante {aspect} per articolo {article.pk} da {source_path}: {exc}"
+            ) from exc
         created[field_name] = relative_name
         logger.info("Variante immagine creata: %s", relative_name)
 

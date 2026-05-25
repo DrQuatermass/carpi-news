@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 
-from home.image_variants import generate_article_image_variants
+from home.image_variants import ArticleImageVariantError, generate_article_image_variants
 from home.models import Articolo
 
 
@@ -44,6 +44,7 @@ class Command(BaseCommand):
         processed = 0
         generated = 0
         skipped = 0
+        failed = 0
         redirect_lines = []
 
         queryset = Articolo.objects.order_by("-data_pubblicazione", "-id")
@@ -53,7 +54,13 @@ class Command(BaseCommand):
         for articolo in queryset:
             processed += 1
             old_image_path = _current_image_path(articolo)
-            created = generate_article_image_variants(articolo, force=force)
+            try:
+                created = generate_article_image_variants(articolo, force=force)
+            except ArticleImageVariantError as exc:
+                failed += 1
+                self.stderr.write(self.style.WARNING(f"{articolo.slug}: immagine non processabile, salto. {exc}"))
+                continue
+
             if created:
                 generated += 1
                 self.stdout.write(f"{articolo.slug}: {', '.join(sorted(created))}")
@@ -78,6 +85,6 @@ class Command(BaseCommand):
 
         self.stdout.write(
             self.style.SUCCESS(
-                f"Processati: {processed}. Articoli aggiornati: {generated}. Saltati: {skipped}."
+                f"Processati: {processed}. Articoli aggiornati: {generated}. Saltati: {skipped}. Falliti: {failed}."
             )
         )

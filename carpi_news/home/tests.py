@@ -318,6 +318,24 @@ class ShareLinkTests(TestCase):
                     redirect_conf,
                 )
 
+    def test_regenerate_article_images_skips_unreadable_source_image(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            media_root = Path(tmpdir)
+            source_dir = media_root / "images" / "downloaded"
+            source_dir.mkdir(parents=True)
+            source_path = source_dir / "broken.jpg"
+            source_path.write_bytes(b"not an image")
+
+            with override_settings(MEDIA_ROOT=str(media_root), MEDIA_URL="/media/"):
+                Articolo.objects.filter(pk=self.articolo.pk).update(foto="/media/images/downloaded/broken.jpg")
+                out = StringIO()
+                err = StringIO()
+
+                call_command("regenerate_article_images", stdout=out, stderr=err)
+
+                self.assertIn(f"{self.articolo.slug}: immagine non processabile, salto.", err.getvalue())
+                self.assertIn("Falliti: 1", out.getvalue())
+
     def test_detect_municipality_prefers_local_place_over_carpi_fallback(self):
         self.articolo.titolo = "A Soliera apre il nuovo spazio giovani"
         self.articolo.tags = "Carpi, Soliera, giovani"
