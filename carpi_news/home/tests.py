@@ -18,6 +18,7 @@ from home.content_polisher import content_polisher
 from home.image_variants import generate_article_image_variants
 from home.management.commands.retry_failed_social_shares import Command as RetryFailedSocialSharesCommand
 from home.models import Articolo, InstagramOptOut, ShortLink, SocialPublicationLog
+from home.seo_locations import detect_municipality
 from home.share_links import build_share_url, build_short_share_url
 from home.universal_news_monitor import parse_ai_article_json
 
@@ -233,6 +234,48 @@ class ShareLinkTests(TestCase):
 
                 self.assertIn("Articoli aggiornati: 1", out.getvalue())
                 self.assertEqual(self.articolo.image_16x9.name, "images/articles/titolo-test-16x9.webp")
+
+    def test_detect_municipality_prefers_local_place_over_carpi_fallback(self):
+        self.articolo.titolo = "A Soliera apre il nuovo spazio giovani"
+        self.articolo.tags = "Carpi, Soliera, giovani"
+
+        location = detect_municipality(self.articolo)
+
+        self.assertEqual(location["name"], "Soliera")
+        self.assertEqual(location["cap"], "41019")
+
+    def test_article_detail_renders_dynamic_content_location_and_geo_meta(self):
+        self.articolo.titolo = "A Soliera apre il nuovo spazio giovani"
+        self.articolo.tags = "Carpi, Soliera, giovani"
+        self.articolo.save(update_fields=["titolo", "tags"])
+        cache.delete(f"articolo_ctx_{self.articolo.slug}")
+
+        response = self.client.get(reverse("dettaglio_articolo", kwargs={"slug": self.articolo.slug}))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '<meta name="geo.placename" content="Soliera">')
+        self.assertContains(response, '<meta name="geo.position" content="44.7386;10.9212">')
+        self.assertContains(response, '<meta name="ICBM" content="44.7386, 10.9212">')
+        self.assertContains(response, '"contentLocation": {')
+        self.assertContains(response, '"name": "Soliera"')
+        self.assertContains(response, '"addressLocality": "Soliera"')
+        self.assertContains(response, '"postalCode": "41019"')
+        self.assertContains(response, '"latitude": 44.7386')
+        self.assertContains(response, '"longitude": 10.9212')
+
+    def test_article_detail_falls_back_to_carpi_content_location(self):
+        self.articolo.titolo = "Nuovo progetto per il territorio"
+        self.articolo.tags = "Cronaca"
+        self.articolo.contenuto = "<p>Una notizia locale senza comune esplicito.</p>"
+        self.articolo.save(update_fields=["titolo", "tags", "contenuto"])
+        cache.delete(f"articolo_ctx_{self.articolo.slug}")
+
+        response = self.client.get(reverse("dettaglio_articolo", kwargs={"slug": self.articolo.slug}))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '<meta name="geo.placename" content="Carpi">')
+        self.assertContains(response, '"addressLocality": "Carpi"')
+        self.assertContains(response, '"postalCode": "41012"')
 
 
 @override_settings(

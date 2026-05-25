@@ -316,6 +316,17 @@ class Articolo(models.Model):
             return urls
         return [self.get_social_image_url()]
 
+    @property
+    def seo_location(self):
+        from .seo_locations import detect_municipality
+
+        location = detect_municipality(self).copy()
+        location["region"] = "Emilia-Romagna"
+        location["country"] = "IT"
+        location["geo_position"] = f"{location['lat']};{location['lng']}"
+        location["icbm"] = f"{location['lat']}, {location['lng']}"
+        return location
+
     def get_image_url(self):
         """Restituisce l'URL dell'immagine o il fallback se non disponibile/raggiungibile"""
         fallback_image = static('home/images/portico_logo_nopayoff.webp')

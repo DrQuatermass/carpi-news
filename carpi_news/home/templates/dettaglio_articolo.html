@@ -59,9 +59,9 @@
 <!-- Meta keywords e geolocalizzazione -->
 <meta name="author" content="Redazione Ombra del Portico">
 <meta name="geo.region" content="IT-ER">
-<meta name="geo.placename" content="Carpi">
-<meta name="geo.position" content="44.7829;10.8857">
-<meta name="ICBM" content="44.7829, 10.8857">
+<meta name="geo.placename" content="{{ articolo.seo_location.name }}">
+<meta name="geo.position" content="{{ articolo.seo_location.geo_position }}">
+<meta name="ICBM" content="{{ articolo.seo_location.icbm }}">
 
 <!-- Schema.org JSON-LD per Google News -->
 <script type="application/ld+json">
@@ -110,6 +110,22 @@
   "description": "{{ articolo.sommario|striptags|escapejs }}",
   "articleSection": "{{ articolo.categoria|escapejs }}",
   "inLanguage": "it-IT",
+  "contentLocation": {
+    "@type": "Place",
+    "name": "{{ articolo.seo_location.name|escapejs }}",
+    "address": {
+      "@type": "PostalAddress",
+      "addressLocality": "{{ articolo.seo_location.name|escapejs }}",
+      "addressRegion": "{{ articolo.seo_location.region|escapejs }}",
+      "postalCode": "{{ articolo.seo_location.cap }}",
+      "addressCountry": "{{ articolo.seo_location.country }}"
+    },
+    "geo": {
+      "@type": "GeoCoordinates",
+      "latitude": {{ articolo.seo_location.lat }},
+      "longitude": {{ articolo.seo_location.lng }}
+    }
+  },
   "url": "{{ canonical_url }}",
   "mainEntityOfPage": {
     "@type": "WebPage",
