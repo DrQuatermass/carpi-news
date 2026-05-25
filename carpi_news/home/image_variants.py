@@ -12,6 +12,7 @@ ARTICLE_IMAGE_VARIANTS = {
     "4x3": (1200, 900),
     "1x1": (1200, 1200),
 }
+MAX_IMAGE_SLUG_LENGTH = 80
 
 
 def _to_rgb(image):
@@ -101,10 +102,11 @@ def generate_article_image_variants(article, source_path=None, force=False, qual
 
     created = {}
     output_dir = Path(settings.MEDIA_ROOT) / "images" / "articles"
+    image_slug = article.slug[:MAX_IMAGE_SLUG_LENGTH].rstrip("-")
 
     for aspect, size in ARTICLE_IMAGE_VARIANTS.items():
-        relative_name = f"images/articles/{article.slug}-{aspect}.webp"
-        output_path = output_dir / f"{article.slug}-{aspect}.webp"
+        relative_name = f"images/articles/{image_slug}-{aspect}.webp"
+        output_path = output_dir / f"{image_slug}-{aspect}.webp"
         field_name = f"image_{aspect.replace('x', 'x')}"
 
         current = getattr(article, field_name, None)

@@ -217,6 +217,23 @@ class ShareLinkTests(TestCase):
                     with Image.open(image_path) as img:
                         self.assertEqual(img.size, size)
 
+    def test_generate_article_image_variants_keeps_field_paths_within_db_limit(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            media_root = Path(tmpdir)
+            source_dir = media_root / "images"
+            source_dir.mkdir()
+            source_path = source_dir / "source.jpg"
+            Image.new("RGB", (1600, 1000), (180, 40, 40)).save(source_path, "JPEG")
+
+            with override_settings(MEDIA_ROOT=str(media_root), MEDIA_URL="/media/"):
+                self.articolo.slug = "slug-" + ("molto-lungo-" * 10)
+                self.articolo.foto = "/media/images/source.jpg"
+                created = generate_article_image_variants(self.articolo, force=True)
+                self.articolo.refresh_from_db()
+
+                self.assertEqual(set(created), {"image_16x9", "image_4x3", "image_1x1"})
+                self.assertLessEqual(len(self.articolo.image_16x9.name), 180)
+
     def test_regenerate_article_images_command_processes_existing_article(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             media_root = Path(tmpdir)
