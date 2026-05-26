@@ -458,6 +458,15 @@ class Articolo(models.Model):
         site_url = getattr(settings, 'SITE_URL', 'https://ombradelportico.it')
         fallback_image = f"{site_url}{static('home/images/portico_logo_nopayoff.png')}"
 
+        if self.pk:
+            try:
+                from .image_variants import generate_article_image_variants, has_all_article_image_variants
+
+                if not has_all_article_image_variants(self):
+                    generate_article_image_variants(self)
+            except Exception as exc:
+                logger.warning("Generazione lazy immagine social fallita per articolo %s: %s", self.pk, exc)
+
         if self.image_16x9:
             image_16x9_url = self._absolute_media_field_url(self.image_16x9)
             if image_16x9_url:

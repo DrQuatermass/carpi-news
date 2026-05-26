@@ -306,6 +306,29 @@ class ShareLinkTests(TestCase):
                 self.assertEqual(self.articolo.image_16x9.name, "images/articles/titolo-test-16x9.webp")
                 self.assertTrue((media_root / self.articolo.image_4x3.name).exists())
 
+    def test_social_image_url_lazy_generates_missing_variants_before_upload_fallback(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            media_root = Path(tmpdir)
+            source_dir = media_root / "images" / "uploaded"
+            source_dir.mkdir(parents=True)
+            source_path = source_dir / "titolo-test-original.webp"
+            Image.new("RGB", (1600, 1000), (80, 120, 160)).save(source_path, "WebP")
+
+            with override_settings(MEDIA_ROOT=str(media_root), MEDIA_URL="/media/"):
+                Articolo.objects.filter(pk=self.articolo.pk).update(
+                    foto_upload="images/uploaded/titolo-test-original.webp",
+                    image_16x9="",
+                    image_4x3="",
+                    image_1x1="",
+                )
+                self.articolo.refresh_from_db()
+
+                image_url = self.articolo.get_social_image_url()
+                self.articolo.refresh_from_db()
+
+                self.assertEqual(image_url, "https://testserver/media/images/articles/titolo-test-16x9.webp")
+                self.assertEqual(self.articolo.image_16x9.name, "images/articles/titolo-test-16x9.webp")
+
     def test_check_image_variants_reports_missing_files_without_regenerating(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             media_root = Path(tmpdir)
