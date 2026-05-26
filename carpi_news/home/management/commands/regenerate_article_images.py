@@ -2,7 +2,12 @@ from django.db.models import Q
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from home.image_variants import ArticleImageVariantError, ensure_article_image_variants
+from home.image_variants import (
+    ArticleImageVariantError,
+    ensure_article_image_variants,
+    get_article_source_image_path,
+    missing_article_image_variants,
+)
 from home.models import Articolo
 
 
@@ -69,6 +74,10 @@ class Command(BaseCommand):
         if limit:
             queryset = queryset[:limit]
 
+        if slug and not queryset.exists():
+            self.stderr.write(self.style.ERROR(f"Nessun articolo trovato con slug: {slug}"))
+            return
+
         for articolo in queryset:
             processed += 1
             old_image_path = _current_image_path(articolo)
@@ -83,6 +92,18 @@ class Command(BaseCommand):
                 generated += 1
                 self.stdout.write(f"{articolo.slug}: {', '.join(sorted(created))}")
             else:
+                missing = missing_article_image_variants(articolo)
+                if missing:
+                    failed += 1
+                    source = get_article_source_image_path(articolo)
+                    source_label = str(source) if source else "<nessuna immagine locale>"
+                    self.stderr.write(
+                        self.style.WARNING(
+                            f"{articolo.slug}: varianti ancora mancanti ({','.join(missing)}), "
+                            f"source={source_label}, foto={articolo.foto or ''}, foto_upload={getattr(articolo.foto_upload, 'name', '') or ''}"
+                        )
+                    )
+                    continue
                 skipped += 1
 
             if redirect_map and articolo.image_16x9 and old_image_path:

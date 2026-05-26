@@ -308,10 +308,10 @@ def download_article_image_in_background(article_id: int, image_url: str, articl
         if local_url != image_url:
             Articolo.objects.filter(pk=article_id, foto=image_url).update(foto=local_url)
             try:
-                from home.image_variants import generate_article_image_variants
+                from home.image_variants import ensure_article_image_variants
 
                 article = Articolo.objects.get(pk=article_id)
-                generate_article_image_variants(article)
+                ensure_article_image_variants(article, force=True)
             except Exception as e:
                 logging.getLogger(__name__).warning(
                     "Generazione varianti immagine fallita per articolo %s: %s",
