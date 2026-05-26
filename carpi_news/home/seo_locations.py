@@ -131,6 +131,11 @@ MODENA_AUTONOMOUS_PATTERNS = (
     r"\bsindaco\s+di\s+modena\b",
     r"\bcentro\s+di\s+modena\b",
 )
+EXCLUDED_ALIAS_PATTERNS = {
+    "novi": (
+        r"\bnovi\s+sad\b",
+    ),
+}
 
 
 def _normalize_text(value):
@@ -183,6 +188,8 @@ def _best_location_in_text(value):
     matches = []
     for alias, data in _candidate_places():
         normalized_alias = _normalize_text(alias)
+        if any(re.search(pattern, text) for pattern in EXCLUDED_ALIAS_PATTERNS.get(normalized_alias, ())):
+            continue
         if data["addressLocality"] == "Modena" and normalized_alias == "modena" and not _modena_is_autonomous(text):
             continue
 

@@ -594,6 +594,16 @@ class ShareLinkTests(TestCase):
 
         self.assertEqual(location["name"], "Carpi")
 
+    def test_detect_municipality_does_not_match_novi_sad_as_novi_di_modena(self):
+        self.articolo.slug = "copilotisopralerighe-modena-parco-novi-sad"
+        self.articolo.titolo = "A Modena appuntamento al Parco Novi Sad"
+        self.articolo.sommario = "Evento nel parco cittadino di Modena."
+        self.articolo.contenuto = "<p>Il Parco Novi Sad ospita l'iniziativa.</p>"
+
+        location = detect_municipality(self.articolo)
+
+        self.assertEqual(location["name"], "Modena")
+
     def test_detect_municipality_maps_fraction_to_municipality(self):
         self.articolo.slug = "limidi-nuova-area-verde"
         self.articolo.titolo = "Nuova area verde a Limidi"

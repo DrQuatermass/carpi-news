@@ -322,10 +322,10 @@ class Articolo(models.Model):
     def get_newsarticle_image_urls(self):
         if self.pk:
             try:
-                from .image_variants import generate_article_image_variants, has_all_article_image_variants
+                from .image_variants import ensure_article_image_variants, has_all_article_image_variants
 
                 if not has_all_article_image_variants(self):
-                    generate_article_image_variants(self)
+                    ensure_article_image_variants(self, force=True)
             except Exception as exc:
                 logger.warning("Generazione lazy varianti NewsArticle fallita per articolo %s: %s", self.pk, exc)
 
@@ -460,10 +460,10 @@ class Articolo(models.Model):
 
         if self.pk:
             try:
-                from .image_variants import generate_article_image_variants, has_all_article_image_variants
+                from .image_variants import ensure_article_image_variants, has_all_article_image_variants
 
                 if not has_all_article_image_variants(self):
-                    generate_article_image_variants(self)
+                    ensure_article_image_variants(self, force=True)
             except Exception as exc:
                 logger.warning("Generazione lazy immagine social fallita per articolo %s: %s", self.pk, exc)
 
