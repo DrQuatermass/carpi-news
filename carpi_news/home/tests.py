@@ -197,7 +197,8 @@ class ShareLinkTests(TestCase):
         self.articolo.save(update_fields=["image_16x9"])
         cache.delete(f"articolo_ctx_{self.articolo.slug}")
 
-        response = self.client.get(reverse("dettaglio_articolo", kwargs={"slug": self.articolo.slug}))
+        with override_settings(FACEBOOK_APP_ID="123456789"):
+            response = self.client.get(reverse("dettaglio_articolo", kwargs={"slug": self.articolo.slug}))
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, '<meta name="theme-color" content="#966C42">')
@@ -207,6 +208,7 @@ class ShareLinkTests(TestCase):
         )
         self.assertContains(response, '<meta property="og:image:width" content="1200">')
         self.assertContains(response, '<meta property="og:image:height" content="675">')
+        self.assertContains(response, '<meta property="fb:app_id" content="123456789">')
         self.assertContains(response, '<meta name="twitter:creator" content="@ombradelportico">')
         self.assertContains(response, "https://www.facebook.com/sharer/sharer.php?u=")
         self.assertNotContains(response, "&quote=")

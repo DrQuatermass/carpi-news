@@ -35,6 +35,7 @@
     <meta property="og:image:height" content="675">
     <meta property="og:locale" content="it_IT">
     <meta property="og:site_name" content="Ombra del Portico">
+    {% if FACEBOOK_APP_ID %}<meta property="fb:app_id" content="{{ FACEBOOK_APP_ID }}">{% endif %}
 
     <!-- Twitter Card -->
     <meta name="twitter:card" content="{% block twitter_card %}summary_large_image{% endblock %}">

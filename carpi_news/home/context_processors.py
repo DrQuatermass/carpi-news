@@ -19,5 +19,6 @@ def canonical_url(request):
     return {
         'canonical_url': f"https://{canonical_domain}{path}",
         'FACEBOOK_PAGE_URL': settings.FACEBOOK_PAGE_URL,
+        'FACEBOOK_APP_ID': getattr(settings, 'FACEBOOK_APP_ID', ''),
         'TWITTER_SITE': settings.TWITTER_SITE,
     }
