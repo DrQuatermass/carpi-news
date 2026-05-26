@@ -373,6 +373,26 @@ class ShareLinkTests(TestCase):
 
                 self.assertEqual(articolo.foto_upload.name, "images/uploaded/nome-immagine-articolo-original.webp")
 
+    def test_uploaded_webp_image_is_renamed_to_article_slug_original(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            media_root = Path(tmpdir)
+            image_buffer = BytesIO()
+            Image.new("RGB", (1600, 1000), (80, 80, 80)).save(image_buffer, "WebP")
+            image_bytes = image_buffer.getvalue()
+
+            with override_settings(MEDIA_ROOT=str(media_root), MEDIA_URL="/media/"), patch("home.signals.threading.Thread"):
+                articolo = Articolo.objects.create(
+                    titolo="Nome immagine webp",
+                    contenuto="Contenuto",
+                    sommario="Sommario",
+                    categoria="Cronaca",
+                    approvato=False,
+                    foto_upload=SimpleUploadedFile("nome-vecchio.webp", image_bytes, content_type="image/webp"),
+                    data_pubblicazione=timezone.now(),
+                )
+
+                self.assertEqual(articolo.foto_upload.name, "images/uploaded/nome-immagine-webp-original.webp")
+
     def test_regenerate_article_images_can_write_nginx_redirect_map(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             media_root = Path(tmpdir)

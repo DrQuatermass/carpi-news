@@ -162,26 +162,24 @@ def convert_foto_upload_to_webp(sender, instance, **kwargs):
         except Articolo.DoesNotExist:
             pass
 
-    # Verifica se è già WebP
-    if instance.foto_upload.name.lower().endswith('.webp'):
-        logger.debug(f"Immagine già in formato WebP: {instance.foto_upload.name}")
-        return
-
-    # Converti solo PNG, JPG, JPEG
+    # Converti/normalizza PNG, JPG, JPEG e WebP.
     file_ext = Path(instance.foto_upload.name).suffix.lower()
-    if file_ext not in ['.png', '.jpg', '.jpeg']:
+    if file_ext not in ['.png', '.jpg', '.jpeg', '.webp']:
         logger.debug(f"Formato non supportato per conversione WebP: {file_ext}")
         return
 
-    logger.info(f"Conversione immagine caricata in WebP: {instance.foto_upload.name}")
+    target_name = f"{instance.slug or Path(instance.foto_upload.name).stem}-original.webp"
+    if file_ext == ".webp" and Path(instance.foto_upload.name).name == target_name:
+        logger.debug(f"Immagine WebP gia' normalizzata: {instance.foto_upload.name}")
+        return
+
+    logger.info(f"Conversione/normalizzazione immagine caricata in WebP: {instance.foto_upload.name}")
 
     # Converti l'immagine
     webp_content = convert_uploaded_image_to_webp(instance.foto_upload)
 
     if webp_content:
-        # Genera nuovo nome file con estensione .webp
-        original_name = Path(instance.foto_upload.name).stem
-        webp_name = f"{instance.slug or original_name}-original.webp"
+        webp_name = target_name
 
         # Sostituisci il file con la versione WebP
         instance.foto_upload.save(webp_name, webp_content, save=False)
