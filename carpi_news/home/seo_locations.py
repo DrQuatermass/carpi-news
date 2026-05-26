@@ -7,20 +7,23 @@ from django.utils.html import strip_tags
 MUNICIPALITIES = {
     "carpi": {
         "name": "Carpi",
+        "addressLocality": "Carpi",
         "cap": "41012",
         "lat": "44.7829",
         "lng": "10.8857",
-        "aliases": ["carpi", "carpigiano", "carpigiana", "san marino di carpi"],
+        "aliases": ["carpi", "carpigiano", "carpigiana"],
     },
     "soliera": {
         "name": "Soliera",
+        "addressLocality": "Soliera",
         "cap": "41019",
         "lat": "44.7386",
         "lng": "10.9212",
-        "aliases": ["soliera", "limidi", "sozzigalli", "appalto"],
+        "aliases": ["soliera"],
     },
     "novi-di-modena": {
         "name": "Novi di Modena",
+        "addressLocality": "Novi di Modena",
         "cap": "41016",
         "lat": "44.8896",
         "lng": "10.9006",
@@ -28,6 +31,7 @@ MUNICIPALITIES = {
     },
     "campogalliano": {
         "name": "Campogalliano",
+        "addressLocality": "Campogalliano",
         "cap": "41011",
         "lat": "44.6889",
         "lng": "10.8422",
@@ -35,13 +39,15 @@ MUNICIPALITIES = {
     },
     "modena": {
         "name": "Modena",
+        "addressLocality": "Modena",
         "cap": "41121",
         "lat": "44.6471",
         "lng": "10.9252",
-        "aliases": ["modena", "modenese"],
+        "aliases": ["modena"],
     },
     "mirandola": {
         "name": "Mirandola",
+        "addressLocality": "Mirandola",
         "cap": "41037",
         "lat": "44.8873",
         "lng": "11.0662",
@@ -49,6 +55,7 @@ MUNICIPALITIES = {
     },
     "concordia-sulla-secchia": {
         "name": "Concordia sulla Secchia",
+        "addressLocality": "Concordia sulla Secchia",
         "cap": "41033",
         "lat": "44.9135",
         "lng": "10.9847",
@@ -56,6 +63,7 @@ MUNICIPALITIES = {
     },
     "san-prospero": {
         "name": "San Prospero",
+        "addressLocality": "San Prospero",
         "cap": "41030",
         "lat": "44.7901",
         "lng": "11.0233",
@@ -63,6 +71,7 @@ MUNICIPALITIES = {
     },
     "cavezzo": {
         "name": "Cavezzo",
+        "addressLocality": "Cavezzo",
         "cap": "41032",
         "lat": "44.8364",
         "lng": "11.0282",
@@ -70,13 +79,65 @@ MUNICIPALITIES = {
     },
 }
 
+FRACTIONS = {
+    "limidi": {
+        "name": "Limidi",
+        "municipality": "soliera",
+        "aliases": ["limidi"],
+    },
+    "appalto": {
+        "name": "Appalto",
+        "municipality": "soliera",
+        "aliases": ["appalto"],
+    },
+    "sozzigalli": {
+        "name": "Sozzigalli",
+        "municipality": "soliera",
+        "aliases": ["sozzigalli"],
+    },
+    "cortile": {
+        "name": "Cortile",
+        "municipality": "carpi",
+        "aliases": ["cortile"],
+    },
+    "gargallo": {
+        "name": "Gargallo",
+        "municipality": "carpi",
+        "aliases": ["gargallo"],
+    },
+    "fossoli": {
+        "name": "Fossoli",
+        "municipality": "carpi",
+        "aliases": ["fossoli"],
+    },
+    "migliarina": {
+        "name": "Migliarina",
+        "municipality": "carpi",
+        "aliases": ["migliarina"],
+    },
+    "san-marino-di-carpi": {
+        "name": "San Marino di Carpi",
+        "municipality": "carpi",
+        "aliases": ["san marino di carpi"],
+    },
+}
+
 DEFAULT_MUNICIPALITY_KEY = "carpi"
+MODENA_AUTONOMOUS_PATTERNS = (
+    r"\ba\s+modena\b",
+    r"\bdi\s+modena\s+citta\b",
+    r"\bmodena\s+citta\b",
+    r"\bcomune\s+di\s+modena\b",
+    r"\bsindaco\s+di\s+modena\b",
+    r"\bcentro\s+di\s+modena\b",
+)
 
 
 def _normalize_text(value):
     text = strip_tags(value or "")
     text = unicodedata.normalize("NFKD", text)
     text = "".join(char for char in text if not unicodedata.combining(char))
+    text = re.sub(r"[-_/]+", " ", text)
     return text.lower()
 
 
@@ -85,20 +146,70 @@ def _contains_alias(text, alias):
     return re.search(rf"(?<!\w){re.escape(alias)}(?!\w)", text) is not None
 
 
-def detect_municipality(article):
-    parts = [
-        getattr(article, "titolo", ""),
-        getattr(article, "titolo_seo", ""),
-        getattr(article, "tags", ""),
-        getattr(article, "sommario", ""),
-        getattr(article, "contenuto", ""),
-    ]
-    haystack = _normalize_text(" ".join(part for part in parts if part))
+def _word_chunks(value, first_words=200):
+    words = re.findall(r"\S+", strip_tags(value or ""))
+    first = " ".join(words[:first_words])
+    rest = " ".join(words[first_words:])
+    return first, rest
 
-    for key, data in MUNICIPALITIES.items():
-        if key == DEFAULT_MUNICIPALITY_KEY:
+
+def _modena_is_autonomous(text):
+    return any(re.search(pattern, text) for pattern in MODENA_AUTONOMOUS_PATTERNS)
+
+
+def _place_data_from_fraction(fraction):
+    municipality = MUNICIPALITIES[fraction["municipality"]]
+    data = municipality.copy()
+    data["name"] = fraction["name"]
+    data["addressLocality"] = municipality["name"]
+    return data
+
+
+def _candidate_places():
+    for fraction in FRACTIONS.values():
+        for alias in fraction["aliases"]:
+            yield alias, _place_data_from_fraction(fraction)
+
+    for data in MUNICIPALITIES.values():
+        for alias in data["aliases"]:
+            yield alias, data
+
+
+def _best_location_in_text(value):
+    text = _normalize_text(value)
+    if not text:
+        return None
+
+    matches = []
+    for alias, data in _candidate_places():
+        normalized_alias = _normalize_text(alias)
+        if data["addressLocality"] == "Modena" and normalized_alias == "modena" and not _modena_is_autonomous(text):
             continue
-        if any(_contains_alias(haystack, alias) for alias in data["aliases"]):
-            return data
+
+        pattern = rf"(?<!\w){re.escape(normalized_alias)}(?!\w)"
+        for match in re.finditer(pattern, text):
+            matches.append((match.start(), -len(normalized_alias), data))
+
+    if not matches:
+        return None
+
+    matches.sort(key=lambda item: (item[0], item[1]))
+    return matches[0][2]
+
+
+def detect_municipality(article):
+    first_body, rest_body = _word_chunks(getattr(article, "contenuto", ""))
+    fields = [
+        getattr(article, "slug", ""),
+        getattr(article, "titolo", ""),
+        getattr(article, "sommario", ""),
+        first_body,
+        rest_body,
+    ]
+
+    for field in fields:
+        location = _best_location_in_text(field)
+        if location:
+            return location
 
     return MUNICIPALITIES[DEFAULT_MUNICIPALITY_KEY]

@@ -120,7 +120,7 @@
     "name": "{{ articolo.seo_location.name|escapejs }}",
     "address": {
       "@type": "PostalAddress",
-      "addressLocality": "{{ articolo.seo_location.name|escapejs }}",
+      "addressLocality": "{{ articolo.seo_location.addressLocality|escapejs }}",
       "addressRegion": "{{ articolo.seo_location.region|escapejs }}",
       "postalCode": "{{ articolo.seo_location.cap }}",
       "addressCountry": "{{ articolo.seo_location.country }}"

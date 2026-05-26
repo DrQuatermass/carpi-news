@@ -205,6 +205,8 @@ class ShareLinkTests(TestCase):
             response,
             '<meta property="og:image:secure_url" content="https://testserver/media/images/articles/titolo-test-16x9.webp">',
         )
+        self.assertContains(response, '<meta property="og:image:width" content="1200">')
+        self.assertContains(response, '<meta property="og:image:height" content="675">')
         self.assertContains(response, '<meta name="twitter:creator" content="@ombradelportico">')
         self.assertContains(response, "https://www.facebook.com/sharer/sharer.php?u=")
         self.assertNotContains(response, "&quote=")
@@ -414,6 +416,53 @@ class ShareLinkTests(TestCase):
         self.assertEqual(location["name"], "Soliera")
         self.assertEqual(location["cap"], "41019")
 
+    def test_detect_municipality_prefers_slug_before_body_mentions(self):
+        examples = [
+            "carabinieri-carpi-135-identificati-nei-controlli-del-weekend",
+            "aimag-carpi-approvato-il-nuovo-patto-di-sindacato-2026",
+            "carpi-kit-larvicidi-anti-zanzara-gratis-dove-ritirarli",
+        ]
+        for slug in examples:
+            with self.subTest(slug=slug):
+                self.articolo.slug = slug
+                self.articolo.titolo = "Titolo con riferimenti territoriali"
+                self.articolo.sommario = "Nel report compaiono anche passaggi da Soliera e Modena."
+                self.articolo.contenuto = "<p>Altri dettagli dalla provincia di Modena e da Soliera.</p>"
+
+                location = detect_municipality(self.articolo)
+
+                self.assertEqual(location["name"], "Carpi")
+                self.assertEqual(location["addressLocality"], "Carpi")
+
+    def test_detect_municipality_ignores_modena_as_province_when_uncertain(self):
+        self.articolo.slug = "kit-larvicidi-anti-zanzara-gratis-dove-ritirarli"
+        self.articolo.titolo = "Kit larvicidi anti zanzara gratis"
+        self.articolo.sommario = "Iniziativa valida nella provincia di Modena."
+        self.articolo.contenuto = "<p>La campagna riguarda il territorio modenese.</p>"
+
+        location = detect_municipality(self.articolo)
+
+        self.assertEqual(location["name"], "Carpi")
+
+    def test_detect_municipality_maps_fraction_to_municipality(self):
+        self.articolo.slug = "limidi-nuova-area-verde"
+        self.articolo.titolo = "Nuova area verde a Limidi"
+
+        location = detect_municipality(self.articolo)
+
+        self.assertEqual(location["name"], "Limidi")
+        self.assertEqual(location["addressLocality"], "Soliera")
+        self.assertEqual(location["cap"], "41019")
+
+    def test_recheck_locations_command_prints_sample(self):
+        out = StringIO()
+
+        call_command("recheck_locations", sample=1, stdout=out)
+
+        output = out.getvalue()
+        self.assertIn(self.articolo.slug, output)
+        self.assertIn(" | ", output)
+
     def test_article_detail_renders_dynamic_content_location_and_geo_meta(self):
         self.articolo.titolo = "A Soliera apre il nuovo spazio giovani"
         self.articolo.tags = "Carpi, Soliera, giovani"
@@ -447,9 +496,26 @@ class ShareLinkTests(TestCase):
         self.assertContains(response, '"addressLocality": "Carpi"')
         self.assertContains(response, '"postalCode": "41012"')
 
+    def test_article_detail_renders_fraction_name_and_municipality_address(self):
+        self.articolo.titolo = "A Limidi arriva il nuovo spazio giovani"
+        self.articolo.slug = "limidi-nuovo-spazio-giovani"
+        self.articolo.save(update_fields=["titolo", "slug"])
+        cache.delete(f"articolo_ctx_{self.articolo.slug}")
+
+        response = self.client.get(reverse("dettaglio_articolo", kwargs={"slug": self.articolo.slug}))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '<meta name="geo.placename" content="Limidi">')
+        self.assertContains(response, '"name": "Limidi"')
+        self.assertContains(response, '"addressLocality": "Soliera"')
+        self.assertContains(response, '"postalCode": "41019"')
+
     def test_newsarticle_renders_body_word_count_and_keywords(self):
         self.articolo.tags = "Soliera, Giovani"
-        self.articolo.contenuto = "<p>Primo testo dell'articolo.</p><p>Secondo testo con &amp; dettagli.</p>"
+        self.articolo.contenuto = (
+            "<style>.hidden{display:none}</style><p>Primo testo dell'articolo.</p>"
+            "<script>alert('x')</script><p>Secondo testo con &amp; dettagli.</p>"
+        )
         self.articolo.save(update_fields=["tags", "contenuto"])
         cache.delete(f"articolo_ctx_{self.articolo.slug}")
 
@@ -459,6 +525,7 @@ class ShareLinkTests(TestCase):
         self.assertContains(response, '"wordCount": 8')
         self.assertContains(response, '"articleBody": "Primo testo dell\\u0027articolo. Secondo testo con \\u0026 dettagli."')
         self.assertContains(response, '"keywords": "Soliera, Giovani, Cronaca, Carpi, Emilia\\u002DRomagna"')
+        self.assertNotContains(response, "alert(\\u0027x\\u0027)")
 
 
 @override_settings(

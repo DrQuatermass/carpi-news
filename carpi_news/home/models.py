@@ -279,7 +279,8 @@ class Articolo(models.Model):
 
     @property
     def article_plain_text(self):
-        text = re.sub(r'<[^>]+>', ' ', self.contenuto or '')
+        text = re.sub(r'<(script|style)\b[^>]*>.*?</\1>', ' ', self.contenuto or '', flags=re.IGNORECASE | re.DOTALL)
+        text = re.sub(r'<[^>]+>', ' ', text)
         text = strip_tags(text)
         text = html.unescape(text)
         return re.sub(r'\s+', ' ', text).strip()
