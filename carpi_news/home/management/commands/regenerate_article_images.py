@@ -2,7 +2,7 @@ from django.db.models import Q
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 
-from home.image_variants import ArticleImageVariantError, generate_article_image_variants
+from home.image_variants import ArticleImageVariantError, ensure_article_image_variants
 from home.models import Articolo
 
 
@@ -73,7 +73,7 @@ class Command(BaseCommand):
             processed += 1
             old_image_path = _current_image_path(articolo)
             try:
-                created = generate_article_image_variants(articolo, force=force)
+                created = ensure_article_image_variants(articolo, force=force)
             except ArticleImageVariantError as exc:
                 failed += 1
                 self.stderr.write(self.style.WARNING(f"{articolo.slug}: immagine non processabile, salto. {exc}"))

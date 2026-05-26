@@ -147,6 +147,13 @@ class SocialMediaManager:
 
     def _get_article_image_url(self, articolo) -> Optional[str]:
         """URL assoluto immagine articolo (priorità: foto_upload, poi campo foto)."""
+        try:
+            social_url = articolo.get_social_image_url()
+            if social_url:
+                return self._normalize_url(social_url)
+        except Exception as exc:
+            logger.warning("Impossibile ottenere immagine social ottimizzata per %s: %s", articolo.pk, exc)
+
         site_url = getattr(settings, 'SITE_URL', 'https://ombradelportico.it')
         if getattr(articolo, 'foto_upload', None):
             try:

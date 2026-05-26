@@ -1,7 +1,10 @@
 import logging
+import io
 from pathlib import Path
+from urllib.parse import urlparse
 
 from django.conf import settings
+import requests
 from PIL import Image, UnidentifiedImageError
 
 logger = logging.getLogger(__name__)
@@ -161,3 +164,69 @@ def generate_article_image_variants(article, source_path=None, force=False, qual
             getattr(article, field_name).name = relative_name
 
     return created
+
+
+def localize_remote_article_image(article, timeout=15, quality=75):
+    image_url = (article.foto or "").strip()
+    if not image_url.startswith(("http://", "https://")):
+        return None
+
+    if not article.slug:
+        logger.warning("Impossibile salvare immagine remota senza slug per articolo %s", article.pk)
+        return None
+
+    filename = f"{article.slug[:MAX_IMAGE_SLUG_LENGTH].rstrip('-')}-original.webp"
+    output_dir = Path(settings.MEDIA_ROOT) / "images" / "downloaded"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    output_path = output_dir / filename
+    media_url = f"/media/images/downloaded/{filename}"
+
+    if output_path.exists():
+        article.foto = media_url
+        if article.pk:
+            type(article).objects.filter(pk=article.pk).update(foto=media_url)
+        return output_path
+
+    headers = {"User-Agent": "Mozilla/5.0"}
+    try:
+        response = requests.get(image_url, timeout=timeout, headers=headers)
+        response.raise_for_status()
+    except requests.RequestException as exc:
+        logger.warning("Download immagine remota fallito per articolo %s: %s", article.pk, exc)
+        return None
+
+    content_type = response.headers.get("content-type", "")
+    parsed_path = urlparse(image_url).path.lower()
+    if "image" not in content_type and not parsed_path.endswith((".jpg", ".jpeg", ".png", ".webp")):
+        logger.warning("URL immagine remota non riconosciuto per articolo %s: %s", article.pk, image_url)
+        return None
+
+    try:
+        with Image.open(io.BytesIO(response.content)) as img:
+            img = _to_rgb(img)
+            img.save(output_path, "WebP", quality=quality, method=6)
+    except (OSError, UnidentifiedImageError) as exc:
+        logger.warning("Immagine remota non processabile per articolo %s: %s", article.pk, exc)
+        return None
+
+    article.foto = media_url
+    if article.pk:
+        type(article).objects.filter(pk=article.pk).update(foto=media_url)
+    logger.info("Immagine remota salvata localmente per articolo %s: %s", article.pk, media_url)
+    return output_path
+
+
+def ensure_article_image_variants(article, force=False):
+    """Garantisce immagine locale e varianti multi-aspect prima della pubblicazione/social."""
+    if has_all_article_image_variants(article) and not force:
+        return {}
+
+    source_path = get_article_source_image_path(article)
+    if source_path is None:
+        source_path = localize_remote_article_image(article)
+
+    if source_path is None:
+        logger.info("Nessuna immagine locale disponibile per articolo %s", article.pk)
+        return {}
+
+    return generate_article_image_variants(article, source_path=source_path, force=force)

@@ -1,4 +1,4 @@
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 from io import BytesIO, StringIO
 import hashlib
 import hmac
@@ -16,7 +16,7 @@ from django.utils import timezone
 from PIL import Image
 
 from home.content_polisher import content_polisher
-from home.image_variants import generate_article_image_variants
+from home.image_variants import ensure_article_image_variants, generate_article_image_variants
 from home.management.commands.retry_failed_social_shares import Command as RetryFailedSocialSharesCommand
 from home.models import Articolo, InstagramOptOut, ShortLink, SocialPublicationLog
 from home.seo_locations import detect_municipality
@@ -328,6 +328,62 @@ class ShareLinkTests(TestCase):
 
                 self.assertEqual(image_url, "https://testserver/media/images/articles/titolo-test-16x9.webp")
                 self.assertEqual(self.articolo.image_16x9.name, "images/articles/titolo-test-16x9.webp")
+
+    def test_ensure_article_image_variants_downloads_remote_image(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            media_root = Path(tmpdir)
+            image_buffer = BytesIO()
+            Image.new("RGB", (1600, 1000), (80, 120, 160)).save(image_buffer, "JPEG")
+            response = Mock()
+            response.headers = {"content-type": "image/jpeg"}
+            response.content = image_buffer.getvalue()
+            response.raise_for_status.return_value = None
+
+            with override_settings(MEDIA_ROOT=str(media_root), MEDIA_URL="/media/"), patch(
+                "home.image_variants.requests.get", return_value=response
+            ):
+                Articolo.objects.filter(pk=self.articolo.pk).update(
+                    foto="https://example.com/source.jpg",
+                    image_16x9="",
+                    image_4x3="",
+                    image_1x1="",
+                )
+                self.articolo.refresh_from_db()
+
+                created = ensure_article_image_variants(self.articolo)
+                self.articolo.refresh_from_db()
+
+                self.assertEqual(set(created), {"image_16x9", "image_4x3", "image_1x1"})
+                self.assertEqual(self.articolo.foto, "/media/images/downloaded/titolo-test-original.webp")
+                self.assertTrue((media_root / "images" / "downloaded" / "titolo-test-original.webp").exists())
+                self.assertTrue((media_root / self.articolo.image_16x9.name).exists())
+
+    def test_approval_generates_variants_before_social_thread(self):
+        events = []
+        draft = Articolo.objects.create(
+            titolo="Da approvare",
+            contenuto="Contenuto",
+            sommario="Sommario",
+            categoria="Cronaca",
+            approvato=False,
+            data_pubblicazione=timezone.now(),
+        )
+
+        def fake_thread(*args, **kwargs):
+            events.append("thread")
+            thread = Mock()
+            thread.start.return_value = None
+            return thread
+
+        with patch("home.signals.ensure_article_image_variants", side_effect=lambda articolo: events.append("variants") or {}), patch(
+            "home.signals.threading.Thread", side_effect=fake_thread
+        ):
+            draft.approvato = True
+            draft.save(update_fields=["approvato"])
+
+        self.assertGreaterEqual(len(events), 2)
+        self.assertEqual(events[0], "variants")
+        self.assertEqual(events[1], "thread")
 
     def test_check_image_variants_reports_missing_files_without_regenerating(self):
         with tempfile.TemporaryDirectory() as tmpdir:

@@ -6,7 +6,12 @@ from django.core.cache import cache
 from django.core.cache.utils import make_template_fragment_key
 from django.core.files.base import ContentFile
 from .models import Articolo
-from .image_variants import ArticleImageVariantError, generate_article_image_variants, has_all_article_image_variants
+from .image_variants import (
+    ArticleImageVariantError,
+    ensure_article_image_variants,
+    generate_article_image_variants,
+    has_all_article_image_variants,
+)
 from .email_notifications import send_article_approval_notification
 from .social_sharing import social_manager
 from .indexing_notifier import notifier
@@ -245,6 +250,33 @@ def generate_responsive_images_on_save(sender, instance, created, **kwargs):
     thread.start()
 
 
+def ensure_publication_images_ready(instance):
+    """Genera immagine locale e varianti articolo prima di social e indicizzazione."""
+    try:
+        created = ensure_article_image_variants(instance)
+        if created:
+            logger.info(
+                "Varianti NewsArticle pronte prima della pubblicazione per %s: %s",
+                instance.titolo,
+                ", ".join(created),
+            )
+        return created
+    except ArticleImageVariantError as e:
+        logger.warning(
+            "Immagine articolo non processabile prima della pubblicazione (%s): %s",
+            instance.titolo,
+            e,
+        )
+    except Exception as e:
+        logger.error(
+            "Errore generazione varianti prima della pubblicazione per %s: %s",
+            instance.titolo,
+            e,
+            exc_info=True,
+        )
+    return {}
+
+
 def invalidate_rss_feeds():
     """
     Invalida la cache dei feed RSS per forzare l'aggiornamento immediato
@@ -383,6 +415,8 @@ def handle_article_approval(sender, instance, created, **kwargs):
         # I link interni sono già stati aggiunti durante la generazione (polish_article)
         # Non è necessario riaggiungerli qui
 
+        ensure_publication_images_ready(instance)
+
         # Invalida immediatamente la cache RSS per IFTTT (veloce, sincrono)
         invalidate_rss_feeds()
         # Invalida cache homepage (tutte le varianti categoria)
@@ -437,6 +471,8 @@ def handle_pubbliredazionale_payment(sender, instance, created, **kwargs):
             logger.info(f"Pubbliredazionale '{instance.titolo}' pagato e già approvato. Avvio condivisione automatica.")
 
             # I link interni sono già stati aggiunti durante la generazione
+            ensure_publication_images_ready(instance)
+
             # Invalida cache RSS
             invalidate_rss_feeds()
 
