@@ -201,6 +201,7 @@ class ShareLinkTests(TestCase):
             response = self.client.get(reverse("dettaglio_articolo", kwargs={"slug": self.articolo.slug}))
 
         self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '<html lang="it" prefix="og: https://ogp.me/ns# fb: https://ogp.me/ns/fb#">')
         self.assertContains(response, '<meta name="theme-color" content="#966C42">')
         self.assertContains(
             response,
