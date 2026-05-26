@@ -16,7 +16,7 @@ from django.utils import timezone
 from PIL import Image
 
 from home.content_polisher import content_polisher
-from home.image_variants import ensure_article_image_variants, generate_article_image_variants
+from home.image_variants import ensure_article_image_variants, generate_article_image_variants, get_article_source_image_path
 from home.management.commands.retry_failed_social_shares import Command as RetryFailedSocialSharesCommand
 from home.models import Articolo, InstagramOptOut, ShortLink, SocialPublicationLog
 from home.seo_locations import detect_municipality
@@ -357,6 +357,55 @@ class ShareLinkTests(TestCase):
                 self.assertEqual(self.articolo.foto, "/media/images/downloaded/titolo-test-original.webp")
                 self.assertTrue((media_root / "images" / "downloaded" / "titolo-test-original.webp").exists())
                 self.assertTrue((media_root / self.articolo.image_16x9.name).exists())
+
+    def test_ensure_article_image_variants_uses_static_article_image(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            media_root = Path(tmpdir) / "media"
+            static_dir = Path(tmpdir) / "static"
+            source_dir = static_dir / "custom"
+            source_dir.mkdir(parents=True)
+            source_path = source_dir / "source.png"
+            Image.new("RGB", (1600, 1000), (120, 80, 40)).save(source_path, "PNG")
+
+            with override_settings(
+                MEDIA_ROOT=str(media_root),
+                MEDIA_URL="/media/",
+                STATICFILES_DIRS=[str(static_dir)],
+            ):
+                Articolo.objects.filter(pk=self.articolo.pk).update(
+                    foto="/static/custom/source.png",
+                    image_16x9="",
+                    image_4x3="",
+                    image_1x1="",
+                )
+                self.articolo.refresh_from_db()
+
+                self.assertEqual(get_article_source_image_path(self.articolo), source_path)
+                created = ensure_article_image_variants(self.articolo)
+                self.articolo.refresh_from_db()
+
+                self.assertEqual(set(created), {"image_16x9", "image_4x3", "image_1x1"})
+                self.assertTrue((media_root / self.articolo.image_16x9.name).exists())
+
+    def test_newsarticle_image_urls_generates_three_fallback_variants_without_photo(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            media_root = Path(tmpdir)
+            with override_settings(MEDIA_ROOT=str(media_root), MEDIA_URL="/media/"):
+                Articolo.objects.filter(pk=self.articolo.pk).update(
+                    foto="",
+                    foto_upload="",
+                    image_16x9="",
+                    image_4x3="",
+                    image_1x1="",
+                )
+                self.articolo.refresh_from_db()
+
+                urls = self.articolo.get_newsarticle_image_urls()
+                self.articolo.refresh_from_db()
+
+                self.assertEqual(len(urls), 3)
+                self.assertEqual(self.articolo.image_16x9.name, "images/articles/titolo-test-16x9.webp")
+                self.assertTrue((media_root / self.articolo.image_1x1.name).exists())
 
     def test_approval_generates_variants_before_social_thread(self):
         events = []

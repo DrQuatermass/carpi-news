@@ -4,6 +4,7 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from django.conf import settings
+from django.contrib.staticfiles import finders
 import requests
 from PIL import Image, UnidentifiedImageError
 
@@ -98,6 +99,45 @@ def get_article_source_image_path(article):
         path = Path(settings.MEDIA_ROOT) / str(article.foto).replace("/media/", "", 1)
         if path.exists():
             return path
+
+    if article.foto and str(article.foto).startswith("/static/"):
+        static_relative_path = str(article.foto).replace("/static/", "", 1)
+        found_path = finders.find(static_relative_path)
+        if found_path:
+            path = Path(found_path)
+            if path.exists():
+                return path
+
+        static_root = getattr(settings, "STATIC_ROOT", None)
+        if static_root:
+            path = Path(static_root) / static_relative_path
+            if path.exists():
+                return path
+
+        path = Path(settings.BASE_DIR) / "home" / "static" / static_relative_path
+        if path.exists():
+            return path
+
+    return None
+
+
+def get_fallback_article_source_image_path():
+    static_relative_path = "home/images/portico_logo_nopayoff.png"
+    found_path = finders.find(static_relative_path)
+    if found_path:
+        path = Path(found_path)
+        if path.exists():
+            return path
+
+    static_root = getattr(settings, "STATIC_ROOT", None)
+    if static_root:
+        path = Path(static_root) / static_relative_path
+        if path.exists():
+            return path
+
+    path = Path(settings.BASE_DIR) / "home" / "static" / static_relative_path
+    if path.exists():
+        return path
 
     return None
 
@@ -224,6 +264,9 @@ def ensure_article_image_variants(article, force=False):
     source_path = get_article_source_image_path(article)
     if source_path is None:
         source_path = localize_remote_article_image(article)
+
+    if source_path is None:
+        source_path = get_fallback_article_source_image_path()
 
     if source_path is None:
         logger.info("Nessuna immagine locale disponibile per articolo %s", article.pk)
