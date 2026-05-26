@@ -6,7 +6,7 @@ from django.core.cache import cache
 from django.core.cache.utils import make_template_fragment_key
 from django.core.files.base import ContentFile
 from .models import Articolo
-from .image_variants import generate_article_image_variants
+from .image_variants import ArticleImageVariantError, generate_article_image_variants, has_all_article_image_variants
 from .email_notifications import send_article_approval_notification
 from .social_sharing import social_manager
 from .indexing_notifier import notifier
@@ -219,18 +219,25 @@ def generate_responsive_images_on_save(sender, instance, created, **kwargs):
         logger.warning(f"Immagine non trovata per generazione responsive: {image_path}")
         return
 
+    try:
+        if not has_all_article_image_variants(instance):
+            variant_fields = generate_article_image_variants(instance, source_path=image_path)
+            if variant_fields:
+                logger.info(f"Generate {len(variant_fields)} varianti NewsArticle per {instance.titolo}")
+    except ArticleImageVariantError as e:
+        logger.warning(f"Immagine articolo non processabile per varianti NewsArticle ({instance.titolo}): {e}")
+    except Exception as e:
+        logger.error(f"Errore generazione varianti NewsArticle per {instance.titolo}: {e}", exc_info=True)
+
     # Esegui in background per non bloccare il salvataggio
     def generate_in_background():
         try:
             logger.info(f"Generazione versioni responsive per: {image_path}")
             created_files = generate_responsive_versions(image_path, widths=[400, 600, 800], quality=65)
-            variant_fields = generate_article_image_variants(instance, source_path=image_path)
             if created_files:
                 logger.info(f"Generate {len(created_files)} versioni responsive per {instance.titolo}")
             else:
                 logger.warning(f"Nessuna versione responsive creata per: {instance.titolo} (possibile immagine troppo piccola o versioni già esistenti)")
-            if variant_fields:
-                logger.info(f"Generate {len(variant_fields)} varianti NewsArticle per {instance.titolo}")
         except Exception as e:
             logger.error(f"Errore generazione responsive in background per {instance.titolo}: {e}", exc_info=True)
 

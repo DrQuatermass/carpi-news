@@ -30,6 +30,7 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument("--force", action="store_true", help="Rigenera anche le varianti gia' presenti.")
         parser.add_argument("--limit", type=int, default=None, help="Numero massimo di articoli da processare.")
+        parser.add_argument("--slug", help="Processa un solo articolo tramite slug.")
         parser.add_argument(
             "--include-unpublished",
             action="store_true",
@@ -46,6 +47,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         force = options["force"]
         limit = options["limit"]
+        slug = options["slug"]
         include_unpublished = options["include_unpublished"]
         redirect_map = options["redirect_map"]
         redirect_format = options["redirect_format"]
@@ -56,6 +58,8 @@ class Command(BaseCommand):
         redirect_lines = []
 
         queryset = Articolo.objects.order_by("-data_pubblicazione", "-id")
+        if slug:
+            queryset = queryset.filter(slug=slug)
         if not include_unpublished:
             queryset = queryset.filter(
                 Q(is_pubbliredazionale=False, approvato=True)

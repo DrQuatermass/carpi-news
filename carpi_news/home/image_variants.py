@@ -12,6 +12,11 @@ ARTICLE_IMAGE_VARIANTS = {
     "4x3": (1200, 900),
     "1x1": (1200, 1200),
 }
+ARTICLE_IMAGE_VARIANT_FIELDS = {
+    "16x9": "image_16x9",
+    "4x3": "image_4x3",
+    "1x1": "image_1x1",
+}
 MAX_IMAGE_SLUG_LENGTH = 80
 
 
@@ -94,6 +99,30 @@ def get_article_source_image_path(article):
     return None
 
 
+def get_article_variant_path(article, aspect):
+    image_slug = (article.slug or "")[:MAX_IMAGE_SLUG_LENGTH].rstrip("-")
+    if not image_slug:
+        return None
+    return Path(settings.MEDIA_ROOT) / "images" / "articles" / f"{image_slug}-{aspect}.webp"
+
+
+def missing_article_image_variants(article):
+    missing = []
+    for aspect, field_name in ARTICLE_IMAGE_VARIANT_FIELDS.items():
+        field = getattr(article, field_name, None)
+        expected_path = get_article_variant_path(article, aspect)
+        if not expected_path:
+            missing.append(field_name)
+            continue
+        if not field or not getattr(field, "name", "") or not expected_path.exists():
+            missing.append(field_name)
+    return missing
+
+
+def has_all_article_image_variants(article):
+    return not missing_article_image_variants(article)
+
+
 def generate_article_image_variants(article, source_path=None, force=False, quality=82):
     source_path = Path(source_path) if source_path else get_article_source_image_path(article)
     if not source_path or not source_path.exists():
@@ -111,7 +140,7 @@ def generate_article_image_variants(article, source_path=None, force=False, qual
     for aspect, size in ARTICLE_IMAGE_VARIANTS.items():
         relative_name = f"images/articles/{image_slug}-{aspect}.webp"
         output_path = output_dir / f"{image_slug}-{aspect}.webp"
-        field_name = f"image_{aspect.replace('x', 'x')}"
+        field_name = ARTICLE_IMAGE_VARIANT_FIELDS[aspect]
 
         current = getattr(article, field_name, None)
         if current and current.name and output_path.exists() and not force:

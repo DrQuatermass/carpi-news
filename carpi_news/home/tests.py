@@ -279,6 +279,54 @@ class ShareLinkTests(TestCase):
                 self.assertIn("Articoli aggiornati: 1", out.getvalue())
                 self.assertEqual(self.articolo.image_16x9.name, "images/articles/titolo-test-16x9.webp")
 
+    def test_newsarticle_image_urls_lazy_generates_missing_variants(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            media_root = Path(tmpdir)
+            source_dir = media_root / "images" / "uploaded"
+            source_dir.mkdir(parents=True)
+            source_path = source_dir / "titolo-test-original.webp"
+            Image.new("RGB", (1600, 1000), (80, 120, 160)).save(source_path, "WebP")
+
+            with override_settings(MEDIA_ROOT=str(media_root), MEDIA_URL="/media/"):
+                Articolo.objects.filter(pk=self.articolo.pk).update(
+                    foto_upload="images/uploaded/titolo-test-original.webp",
+                    image_16x9="",
+                    image_4x3="",
+                    image_1x1="",
+                )
+                self.articolo.refresh_from_db()
+
+                urls = self.articolo.get_newsarticle_image_urls()
+                self.articolo.refresh_from_db()
+
+                self.assertEqual(len(urls), 3)
+                self.assertEqual(self.articolo.image_16x9.name, "images/articles/titolo-test-16x9.webp")
+                self.assertTrue((media_root / self.articolo.image_4x3.name).exists())
+
+    def test_check_image_variants_reports_missing_files_without_regenerating(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            media_root = Path(tmpdir)
+            source_dir = media_root / "images" / "uploaded"
+            source_dir.mkdir(parents=True)
+            source_path = source_dir / "titolo-test-original.webp"
+            Image.new("RGB", (1600, 1000), (80, 120, 160)).save(source_path, "WebP")
+
+            with override_settings(MEDIA_ROOT=str(media_root), MEDIA_URL="/media/"):
+                Articolo.objects.filter(pk=self.articolo.pk).update(
+                    foto_upload="images/uploaded/titolo-test-original.webp",
+                    image_16x9="images/articles/titolo-test-16x9.webp",
+                    image_4x3="",
+                    image_1x1="",
+                )
+                out = StringIO()
+
+                call_command("check_image_variants", slug=self.articolo.slug, stdout=out)
+
+                output = out.getvalue()
+                self.assertIn("NewsArticle.image=0/3", output)
+                self.assertIn("missing=image_16x9,image_4x3,image_1x1", output)
+                self.assertFalse((media_root / "images" / "articles" / "titolo-test-16x9.webp").exists())
+
     def test_uploaded_article_image_uses_slug_based_original_filename(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             media_root = Path(tmpdir)

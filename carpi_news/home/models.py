@@ -320,6 +320,15 @@ class Articolo(models.Model):
             return ''
 
     def get_newsarticle_image_urls(self):
+        if self.pk:
+            try:
+                from .image_variants import generate_article_image_variants, has_all_article_image_variants
+
+                if not has_all_article_image_variants(self):
+                    generate_article_image_variants(self)
+            except Exception as exc:
+                logger.warning("Generazione lazy varianti NewsArticle fallita per articolo %s: %s", self.pk, exc)
+
         urls = [
             self._absolute_media_field_url(self.image_16x9),
             self._absolute_media_field_url(self.image_4x3),

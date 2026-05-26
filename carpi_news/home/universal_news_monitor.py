@@ -319,7 +319,7 @@ def download_article_image_in_background(article_id: int, image_url: str, articl
                     e,
                 )
 
-    thread = threading.Thread(target=_download, name=f"ArticleImageDownload-{article_id}", daemon=True)
+    thread = threading.Thread(target=_download, name=f"ArticleImageDownload-{article_id}", daemon=False)
     thread.start()
 
 
