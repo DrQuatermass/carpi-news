@@ -1,5 +1,6 @@
 import logging
 import threading
+from django.db import transaction
 from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 from django.core.cache import cache
@@ -10,6 +11,7 @@ from .image_variants import (
     ArticleImageVariantError,
     ensure_article_image_variants,
     generate_article_image_variants,
+    get_article_source_image_path,
     has_all_article_image_variants,
 )
 from .email_notifications import send_article_approval_notification
@@ -248,6 +250,79 @@ def generate_responsive_images_on_save(sender, instance, created, **kwargs):
     thread = threading.Thread(target=generate_in_background)
     thread.daemon = True
     thread.start()
+
+
+@receiver(post_save, sender=Articolo)
+def ensure_article_image_variants_after_commit(sender, instance, created, **kwargs):
+    """
+    Garantisce le tre varianti articolo anche quando il primo save contiene una
+    foto remota, una foto /static o nessuna foto. Il vecchio handler sopra copre
+    solo sorgenti gia' locali; questo parte dopo il commit per evitare race con
+    i monitor e con i thread di download.
+    """
+    if has_all_article_image_variants(instance):
+        return
+
+    article_id = instance.pk
+    article_title = instance.titolo
+
+    def generate_after_commit():
+        try:
+            article = Articolo.objects.get(pk=article_id)
+        except Articolo.DoesNotExist:
+            return
+
+        try:
+            created_variants = ensure_article_image_variants(article)
+            if created_variants:
+                logger.info(
+                    "Varianti NewsArticle generate dopo commit per %s: %s",
+                    article.titolo,
+                    ", ".join(created_variants),
+                )
+        except ArticleImageVariantError as e:
+            logger.warning(
+                "Immagine articolo non processabile dopo commit (%s): %s",
+                article.titolo,
+                e,
+            )
+            return
+        except Exception as e:
+            logger.error(
+                "Errore generazione varianti dopo commit per %s: %s",
+                article.titolo,
+                e,
+                exc_info=True,
+            )
+            return
+
+        image_path = get_article_source_image_path(article)
+        if not image_path:
+            return
+
+        def generate_responsive_in_background():
+            try:
+                created_files = generate_responsive_versions(image_path, widths=[400, 600, 800], quality=65)
+                if created_files:
+                    logger.info(
+                        "Versioni responsive generate dopo commit per %s: %s",
+                        article.titolo,
+                        len(created_files),
+                    )
+            except Exception as e:
+                logger.error(
+                    "Errore generazione responsive dopo commit per %s: %s",
+                    article.titolo,
+                    e,
+                    exc_info=True,
+                )
+
+        thread = threading.Thread(target=generate_responsive_in_background)
+        thread.daemon = True
+        thread.start()
+
+    logger.info("Schedulo generazione varianti articolo dopo commit: %s", article_title)
+    transaction.on_commit(generate_after_commit)
 
 
 def ensure_publication_images_ready(instance):

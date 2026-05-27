@@ -19,6 +19,7 @@ from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 from django.conf import settings
+from django.db import transaction
 from PIL import Image
 
 from home.models import Articolo, MonitorConfig
@@ -319,8 +320,11 @@ def download_article_image_in_background(article_id: int, image_url: str, articl
                     e,
                 )
 
-    thread = threading.Thread(target=_download, name=f"ArticleImageDownload-{article_id}", daemon=False)
-    thread.start()
+    def _start_after_commit():
+        thread = threading.Thread(target=_download, name=f"ArticleImageDownload-{article_id}", daemon=False)
+        thread.start()
+
+    transaction.on_commit(_start_after_commit)
 
 
 class SiteConfig:

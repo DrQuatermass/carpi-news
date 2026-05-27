@@ -10,7 +10,7 @@ from pathlib import Path
 from django.core.management import call_command
 from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import Client, SimpleTestCase, TestCase, override_settings
+from django.test import Client, SimpleTestCase, TestCase, TransactionTestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 from PIL import Image
@@ -735,6 +735,43 @@ class ShareLinkTests(TestCase):
         self.assertContains(response, '"articleBody": "Primo testo dell\\u0027articolo. Secondo testo con \\u0026 dettagli."')
         self.assertContains(response, '"keywords": "Soliera, Giovani, Cronaca, Carpi, Emilia\\u002DRomagna"')
         self.assertNotContains(response, "alert(\\u0027x\\u0027)")
+
+
+@override_settings(
+    DEBUG=True,
+    SITE_URL="https://testserver",
+    CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}},
+)
+class ArticleImageSignalTests(TransactionTestCase):
+    def test_post_save_generates_variants_for_pending_article_without_photo(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            media_root = Path(tmpdir)
+            with override_settings(MEDIA_ROOT=str(media_root), MEDIA_URL="/media/"), patch(
+                "home.signals.send_article_approval_notification", return_value=True
+            ):
+                articolo = Articolo.objects.create(
+                    titolo="Articolo in approvazione senza foto",
+                    contenuto="Contenuto",
+                    sommario="Sommario",
+                    categoria="Cronaca",
+                    approvato=False,
+                    data_pubblicazione=timezone.now(),
+                )
+                articolo.refresh_from_db()
+
+                self.assertEqual(
+                    articolo.image_16x9.name,
+                    "images/articles/articolo-in-approvazione-senza-foto-16x9.webp",
+                )
+                self.assertEqual(
+                    articolo.image_4x3.name,
+                    "images/articles/articolo-in-approvazione-senza-foto-4x3.webp",
+                )
+                self.assertEqual(
+                    articolo.image_1x1.name,
+                    "images/articles/articolo-in-approvazione-senza-foto-1x1.webp",
+                )
+                self.assertTrue((media_root / articolo.image_16x9.name).exists())
 
 
 @override_settings(
