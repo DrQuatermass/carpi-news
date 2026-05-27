@@ -743,7 +743,7 @@ class ShareLinkTests(TestCase):
     CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}},
 )
 class ArticleImageSignalTests(TransactionTestCase):
-    def test_post_save_generates_variants_for_pending_article_without_photo(self):
+    def test_post_save_does_not_generate_variants_for_pending_article(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             media_root = Path(tmpdir)
             with override_settings(MEDIA_ROOT=str(media_root), MEDIA_URL="/media/"), patch(
@@ -759,19 +759,57 @@ class ArticleImageSignalTests(TransactionTestCase):
                 )
                 articolo.refresh_from_db()
 
+                self.assertFalse(articolo.image_16x9)
+                self.assertFalse(articolo.image_4x3)
+                self.assertFalse(articolo.image_1x1)
+                self.assertFalse((media_root / "images" / "articles").exists())
+
+    def test_approval_generates_variants_from_current_photo(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            media_root = Path(tmpdir)
+            source_dir = media_root / "images"
+            source_dir.mkdir(parents=True)
+            first_source = source_dir / "first.jpg"
+            second_source = source_dir / "second.jpg"
+            Image.new("RGB", (1600, 1000), (200, 20, 20)).save(first_source, "JPEG")
+            Image.new("RGB", (1600, 1000), (20, 80, 200)).save(second_source, "JPEG")
+
+            with override_settings(MEDIA_ROOT=str(media_root), MEDIA_URL="/media/"), patch(
+                "home.signals.send_article_approval_notification", return_value=True
+            ), patch("home.signals.threading.Thread") as fake_thread, patch(
+                "home.signals._notify_search_engines_background"
+            ):
+                fake_thread.return_value.start.return_value = None
+                articolo = Articolo.objects.create(
+                    titolo="Articolo approvato con foto corrente",
+                    contenuto="Contenuto",
+                    sommario="Sommario",
+                    categoria="Cronaca",
+                    foto="/media/images/first.jpg",
+                    approvato=False,
+                    data_pubblicazione=timezone.now(),
+                )
+                articolo.refresh_from_db()
+                self.assertFalse(articolo.image_16x9)
+
+                articolo.foto = "/media/images/second.jpg"
+                articolo.save(update_fields=["foto"])
+                articolo.refresh_from_db()
+                self.assertFalse(articolo.image_16x9)
+
+                articolo.approvato = True
+                articolo.save(update_fields=["approvato"])
+                articolo.refresh_from_db()
+
                 self.assertEqual(
                     articolo.image_16x9.name,
-                    "images/articles/articolo-in-approvazione-senza-foto-16x9.webp",
+                    "images/articles/articolo-approvato-con-foto-corrente-16x9.webp",
                 )
-                self.assertEqual(
-                    articolo.image_4x3.name,
-                    "images/articles/articolo-in-approvazione-senza-foto-4x3.webp",
-                )
-                self.assertEqual(
-                    articolo.image_1x1.name,
-                    "images/articles/articolo-in-approvazione-senza-foto-1x1.webp",
-                )
-                self.assertTrue((media_root / articolo.image_16x9.name).exists())
+                variant_path = media_root / articolo.image_16x9.name
+                self.assertTrue(variant_path.exists())
+                with Image.open(variant_path) as img:
+                    red, green, blue = img.getpixel((img.width // 2, img.height // 2))
+                self.assertGreater(blue, red)
 
 
 @override_settings(
