@@ -821,6 +821,29 @@ class ArticleImageSignalTests(TransactionTestCase):
                 self.assertFalse(articolo.image_1x1)
                 self.assertFalse((media_root / "images" / "articles").exists())
 
+    def test_post_save_clears_variants_for_pending_article(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            media_root = Path(tmpdir)
+            with override_settings(MEDIA_ROOT=str(media_root), MEDIA_URL="/media/"), patch(
+                "home.signals.send_article_approval_notification", return_value=True
+            ):
+                articolo = Articolo.objects.create(
+                    titolo="Bozza con varianti vecchie",
+                    contenuto="Contenuto",
+                    sommario="Sommario",
+                    categoria="Cronaca",
+                    approvato=False,
+                    image_16x9="images/articles/old-16x9.webp",
+                    image_4x3="images/articles/old-4x3.webp",
+                    image_1x1="images/articles/old-1x1.webp",
+                    data_pubblicazione=timezone.now(),
+                )
+                articolo.refresh_from_db()
+
+                self.assertFalse(articolo.image_16x9)
+                self.assertFalse(articolo.image_4x3)
+                self.assertFalse(articolo.image_1x1)
+
     def test_approval_generates_variants_from_current_photo(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             media_root = Path(tmpdir)
@@ -941,6 +964,35 @@ class ArticleImageSignalTests(TransactionTestCase):
                 with Image.open(variant_path) as img:
                     red, green, blue = img.getpixel((img.width // 2, img.height // 2))
                 self.assertGreater(blue, red)
+
+    def test_monitor_image_download_skips_unapproved_article(self):
+        from home.universal_news_monitor import download_article_image_in_background
+
+        articolo = Articolo.objects.create(
+            titolo="Bozza download remoto",
+            contenuto="Contenuto",
+            sommario="Sommario",
+            categoria="Cronaca",
+            foto="https://example.com/source.jpg",
+            approvato=False,
+            data_pubblicazione=timezone.now(),
+        )
+
+        def immediate_thread(target=None, **kwargs):
+            return Mock(start=lambda: target())
+
+        with patch("home.universal_news_monitor.download_and_save_image") as download_mock, patch(
+            "home.universal_news_monitor.threading.Thread", side_effect=immediate_thread
+        ):
+            download_article_image_in_background(
+                articolo.id,
+                "https://example.com/source.jpg",
+                articolo.slug,
+            )
+
+        download_mock.assert_not_called()
+        articolo.refresh_from_db()
+        self.assertEqual(articolo.foto, "https://example.com/source.jpg")
 
 
 @override_settings(

@@ -218,6 +218,21 @@ def generate_responsive_images_on_save(sender, instance, created, **kwargs):
         image_changed = False
 
     if not is_approved:
+        populated_variant_fields = [
+            field_name
+            for field_name in ("image_16x9", "image_4x3", "image_1x1")
+            if getattr(instance, field_name)
+        ]
+        if populated_variant_fields and instance.pk:
+            type(instance).objects.filter(pk=instance.pk).update(
+                image_16x9="",
+                image_4x3="",
+                image_1x1="",
+            )
+            instance.image_16x9 = ""
+            instance.image_4x3 = ""
+            instance.image_1x1 = ""
+            logger.info("Varianti immagine rimosse da articolo non approvato %s", instance.pk)
         return
 
     approval_started = (not was_approved and is_approved) or (created and is_approved)

@@ -300,11 +300,18 @@ def download_and_save_image(image_url: str, article_slug: str) -> str:
 
 
 def download_article_image_in_background(article_id: int, image_url: str, article_slug: str) -> None:
-    """Aggiorna foto con una copia locale senza bloccare il ciclo del monitor."""
+    """Aggiorna foto con una copia locale solo per articoli gia' approvati."""
     if not image_url or not image_url.startswith('http'):
         return
 
     def _download():
+        if not Articolo.objects.filter(pk=article_id, approvato=True).exists():
+            logging.getLogger(__name__).info(
+                "Download immagine rinviato fino all'approvazione per articolo %s",
+                article_id,
+            )
+            return
+
         local_url = download_and_save_image(image_url, article_slug)
         if local_url != image_url:
             Articolo.objects.filter(pk=article_id, foto=image_url).update(foto=local_url)
@@ -1202,9 +1209,13 @@ class WordPressAPIScraper(BaseScraper):
         if not image_url and full_content:
             image_url = self._extract_image_from_wp_content(full_content)
         
-        # Download image locally if configured
+        # Download image locally only when this monitor auto-approves the article.
         final_image_url = image_url
-        if image_url and getattr(self.config, 'download_images_locally', False):
+        if (
+            image_url
+            and self.config.config.get('download_images_locally', False)
+            and self.config.config.get('auto_approve', False)
+        ):
             try:
                 # Use article ID as unique identifier for download
                 article_id = str(post.get('id', ''))
@@ -1773,7 +1784,11 @@ class GraphQLScraper(BaseScraper):
             
             # Scarica e salva immagine localmente se è dall'API Comune Carpi
             event_image_url = evento.get('immagineUrl')
-            if event_image_url and 'api.wp.ai4smartcity.ai' in event_image_url:
+            if (
+                event_image_url
+                and 'api.wp.ai4smartcity.ai' in event_image_url
+                and self.config.config.get('auto_approve', False)
+            ):
                 event_image_url = self.download_and_save_image(event_image_url, evento.get('uniqueId', ''))
             
             return {
@@ -1857,7 +1872,11 @@ class GraphQLScraper(BaseScraper):
             
             # Scarica e salva immagine localmente se è dall'API Comune Carpi
             final_image_url = immagine_url
-            if immagine_url and 'api.wp.ai4smartcity.ai' in immagine_url:
+            if (
+                immagine_url
+                and 'api.wp.ai4smartcity.ai' in immagine_url
+                and self.config.config.get('auto_approve', False)
+            ):
                 final_image_url = self.download_and_save_image(immagine_url, unique_id)
 
             return {
