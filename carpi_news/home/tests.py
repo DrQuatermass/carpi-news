@@ -868,6 +868,80 @@ class ArticleImageSignalTests(TransactionTestCase):
                     red, green, blue = img.getpixel((img.width // 2, img.height // 2))
                 self.assertGreater(blue, red)
 
+    def test_saving_approved_article_generates_missing_variants(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            media_root = Path(tmpdir)
+            source_dir = media_root / "images"
+            source_dir.mkdir(parents=True)
+            source_path = source_dir / "source.jpg"
+            Image.new("RGB", (1600, 1000), (20, 80, 200)).save(source_path, "JPEG")
+
+            with override_settings(MEDIA_ROOT=str(media_root), MEDIA_URL="/media/"), patch(
+                "home.signals.send_article_approval_notification", return_value=True
+            ), patch("home.signals.threading.Thread") as fake_thread:
+                fake_thread.return_value.start.return_value = None
+                articolo = Articolo.objects.create(
+                    titolo="Articolo gia approvato senza varianti",
+                    contenuto="Contenuto",
+                    sommario="Sommario",
+                    categoria="Cronaca",
+                    foto="/media/images/source.jpg",
+                    approvato=False,
+                    data_pubblicazione=timezone.now(),
+                )
+                Articolo.objects.filter(pk=articolo.pk).update(approvato=True)
+                articolo.refresh_from_db()
+                self.assertFalse(articolo.image_16x9)
+
+                articolo.titolo = "Articolo gia approvato salvato"
+                articolo.save(update_fields=["titolo"])
+                articolo.refresh_from_db()
+
+                self.assertEqual(
+                    articolo.image_16x9.name,
+                    "images/articles/articolo-gia-approvato-senza-varianti-16x9.webp",
+                )
+                self.assertTrue((media_root / articolo.image_16x9.name).exists())
+
+    def test_saving_approved_article_after_photo_change_regenerates_variants(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            media_root = Path(tmpdir)
+            source_dir = media_root / "images"
+            source_dir.mkdir(parents=True)
+            first_source = source_dir / "first.jpg"
+            second_source = source_dir / "second.jpg"
+            Image.new("RGB", (1600, 1000), (200, 20, 20)).save(first_source, "JPEG")
+            Image.new("RGB", (1600, 1000), (20, 80, 200)).save(second_source, "JPEG")
+
+            with override_settings(MEDIA_ROOT=str(media_root), MEDIA_URL="/media/"), patch(
+                "home.signals.send_article_approval_notification", return_value=True
+            ), patch("home.signals.threading.Thread") as fake_thread, patch(
+                "home.signals._notify_search_engines_background"
+            ):
+                fake_thread.return_value.start.return_value = None
+                articolo = Articolo.objects.create(
+                    titolo="Articolo approvato cambio foto",
+                    contenuto="Contenuto",
+                    sommario="Sommario",
+                    categoria="Cronaca",
+                    foto="/media/images/first.jpg",
+                    approvato=False,
+                    data_pubblicazione=timezone.now(),
+                )
+                articolo.approvato = True
+                articolo.save(update_fields=["approvato"])
+                articolo.refresh_from_db()
+
+                articolo.foto = "/media/images/second.jpg"
+                articolo.save(update_fields=["foto"])
+                articolo.refresh_from_db()
+
+                variant_path = media_root / articolo.image_16x9.name
+                self.assertTrue(variant_path.exists())
+                with Image.open(variant_path) as img:
+                    red, green, blue = img.getpixel((img.width // 2, img.height // 2))
+                self.assertGreater(blue, red)
+
 
 @override_settings(
     DEBUG=True,

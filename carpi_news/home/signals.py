@@ -9,7 +9,6 @@ from .models import Articolo
 from .image_variants import (
     ArticleImageVariantError,
     ensure_article_image_variants,
-    generate_article_image_variants,
     has_all_article_image_variants,
 )
 from .email_notifications import send_article_approval_notification
@@ -196,7 +195,7 @@ def convert_foto_upload_to_webp(sender, instance, **kwargs):
 @receiver(post_save, sender=Articolo)
 def generate_responsive_images_on_save(sender, instance, created, **kwargs):
     """
-    Genera versioni responsive solo quando l'articolo viene approvato.
+    Genera versioni responsive quando viene salvato un articolo approvato.
     Le bozze non devono materializzare immagini derivate: la foto principale puo'
     ancora cambiare prima dell'approvazione.
     """
@@ -212,12 +211,28 @@ def generate_responsive_images_on_save(sender, instance, created, **kwargs):
     if approval_state:
         was_approved = approval_state['was_approved']
         is_approved = approval_state['is_approved']
+        image_changed = approval_state.get('image_changed', False)
     else:
         was_approved = False
         is_approved = instance.approvato
+        image_changed = False
 
-    if not ((not was_approved and is_approved) or (created and is_approved)):
+    if not is_approved:
         return
+
+    approval_started = (not was_approved and is_approved) or (created and is_approved)
+    should_generate_variants = approval_started or image_changed or not has_all_article_image_variants(instance)
+    if not should_generate_variants:
+        return
+
+    try:
+        variant_fields = ensure_article_image_variants(instance, force=image_changed)
+        if variant_fields:
+            logger.info(f"Generate {len(variant_fields)} varianti NewsArticle per {instance.titolo}")
+    except ArticleImageVariantError as e:
+        logger.warning(f"Immagine articolo non processabile per varianti NewsArticle ({instance.titolo}): {e}")
+    except Exception as e:
+        logger.error(f"Errore generazione varianti NewsArticle per {instance.titolo}: {e}", exc_info=True)
 
     image_path = None
 
@@ -238,16 +253,6 @@ def generate_responsive_images_on_save(sender, instance, created, **kwargs):
     if not Path(image_path).exists():
         logger.warning(f"Immagine non trovata per generazione responsive: {image_path}")
         return
-
-    try:
-        if not has_all_article_image_variants(instance):
-            variant_fields = generate_article_image_variants(instance, source_path=image_path)
-            if variant_fields:
-                logger.info(f"Generate {len(variant_fields)} varianti NewsArticle per {instance.titolo}")
-    except ArticleImageVariantError as e:
-        logger.warning(f"Immagine articolo non processabile per varianti NewsArticle ({instance.titolo}): {e}")
-    except Exception as e:
-        logger.error(f"Errore generazione varianti NewsArticle per {instance.titolo}: {e}", exc_info=True)
 
     # Esegui in background per non bloccare il salvataggio
     def generate_in_background():
@@ -333,9 +338,12 @@ def track_approval_change(sender, instance, **kwargs):
             # Ottieni lo stato precedente dall'oggetto esistente
             old_instance = Articolo.objects.get(pk=instance.pk)
             # Salva lo stato precedente in cache per il post_save
+            old_upload = getattr(old_instance.foto_upload, 'name', '') or ''
+            new_upload = getattr(instance.foto_upload, 'name', '') or ''
             cache.set(f'article_approval_state_{instance.pk}', {
                 'was_approved': old_instance.approvato,
-                'is_approved': instance.approvato
+                'is_approved': instance.approvato,
+                'image_changed': (old_instance.foto or '') != (instance.foto or '') or old_upload != new_upload,
             }, 60)  # Cache per 1 minuto
 
             # Per pubbliredazionali, traccia anche il payment_status
@@ -348,13 +356,15 @@ def track_approval_change(sender, instance, **kwargs):
             # Caso edge: pk esiste ma oggetto non trovato
             cache.set(f'article_approval_state_{instance.pk}', {
                 'was_approved': False,
-                'is_approved': instance.approvato
+                'is_approved': instance.approvato,
+                'image_changed': False,
             }, 60)
     else:
         # Nuovo articolo (pk è None) - usa l'id dell'oggetto Python temporaneamente
         cache.set(f'article_approval_state_new_{id(instance)}', {
             'was_approved': False,
-            'is_approved': instance.approvato
+            'is_approved': instance.approvato,
+            'image_changed': False,
         }, 60)
 
 
