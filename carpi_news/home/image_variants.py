@@ -258,6 +258,10 @@ def localize_remote_article_image(article, timeout=15, quality=75):
 
 def ensure_article_image_variants(article, force=False):
     """Garantisce immagine locale e varianti multi-aspect prima della pubblicazione/social."""
+    if not getattr(article, "approvato", False):
+        logger.info("Articolo %s non approvato: salto generazione varianti immagine", article.pk)
+        return {}
+
     if has_all_article_image_variants(article) and not force:
         return {}
 

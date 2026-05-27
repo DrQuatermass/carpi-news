@@ -320,7 +320,7 @@ class Articolo(models.Model):
             return ''
 
     def get_newsarticle_image_urls(self):
-        if self.pk:
+        if self.pk and self.approvato:
             try:
                 from .image_variants import ensure_article_image_variants, has_all_article_image_variants
 
@@ -458,7 +458,7 @@ class Articolo(models.Model):
         site_url = getattr(settings, 'SITE_URL', 'https://ombradelportico.it')
         fallback_image = f"{site_url}{static('home/images/portico_logo_nopayoff.png')}"
 
-        if self.pk:
+        if self.pk and self.approvato:
             try:
                 from .image_variants import ensure_article_image_variants, has_all_article_image_variants
 

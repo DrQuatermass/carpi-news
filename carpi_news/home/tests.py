@@ -358,6 +358,63 @@ class ShareLinkTests(TestCase):
                 self.assertTrue((media_root / "images" / "downloaded" / "titolo-test-original.webp").exists())
                 self.assertTrue((media_root / self.articolo.image_16x9.name).exists())
 
+    def test_ensure_article_image_variants_skips_unapproved_article(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            media_root = Path(tmpdir)
+            source_dir = media_root / "images"
+            source_dir.mkdir()
+            source_path = source_dir / "source.jpg"
+            Image.new("RGB", (1600, 1000), (180, 40, 40)).save(source_path, "JPEG")
+
+            with override_settings(MEDIA_ROOT=str(media_root), MEDIA_URL="/media/"):
+                articolo = Articolo.objects.create(
+                    titolo="Bozza con immagine",
+                    contenuto="Contenuto",
+                    sommario="Sommario",
+                    categoria="Cronaca",
+                    foto="/media/images/source.jpg",
+                    approvato=False,
+                    data_pubblicazione=timezone.now(),
+                )
+
+                created = ensure_article_image_variants(articolo, force=True)
+                articolo.refresh_from_db()
+
+                self.assertEqual(created, {})
+                self.assertFalse(articolo.image_16x9)
+                self.assertFalse(articolo.image_4x3)
+                self.assertFalse(articolo.image_1x1)
+                self.assertFalse((media_root / "images" / "articles").exists())
+
+    def test_metadata_access_does_not_generate_variants_for_unapproved_article(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            media_root = Path(tmpdir)
+            source_dir = media_root / "images"
+            source_dir.mkdir()
+            source_path = source_dir / "source.jpg"
+            Image.new("RGB", (1600, 1000), (40, 120, 180)).save(source_path, "JPEG")
+
+            with override_settings(MEDIA_ROOT=str(media_root), MEDIA_URL="/media/"):
+                articolo = Articolo.objects.create(
+                    titolo="Bozza metadati",
+                    contenuto="Contenuto",
+                    sommario="Sommario",
+                    categoria="Cronaca",
+                    foto="/media/images/source.jpg",
+                    approvato=False,
+                    data_pubblicazione=timezone.now(),
+                )
+
+                newsarticle_urls = articolo.get_newsarticle_image_urls()
+                social_url = articolo.get_social_image_url()
+                articolo.refresh_from_db()
+
+                self.assertEqual(newsarticle_urls, [social_url])
+                self.assertFalse(articolo.image_16x9)
+                self.assertFalse(articolo.image_4x3)
+                self.assertFalse(articolo.image_1x1)
+                self.assertFalse((media_root / "images" / "articles").exists())
+
     def test_ensure_article_image_variants_uses_static_article_image(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             media_root = Path(tmpdir) / "media"

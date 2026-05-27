@@ -308,17 +308,6 @@ def download_article_image_in_background(article_id: int, image_url: str, articl
         local_url = download_and_save_image(image_url, article_slug)
         if local_url != image_url:
             Articolo.objects.filter(pk=article_id, foto=image_url).update(foto=local_url)
-            try:
-                from home.image_variants import ensure_article_image_variants
-
-                article = Articolo.objects.get(pk=article_id)
-                ensure_article_image_variants(article, force=True)
-            except Exception as e:
-                logging.getLogger(__name__).warning(
-                    "Generazione varianti immagine fallita per articolo %s: %s",
-                    article_id,
-                    e,
-                )
 
     def _start_after_commit():
         thread = threading.Thread(target=_download, name=f"ArticleImageDownload-{article_id}", daemon=False)
