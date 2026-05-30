@@ -51,6 +51,7 @@ class HomeConfig(AppConfig):
             'createsuperuser',
             'collectstatic',
             'cleanup_unapproved_article_images',
+            'cleanup_orphan_article_variants',
         ]
         should_skip = any(cmd in sys.argv for cmd in skip_commands)
 
