@@ -6,9 +6,10 @@ Invia la newsletter ogni giorno alle 17:30 (ora italiana)
 import threading
 import time
 import logging
-import schedule
 import sys
 import os
+from datetime import time as datetime_time
+from zoneinfo import ZoneInfo
 
 sys.path.append(os.path.dirname(__file__))
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "carpi_news.settings")
@@ -19,6 +20,9 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "carpi_news.settings")
 from home.logger_config import setup_centralized_logger
 
 logger = setup_centralized_logger('newsletter_scheduler', 'INFO')
+
+NEWSLETTER_TIME = datetime_time(17, 30)
+NEWSLETTER_TIMEZONE = ZoneInfo("Europe/Rome")
 
 
 def run_newsletter():
@@ -44,15 +48,24 @@ def run_newsletter():
 def start_scheduler():
     """Avvia lo scheduler per la newsletter"""
     from pathlib import Path
+    from datetime import datetime
 
     try:
-        schedule.every().day.at("17:30").do(run_newsletter)
         logger.info("📅 Scheduler newsletter avviato - esecuzione alle 17:30 ogni giorno")
 
         lock_file = Path('locks') / 'newsletter_scheduler.lock'
+        last_run_date = None
 
         while True:
-            schedule.run_pending()
+            now_rome = datetime.now(NEWSLETTER_TIMEZONE)
+            if (
+                now_rome.hour == NEWSLETTER_TIME.hour
+                and now_rome.minute == NEWSLETTER_TIME.minute
+                and last_run_date != now_rome.date()
+            ):
+                run_newsletter()
+                last_run_date = now_rome.date()
+
             try:
                 lock_file.write_text(str(os.getpid()))
             except Exception:

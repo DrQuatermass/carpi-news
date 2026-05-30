@@ -43,7 +43,15 @@ class HomeConfig(AppConfig):
         print("[DEBUG] Controllo condizioni avvio", flush=True)
         # Avvia i monitor in produzione (Gunicorn) o sviluppo (runserver)
         # Evita solo durante migrazioni, makemigrations, test, e altri comandi Django
-        skip_commands = ['migrate', 'makemigrations', 'test', 'shell', 'createsuperuser', 'collectstatic']
+        skip_commands = [
+            'migrate',
+            'makemigrations',
+            'test',
+            'shell',
+            'createsuperuser',
+            'collectstatic',
+            'cleanup_unapproved_article_images',
+        ]
         should_skip = any(cmd in sys.argv for cmd in skip_commands)
 
         # Controlla se l'auto-start è abilitato tramite variabile d'ambiente
