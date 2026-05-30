@@ -52,6 +52,7 @@ class HomeConfig(AppConfig):
             'collectstatic',
             'cleanup_unapproved_article_images',
             'cleanup_orphan_article_variants',
+            'cleanup_orphan_downloaded_images',
         ]
         should_skip = any(cmd in sys.argv for cmd in skip_commands)
 
