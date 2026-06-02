@@ -28,12 +28,19 @@ class Command(BaseCommand):
             help='Forza invio anche se già inviata oggi',
         )
 
+        parser.add_argument(
+            '--allow-no-today',
+            action='store_true',
+            help='Permette invio anche senza articoli pubblicati oggi',
+        )
+
     def handle(self, *args, **options):
         from pathlib import Path
 
         dry_run = options['dry_run']
         preview_only = options['preview_only']
         force = options['force']
+        allow_no_today = options['allow_no_today']
 
         # Lock file per prevenire esecuzioni concorrenti (più worker Gunicorn che sparano insieme)
         lock_file = None
@@ -64,12 +71,12 @@ class Command(BaseCommand):
                     return
 
         try:
-            self._do_send(dry_run, preview_only, force)
+            self._do_send(dry_run, preview_only, force, allow_no_today)
         finally:
             if lock_file:
                 lock_file.close()
 
-    def _do_send(self, dry_run, preview_only, force):
+    def _do_send(self, dry_run, preview_only, force, allow_no_today):
         from home.views import _get_newsletter_context
         from home.models import NewsletterSubscriber, NewsletterLog
         from django.utils import timezone as tz
@@ -104,6 +111,22 @@ class Command(BaseCommand):
         )
 
         if preview_only:
+            return
+
+        if num_oggi == 0 and not allow_no_today:
+            self.stdout.write(self.style.WARNING(
+                "Nessun articolo pubblicato oggi. Newsletter saltata."
+            ))
+            NewsletterLog.objects.create(
+                oggetto='Newsletter giornaliera',
+                num_destinatari=0,
+                num_articoli=num_totale,
+                stato='skipped',
+                note=(
+                    f"Nessun articolo pubblicato oggi. "
+                    f"Articoli ieri: {num_ieri}, eventi domani: {num_eventi}"
+                ),
+            )
             return
 
         if num_totale == 0:
