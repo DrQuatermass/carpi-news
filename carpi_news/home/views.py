@@ -931,6 +931,18 @@ def programmazione_cinema(request):
 
     cinema_data = []
 
+    def add_cinema(name, address, website, films=None, first=False):
+        cinema = {
+            'name': name,
+            'address': address,
+            'website': website,
+            'films': films or []
+        }
+        if first:
+            cinema_data.insert(0, cinema)
+        else:
+            cinema_data.append(cinema)
+
     # Calcola la data di oggi in vari formati
     today = datetime.now()
     today_day = today.day
@@ -958,12 +970,12 @@ def programmazione_cinema(request):
     ]
 
     # Cinema Eden
+    eden_films = []
     try:
         response = requests.get('https://www.cinemaedencarpi.it/', timeout=10)
         if response.status_code == 200:
             soup = BeautifulSoup(response.content, 'html.parser')
 
-            films = []
             film_cards = soup.find_all('div', class_='tmb')
 
             for card in film_cards:
@@ -1015,7 +1027,7 @@ def programmazione_cinema(request):
                     if today_showtimes:
                         info += f" - Orari: {', '.join(today_showtimes)}"
 
-                    films.append({
+                    eden_films.append({
                         'title': title,
                         'image': image if image else '',
                         'info': info
@@ -1024,17 +1036,12 @@ def programmazione_cinema(request):
                     logger.error(f"Errore parsing film Cinema Eden: {e}")
                     continue
 
-            if films:
-                cinema_data.append({
-                    'name': 'Cinema Eden',
-                    'address': 'Via Santa Chiara 22, Carpi',
-                    'website': 'https://www.cinemaedencarpi.it/',
-                    'films': films
-                })
     except Exception as e:
         logger.error(f"Errore scraping Cinema Eden: {e}")
+    add_cinema('Cinema Eden', 'Via Santa Chiara 22, Carpi', 'https://www.cinemaedencarpi.it/', eden_films)
 
     # Cinema Ariston - Cerca nella sezione id="movie"
+    ariston_films = []
     try:
         # User-Agent necessario: Ariston blocca richieste senza header browser
         headers = {
@@ -1043,8 +1050,6 @@ def programmazione_cinema(request):
         response = requests.get('https://www.aristoncinemacarpi.it/', headers=headers, timeout=10)
         if response.status_code == 200:
             soup = BeautifulSoup(response.content, 'html.parser')
-
-            films = []
 
             # Cerca la sezione con id="movie"
             movie_section = soup.find('section', id='movie')
@@ -1112,7 +1117,7 @@ def programmazione_cinema(request):
                         if today_showtimes:
                             info += f" - Orari: {', '.join(set(today_showtimes))}"
 
-                        films.append({
+                        ariston_films.append({
                             'title': title,
                             'image': image if image else '',
                             'info': info
@@ -1126,26 +1131,20 @@ def programmazione_cinema(request):
             else:
                 logger.warning("Cinema Ariston - Sezione #movie non trovata")
 
-            if films:
-                cinema_data.append({
-                    'name': 'Cinema Ariston',
-                    'address': 'Via Ernesto Boccaletti 3, San Marino di Carpi',
-                    'website': 'https://www.aristoncinemacarpi.it/',
-                    'films': films
-                })
-            else:
+            if not ariston_films:
                 logger.warning("Cinema Ariston: nessun film per oggi")
 
     except Exception as e:
         logger.error(f"Errore scraping Cinema Ariston: {e}")
+    add_cinema('Cinema Ariston', 'Via Ernesto Boccaletti 3, San Marino di Carpi', 'https://www.aristoncinemacarpi.it/', ariston_films)
 
     # Cinema Corso (stessa struttura di Cinema Eden)
+    corso_films = []
     try:
         response = requests.get('https://www.cinemacorsocarpi.it/', timeout=10)
         if response.status_code == 200:
             soup = BeautifulSoup(response.content, 'html.parser')
 
-            films = []
             film_cards = soup.find_all('div', class_='tmb')
 
             for card in film_cards:
@@ -1194,7 +1193,7 @@ def programmazione_cinema(request):
                     if today_showtimes:
                         info += f" - Orari: {', '.join(today_showtimes)}"
 
-                    films.append({
+                    corso_films.append({
                         'title': title,
                         'image': image if image else '',
                         'info': info
@@ -1203,17 +1202,12 @@ def programmazione_cinema(request):
                     logger.error(f"Errore parsing film Cinema Corso: {e}")
                     continue
 
-            if films:
-                cinema_data.append({
-                    'name': 'Cinema Corso',
-                    'address': 'Corso M. Fanti 91, Carpi',
-                    'website': 'https://www.cinemacorsocarpi.it/',
-                    'films': films
-                })
     except Exception as e:
         logger.error(f"Errore scraping Cinema Corso: {e}")
+    add_cinema('Cinema Corso', 'Corso M. Fanti 91, Carpi', 'https://www.cinemacorsocarpi.it/', corso_films)
 
     # Space City Multisala
+    spacecity_films = []
     try:
         # User-Agent per evitare blocchi
         headers = {
@@ -1222,8 +1216,6 @@ def programmazione_cinema(request):
         response = requests.get('https://www.spacecity.it/', headers=headers, timeout=10)
         if response.status_code == 200:
             soup = BeautifulSoup(response.content, 'html.parser')
-
-            films = []
 
             # Cerca i div con class "movie movie--preview"
             movie_divs = soup.find_all('div', class_='movie--preview')
@@ -1294,7 +1286,7 @@ def programmazione_cinema(request):
                     if today_showtimes:
                         info += f" - Orari: {', '.join(today_showtimes)}"
 
-                    films.append({
+                    spacecity_films.append({
                         'title': title,
                         'image': image if image else '',
                         'info': info
@@ -1306,18 +1298,12 @@ def programmazione_cinema(request):
                     logger.error(f"Errore parsing film Space City: {e}")
                     continue
 
-            if films:
-                cinema_data.insert(0, {  # Inserisci all'inizio
-                    'name': 'Space City Multisala',
-                    'address': 'Viale dell\'Industria 9, Carpi',
-                    'website': 'https://www.spacecity.it/',
-                    'films': films
-                })
-            else:
+            if not spacecity_films:
                 logger.warning("Space City: nessun film trovato per oggi")
 
     except Exception as e:
         logger.error(f"Errore scraping Space City: {e}")
+    add_cinema('Space City Multisala', 'Viale dell\'Industria 9, Carpi', 'https://www.spacecity.it/', spacecity_films, first=True)
 
     # Ottieni categorie per il menu di navigazione
     categorie_raw = get_published_articles_query().values_list('categoria', flat=True).distinct()
