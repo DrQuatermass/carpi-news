@@ -654,6 +654,31 @@
 
 <!-- Homepage JavaScript differito -->
 <script src="{% static 'home/js/homepage.js' %}?v=2026051001" defer></script>
+<script>
+    (function() {
+        const banners = Array.from(document.querySelectorAll('[data-banner-id]'));
+        const seen = new Set();
+
+        banners.forEach((banner) => {
+            const id = banner.getAttribute('data-banner-id');
+            if (!id || seen.has(id)) {
+                return;
+            }
+            seen.add(id);
+
+            const url = `/banner/impression/${id}/`;
+            if (navigator.sendBeacon) {
+                navigator.sendBeacon(url);
+            } else {
+                fetch(url, {
+                    method: 'POST',
+                    keepalive: true,
+                    credentials: 'same-origin'
+                }).catch(() => {});
+            }
+        });
+    })();
+</script>
 
 {% if request.GET.preview_mode %}
 <script>

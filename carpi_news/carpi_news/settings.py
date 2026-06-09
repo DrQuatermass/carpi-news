@@ -74,6 +74,7 @@ TEMPLATES = [
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
                 'home.context_processors.canonical_url',  # URL canonici
+                'home.context_processors.categorie_menu',
             ],
         },
     },
@@ -257,11 +258,6 @@ LOGGING = {
         },
         'home.playlist_monitor': {
             'handlers': ['console', 'playlist_file'],
-            'level': 'INFO',
-            'propagate': False,
-        },
-        'home.youtube_transcript': {
-            'handlers': ['console', 'file'],
             'level': 'INFO',
             'propagate': False,
         },

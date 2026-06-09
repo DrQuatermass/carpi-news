@@ -5,6 +5,7 @@ from django.utils import timezone
 from home.image_variants import (
     ArticleImageVariantError,
     ensure_article_image_variants,
+    generate_article_image_variants,
     get_article_source_image_path,
     missing_article_image_variants,
 )
@@ -82,7 +83,11 @@ class Command(BaseCommand):
             processed += 1
             old_image_path = _current_image_path(articolo)
             try:
-                created = ensure_article_image_variants(articolo, force=force)
+                if include_unpublished and not articolo.approvato:
+                    source = get_article_source_image_path(articolo)
+                    created = generate_article_image_variants(articolo, source_path=source, force=True) if source else {}
+                else:
+                    created = ensure_article_image_variants(articolo, force=force)
             except ArticleImageVariantError as exc:
                 failed += 1
                 self.stderr.write(self.style.WARNING(f"{articolo.slug}: immagine non processabile, salto. {exc}"))

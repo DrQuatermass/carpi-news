@@ -7,8 +7,17 @@ from django.db import IntegrityError
 from django.utils import timezone
 from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.http import JsonResponse
+from django.conf import settings
+from decimal import Decimal
 from datetime import timedelta
-from .models import Banner
+from .models import Banner, PromotionalCode
+from home.models import Articolo
+from .payments import (
+    PayPalError,
+    capture_paypal_order,
+    create_paypal_order,
+    validate_promo_code as validate_promo_code_service,
+)
 import logging
 
 logger = logging.getLogger(__name__)
@@ -335,10 +344,6 @@ def banner_delete(request, banner_id):
 @login_required(login_url='admin_panel:login')
 def banner_payment(request, banner_id):
     """Pagina di pagamento per il banner con PayPal"""
-    import requests
-    import base64
-    from django.conf import settings
-
     banner = get_object_or_404(Banner, id=banner_id, user=request.user)
 
     if banner.payment_status == 'completed':
@@ -395,30 +400,25 @@ Il cliente ha scelto di salvare il banner senza pagamento immediato.
         # Altrimenti è un normale POST per pagamento PayPal
         print(f"[DEBUG] Payment POST request received for banner {banner.id}")
 
-        # Gestisci codice promozionale se presente
-        from decimal import Decimal
-        from .models import PromotionalCode
-
         promo_code_str = request.POST.get('promo_code', '').strip()
         final_price = banner.total_price
         discount_amount = Decimal('0')
         promo_obj = None
 
         if promo_code_str:
-            try:
-                promo_obj = PromotionalCode.objects.get(code=promo_code_str)
-                is_valid, msg = promo_obj.is_valid()
-
-                if is_valid and promo_obj.can_apply_to('banner') and final_price >= promo_obj.min_amount:
-                    discount_amount = promo_obj.calculate_discount(final_price)
-                    final_price = final_price - discount_amount
-                    print(f"[DEBUG] Codice promozionale {promo_code_str} applicato: sconto €{discount_amount}")
-                else:
-                    print(f"[DEBUG] Codice promozionale {promo_code_str} non valido: {msg}")
-                    promo_obj = None  # Reset se non valido
-            except PromotionalCode.DoesNotExist:
+            promo_result = validate_promo_code_service(
+                promo_code_str,
+                context='banner',
+                original_price=final_price,
+                enforce_min_amount=True,
+            )
+            if promo_result:
+                promo_obj = promo_result['promo']
+                discount_amount = promo_result['discount_amount']
+                final_price = final_price - discount_amount
+                print(f"[DEBUG] Codice promozionale {promo_code_str} applicato: sconto €{discount_amount}")
+            else:
                 print(f"[DEBUG] Codice promozionale {promo_code_str} non trovato")
-                promo_obj = None
 
         # Se il prezzo finale è 0 (banner gratuito con sconto 100%), non serve PayPal
         if final_price == 0:
@@ -479,70 +479,15 @@ Link per approvare: {settings.SITE_URL}/admin/admin_panel/banner/{banner.id}/cha
             messages.error(request, 'Configurazione PayPal mancante. Contatta l\'amministratore.')
             return redirect('admin_panel:banner_payment', banner_id=banner.id)
 
-        # Determina l'URL base PayPal in base alla modalità
-        base_url = 'https://api-m.sandbox.paypal.com' if settings.PAYPAL_MODE == 'sandbox' else 'https://api-m.paypal.com'
-
-        # Ottieni access token
-        auth = base64.b64encode(f"{settings.PAYPAL_CLIENT_ID}:{settings.PAYPAL_CLIENT_SECRET}".encode()).decode()
         try:
-            token_response = requests.post(
-                f'{base_url}/v1/oauth2/token',
-                headers={
-                    'Authorization': f'Basic {auth}',
-                    'Content-Type': 'application/x-www-form-urlencoded'
-                },
-                data={'grant_type': 'client_credentials'},
-                timeout=15
+            order = create_paypal_order(
+                amount=final_price,
+                currency='EUR',
+                reference_id=f"BANNER-{banner.id}",
+                description=f"Banner pubblicitario: {banner.title}",
+                return_url=request.build_absolute_uri(f"/gestionale/banner/{banner.id}/payment/success/"),
+                cancel_url=request.build_absolute_uri(f"/gestionale/banner/{banner.id}/payment/cancel/"),
             )
-        except requests.exceptions.RequestException as e:
-            import logging as _logging
-            _logging.getLogger(__name__).error(f"PayPal token request failed: {e}")
-            messages.error(request, 'Impossibile contattare PayPal. Riprova tra qualche minuto.')
-            return redirect('admin_panel:banner_payment', banner_id=banner.id)
-
-        if token_response.status_code != 200:
-            messages.error(request, f'Errore autenticazione PayPal: verifica Client ID e Secret in .env')
-            return redirect('admin_panel:banner_payment', banner_id=banner.id)
-
-        access_token = token_response.json()['access_token']
-
-        # Crea ordine PayPal con prezzo finale (dopo sconto)
-        order_data = {
-            "intent": "CAPTURE",
-            "purchase_units": [{
-                "reference_id": f"BANNER-{banner.id}",
-                "description": f"Banner pubblicitario: {banner.title}",
-                "amount": {
-                    "currency_code": "EUR",
-                    "value": str(final_price)
-                }
-            }],
-            "application_context": {
-                "return_url": request.build_absolute_uri(f"/gestionale/banner/{banner.id}/payment/success/"),
-                "cancel_url": request.build_absolute_uri(f"/gestionale/banner/{banner.id}/payment/cancel/"),
-                "brand_name": "Ombra del Portico",
-                "user_action": "PAY_NOW"
-            }
-        }
-
-        try:
-            order_response = requests.post(
-                f'{base_url}/v2/checkout/orders',
-                headers={
-                    'Authorization': f'Bearer {access_token}',
-                    'Content-Type': 'application/json'
-                },
-                json=order_data,
-                timeout=15
-            )
-        except requests.exceptions.RequestException as e:
-            import logging as _logging
-            _logging.getLogger(__name__).error(f"PayPal order request failed: {e}")
-            messages.error(request, 'Impossibile creare l\'ordine PayPal. Riprova tra qualche minuto.')
-            return redirect('admin_panel:banner_payment', banner_id=banner.id)
-
-        if order_response.status_code == 201:
-            order = order_response.json()
             banner.payment_transaction_id = order['id']
             banner.save(update_fields=['payment_transaction_id'])
 
@@ -559,8 +504,15 @@ Link per approvare: {settings.SITE_URL}/admin/admin_panel/banner/{banner.id}/cha
                 return redirect(approve_url)
             messages.error(request, 'Errore PayPal: URL di pagamento non trovato.')
             return redirect('admin_panel:banner_payment', banner_id=banner.id)
-        else:
-            messages.error(request, f'Errore creazione ordine PayPal: {order_response.text}')
+        except PayPalError as exc:
+            if str(exc) == 'PayPal token request failed':
+                messages.error(request, 'Impossibile contattare PayPal. Riprova tra qualche minuto.')
+            elif str(exc) in ('PayPal authentication failed', 'PayPal access token missing'):
+                messages.error(request, f'Errore autenticazione PayPal: verifica Client ID e Secret in .env')
+            elif str(exc) == 'PayPal order request failed':
+                messages.error(request, 'Impossibile creare l\'ordine PayPal. Riprova tra qualche minuto.')
+            else:
+                messages.error(request, f'Errore creazione ordine PayPal: {exc.response_text}')
             return redirect('admin_panel:banner_payment', banner_id=banner.id)
 
     # Debug info
@@ -582,10 +534,6 @@ Link per approvare: {settings.SITE_URL}/admin/admin_panel/banner/{banner.id}/cha
 @login_required(login_url='admin_panel:login')
 def banner_payment_success(request, banner_id):
     """Callback PayPal dopo pagamento riuscito"""
-    import requests
-    import base64
-    from django.conf import settings
-
     banner = get_object_or_404(Banner, id=banner_id, user=request.user)
 
     token = request.GET.get('token')  # Order ID da PayPal v2
@@ -594,76 +542,52 @@ def banner_payment_success(request, banner_id):
         messages.error(request, 'Pagamento non valido.')
         return redirect('admin_panel:dashboard')
 
-    # Determina l'URL base PayPal
-    base_url = 'https://api-m.sandbox.paypal.com' if settings.PAYPAL_MODE == 'sandbox' else 'https://api-m.paypal.com'
+    try:
+        capture_paypal_order(token)
+    except PayPalError as exc:
+        if str(exc) in ('PayPal authentication failed', 'PayPal access token missing', 'PayPal token request failed'):
+            messages.error(request, 'Errore autenticazione PayPal.')
+            return redirect('admin_panel:dashboard')
+        messages.error(request, f'Errore nell\'esecuzione dell\'acquisto.')
+        return redirect('admin_panel:banner_payment', banner_id=banner.id)
 
-    # Ottieni access token
-    auth = base64.b64encode(f"{settings.PAYPAL_CLIENT_ID}:{settings.PAYPAL_CLIENT_SECRET}".encode()).decode()
-    token_response = requests.post(
-        f'{base_url}/v1/oauth2/token',
-        headers={
-            'Authorization': f'Basic {auth}',
-            'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        data={'grant_type': 'client_credentials'}
-    )
+    # Pagamento completato
+    banner.payment_status = 'completed'
+    banner.payment_method = 'PayPal'
+    banner.payment_date = timezone.now()
+    banner.payment_transaction_id = token
 
-    if token_response.status_code != 200:
-        messages.error(request, 'Errore autenticazione PayPal.')
-        return redirect('admin_panel:dashboard')
+    # Recupera e applica codice promozionale dalla sessione
+    promo_session_key = f'promo_banner_{banner.id}'
+    promo_data = request.session.get(promo_session_key)
 
-    access_token = token_response.json()['access_token']
+    if promo_data:
+        try:
+            promo = PromotionalCode.objects.get(code=promo_data['code'])
+            banner.promo_code = promo
+            banner.discount_amount = Decimal(str(promo_data['discount']))
+            promo.increment_uses()  # Incrementa contatore utilizzi
+            print(f"[DEBUG] Codice promozionale {promo.code} salvato e incrementato")
+        except PromotionalCode.DoesNotExist:
+            print(f"[DEBUG] Codice promozionale {promo_data['code']} non trovato al ritorno")
+        finally:
+            # Rimuovi dalla sessione
+            del request.session[promo_session_key]
 
-    # Cattura il pagamento
-    capture_response = requests.post(
-        f'{base_url}/v2/checkout/orders/{token}/capture',
-        headers={
-            'Authorization': f'Bearer {access_token}',
-            'Content-Type': 'application/json'
-        }
-    )
+    # Dopo il pagamento, il banner va in attesa di approvazione
+    # Se è già approvato, attivalo direttamente
+    if banner.approved:
+        banner.status = 'active'
+    else:
+        banner.status = 'pending_approval'
 
-    if capture_response.status_code == 201:
-        # Pagamento completato
-        banner.payment_status = 'completed'
-        banner.payment_method = 'PayPal'
-        banner.payment_date = timezone.now()
-        banner.payment_transaction_id = token
+    banner.save()
 
-        # Recupera e applica codice promozionale dalla sessione
-        from decimal import Decimal
-        from .models import PromotionalCode
-
-        promo_session_key = f'promo_banner_{banner.id}'
-        promo_data = request.session.get(promo_session_key)
-
-        if promo_data:
-            try:
-                promo = PromotionalCode.objects.get(code=promo_data['code'])
-                banner.promo_code = promo
-                banner.discount_amount = Decimal(str(promo_data['discount']))
-                promo.increment_uses()  # Incrementa contatore utilizzi
-                print(f"[DEBUG] Codice promozionale {promo.code} salvato e incrementato")
-            except PromotionalCode.DoesNotExist:
-                print(f"[DEBUG] Codice promozionale {promo_data['code']} non trovato al ritorno")
-            finally:
-                # Rimuovi dalla sessione
-                del request.session[promo_session_key]
-
-        # Dopo il pagamento, il banner va in attesa di approvazione
-        # Se è già approvato, attivalo direttamente
-        if banner.approved:
-            banner.status = 'active'
-        else:
-            banner.status = 'pending_approval'
-
-        banner.save()
-
-        # Invia notifica all'admin
-        from django.core.mail import send_mail
-        admin_email = settings.ADMINS[0][1] if settings.ADMINS else settings.DEFAULT_FROM_EMAIL
-        subject = f'Nuovo Banner Pagato da Approvare: {banner.title}'
-        message = f'''Un nuovo banner è stato pagato e richiede approvazione.
+    # Invia notifica all'admin
+    from django.core.mail import send_mail
+    admin_email = settings.ADMINS[0][1] if settings.ADMINS else settings.DEFAULT_FROM_EMAIL
+    subject = f'Nuovo Banner Pagato da Approvare: {banner.title}'
+    message = f'''Un nuovo banner è stato pagato e richiede approvazione.
 
 Titolo: {banner.title}
 Utente: {request.user.username} ({request.user.email})
@@ -676,24 +600,21 @@ Transazione ID: {token}
 Link per approvare: {settings.SITE_URL}/admin/admin_panel/banner/{banner.id}/change/
 '''
 
-        try:
-            send_mail(
-                subject,
-                message,
-                settings.DEFAULT_FROM_EMAIL,
-                [admin_email],
-                fail_silently=False,
-            )
-        except Exception as e:
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.error(f"Errore invio email admin: {e}")
+    try:
+        send_mail(
+            subject,
+            message,
+            settings.DEFAULT_FROM_EMAIL,
+            [admin_email],
+            fail_silently=False,
+        )
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Errore invio email admin: {e}")
 
-        messages.success(request, f'Acquisto completato con successo! Il tuo banner è ora in attesa di approvazione da parte dell\'amministratore.')
-        return redirect('admin_panel:dashboard')
-    else:
-        messages.error(request, f'Errore nell\'esecuzione dell\'acquisto.')
-        return redirect('admin_panel:banner_payment', banner_id=banner.id)
+    messages.success(request, f'Acquisto completato con successo! Il tuo banner è ora in attesa di approvazione da parte dell\'amministratore.')
+    return redirect('admin_panel:dashboard')
 
 
 @login_required(login_url='admin_panel:login')
@@ -1099,11 +1020,6 @@ Il cliente ha scelto di salvare l'articolo senza pagamento immediato.
 @login_required(login_url='admin_panel:login')
 def pubbliredazionale_payment(request, pubbliredazionale_id):
     """Pagina di pagamento per il pubbliredazionale (€5) con PayPal"""
-    import requests
-    import base64
-    from django.conf import settings
-    from home.models import Articolo
-
     pubbliredazionale = get_object_or_404(
         Articolo,
         id=pubbliredazionale_id,
@@ -1125,8 +1041,6 @@ def pubbliredazionale_payment(request, pubbliredazionale_id):
         if request.content_type == 'application/json':
             import json as json_lib
             from django.core.mail import send_mail
-            from admin_panel.models import PromotionalCode
-            from decimal import Decimal
 
             data = json_lib.loads(request.body)
             action = data.get('action')
@@ -1139,22 +1053,23 @@ def pubbliredazionale_payment(request, pubbliredazionale_id):
                 promo_obj = None
 
                 if promo_code_str:
-                    try:
-                        promo_obj = PromotionalCode.objects.get(code=promo_code_str)
-                        is_valid, message = promo_obj.is_valid()
+                    promo_result = validate_promo_code_service(
+                        promo_code_str,
+                        context='pubbliredazionale',
+                        original_price=final_price,
+                        enforce_min_amount=False,
+                    )
+                    if promo_result:
+                        promo_obj = promo_result['promo']
+                        discount_amount = promo_result['discount_amount']
+                        final_price = promo_result['final_price']
+                        logger.info(f"Codice promo '{promo_code_str}' applicato: sconto €{discount_amount}, prezzo finale €{final_price}")
 
-                        if is_valid and promo_obj.can_apply_to('pubbliredazionale'):
-                            discount_amount = promo_obj.calculate_discount(final_price)
-                            final_price = max(Decimal('0'), final_price - discount_amount)
-                            logger.info(f"Codice promo '{promo_code_str}' applicato: sconto €{discount_amount}, prezzo finale €{final_price}")
-
-                            # Applica il codice promo
-                            pubbliredazionale.promo_code = promo_obj
-                            pubbliredazionale.discount_amount = discount_amount
-                            promo_obj.increment_uses()
-                        else:
-                            logger.warning(f"Codice promo '{promo_code_str}' non valido o non applicabile: {message}")
-                    except PromotionalCode.DoesNotExist:
+                        # Applica il codice promo
+                        pubbliredazionale.promo_code = promo_obj
+                        pubbliredazionale.discount_amount = discount_amount
+                        promo_obj.increment_uses()
+                    else:
                         logger.warning(f"Codice promo '{promo_code_str}' non trovato")
 
                 # Salva il pubbliredazionale con stato 'saved' (o 'completed' se gratuito con promo)
@@ -1205,10 +1120,6 @@ Il cliente ha scelto di salvare il pubbliredazionale senza pagamento immediato.
             else:
                 return JsonResponse({'success': False, 'error': 'Azione non valida'})
 
-        # Altrimenti è un normale POST per pagamento PayPal
-        from admin_panel.models import PromotionalCode
-        from decimal import Decimal
-
         # Gestisci codice promozionale se presente (dalla form o dalla sessione)
         promo_code_str = request.POST.get('promo_code', '').strip()
         if not promo_code_str:
@@ -1218,20 +1129,19 @@ Il cliente ha scelto di salvare il pubbliredazionale senza pagamento immediato.
         promo_obj = None
 
         if promo_code_str:
-            try:
-                promo_obj = PromotionalCode.objects.get(code=promo_code_str)
-                is_valid, message = promo_obj.is_valid()
-
-                if is_valid and promo_obj.can_apply_to('pubbliredazionale'):
-                    discount_amount = promo_obj.calculate_discount(final_price)
-                    final_price = max(Decimal('0'), final_price - discount_amount)
-                    logger.info(f"Codice promo '{promo_code_str}' applicato: sconto €{discount_amount}, prezzo finale €{final_price}")
-                else:
-                    logger.warning(f"Codice promo '{promo_code_str}' non valido o non applicabile: {message}")
-                    promo_obj = None
-            except PromotionalCode.DoesNotExist:
+            promo_result = validate_promo_code_service(
+                promo_code_str,
+                context='pubbliredazionale',
+                original_price=final_price,
+                enforce_min_amount=False,
+            )
+            if promo_result:
+                promo_obj = promo_result['promo']
+                discount_amount = promo_result['discount_amount']
+                final_price = promo_result['final_price']
+                logger.info(f"Codice promo '{promo_code_str}' applicato: sconto €{discount_amount}, prezzo finale €{final_price}")
+            else:
                 logger.warning(f"Codice promo '{promo_code_str}' non trovato")
-                promo_obj = None
 
         # Se il prezzo finale è 0 (pubbliredazionale gratuito), non serve PayPal
         if final_price == 0:
@@ -1263,26 +1173,6 @@ Il cliente ha scelto di salvare il pubbliredazionale senza pagamento immediato.
             messages.error(request, 'Configurazione PayPal mancante. Contatta l\'amministratore.')
             return redirect('admin_panel:pubbliredazionale_payment', pubbliredazionale_id=pubbliredazionale.id)
 
-        # Determina URL base PayPal
-        base_url = 'https://api-m.sandbox.paypal.com' if settings.PAYPAL_MODE == 'sandbox' else 'https://api-m.paypal.com'
-
-        # Ottieni access token
-        auth = base64.b64encode(f"{settings.PAYPAL_CLIENT_ID}:{settings.PAYPAL_CLIENT_SECRET}".encode()).decode()
-        token_response = requests.post(
-            f'{base_url}/v1/oauth2/token',
-            headers={
-                'Authorization': f'Basic {auth}',
-                'Content-Type': 'application/x-www-form-urlencoded'
-            },
-            data={'grant_type': 'client_credentials'}
-        )
-
-        if token_response.status_code != 200:
-            messages.error(request, 'Errore autenticazione PayPal.')
-            return redirect('admin_panel:pubbliredazionale_payment', pubbliredazionale_id=pubbliredazionale.id)
-
-        access_token = token_response.json()['access_token']
-
         # Salva info promo in sessione per recupero dopo PayPal
         if promo_obj:
             request.session[f'promo_pubbliredazionale_payment_{pubbliredazionale.id}'] = {
@@ -1290,36 +1180,15 @@ Il cliente ha scelto di salvare il pubbliredazionale senza pagamento immediato.
                 'discount': float(discount_amount)
             }
 
-        # Crea ordine PayPal con prezzo finale (eventualmente scontato)
-        order_data = {
-            "intent": "CAPTURE",
-            "purchase_units": [{
-                "reference_id": f"PUBBLIREDAZIONALE-{pubbliredazionale.id}",
-                "description": f"Articolo pubbliredazionale: {pubbliredazionale.nome_azienda}",
-                "amount": {
-                    "currency_code": "EUR",
-                    "value": str(final_price)
-                }
-            }],
-            "application_context": {
-                "return_url": request.build_absolute_uri(f"/gestionale/pubbliredazionale/{pubbliredazionale.id}/payment/success/"),
-                "cancel_url": request.build_absolute_uri(f"/gestionale/pubbliredazionale/{pubbliredazionale.id}/payment/cancel/"),
-                "brand_name": "Ombra del Portico",
-                "user_action": "PAY_NOW"
-            }
-        }
-
-        order_response = requests.post(
-            f'{base_url}/v2/checkout/orders',
-            headers={
-                'Authorization': f'Bearer {access_token}',
-                'Content-Type': 'application/json'
-            },
-            json=order_data
-        )
-
-        if order_response.status_code == 201:
-            order = order_response.json()
+        try:
+            order = create_paypal_order(
+                amount=final_price,
+                currency='EUR',
+                reference_id=f"PUBBLIREDAZIONALE-{pubbliredazionale.id}",
+                description=f"Articolo pubbliredazionale: {pubbliredazionale.nome_azienda}",
+                return_url=request.build_absolute_uri(f"/gestionale/pubbliredazionale/{pubbliredazionale.id}/payment/success/"),
+                cancel_url=request.build_absolute_uri(f"/gestionale/pubbliredazionale/{pubbliredazionale.id}/payment/cancel/"),
+            )
             pubbliredazionale.payment_transaction_id = order['id']
             pubbliredazionale.save(update_fields=['payment_transaction_id'])
 
@@ -1327,7 +1196,10 @@ Il cliente ha scelto di salvare il pubbliredazionale senza pagamento immediato.
             for link in order['links']:
                 if link['rel'] == 'approve':
                     return redirect(link['href'])
-        else:
+        except PayPalError as exc:
+            if str(exc) in ('PayPal authentication failed', 'PayPal access token missing', 'PayPal token request failed'):
+                messages.error(request, 'Errore autenticazione PayPal.')
+                return redirect('admin_panel:pubbliredazionale_payment', pubbliredazionale_id=pubbliredazionale.id)
             messages.error(request, f'Errore creazione ordine PayPal.')
             return redirect('admin_panel:pubbliredazionale_payment', pubbliredazionale_id=pubbliredazionale.id)
 
@@ -1340,11 +1212,6 @@ Il cliente ha scelto di salvare il pubbliredazionale senza pagamento immediato.
 @login_required(login_url='admin_panel:login')
 def pubbliredazionale_payment_success(request, pubbliredazionale_id):
     """Callback PayPal dopo pagamento riuscito"""
-    import requests
-    import base64
-    from django.conf import settings
-    from home.models import Articolo
-
     pubbliredazionale = get_object_or_404(
         Articolo,
         id=pubbliredazionale_id,
@@ -1358,76 +1225,49 @@ def pubbliredazionale_payment_success(request, pubbliredazionale_id):
         messages.error(request, 'Pagamento non valido.')
         return redirect('admin_panel:dashboard')
 
-    # Determina URL base PayPal
-    base_url = 'https://api-m.sandbox.paypal.com' if settings.PAYPAL_MODE == 'sandbox' else 'https://api-m.paypal.com'
-
-    # Ottieni access token
-    auth = base64.b64encode(f"{settings.PAYPAL_CLIENT_ID}:{settings.PAYPAL_CLIENT_SECRET}".encode()).decode()
-    token_response = requests.post(
-        f'{base_url}/v1/oauth2/token',
-        headers={
-            'Authorization': f'Basic {auth}',
-            'Content-Type': 'application/x-www-form-urlencoded'
-        },
-        data={'grant_type': 'client_credentials'}
-    )
-
-    if token_response.status_code != 200:
-        messages.error(request, 'Errore autenticazione PayPal.')
-        return redirect('admin_panel:dashboard')
-
-    access_token = token_response.json()['access_token']
-
-    # Cattura pagamento
-    capture_response = requests.post(
-        f'{base_url}/v2/checkout/orders/{token}/capture',
-        headers={
-            'Authorization': f'Bearer {access_token}',
-            'Content-Type': 'application/json'
-        }
-    )
-
-    if capture_response.status_code == 201:
-        from admin_panel.models import PromotionalCode
-        from decimal import Decimal
-
-        # Recupera e applica codice promozionale dalla sessione
-        promo_session_key = f'promo_pubbliredazionale_payment_{pubbliredazionale.id}'
-        promo_data = request.session.get(promo_session_key)
-
-        if promo_data:
-            try:
-                promo = PromotionalCode.objects.get(code=promo_data['code'])
-                pubbliredazionale.promo_code = promo
-                pubbliredazionale.discount_amount = Decimal(str(promo_data['discount']))
-                promo.increment_uses()
-                logger.info(f"Codice promo '{promo_data['code']}' applicato a pubbliredazionale {pubbliredazionale.id}")
-            except PromotionalCode.DoesNotExist:
-                logger.warning(f"Codice promo '{promo_data['code']}' non trovato durante success callback")
-
-            # Pulisci sessione
-            del request.session[promo_session_key]
-
-        # Pulisci anche la sessione iniziale del codice
-        initial_promo_key = f'promo_pubbliredazionale_{pubbliredazionale.id}'
-        if initial_promo_key in request.session:
-            del request.session[initial_promo_key]
-
-        # Pagamento completato - invia notifica admin
-        pubbliredazionale.payment_status = 'completed'
-        pubbliredazionale.payment_method = 'PayPal'
-        pubbliredazionale.payment_date = timezone.now()
-        pubbliredazionale.payment_transaction_id = token
-        pubbliredazionale.save()
-
-        # Invia notifica all'admin
-        pubbliredazionale.send_admin_notification()
-
-        messages.success(request, 'Acquisto completato! Il tuo articolo pubbliredazionale è ora in attesa di approvazione da parte dell\'amministratore.')
-        return redirect('admin_panel:dashboard')
-    else:
+    try:
+        capture_paypal_order(token)
+    except PayPalError as exc:
+        if str(exc) in ('PayPal authentication failed', 'PayPal access token missing', 'PayPal token request failed'):
+            messages.error(request, 'Errore autenticazione PayPal.')
+            return redirect('admin_panel:dashboard')
         messages.error(request, 'Errore nell\'esecuzione dell\'acquisto.')
         return redirect('admin_panel:pubbliredazionale_payment', pubbliredazionale_id=pubbliredazionale.id)
+
+    # Recupera e applica codice promozionale dalla sessione
+    promo_session_key = f'promo_pubbliredazionale_payment_{pubbliredazionale.id}'
+    promo_data = request.session.get(promo_session_key)
+
+    if promo_data:
+        try:
+            promo = PromotionalCode.objects.get(code=promo_data['code'])
+            pubbliredazionale.promo_code = promo
+            pubbliredazionale.discount_amount = Decimal(str(promo_data['discount']))
+            promo.increment_uses()
+            logger.info(f"Codice promo '{promo_data['code']}' applicato a pubbliredazionale {pubbliredazionale.id}")
+        except PromotionalCode.DoesNotExist:
+            logger.warning(f"Codice promo '{promo_data['code']}' non trovato durante success callback")
+
+        # Pulisci sessione
+        del request.session[promo_session_key]
+
+    # Pulisci anche la sessione iniziale del codice
+    initial_promo_key = f'promo_pubbliredazionale_{pubbliredazionale.id}'
+    if initial_promo_key in request.session:
+        del request.session[initial_promo_key]
+
+    # Pagamento completato - invia notifica admin
+    pubbliredazionale.payment_status = 'completed'
+    pubbliredazionale.payment_method = 'PayPal'
+    pubbliredazionale.payment_date = timezone.now()
+    pubbliredazionale.payment_transaction_id = token
+    pubbliredazionale.save()
+
+    # Invia notifica all'admin
+    pubbliredazionale.send_admin_notification()
+
+    messages.success(request, 'Acquisto completato! Il tuo articolo pubbliredazionale è ora in attesa di approvazione da parte dell\'amministratore.')
+    return redirect('admin_panel:dashboard')
 
 
 @login_required(login_url='admin_panel:login')

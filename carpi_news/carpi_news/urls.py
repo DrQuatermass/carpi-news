@@ -25,6 +25,7 @@ urlpatterns = [
     path('instagram/', views.link_in_bio, name='link_in_bio'),
     path('instagram/search/', views.link_in_bio_search, name='link_in_bio_search'),
     path('s/<str:token>/', views.short_link_redirect, name='short_link_redirect'),
+    path('banner/impression/<int:banner_id>/', views.banner_impression, name='banner_impression'),
     path('webhooks/instagram/', include('home.webhook_urls')),
 
     # Chatbot API
@@ -71,3 +72,5 @@ urlpatterns = [
 # Serve media files in development
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+handler404 = 'home.views.custom_404'

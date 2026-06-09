@@ -67,6 +67,15 @@ check_*.py
 download_*.py
 optimize_*.py
 archive/
+venv.broken-*/
+.fuse_hidden*
+nul
+transcript_*.txt
+temp_transcript.txt
+runserver.*.log
+test_output.txt
+reel_preview*.mp4
 
 # Facebook credentials (sensitive)
-get_facebook_*.pycarpi_news/home/management/commands/send_emails_ses.py
+get_facebook_*.py
+carpi_news/home/management/commands/send_emails_ses.py

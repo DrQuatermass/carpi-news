@@ -5,6 +5,41 @@ Context processors per template tags globali
 from django.conf import settings
 
 
+def get_categorie_menu(rubriche_at_end=False):
+    from django.core.cache import cache
+
+    cache_key = 'categorie_menu_rubriche_end' if rubriche_at_end else 'categorie_menu'
+    categorie = cache.get(cache_key)
+    if categorie is None:
+        from .views import get_published_articles_query
+
+        raw = get_published_articles_query().values_list('categoria', flat=True).distinct()
+        categorie = []
+        has_rubriche = False
+        for cat in sorted(raw):
+            if cat in ['Editoriale', "L'Eco del Consiglio"]:
+                if rubriche_at_end:
+                    has_rubriche = True
+                elif not has_rubriche:
+                    categorie.append('Rubriche')
+                    has_rubriche = True
+            else:
+                categorie.append(cat)
+        if rubriche_at_end and has_rubriche:
+            categorie.append('Rubriche')
+        cache.set(cache_key, categorie, 3600)
+
+    return categorie
+
+
+def categorie_menu(request):
+    if getattr(request, '_skip_categories_menu', False):
+        return {'categorie_disponibili': []}
+
+    categorie = get_categorie_menu()
+    return {'categorie_disponibili': categorie}
+
+
 def canonical_url(request):
     """
     Aggiunge URL canonico e costanti SEO al context di tutti i template

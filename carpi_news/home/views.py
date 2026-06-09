@@ -13,8 +13,9 @@ from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.cache import cache_page
 from django.views.decorators.vary import vary_on_headers
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_http_methods, require_POST
 from django.db import models
+from django.db.models import F, FloatField, ExpressionWrapper, Max
 from datetime import datetime, timedelta
 from .models import Articolo, ArticoloRedirect, ChatbotConversation, NewsletterSubscriber, NewsletterLog
 from .chatbot_service import ChatbotService
@@ -24,6 +25,96 @@ import uuid
 
 
 logger = logging.getLogger(__name__)
+
+
+CINEMA_FRESH_CACHE_KEY = 'programmazione_cinema:fresh'
+CINEMA_STALE_CACHE_KEY = 'programmazione_cinema:stale'
+CINEMA_FRESH_TTL = 21600
+CINEMA_STALE_TTL = 7 * 24 * 60 * 60
+
+
+def _build_cinema_schema(cinema_data):
+    schema_graph = []
+    for cinema in cinema_data:
+        for film in cinema.get('films', []):
+            schema_graph.append({
+                "@type": "ScreeningEvent",
+                "name": film.get('title', ''),
+                "location": {
+                    "@type": "MovieTheater",
+                    "name": cinema.get('name', ''),
+                    "address": {
+                        "@type": "PostalAddress",
+                        "streetAddress": cinema.get('address', ''),
+                        "addressLocality": "Carpi",
+                        "addressRegion": "MO",
+                        "addressCountry": "IT"
+                    },
+                    "url": cinema.get('website', '')
+                },
+                "workPresented": {
+                    "@type": "Movie",
+                    "name": film.get('title', ''),
+                    **({"image": film["image"]} if film.get("image") else {})
+                },
+                "url": "https://ombradelportico.it/cinema/",
+                "eventStatus": "https://schema.org/EventScheduled",
+                "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
+                "organizer": {
+                    "@type": "Organization",
+                    "name": cinema.get('name', ''),
+                    "url": cinema.get('website', '')
+                }
+            })
+    return json.dumps({
+        "@context": "https://schema.org",
+        "@graph": schema_graph
+    }, ensure_ascii=False).replace('</', '<\\/') if schema_graph else ''
+
+
+def _scrape_cinema_parallel(stale_by_name=None):
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    from .cinema_scraping import (
+        cinema_payload,
+        scrape_ariston,
+        scrape_corso,
+        scrape_eden,
+        scrape_spacecity,
+    )
+
+    scrapers = [
+        ('Space City Multisala', scrape_spacecity, cinema_payload('Space City Multisala', "Viale dell'Industria 9, Carpi", 'https://www.spacecity.it/')),
+        ('Cinema Eden', scrape_eden, cinema_payload('Cinema Eden', 'Via Santa Chiara 22, Carpi', 'https://www.cinemaedencarpi.it/')),
+        ('Cinema Ariston', scrape_ariston, cinema_payload('Cinema Ariston', 'Via Ernesto Boccaletti 3, San Marino di Carpi', 'https://www.aristoncinemacarpi.it/')),
+        ('Cinema Corso', scrape_corso, cinema_payload('Cinema Corso', 'Corso M. Fanti 91, Carpi', 'https://www.cinemacorsocarpi.it/')),
+    ]
+    stale_by_name = stale_by_name or {}
+    results = {}
+
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        future_map = {executor.submit(scraper): (name, empty_payload) for name, scraper, empty_payload in scrapers}
+        for future in as_completed(future_map):
+            name, empty_payload = future_map[future]
+            try:
+                results[name] = future.result()
+            except Exception as exc:
+                logger.error("Errore scraping %s: %s", name, exc)
+                results[name] = stale_by_name.get(name, empty_payload)
+
+    return [results.get(name, stale_by_name.get(name, empty_payload)) for name, _, empty_payload in scrapers]
+
+
+def _get_cinema_data():
+    fresh = cache.get(CINEMA_FRESH_CACHE_KEY)
+    if fresh is not None:
+        return fresh
+
+    stale = cache.get(CINEMA_STALE_CACHE_KEY) or []
+    stale_by_name = {cinema.get('name'): cinema for cinema in stale}
+    cinema_data = _scrape_cinema_parallel(stale_by_name=stale_by_name)
+    cache.set(CINEMA_FRESH_CACHE_KEY, cinema_data, CINEMA_FRESH_TTL)
+    cache.set(CINEMA_STALE_CACHE_KEY, cinema_data, CINEMA_STALE_TTL)
+    return cinema_data
 
 
 CATEGORIA_MAP = {
@@ -47,6 +138,20 @@ def get_published_articles_query():
         Q(is_pubbliredazionale=False, approvato=True) |  # Articoli normali approvati
         Q(is_pubbliredazionale=True, approvato=True, payment_status='completed')  # Pubbliredazionali approvati E pagati
     )
+
+
+def custom_404(request, exception):
+    request._skip_categories_menu = True
+    articoli = cache.get('error404_articoli')
+    if articoli is None:
+        articoli = list(
+            get_published_articles_query()
+            .filter(data_pubblicazione__lte=timezone.now())
+            .order_by('-data_pubblicazione')
+            .values('titolo', 'slug')[:6]
+        )
+        cache.set('error404_articoli', articoli, 3600)
+    return render(request, '404.html', {'articoli_recenti': articoli}, status=404)
 
 
 # Create your views here.
@@ -129,61 +234,34 @@ def home(request):
 
     # Banner verticali per la griglia homepage: position 'between_articles' o 'both' con image_vertical
     _now = timezone.now()
-    all_banners_qs = list(Banner.objects.filter(
+    all_banners_qs = Banner.objects.filter(
         position__in=['between_articles', 'both'],
         status='active',
         payment_status='completed',
         approved=True,
         start_date__lte=_now,
         end_date__gte=_now,
-    ).exclude(image_vertical='').exclude(image_vertical__isnull=True).select_related('user'))
-    # Escludi immagini con rapporto larghezza/altezza > 2 (banner orizzontali nella posizione verticale)
+    ).exclude(image_vertical='').exclude(image_vertical__isnull=True).select_related('user')
+    # image_vertical_width/height sono proprietà calcolate dal file, non colonne DB.
+    # Materializza una sola volta e applica lo stesso filtro di rapporto.
     all_banners = [
         b for b in all_banners_qs
         if b.image_vertical_height > 0 and b.image_vertical_width / b.image_vertical_height <= 2
     ]
 
-    # Verifica che non sia un bot
-    user_agent = request.META.get('HTTP_USER_AGENT', '').lower()
-    bot_keywords = ['bot', 'crawler', 'spider', 'scraper', 'curl', 'wget', 'python-requests']
-    is_bot = any(keyword in user_agent for keyword in bot_keywords)
-
-    # Selezione randomica pesata di 4 banner (uno per riga)
+    # Selezione randomica pesata di 4 banner (uno per riga). Le impression sono contate dal beacon JS.
     active_banners = []
     if all_banners:
         for slot_num in range(4):
             banner = weighted_random_choice(all_banners)
             if banner:
                 active_banners.append(banner)
-                # Incrementa impressions solo se non bot e non già mostrato in questa sessione
-                session_key = f'banner_impression_{banner.id}_{page_number}_{slot_num}'
-                if not is_bot and not request.session.get(session_key, False):
-                    banner.impressions += 1
-                    banner.save(update_fields=['impressions'])
-                    request.session[session_key] = True
-                    logger.debug(f"Impression unica banner: {banner.title} (pag {page_number}, slot {slot_num})")
-                elif is_bot:
-                    logger.debug(f"Bot rilevato, impression non contata per banner: {banner.title}")
-    
+
     # Log per debugging
     if categoria:
         logger.info(f"Caricati {len(page_obj)} articoli approvati categoria '{categoria}' (pagina {page_number})")
     else:
         logger.info(f"Caricati {len(page_obj)} articoli approvati per la home (pagina {page_number})")
-    
-    # Ottieni lista categorie disponibili per il menu (raggruppa Editoriale e L'Eco del Consiglio in Rubriche)
-    categorie_raw = get_published_articles_query().values_list('categoria', flat=True).distinct()
-    categorie_disponibili = []
-    has_rubriche = False
-    
-    for cat in sorted(categorie_raw):
-        if cat in ['Editoriale', "L'Eco del Consiglio"]:
-            if not has_rubriche:
-                categorie_disponibili.append('Rubriche')
-                has_rubriche = True
-        else:
-            categorie_disponibili.append(cat)
-    
     # Crea la griglia mescolando articoli e banner/placeholder
     # 12 posizioni totali: 8 articoli + 4 banner (1 per riga)
     grid_items = []
@@ -214,7 +292,7 @@ def home(request):
                     first_article_added = True
                 article_index += 1
 
-    # Spotlight principale: immagine per preload LCP (elemento più grande above-the-fold)
+    # Spotlight principale: immagine per preload LCP (elemento piÃ¹ grande above-the-fold)
     first_spotlight_image = articoli_spotlight[0].get_image_url() if articoli_spotlight else None
 
     # Trova la prima immagine articolo per preload LCP (fallback se no spotlight)
@@ -254,14 +332,13 @@ def home(request):
         'has_prev': page_obj.has_previous(),
         'has_next': page_obj.has_next(),
         'categoria_attiva': categoria,
-        'categorie_disponibili': list(categorie_disponibili),
         'current_year': timezone.now().year,
         'canonical_url': canonical_url,
         'banner_positions': banner_positions,
         'active_banners_count': len(active_banners),
     }
     
-    # Se è una richiesta AJAX, restituisci solo i dati JSON
+    # Se Ã¨ una richiesta AJAX, restituisci solo i dati JSON
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
         # Mesi italiani abbreviati
         ITALIAN_MONTHS_SHORT = {
@@ -329,7 +406,6 @@ def categoria_articoli(request, categoria_slug):
     request._categoria_nome = categoria
     return home(request)
 
-@cache_page(300)
 @vary_on_headers('Accept-Encoding')
 def dettaglio_articolo(request, slug):
     try:
@@ -358,37 +434,25 @@ def dettaglio_articolo(request, slug):
         if not Articolo.objects.filter(publishable_filter, pk=articolo.pk).exists():
             cache.delete(cache_key)
             raise Http404("Articolo non disponibile")
-        categorie_disponibili = cached_ctx['categorie_disponibili']
         articoli_correlati = cached_ctx['articoli_correlati']
     else:
         articolo = get_object_or_404(
             Articolo.objects.filter(publishable_filter),
             slug=slug
         )
-
-        # Ottieni liste categorie per il menu di navigazione
-        categorie_raw = get_published_articles_query().values_list('categoria', flat=True).distinct()
-        categorie_disponibili = []
-        has_rubriche = False
-
-        for cat in sorted(categorie_raw):
-            if cat in ['Editoriale', "L'Eco del Consiglio"]:
-                if not has_rubriche:
-                    categorie_disponibili.append('Rubriche')
-                    has_rubriche = True
-            else:
-                categorie_disponibili.append(cat)
-
         # Articoli correlati: ultimi 6 della stessa categoria (escluso quello corrente, solo pubblicati)
         articoli_correlati = list(Articolo.objects.filter(
             approvato=True,
             data_pubblicazione__lte=timezone.now(),
             categoria=articolo.categoria
-        ).exclude(pk=articolo.pk).order_by('-data_pubblicazione')[:6])
+        ).exclude(pk=articolo.pk).only(
+            'id', 'titolo', 'slug', 'foto', 'foto_upload', 'foto_valida',
+            'image_16x9', 'image_4x3', 'image_1x1', 'categoria',
+            'data_pubblicazione', 'sommario'
+        ).order_by('-data_pubblicazione')[:6])
 
         cache.set(cache_key, {
             'articolo': articolo,
-            'categorie_disponibili': list(categorie_disponibili),
             'articoli_correlati': articoli_correlati,
         }, 600)
 
@@ -411,14 +475,13 @@ def dettaglio_articolo(request, slug):
         else:
             logger.debug(f"Bot rilevato, view non contata: {articolo.titolo} (UA: {user_agent[:100]})")
     else:
-        logger.debug(f"Articolo già visto in questa sessione: {articolo.titolo}")
+        logger.debug(f"Articolo giÃ  visto in questa sessione: {articolo.titolo}")
 
     canonical_url = canonical_article_url(articolo)
 
     context = {
         'articolo': articolo,
         'articoli_correlati': articoli_correlati,
-        'categorie_disponibili': list(categorie_disponibili),
         'categoria_attiva': None,  # Nessuna categoria attiva nel dettaglio
         'current_year': timezone.now().year,
         'canonical_url': canonical_url,
@@ -430,21 +493,7 @@ def dettaglio_articolo(request, slug):
 
 def privacy_policy(request):
     """Vista per la pagina della Privacy Policy"""
-    # Ottieni categorie per il menu di navigazione
-    categorie_raw = get_published_articles_query().values_list('categoria', flat=True).distinct()
-    categorie_disponibili = []
-    has_rubriche = False
-    
-    for cat in sorted(categorie_raw):
-        if cat in ['Editoriale', "L'Eco del Consiglio"]:
-            if not has_rubriche:
-                categorie_disponibili.append('Rubriche')
-                has_rubriche = True
-        else:
-            categorie_disponibili.append(cat)
-    
     context = {
-        'categorie_disponibili': list(categorie_disponibili),
         'current_year': timezone.now().year,
     }
     
@@ -454,7 +503,7 @@ def sitemap_index(request):
     """Vista per il sitemap index"""
     now = timezone.now()
 
-    # Controlla se ci sono articoli in archivio (più vecchi di 30 giorni)
+    # Controlla se ci sono articoli in archivio (piÃ¹ vecchi di 30 giorni)
     archive_cutoff = now - timedelta(days=30)
     has_archive = Articolo.objects.filter(
         approvato=True,
@@ -511,7 +560,7 @@ def sitemap(request):
         data_pubblicazione__lte=now
     ).order_by('-data_pubblicazione')
 
-    # Aggiungi campo days_old per priorità dinamiche
+    # Aggiungi campo days_old per prioritÃ  dinamiche
     for article in articles:
         article.days_old = (now - article.data_pubblicazione).days
 
@@ -528,10 +577,10 @@ def sitemap(request):
     return HttpResponse(template.render(context, request), content_type='application/xml')
 
 def sitemap_archive(request):
-    """Vista per la sitemap archivio (articoli più vecchi di 30 giorni)"""
+    """Vista per la sitemap archivio (articoli piÃ¹ vecchi di 30 giorni)"""
     cutoff_date = timezone.now() - timedelta(days=30)
 
-    # Articoli più vecchi di 30 giorni, limitati a 10.000 per performance
+    # Articoli piÃ¹ vecchi di 30 giorni, limitati a 10.000 per performance
     # Usa only() per caricare solo i campi necessari e ridurre memoria
     articles = Articolo.objects.filter(
         approvato=True,
@@ -573,23 +622,8 @@ def fonti_articolo(request, slug):
     articolo = get_object_or_404(Articolo, slug=slug, approvato=True)
 
     logger.info(f"Visualizzazione fonti articolo: {articolo.titolo}")
-
-    # Ottieni liste categorie per il menu di navigazione
-    categorie_raw = get_published_articles_query().values_list('categoria', flat=True).distinct()
-    categorie_disponibili = []
-    has_rubriche = False
-
-    for cat in sorted(categorie_raw):
-        if cat in ['Editoriale', "L'Eco del Consiglio"]:
-            if not has_rubriche:
-                categorie_disponibili.append('Rubriche')
-                has_rubriche = True
-        else:
-            categorie_disponibili.append(cat)
-
     context = {
         'articolo': articolo,
-        'categorie_disponibili': list(categorie_disponibili),
         'categoria_attiva': None,
         'current_year': timezone.now().year,
     }
@@ -610,7 +644,7 @@ def caplet(request):
         if puzzles:
             puzzle = random.choice(puzzles)
         else:
-            # Puzzle di fallback se il file non è valido
+            # Puzzle di fallback se il file non Ã¨ valido
             puzzle = {
                 "id": "puzzle_5x5_fallback",
                 "size": 5,
@@ -623,7 +657,7 @@ def caplet(request):
                 ]
             }
     except (FileNotFoundError, json.JSONDecodeError, KeyError):
-        # Puzzle di fallback se il file non esiste o è corrotto
+        # Puzzle di fallback se il file non esiste o Ã¨ corrotto
         puzzle = {
             "id": "puzzle_5x5_fallback",
             "size": 5,
@@ -635,27 +669,12 @@ def caplet(request):
                 [1, 3, 4, 5, 5]
             ]
         }
-
-    # Ottieni categorie per il menu di navigazione
-    categorie_raw = get_published_articles_query().values_list('categoria', flat=True).distinct()
-    categorie_disponibili = []
-    has_rubriche = False
-
-    for cat in sorted(categorie_raw):
-        if cat in ['Editoriale', "L'Eco del Consiglio"]:
-            if not has_rubriche:
-                categorie_disponibili.append('Rubriche')
-                has_rubriche = True
-        else:
-            categorie_disponibili.append(cat)
-
     # Serializza le zone come JSON per il template
     puzzle_zones_json = json.dumps(puzzle['zones'])
 
     context = {
         'puzzle': puzzle,
         'puzzle_zones_json': puzzle_zones_json,
-        'categorie_disponibili': list(categorie_disponibili),
         'categoria_attiva': None,
         'current_year': timezone.now().year,
     }
@@ -664,21 +683,7 @@ def caplet(request):
 
 def about(request):
     """Vista per la pagina About - Informazioni sul progetto"""
-    # Ottieni categorie per il menu di navigazione
-    categorie_raw = get_published_articles_query().values_list('categoria', flat=True).distinct()
-    categorie_disponibili = []
-    has_rubriche = False
-
-    for cat in sorted(categorie_raw):
-        if cat in ['Editoriale', "L'Eco del Consiglio"]:
-            if not has_rubriche:
-                categorie_disponibili.append('Rubriche')
-                has_rubriche = True
-        else:
-            categorie_disponibili.append(cat)
-
     context = {
-        'categorie_disponibili': list(categorie_disponibili),
         'current_year': timezone.now().year,
     }
 
@@ -686,7 +691,7 @@ def about(request):
 
 
 def pubblicita(request):
-    """Vista per la pagina di pubblicità e pricing"""
+    """Vista per la pagina di pubblicitÃ  e pricing"""
     import html as _html
     import decimal
     from django.db.models import Max, Sum
@@ -699,7 +704,7 @@ def pubblicita(request):
         return text
 
 
-    # ── Esempi reali di pubbliredazionali (i più visti) ───────────────────────
+    # â”€â”€ Esempi reali di pubbliredazionali (i piÃ¹ visti) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     publi_raw = Articolo.objects.filter(
         is_pubbliredazionale=True
     ).exclude(contenuto='').exclude(contenuto__isnull=True).order_by('-views')
@@ -724,7 +729,7 @@ def pubblicita(request):
         if len(esempi_publi) >= 4:
             break
 
-    # ── Statistiche dinamiche ──────────────────────────────────────────────────
+    # â”€â”€ Statistiche dinamiche â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     banner_stats = Banner.objects.filter(impressions__gt=0).aggregate(
         max_impressions=Max('impressions'),
         total_impressions=Sum('impressions'),
@@ -733,39 +738,23 @@ def pubblicita(request):
     max_impressions = banner_stats.get('max_impressions') or 0
     total_impressions = banner_stats.get('total_impressions') or 0
 
-    ctr_max = 0
-    for b in Banner.objects.filter(impressions__gt=0, clicks__gt=0):
-        ctr = round((b.clicks / b.impressions) * 100, 1)
-        if ctr > ctr_max:
-            ctr_max = ctr
+    ctr_max = Banner.objects.filter(impressions__gt=0, clicks__gt=0).aggregate(
+        m=Max(ExpressionWrapper(F('clicks') * 100.0 / F('impressions'), output_field=FloatField()))
+    )['m'] or 0
+    ctr_max = round(ctr_max, 1)
 
     newsletter_emails_sent = NewsletterLog.objects.filter(stato='success').aggregate(
         total=Sum('num_destinatari')
     )['total'] or 0
 
-    # Prezzi calcolati dal prezzo giornaliero minimo pubblico (€3.40/giorno, visibilità Bassa)
+    # Prezzi calcolati dal prezzo giornaliero minimo pubblico (â‚¬3.40/giorno, visibilitÃ  Bassa)
     price_per_day = decimal.Decimal('3.40')
-    price_banner_30 = int(price_per_day * 30)   # €102 — include orizzontale + verticale (visibilità Bassa)
+    price_banner_30 = int(price_per_day * 30)   # â‚¬102 â€” include orizzontale + verticale (visibilitÃ  Bassa)
     publi_price = 200
-    price_bundle = 280  # Pubbliredazionale + banner visibilità Alta 30gg
-
-    # ── Categorie per il menu di navigazione ──────────────────────────────────
-    categorie_raw = get_published_articles_query().values_list('categoria', flat=True).distinct()
-    categorie_disponibili = []
-    has_rubriche = False
-
-    for cat in sorted(categorie_raw):
-        if cat in ['Editoriale', "L'Eco del Consiglio"]:
-            if not has_rubriche:
-                categorie_disponibili.append('Rubriche')
-                has_rubriche = True
-        else:
-            categorie_disponibili.append(cat)
-
+    price_bundle = 280  # Pubbliredazionale + banner visibilitÃ  Alta 30gg
     articoli_count = get_published_articles_query().count()
 
     context = {
-        'categorie_disponibili': list(categorie_disponibili),
         'current_year': timezone.now().year,
         'esempi_publi': esempi_publi,
         'ctr_max': ctr_max,
@@ -869,20 +858,6 @@ def chatbot_results(request):
     # Ricerca articoli usando lo stesso servizio del chatbot
     chatbot = ChatbotService()
     articles = chatbot._search_articles(intent)
-
-    # Ottieni categorie per il menu
-    categorie_raw = get_published_articles_query().values_list('categoria', flat=True).distinct()
-    categorie_disponibili = []
-    has_rubriche = False
-
-    for cat in sorted(categorie_raw):
-        if cat in ['Editoriale', "L'Eco del Consiglio"]:
-            if not has_rubriche:
-                categorie_disponibili.append('Rubriche')
-                has_rubriche = True
-        else:
-            categorie_disponibili.append(cat)
-
     # Paginazione: 8 articoli per pagina (come homepage)
     # Con 4 banner in posizioni fisse, avremo 12 elementi totali
     paginator = Paginator(articles, 8)
@@ -900,7 +875,6 @@ def chatbot_results(request):
         'query': query,
         'intent': intent_str,
         'total_results': len(articles),
-        'categorie_disponibili': list(categorie_disponibili),
         'categoria_attiva': None,
         'current_year': timezone.now().year,
         'banner_positions': banner_positions,
@@ -919,449 +893,19 @@ def indexnow_key(request):
 @cache_page(1800)
 def programmazione_cinema(request):
     """
-    Vista per mostrare la programmazione aggiornata dei cinema locali
-    Effettua scraping in tempo reale dei siti dei cinema di Carpi
-    Mostra SOLO i film con proiezioni OGGI
+    Vista per mostrare la programmazione aggiornata dei cinema locali.
+    Usa una cache applicativa fresh/stale e scraping parallelo su cache miss.
     """
-    import requests
-    from bs4 import BeautifulSoup
-    from datetime import datetime
-    import re
-    from concurrent.futures import ThreadPoolExecutor, as_completed
+    from .context_processors import get_categorie_menu
 
-    cinema_data = []
-
-    def add_cinema(name, address, website, films=None, first=False):
-        cinema = {
-            'name': name,
-            'address': address,
-            'website': website,
-            'films': films or []
-        }
-        if first:
-            cinema_data.insert(0, cinema)
-        else:
-            cinema_data.append(cinema)
-
-    # Calcola la data di oggi in vari formati
-    today = datetime.now()
-    today_day = today.day
-    today_day_padded = f"{today_day:02d}"  # Giorno con zero iniziale (es: "03")
-    today_month_it = ['', 'gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno',
-                      'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre'][today.month]
-    today_month_num = f"{today.month:02d}"  # Mese con zero iniziale (es: "12")
-    weekdays_it = ['lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato', 'domenica']
-    today_weekday = weekdays_it[today.weekday()]
-
-    # Pattern per trovare la data di oggi nel testo
-    # Es: "Martedì 3", "3 dicembre", "mercoledì 3 dicembre", "03/12/2025"
-    # Usa word boundary \b per evitare match parziali (es: "3" in "31")
-    all_months_it = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno',
-                     'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre']
-    other_months_it = '|'.join(m for m in all_months_it if m != today_month_it)
-    today_patterns = [
-        # "mercoledì 3" - con negative lookahead per escludere altri mesi (es: "venerdì 13 giugno")
-        f"{today_weekday}\\s+\\b{today_day}\\b(?!\\s+(?:{other_months_it}))",
-        f"{today_weekday}\\s+\\b{today_day_padded}\\b(?!\\s+(?:{other_months_it}))",
-        f"\\b{today_day}\\b\\s+{today_month_it}",  # "3 dicembre" (non "31 dicembre")
-        f"\\b{today_day_padded}\\b\\s+{today_month_it}",  # "03 dicembre"
-        f"{today_weekday}\\s+\\b{today_day}\\b\\s+{today_month_it}",  # "mercoledì 3 dicembre"
-        f"{today_day_padded}/{today_month_num}/",  # "03/12/2025" (Space City format)
-    ]
-
-    # Cinema Eden
-    eden_films = []
-    try:
-        response = requests.get('https://www.cinemaedencarpi.it/', timeout=10)
-        if response.status_code == 200:
-            soup = BeautifulSoup(response.content, 'html.parser')
-
-            film_cards = soup.find_all('div', class_='tmb')
-
-            for card in film_cards:
-                try:
-                    title_elem = card.find('h2', class_='t-entry-title') or card.find('h3')
-                    title = title_elem.get_text(strip=True) if title_elem else None
-
-                    if not title:
-                        continue
-
-                    # Cerca le informazioni del film (orari, date)
-                    text_elem = card.find('div', class_='t-entry-text')
-                    if not text_elem:
-                        continue
-
-                    info_text = text_elem.get_text(separator=' ', strip=True).lower()
-
-                    # Verifica se il film ha proiezioni OGGI
-                    has_today = False
-                    today_showtimes = []
-
-                    for pattern in today_patterns:
-                        if re.search(pattern, info_text, re.IGNORECASE):
-                            has_today = True
-                            # Cerca orari dopo la data di oggi
-                            # Pattern orari: 15:00, 21:30, etc
-                            time_pattern = r'\b(\d{1,2}[:.]\d{2})\b'
-                            # Cerca il testo dopo la data di oggi
-                            match = re.search(pattern, info_text, re.IGNORECASE)
-                            if match:
-                                text_after_date = info_text[match.end():match.end()+100]
-                                times = re.findall(time_pattern, text_after_date)
-                                today_showtimes.extend(times[:3])  # Max 3 orari
-                            break
-
-                    if not has_today:
-                        continue
-
-                    # Cerca l'immagine
-                    img_elem = card.find('img')
-                    image = ''
-                    if img_elem:
-                        image = img_elem.get('data-src') or img_elem.get('src') or img_elem.get('data-lazy-src', '')
-                        if 'placeholder' in image.lower() or 'default' in image.lower():
-                            image = ''
-
-                    # Formatta info
-                    info = f"Oggi {today_weekday} {today_day} {today_month_it}"
-                    if today_showtimes:
-                        info += f" - Orari: {', '.join(today_showtimes)}"
-
-                    eden_films.append({
-                        'title': title,
-                        'image': image if image else '',
-                        'info': info
-                    })
-                except Exception as e:
-                    logger.error(f"Errore parsing film Cinema Eden: {e}")
-                    continue
-
-    except Exception as e:
-        logger.error(f"Errore scraping Cinema Eden: {e}")
-    add_cinema('Cinema Eden', 'Via Santa Chiara 22, Carpi', 'https://www.cinemaedencarpi.it/', eden_films)
-
-    # Cinema Ariston - Cerca nella sezione id="movie"
-    ariston_films = []
-    try:
-        # User-Agent necessario: Ariston blocca richieste senza header browser
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-        }
-        response = requests.get('https://www.aristoncinemacarpi.it/', headers=headers, timeout=10)
-        if response.status_code == 200:
-            soup = BeautifulSoup(response.content, 'html.parser')
-
-            # Cerca la sezione con id="movie"
-            movie_section = soup.find('section', id='movie')
-
-            if movie_section:
-                # Trova tutti gli article (la classe è 'list-article' non 'news-item')
-                articles = movie_section.find_all('article')
-
-                logger.info(f"Cinema Ariston - Trovati {len(articles)} articoli in sezione #movie")
-
-                for article in articles:
-                    try:
-                        # Titolo in h2.entry-title > a
-                        title_elem = article.find('h2', class_='entry-title')
-                        if not title_elem:
-                            continue
-
-                        title_link = title_elem.find('a')
-                        title = title_link.get_text(strip=True) if title_link else title_elem.get_text(strip=True)
-
-                        if not title or len(title) < 3:
-                            continue
-
-                        # Programmazione in div.entry-excerpt
-                        excerpt = article.find('div', class_='entry-excerpt')
-                        if not excerpt:
-                            continue
-
-                        # Analizza le righe della programmazione
-                        lines = excerpt.get_text(separator='\n').split('\n')
-                        has_today = False
-                        today_showtimes = []
-
-                        for line in lines:
-                            line_lower = line.strip().lower()
-                            if not line_lower:
-                                continue
-
-                            # Verifica se questa riga contiene la data di oggi
-                            for pattern in today_patterns:
-                                if re.search(pattern, line_lower, re.IGNORECASE):
-                                    has_today = True
-                                    # Estrai orario da questa riga (formato: "Lunedì 3 Dicembre 2025 – Ore 21:00")
-                                    time_match = re.search(r'ore\s*(\d{1,2}:\d{2})', line_lower, re.IGNORECASE)
-                                    if time_match:
-                                        today_showtimes.append(time_match.group(1))
-                                    break
-
-                        if not has_today:
-                            continue
-
-                        # Immagine in div.list-article-thumb > a > img
-                        image = ''
-                        thumb = article.find('div', class_='list-article-thumb')
-                        if thumb:
-                            img_elem = thumb.find('img')
-                            if img_elem:
-                                image = img_elem.get('src', '')
-                                # Fallback: prova data-src se src è vuoto
-                                if not image:
-                                    image = img_elem.get('data-src', '')
-
-                        # Formatta info
-                        info = f"Oggi {today_weekday} {today_day} {today_month_it}"
-                        if today_showtimes:
-                            info += f" - Orari: {', '.join(set(today_showtimes))}"
-
-                        ariston_films.append({
-                            'title': title,
-                            'image': image if image else '',
-                            'info': info
-                        })
-
-                        logger.info(f"Cinema Ariston - Film trovato: {title}")
-
-                    except Exception as e:
-                        logger.error(f"Errore parsing articolo Ariston: {e}")
-                        continue
-            else:
-                logger.warning("Cinema Ariston - Sezione #movie non trovata")
-
-            if not ariston_films:
-                logger.warning("Cinema Ariston: nessun film per oggi")
-
-    except Exception as e:
-        logger.error(f"Errore scraping Cinema Ariston: {e}")
-    add_cinema('Cinema Ariston', 'Via Ernesto Boccaletti 3, San Marino di Carpi', 'https://www.aristoncinemacarpi.it/', ariston_films)
-
-    # Cinema Corso (stessa struttura di Cinema Eden)
-    corso_films = []
-    try:
-        response = requests.get('https://www.cinemacorsocarpi.it/', timeout=10)
-        if response.status_code == 200:
-            soup = BeautifulSoup(response.content, 'html.parser')
-
-            film_cards = soup.find_all('div', class_='tmb')
-
-            for card in film_cards:
-                try:
-                    title_elem = card.find('h2', class_='t-entry-title') or card.find('h3')
-                    title = title_elem.get_text(strip=True) if title_elem else None
-
-                    if not title:
-                        continue
-
-                    # Cerca le informazioni del film
-                    text_elem = card.find('div', class_='t-entry-text')
-                    if not text_elem:
-                        continue
-
-                    info_text = text_elem.get_text(separator=' ', strip=True).lower()
-
-                    # Verifica se il film ha proiezioni OGGI
-                    has_today = False
-                    today_showtimes = []
-
-                    for pattern in today_patterns:
-                        if re.search(pattern, info_text, re.IGNORECASE):
-                            has_today = True
-                            time_pattern = r'\b(\d{1,2}[:.]\d{2})\b'
-                            match = re.search(pattern, info_text, re.IGNORECASE)
-                            if match:
-                                text_after_date = info_text[match.end():match.end()+100]
-                                times = re.findall(time_pattern, text_after_date)
-                                today_showtimes.extend(times[:3])
-                            break
-
-                    if not has_today:
-                        continue
-
-                    # Cerca l'immagine
-                    img_elem = card.find('img')
-                    image = ''
-                    if img_elem:
-                        image = img_elem.get('data-src') or img_elem.get('src', '')
-                        if 'placeholder' in image.lower():
-                            image = ''
-
-                    # Formatta info
-                    info = f"Oggi {today_weekday} {today_day} {today_month_it}"
-                    if today_showtimes:
-                        info += f" - Orari: {', '.join(today_showtimes)}"
-
-                    corso_films.append({
-                        'title': title,
-                        'image': image if image else '',
-                        'info': info
-                    })
-                except Exception as e:
-                    logger.error(f"Errore parsing film Cinema Corso: {e}")
-                    continue
-
-    except Exception as e:
-        logger.error(f"Errore scraping Cinema Corso: {e}")
-    add_cinema('Cinema Corso', 'Corso M. Fanti 91, Carpi', 'https://www.cinemacorsocarpi.it/', corso_films)
-
-    # Space City Multisala
-    spacecity_films = []
-    try:
-        # User-Agent per evitare blocchi
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-        }
-        response = requests.get('https://www.spacecity.it/', headers=headers, timeout=10)
-        if response.status_code == 200:
-            soup = BeautifulSoup(response.content, 'html.parser')
-
-            # Cerca i div con class "movie movie--preview"
-            movie_divs = soup.find_all('div', class_='movie--preview')
-
-            for movie_div in movie_divs:
-                try:
-                    # Estrai il titolo dal link a.movie__title
-                    title_elem = movie_div.find('a', class_='movie__title')
-                    if not title_elem:
-                        continue
-
-                    title = title_elem.get_text(strip=True)
-                    if not title:
-                        continue
-
-                    # Estrai l'immagine
-                    image = ''
-                    img_elem = movie_div.find('img', class_='img-fluid')
-                    if img_elem:
-                        image = img_elem.get('src', '')
-
-                    # Cerca la sezione schedule per verificare la data
-                    schedule_section = movie_div.find('div', class_='schedule-section-show')
-                    if not schedule_section:
-                        continue
-
-                    schedule_text = schedule_section.get_text(separator=' ', strip=True).lower()
-
-                    # Verifica se ha proiezioni OGGI e estrai solo gli orari di oggi
-                    has_today = False
-                    today_showtimes = []
-
-                    # La schedule contiene tutti i giorni in un'unica riga
-                    # Devo estrarre solo gli orari tra la data di oggi e la data successiva
-                    schedule_full_text = schedule_section.get_text(separator=' ', strip=True)
-
-                    # Cerca la data di oggi nel testo
-                    for pattern in today_patterns:
-                        match = re.search(pattern, schedule_full_text, re.IGNORECASE)
-                        if match:
-                            has_today = True
-
-                            # Estrai il testo dopo la data di oggi
-                            text_after_today = schedule_full_text[match.end():]
-
-                            # Trova dove finisce la sezione di oggi (cerca la prossima data)
-                            # Pattern per trovare la prossima data (es: "Giovedì 04/12/2025")
-                            next_date_pattern = r'(luned[ìi]|marted[ìi]|mercoled[ìi]|gioved[ìi]|venerd[ìi]|sabato|domenica)\s+\d{2}/\d{2}/\d{4}'
-                            next_date_match = re.search(next_date_pattern, text_after_today, re.IGNORECASE)
-
-                            if next_date_match:
-                                # Prendi solo il testo fino alla prossima data
-                                today_section = text_after_today[:next_date_match.start()]
-                            else:
-                                # Non c'è una data successiva, prendi tutto
-                                today_section = text_after_today[:200]
-
-                            # Estrai tutti gli orari dalla sezione di oggi
-                            times = re.findall(r'\b(\d{1,2}:\d{2})\b', today_section)
-                            today_showtimes.extend(times)
-                            break
-
-                    if not has_today:
-                        continue
-
-                    # Formatta info - solo orari, no sale
-                    info = f"Oggi {today_weekday} {today_day} {today_month_it}"
-                    if today_showtimes:
-                        info += f" - Orari: {', '.join(today_showtimes)}"
-
-                    spacecity_films.append({
-                        'title': title,
-                        'image': image if image else '',
-                        'info': info
-                    })
-
-                    logger.info(f"Space City - Trovato film: {title} - {info}")
-
-                except Exception as e:
-                    logger.error(f"Errore parsing film Space City: {e}")
-                    continue
-
-            if not spacecity_films:
-                logger.warning("Space City: nessun film trovato per oggi")
-
-    except Exception as e:
-        logger.error(f"Errore scraping Space City: {e}")
-    add_cinema('Space City Multisala', 'Viale dell\'Industria 9, Carpi', 'https://www.spacecity.it/', spacecity_films, first=True)
-
-    # Ottieni categorie per il menu di navigazione
-    categorie_raw = get_published_articles_query().values_list('categoria', flat=True).distinct()
-    categorie_disponibili = []
-    has_rubriche = False
-
-    for cat in sorted(categorie_raw):
-        if cat in ['Editoriale', "L'Eco del Consiglio"]:
-            has_rubriche = True
-        else:
-            categorie_disponibili.append(cat)
-
-    if has_rubriche:
-        categorie_disponibili.append('Rubriche')
-
-    schema_graph = []
-    for cinema in cinema_data:
-        for film in cinema.get('films', []):
-            schema_graph.append({
-                "@type": "ScreeningEvent",
-                "name": film.get('title', ''),
-                "location": {
-                    "@type": "MovieTheater",
-                    "name": cinema.get('name', ''),
-                    "address": {
-                        "@type": "PostalAddress",
-                        "streetAddress": cinema.get('address', ''),
-                        "addressLocality": "Carpi",
-                        "addressRegion": "MO",
-                        "addressCountry": "IT"
-                    },
-                    "url": cinema.get('website', '')
-                },
-                "workPresented": {
-                    "@type": "Movie",
-                    "name": film.get('title', ''),
-                    **({"image": film["image"]} if film.get("image") else {})
-                },
-                "url": "https://ombradelportico.it/cinema/",
-                "eventStatus": "https://schema.org/EventScheduled",
-                "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
-                "organizer": {
-                    "@type": "Organization",
-                    "name": cinema.get('name', ''),
-                    "url": cinema.get('website', '')
-                }
-            })
-    schema_json = json.dumps({
-        "@context": "https://schema.org",
-        "@graph": schema_graph
-    }, ensure_ascii=False).replace('</', '<\\/') if schema_graph else ''
-
+    cinema_data = _get_cinema_data()
+    now = datetime.now()
     context = {
         'cinema_data': cinema_data,
-        'last_update': datetime.now(),
-        'current_year': datetime.now().year,
-        'categorie_disponibili': categorie_disponibili,
-        'schema_json': schema_json,
+        'last_update': now,
+        'current_year': now.year,
+        'categorie_disponibili': get_categorie_menu(rubriche_at_end=True),
+        'schema_json': _build_cinema_schema(cinema_data),
     }
 
     return render(request, 'programmazione_cinema.html', context)
@@ -1408,6 +952,8 @@ def calendario_eventi(request):
         approvato=True,
         data_evento__gte=start_date,
         data_evento__lt=end_date
+    ).only(
+        'id', 'titolo', 'slug', 'foto', 'data_evento', 'data_pubblicazione'
     ).order_by('data_evento', 'data_pubblicazione')
 
     # Organizza eventi per giorno
@@ -1451,22 +997,8 @@ def calendario_eventi(request):
         'current_year': now.year,
         'total_eventi': eventi.count(),
     }
-
-    # Ottieni categorie per il menu di navigazione
-    categorie_raw = get_published_articles_query().values_list('categoria', flat=True).distinct()
-    categorie_disponibili = []
-    has_rubriche = False
-
-    for cat in sorted(categorie_raw):
-        if cat in ['Editoriale', "L'Eco del Consiglio"]:
-            has_rubriche = True
-        else:
-            categorie_disponibili.append(cat)
-
-    if has_rubriche:
-        categorie_disponibili.append('Rubriche')
-
-    context['categorie_disponibili'] = categorie_disponibili
+    from .context_processors import get_categorie_menu
+    context['categorie_disponibili'] = get_categorie_menu(rubriche_at_end=True)
 
     return render(request, 'calendario_eventi.html', context)
 
@@ -1497,7 +1029,7 @@ def _get_newsletter_context():
 
     # Articoli dal momento dell'ultimo invio a oggi mezzanotte.
     # Usa il timestamp dell'ultimo invio riuscito come cutoff per non riproporre
-    # articoli già inclusi nella newsletter precedente.
+    # articoli giÃ  inclusi nella newsletter precedente.
     ultimo_invio = NewsletterLog.objects.filter(
         stato__in=['success', 'partial']
     ).order_by('-data_invio').first()
@@ -1525,7 +1057,7 @@ def _get_newsletter_context():
         escludi_newsletter=False,
     ).order_by('-views')
 
-    # Banner orizzontali attivi per la newsletter (max 2, per priorità poi shuffle)
+    # Banner orizzontali attivi per la newsletter (max 2, per prioritÃ  poi shuffle)
     try:
         from admin_panel.models import Banner as _Banner
         _now = timezone.now()
@@ -1592,8 +1124,8 @@ def newsletter_subscribe(request):
                 success = True
             else:
                 if is_ajax:
-                    return JsonResponse({'ok': False, 'already': True, 'message': 'Sei già iscritto alla newsletter.'})
-                msg.info(request, 'Questa email è già iscritta alla newsletter.')
+                    return JsonResponse({'ok': False, 'already': True, 'message': 'Sei giÃ  iscritto alla newsletter.'})
+                msg.info(request, 'Questa email Ã¨ giÃ  iscritta alla newsletter.')
         else:
             if is_ajax:
                 return JsonResponse({'ok': False, 'message': 'Inserisci un indirizzo email valido.'})
@@ -1656,6 +1188,29 @@ def short_link_redirect(request, token):
         cache.set(cache_key, True, 60)
 
     return HttpResponseRedirect(build_share_url(short_link.articolo, short_link.platform, short_link.medium))
+
+
+@csrf_exempt
+@require_POST
+def banner_impression(request, banner_id):
+    """Beacon JS: conta un'impression banner, dedup via cache, atomico."""
+    from admin_panel.models import Banner
+
+    user_agent = request.META.get('HTTP_USER_AGENT', '').lower()
+    bot_keywords = ['bot', 'crawler', 'spider', 'scraper', 'curl', 'wget', 'python-requests']
+    if any(keyword in user_agent for keyword in bot_keywords):
+        return HttpResponse(status=204)
+
+    ip = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR', '')).split(',')[0].strip()
+    cache_key = f"banner_impr:{banner_id}:{ip}:{hash(user_agent[:80])}"
+    if not cache.get(cache_key):
+        updated = Banner.objects.filter(pk=banner_id, status='active').update(
+            impressions=F('impressions') + 1
+        )
+        if updated:
+            cache.set(cache_key, True, 600)
+
+    return HttpResponse(status=204)
 
 
 def link_in_bio_search(request):

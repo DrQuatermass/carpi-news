@@ -1,13 +1,11 @@
 from django.db import models
 from django.utils import timezone
 from django.templatetags.static import static
-from django.core.cache import cache
 from django.conf import settings
 from django.utils.html import strip_tags
 from urllib.parse import quote
 import html
 import re
-import requests
 import json
 import logging
 import uuid
@@ -63,6 +61,10 @@ class Articolo(models.Model):
     fonte = models.URLField(max_length=500, blank=True, null=True)
     foto = models.TextField(blank=True, null=True)
     foto_upload = models.ImageField(upload_to='images/uploaded/', blank=True, null=True, help_text="Upload di un'immagine per l'articolo")
+    foto_valida = models.BooleanField(
+        default=True,
+        help_text="False se la verifica dell'URL esterno in foto e' fallita (validata all'ingest, non al render)",
+    )
     image_16x9 = models.ImageField(upload_to='images/articles/', max_length=180, blank=True, null=True, help_text="Versione WebP 1200x675 per social e NewsArticle")
     image_4x3 = models.ImageField(upload_to='images/articles/', max_length=180, blank=True, null=True, help_text="Versione WebP 1200x900 per NewsArticle")
     image_1x1 = models.ImageField(upload_to='images/articles/', max_length=180, blank=True, null=True, help_text="Versione WebP 1200x1200 per NewsArticle")
@@ -320,15 +322,6 @@ class Articolo(models.Model):
             return ''
 
     def get_newsarticle_image_urls(self):
-        if self.pk and self.approvato:
-            try:
-                from .image_variants import ensure_article_image_variants, has_all_article_image_variants
-
-                if not has_all_article_image_variants(self):
-                    ensure_article_image_variants(self, force=True)
-            except Exception as exc:
-                logger.warning("Generazione lazy varianti NewsArticle fallita per articolo %s: %s", self.pk, exc)
-
         urls = [
             self._absolute_media_field_url(self.image_16x9),
             self._absolute_media_field_url(self.image_4x3),
@@ -338,6 +331,26 @@ class Articolo(models.Model):
         if len(urls) == 3:
             return urls
         return [self.get_social_image_url()]
+
+    @staticmethod
+    def _normalize_image_url(image_url):
+        normalized_url = image_url
+
+        if '://' in normalized_url:
+            protocol, rest = normalized_url.split('://', 1)
+            rest = re.sub(r'/+', '/', rest)
+            normalized_url = f"{protocol}://{rest}"
+
+        if ' ' in normalized_url:
+            if normalized_url.startswith('http'):
+                parts = normalized_url.split('/', 3)
+                if len(parts) > 3:
+                    encoded_path = quote(parts[3], safe='/')
+                    normalized_url = f"{parts[0]}//{parts[2]}/{encoded_path}"
+            else:
+                normalized_url = quote(normalized_url, safe='/:?#[]@!$&\'()*+,;=')
+
+        return normalized_url
 
     @property
     def seo_location(self):
@@ -351,230 +364,79 @@ class Articolo(models.Model):
         return location
 
     def get_image_url(self):
-        """Restituisce l'URL dell'immagine o il fallback se non disponibile/raggiungibile"""
+        if not hasattr(self, '_image_url_cache'):
+            self._image_url_cache = self._build_image_url()
+        return self._image_url_cache
+
+    def _build_image_url(self):
+        """Restituisce l'URL dell'immagine o il fallback se non disponibile."""
         fallback_image = static('home/images/portico_logo_nopayoff.webp')
+        site_url = getattr(settings, 'SITE_URL', 'https://ombradelportico.it')
 
-        # Priorità: foto_upload prima di foto URL
         if self.foto_upload:
-            # Verifica se il file esiste fisicamente
-            import os
-            from pathlib import Path
-
-            file_path = Path(settings.MEDIA_ROOT) / str(self.foto_upload)
-            if not file_path.exists():
-                logger.warning(f"Immagine caricata non trovata: {self.foto_upload} (articolo: {self.titolo})")
-                # Fallback sul campo foto se disponibile
-                if self.foto:
-                    # Continua con la logica del campo foto
-                    pass
-                else:
+            try:
+                if self.foto_upload.name:
+                    return f"{site_url}{self.foto_upload.url}"
+            except (ValueError, AttributeError):
+                if not self.foto:
                     return fallback_image
-            else:
-                # Per le immagini caricate, aggiungi sempre il dominio completo per IFTTT
-                site_url = getattr(settings, 'SITE_URL', 'https://ombradelportico.it')
-                return f"{site_url}{self.foto_upload.url}"
 
         if not self.foto:
             return fallback_image
 
-        # Se l'immagine è locale (inizia con /media/ o /static/), aggiungi il dominio
         if self.foto.startswith('/media/') or self.foto.startswith('/static/'):
-            # Controlla se il file esiste fisicamente prima di restituirlo
-            import os
-            from pathlib import Path
-
-            # Converti path relativo in assoluto
-            if self.foto.startswith('/media/'):
-                file_path = Path(settings.MEDIA_ROOT) / self.foto.replace('/media/', '')
-            else:  # /static/
-                file_path = Path(settings.BASE_DIR) / 'home' / 'static' / self.foto.replace('/static/', '')
-
-            # Se il file non esiste, usa fallback
-            if not file_path.exists():
-                logger.warning(f"Immagine locale non trovata: {self.foto} (articolo: {self.titolo})")
-                return fallback_image
-
-            # File esiste, restituisci URL completo
-            site_url = getattr(settings, 'SITE_URL', 'https://ombradelportico.it')
             return f"{site_url}{self.foto}"
 
-        # Fix per URL con spazi e doppi slash prima della validazione
-        validated_url = self.foto
-
-        # Fix per doppi slash negli URL (es. voce.it/upload//articolo)
-        if '://' in validated_url:
-            protocol, rest = validated_url.split('://', 1)
-            # Rimuovi doppi slash nel path ma mantieni quelli dopo il protocollo
-            rest = re.sub(r'/+', '/', rest)
-            validated_url = f"{protocol}://{rest}"
-
-        if ' ' in validated_url:
-            # Codifica solo la parte del path, mantenendo lo schema e host
-            if validated_url.startswith('http'):
-                parts = validated_url.split('/', 3)  # ['http:', '', 'domain.com', 'path/with spaces.jpg']
-                if len(parts) > 3:
-                    # Codifica solo il path mantenendo il resto
-                    encoded_path = quote(parts[3], safe='/')
-                    validated_url = f"{parts[0]}//{parts[2]}/{encoded_path}"
-            else:
-                validated_url = quote(validated_url, safe='/:?#[]@!$&\'()*+,;=')
-
-        # Per alcuni domini noti che hanno problemi di connessione, salta la validazione
+        validated_url = self._normalize_image_url(self.foto)
         trusted_domains = ['voce.it', 'ombradelportico.it']
         if any(domain in validated_url for domain in trusted_domains):
             return validated_url
 
-        # Per URL esterni, mantieni la validazione con cache
-        cache_key = f"image_valid_{hash(validated_url)}"
-        cached_result = cache.get(cache_key)
-
-        if cached_result is not None:
-            return validated_url if cached_result else fallback_image
-
-        try:
-            # Controlla se l'URL è raggiungibile (timeout ridotto a 1 sec per produzione)
-            response = requests.head(validated_url, timeout=1, allow_redirects=True)
-            is_valid = response.status_code == 200
-
-            # Cache il risultato per 24 ore (riduce carico DB)
-            cache.set(cache_key, is_valid, 86400)
-
-            return validated_url if is_valid else fallback_image
-        except:
-            # Se c'è qualsiasi errore, usa fallback senza bloccare (assume valido)
-            # Cache errori per 6 ore invece di 30min
-            cache.set(cache_key, True, 21600)
-            return validated_url  # Restituisci comunque l'URL, il browser gestirà errori
+        return validated_url if self.foto_valida else fallback_image
 
     def get_social_image_url(self):
-        """
-        Restituisce l'URL dell'immagine ottimizzato per la condivisione sui social.
-        - Usa sempre PNG/JPG (no WebP) per massima compatibilità
-        - Restituisce sempre URL assoluti con dominio completo
-        - Fallback intelligente se l'immagine WebP non ha equivalente PNG/JPG
-        """
-        from pathlib import Path
+        if not hasattr(self, '_social_image_url_cache'):
+            self._social_image_url_cache = self._build_social_image_url()
+        return self._social_image_url_cache
 
+    def _build_social_image_url(self):
+        """Restituisce un URL immagine assoluto per la condivisione social."""
         site_url = getattr(settings, 'SITE_URL', 'https://ombradelportico.it')
         fallback_image = f"{site_url}{static('home/images/portico_logo_nopayoff.png')}"
-
-        if self.pk and self.approvato:
-            try:
-                from .image_variants import ensure_article_image_variants, has_all_article_image_variants
-
-                if not has_all_article_image_variants(self):
-                    ensure_article_image_variants(self, force=True)
-            except Exception as exc:
-                logger.warning("Generazione lazy immagine social fallita per articolo %s: %s", self.pk, exc)
 
         if self.image_16x9:
             image_16x9_url = self._absolute_media_field_url(self.image_16x9)
             if image_16x9_url:
                 return image_16x9_url
 
-        # Priorità: foto_upload prima di foto URL
         if self.foto_upload:
-            return f"{site_url}{self.foto_upload.url}"
+            try:
+                if self.foto_upload.name:
+                    return f"{site_url}{self.foto_upload.url}"
+            except (ValueError, AttributeError):
+                if not self.foto:
+                    return fallback_image
 
         if not self.foto:
             return fallback_image
 
         image_url = self.foto
-
-        # Se l'immagine è SVG, usa la versione PNG (i social non supportano SVG)
         if image_url.endswith('.svg'):
-            # Sostituisci .svg con .png
-            png_url = image_url[:-4] + '.png'
-
-            # Verifica che esista la versione PNG
-            if png_url.startswith('/media/') or png_url.startswith('/static/'):
-                if png_url.startswith('/media/'):
-                    file_path = Path(settings.MEDIA_ROOT) / png_url.replace('/media/', '')
-                else:
-                    file_path = Path(settings.BASE_DIR) / 'home' / 'static' / png_url.replace('/static/', '')
-
-                if file_path.exists():
-                    logger.info(f"SVG convertito in PNG per social: {image_url} -> {png_url}")
-                    image_url = png_url
-                else:
-                    logger.warning(f"Versione PNG non trovata per SVG: {image_url}, uso fallback")
-                    return fallback_image
+            if image_url.startswith('/media/') or image_url.startswith('/static/'):
+                image_url = image_url[:-4] + '.png'
             else:
-                # SVG esterno, usa fallback
                 logger.warning(f"SVG esterno non supportato per social: {image_url}")
                 return fallback_image
 
-        # Se l'immagine è WebP, prova a trovare l'originale PNG/JPG
-        if image_url.endswith('.webp'):
-            # Prova tutti i possibili formati originali
-            for ext in ['.png', '.jpg', '.jpeg', '.PNG', '.JPG', '.JPEG']:
-                original_url = image_url[:-5] + ext  # Rimuovi .webp e aggiungi estensione
-
-                # Se è locale, controlla che esista
-                if original_url.startswith('/media/') or original_url.startswith('/static/'):
-                    if original_url.startswith('/media/'):
-                        file_path = Path(settings.MEDIA_ROOT) / original_url.replace('/media/', '')
-                    else:
-                        file_path = Path(settings.BASE_DIR) / 'home' / 'static' / original_url.replace('/static/', '')
-
-                    if file_path.exists():
-                        image_url = original_url
-                        break
-            else:
-                # Nessun originale trovato, usa l'immagine WebP comunque (alcuni social la supportano)
-                logger.warning(f"Immagine originale non trovata per WebP: {self.foto} (articolo: {self.titolo})")
-
-        # Gestisci URL locali
         if image_url.startswith('/media/') or image_url.startswith('/static/'):
-            # Verifica che il file esista
-            if image_url.startswith('/media/'):
-                file_path = Path(settings.MEDIA_ROOT) / image_url.replace('/media/', '')
-            else:
-                file_path = Path(settings.BASE_DIR) / 'home' / 'static' / image_url.replace('/static/', '')
-
-            if not file_path.exists():
-                logger.warning(f"Immagine social non trovata: {image_url} (articolo: {self.titolo})")
-                return fallback_image
-
             return f"{site_url}{image_url}"
 
-        # Per URL esterni, assicurati che siano validi
-        # Fix per URL con spazi e doppi slash
-        validated_url = image_url
-
-        if '://' in validated_url:
-            protocol, rest = validated_url.split('://', 1)
-            rest = re.sub(r'/+', '/', rest)
-            validated_url = f"{protocol}://{rest}"
-
-        if ' ' in validated_url:
-            if validated_url.startswith('http'):
-                parts = validated_url.split('/', 3)
-                if len(parts) > 3:
-                    encoded_path = quote(parts[3], safe='/')
-                    validated_url = f"{parts[0]}//{parts[2]}/{encoded_path}"
-            else:
-                validated_url = quote(validated_url, safe='/:?#[]@!$&\'()*+,;=')
-
-        # Per URL esterni, usa validazione con cache (come get_image_url)
+        validated_url = self._normalize_image_url(image_url)
         trusted_domains = ['voce.it', 'ombradelportico.it']
         if any(domain in validated_url for domain in trusted_domains):
             return validated_url
 
-        cache_key = f"social_image_valid_{hash(validated_url)}"
-        cached_result = cache.get(cache_key)
-
-        if cached_result is not None:
-            return validated_url if cached_result else fallback_image
-
-        try:
-            response = requests.head(validated_url, timeout=1, allow_redirects=True)
-            is_valid = response.status_code == 200
-            cache.set(cache_key, is_valid, 86400)
-            return validated_url if is_valid else fallback_image
-        except:
-            cache.set(cache_key, True, 21600)
-            return validated_url
+        return validated_url if self.foto_valida else fallback_image
 
     def can_proceed_to_payment(self):
         """
@@ -640,6 +502,8 @@ Ombra del Portico - Sistema pubbliredazionali
         indexes = [
             models.Index(fields=['approvato', '-data_pubblicazione']),  # Query homepage
             models.Index(fields=['categoria', 'approvato', '-data_pubblicazione']),  # Filtro categoria
+            models.Index(fields=['is_pubbliredazionale', 'approvato', 'payment_status'], name='idx_articolo_publi_pub'),
+            models.Index(fields=['spotlight', '-data_pubblicazione'], name='idx_articolo_spotlight', condition=models.Q(spotlight=True)),
             models.Index(fields=['slug']),  # Detail view (già unique, ma esplicito)
         ]
         verbose_name = "Articolo"
@@ -707,6 +571,7 @@ class SocialPublicationLog(models.Model):
         indexes = [
             models.Index(fields=['articolo', 'platform', 'success']),
             models.Index(fields=['platform', 'success', '-updated_at'], name='home_soc_plat_succ_upd_idx'),
+            models.Index(fields=['platform', 'success', 'published_at'], name='idx_socialpub_published'),
         ]
 
     def __str__(self):

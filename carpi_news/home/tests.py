@@ -10,11 +10,18 @@ from pathlib import Path
 from django.core.management import call_command
 from django.core.cache import cache
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import Client, SimpleTestCase, TestCase, TransactionTestCase, override_settings
+from django.db import connection
+from django.http import Http404
+from django.template.loader import render_to_string
+from django.test import Client, RequestFactory, SimpleTestCase, TestCase, TransactionTestCase, override_settings
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
+from django.contrib.auth.models import User
 from PIL import Image
 
+from admin_panel.models import Banner
+from home.context_processors import categorie_menu
 from home.content_polisher import content_polisher
 from home.image_variants import ensure_article_image_variants, generate_article_image_variants, get_article_source_image_path
 from home.management.commands.retry_failed_social_shares import Command as RetryFailedSocialSharesCommand
@@ -22,6 +29,7 @@ from home.models import Articolo, InstagramOptOut, ShortLink, SocialPublicationL
 from home.seo_locations import detect_municipality
 from home.share_links import build_share_url, build_short_share_url
 from home.universal_news_monitor import parse_ai_article_json
+from home.views import custom_404
 
 
 class AIArticleParsingTests(SimpleTestCase):
@@ -62,6 +70,63 @@ Il risultato arriva dopo mesi di tensione.
 
 
 @override_settings(
+    DEBUG=False,
+    ALLOWED_HOSTS=["testserver"],
+    SECURE_SSL_REDIRECT=False,
+    SITE_URL="https://testserver",
+    CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}},
+)
+class ErrorPageTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.factory = RequestFactory()
+        Articolo.objects.bulk_create([
+            Articolo(
+                titolo=f"Articolo recente {index}",
+                slug=f"articolo-recente-{index}",
+                contenuto="Contenuto",
+                sommario="Sommario",
+                categoria="Cronaca",
+                approvato=True,
+                data_pubblicazione=timezone.now() - timedelta(minutes=index),
+            )
+            for index in range(6)
+        ])
+
+    def test_missing_article_uses_custom_404_template(self):
+        response = self.client.get("/articolo/slug-inesistente/", secure=True)
+
+        self.assertEqual(response.status_code, 404)
+        self.assertContains(response, "Pagina non trovata", status_code=404)
+        self.assertContains(response, '<meta name="robots" content="noindex">', status_code=404)
+        self.assertContains(response, "Articoli recenti", status_code=404)
+
+    def test_custom_404_recent_articles_query_budget(self):
+        request = self.factory.get("/pagina-inesistente/")
+
+        with self.assertNumQueries(1):
+            response = custom_404(request, Http404("Pagina non trovata"))
+
+        self.assertEqual(response.status_code, 404)
+        self.assertIn(b"Pagina non trovata", response.content)
+        self.assertIn(b"Articolo recente", response.content)
+
+        request = self.factory.get("/altra-pagina-inesistente/")
+        with self.assertNumQueries(0):
+            response = custom_404(request, Http404("Pagina non trovata"))
+
+        self.assertEqual(response.status_code, 404)
+        self.assertIn(b"Pagina non trovata", response.content)
+
+    def test_500_template_is_static_and_does_not_touch_database(self):
+        with self.assertNumQueries(0):
+            html = render_to_string("500.html")
+
+        self.assertIn("Qualcosa non ha funzionato", html)
+        self.assertIn('href="/"', html)
+
+
+@override_settings(
     DEBUG=True,
     SITE_URL="https://testserver",
     CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}},
@@ -84,6 +149,153 @@ class ShareLinkTests(TestCase):
         self.assertIn("utm_source=instagram", url)
         self.assertIn("utm_medium=reel", url)
         self.assertIn("utm_campaign=share", url)
+
+    def test_home_response_does_not_vary_on_cookie_or_create_session(self):
+        cache.clear()
+
+        response = self.client.get(reverse("home"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("Cookie", response.get("Vary", ""))
+        self.assertNotIn("sessionid", response.cookies)
+
+    def test_banner_impression_beacon_counts_atomically_and_deduplicates(self):
+        user = User.objects.create_user(username="banner-user", password="x")
+        banner = Banner.objects.create(
+            user=user,
+            title="Banner test",
+            link_url="https://example.com",
+            alt_text="Banner test",
+            position="between_articles",
+            priority=3,
+            duration_days=30,
+            start_date=timezone.now() - timedelta(days=1),
+            end_date=timezone.now() + timedelta(days=30),
+            status="active",
+            payment_status="completed",
+            approved=True,
+        )
+        url = reverse("banner_impression", kwargs={"banner_id": banner.pk})
+        cache.clear()
+
+        response = self.client.post(url, HTTP_USER_AGENT="Mozilla/5.0", REMOTE_ADDR="203.0.113.10")
+        self.assertEqual(response.status_code, 204)
+        banner.refresh_from_db()
+        self.assertEqual(banner.impressions, 1)
+
+        response = self.client.post(url, HTTP_USER_AGENT="Mozilla/5.0", REMOTE_ADDR="203.0.113.10")
+        self.assertEqual(response.status_code, 204)
+        banner.refresh_from_db()
+        self.assertEqual(banner.impressions, 1)
+
+        cache.clear()
+        Banner.objects.filter(pk=banner.pk).update(impressions=0)
+        response = self.client.post(url, HTTP_USER_AGENT="Googlebot", REMOTE_ADDR="203.0.113.10")
+        self.assertEqual(response.status_code, 204)
+        banner.refresh_from_db()
+        self.assertEqual(banner.impressions, 0)
+
+        response = self.client.post(reverse("banner_impression", kwargs={"banner_id": 999999}))
+        self.assertEqual(response.status_code, 204)
+
+    def test_categorie_menu_context_processor_uses_cache_and_invalidates_on_article_save(self):
+        cache.clear()
+
+        with self.assertNumQueries(1):
+            first = categorie_menu(None)["categorie_disponibili"]
+        self.assertIn("Cronaca", first)
+
+        with self.assertNumQueries(0):
+            second = categorie_menu(None)["categorie_disponibili"]
+        self.assertEqual(first, second)
+
+        Articolo.objects.create(
+            titolo="Categoria politica",
+            contenuto="Contenuto",
+            sommario="Sommario",
+            categoria="Politica",
+            approvato=True,
+            data_pubblicazione=timezone.now(),
+        )
+        self.assertIsNone(cache.get("categorie_menu"))
+
+    def test_home_query_budget_after_menu_cache(self):
+        cache.clear()
+        categorie_menu(None)
+
+        with CaptureQueriesContext(connection) as queries:
+            response = self.client.get(reverse("home"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertLessEqual(len(queries), 12)
+
+    def test_pubblicita_ctr_max_matches_python_calculation(self):
+        user = User.objects.create_user(username="ctr-user", password="x")
+        now = timezone.now()
+        for title, impressions, clicks in [
+            ("Basso", 100, 5),
+            ("Alto", 80, 20),
+            ("Zero impressioni", 0, 50),
+            ("Zero click", 100, 0),
+        ]:
+            Banner.objects.create(
+                user=user,
+                title=title,
+                link_url="https://example.com",
+                alt_text=title,
+                position="header",
+                priority=3,
+                duration_days=30,
+                start_date=now - timedelta(days=1),
+                end_date=now + timedelta(days=30),
+                status="active",
+                payment_status="completed",
+                approved=True,
+                impressions=impressions,
+                clicks=clicks,
+            )
+
+        response = self.client.get(reverse("pubblicita"))
+
+        expected = max(round((20 / 80) * 100, 1), round((5 / 100) * 100, 1))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["ctr_max"], expected)
+
+    def test_cinema_scraping_parallel_uses_stale_for_failed_cinema(self):
+        import time
+        from home.views import _scrape_cinema_parallel
+
+        def slow_payload(name):
+            time.sleep(0.2)
+            return {
+                "name": name,
+                "address": "Indirizzo",
+                "website": "https://example.com",
+                "films": [{"title": f"{name} nuovo", "image": "", "info": "Oggi"}],
+            }
+
+        def slow_failure():
+            time.sleep(0.2)
+            raise TimeoutError("timeout")
+
+        stale_ariston = {
+            "name": "Cinema Ariston",
+            "address": "Via Ernesto Boccaletti 3, San Marino di Carpi",
+            "website": "https://www.aristoncinemacarpi.it/",
+            "films": [{"title": "Film stale", "image": "", "info": "Oggi"}],
+        }
+
+        started = time.perf_counter()
+        with patch("home.cinema_scraping.scrape_spacecity", side_effect=lambda: slow_payload("Space City Multisala")), \
+             patch("home.cinema_scraping.scrape_eden", side_effect=lambda: slow_payload("Cinema Eden")), \
+             patch("home.cinema_scraping.scrape_ariston", side_effect=slow_failure), \
+             patch("home.cinema_scraping.scrape_corso", side_effect=lambda: slow_payload("Cinema Corso")):
+            cinema_data = _scrape_cinema_parallel(stale_by_name={"Cinema Ariston": stale_ariston})
+        elapsed = time.perf_counter() - started
+
+        self.assertLess(elapsed, 0.55)
+        ariston = next(cinema for cinema in cinema_data if cinema["name"] == "Cinema Ariston")
+        self.assertEqual(ariston["films"][0]["title"], "Film stale")
 
     def test_short_link_and_redirect_tracking(self):
         short_url = build_short_share_url(self.articolo, "instagram", "bio")
@@ -282,7 +494,7 @@ class ShareLinkTests(TestCase):
                 self.assertIn("Articoli aggiornati: 1", out.getvalue())
                 self.assertEqual(self.articolo.image_16x9.name, "images/articles/titolo-test-16x9.webp")
 
-    def test_newsarticle_image_urls_lazy_generates_missing_variants(self):
+    def test_newsarticle_image_urls_falls_back_without_lazy_generating_variants(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             media_root = Path(tmpdir)
             source_dir = media_root / "images" / "uploaded"
@@ -302,11 +514,11 @@ class ShareLinkTests(TestCase):
                 urls = self.articolo.get_newsarticle_image_urls()
                 self.articolo.refresh_from_db()
 
-                self.assertEqual(len(urls), 3)
-                self.assertEqual(self.articolo.image_16x9.name, "images/articles/titolo-test-16x9.webp")
-                self.assertTrue((media_root / self.articolo.image_4x3.name).exists())
+                self.assertEqual(urls, ["https://testserver/media/images/uploaded/titolo-test-original.webp"])
+                self.assertFalse(self.articolo.image_16x9)
+                self.assertFalse((media_root / "images" / "articles").exists())
 
-    def test_social_image_url_lazy_generates_missing_variants_before_upload_fallback(self):
+    def test_social_image_url_uses_upload_without_lazy_generating_variants(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             media_root = Path(tmpdir)
             source_dir = media_root / "images" / "uploaded"
@@ -326,8 +538,61 @@ class ShareLinkTests(TestCase):
                 image_url = self.articolo.get_social_image_url()
                 self.articolo.refresh_from_db()
 
-                self.assertEqual(image_url, "https://testserver/media/images/articles/titolo-test-16x9.webp")
-                self.assertEqual(self.articolo.image_16x9.name, "images/articles/titolo-test-16x9.webp")
+                self.assertEqual(image_url, "https://testserver/media/images/uploaded/titolo-test-original.webp")
+                self.assertFalse(self.articolo.image_16x9)
+
+    def test_image_url_methods_are_pure_string_builders(self):
+        cases = [
+            (
+                Articolo(titolo="Esterna valida", contenuto="x", foto="https://example.com/img//foto con spazio.jpg", foto_valida=True),
+                "https://example.com/img/foto%20con%20spazio.jpg",
+                "https://example.com/img/foto%20con%20spazio.jpg",
+            ),
+            (
+                Articolo(titolo="Esterna rotta", contenuto="x", foto="https://example.com/broken.jpg", foto_valida=False),
+                "/static/home/images/portico_logo_nopayoff.webp",
+                "https://testserver/static/home/images/portico_logo_nopayoff.png",
+            ),
+            (
+                Articolo(titolo="Locale", contenuto="x", foto="/media/images/local.jpg", foto_valida=True),
+                "https://testserver/media/images/local.jpg",
+                "https://testserver/media/images/local.jpg",
+            ),
+            (
+                Articolo(titolo="Senza foto", contenuto="x", foto="", foto_valida=True),
+                "/static/home/images/portico_logo_nopayoff.webp",
+                "https://testserver/static/home/images/portico_logo_nopayoff.png",
+            ),
+        ]
+
+        with patch("home.image_validation.requests.head") as head_mock, patch("pathlib.Path.exists") as exists_mock:
+            for articolo, expected_image, expected_social in cases:
+                self.assertEqual(articolo.get_image_url(), expected_image)
+                self.assertEqual(articolo.get_image_url(), expected_image)
+                self.assertEqual(articolo.get_social_image_url(), expected_social)
+                self.assertEqual(articolo.get_social_image_url(), expected_social)
+
+        head_mock.assert_not_called()
+        exists_mock.assert_not_called()
+
+    def test_homepage_and_detail_render_do_not_validate_images(self):
+        Articolo.objects.filter(pk=self.articolo.pk).update(
+            foto="https://example.com/render//foto con spazio.jpg",
+            foto_valida=True,
+            image_16x9="",
+            image_4x3="",
+            image_1x1="",
+        )
+        cache.clear()
+
+        with patch("home.image_validation.requests.head") as head_mock, patch("pathlib.Path.exists") as exists_mock:
+            home_response = self.client.get(reverse("home"))
+            detail_response = self.client.get(reverse("dettaglio_articolo", kwargs={"slug": self.articolo.slug}))
+
+        self.assertEqual(home_response.status_code, 200)
+        self.assertEqual(detail_response.status_code, 200)
+        head_mock.assert_not_called()
+        exists_mock.assert_not_called()
 
     def test_ensure_article_image_variants_downloads_remote_image(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -444,7 +709,7 @@ class ShareLinkTests(TestCase):
                 self.assertEqual(set(created), {"image_16x9", "image_4x3", "image_1x1"})
                 self.assertTrue((media_root / self.articolo.image_16x9.name).exists())
 
-    def test_newsarticle_image_urls_generates_three_fallback_variants_without_photo(self):
+    def test_newsarticle_image_urls_uses_single_fallback_without_photo(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             media_root = Path(tmpdir)
             with override_settings(MEDIA_ROOT=str(media_root), MEDIA_URL="/media/"):
@@ -460,9 +725,9 @@ class ShareLinkTests(TestCase):
                 urls = self.articolo.get_newsarticle_image_urls()
                 self.articolo.refresh_from_db()
 
-                self.assertEqual(len(urls), 3)
-                self.assertEqual(self.articolo.image_16x9.name, "images/articles/titolo-test-16x9.webp")
-                self.assertTrue((media_root / self.articolo.image_1x1.name).exists())
+                self.assertEqual(urls, ["https://testserver/static/home/images/portico_logo_nopayoff.png"])
+                self.assertFalse(self.articolo.image_16x9)
+                self.assertFalse((media_root / "images" / "articles").exists())
 
     def test_approval_generates_variants_before_social_thread(self):
         events = []
@@ -918,6 +1183,9 @@ class ArticleImageSignalTests(TransactionTestCase):
 
                 articolo.titolo = "Articolo gia approvato salvato"
                 articolo.save(update_fields=["titolo"])
+                for call in fake_thread.call_args_list:
+                    if call.kwargs.get("name", "").startswith("PrepareArticleImages-"):
+                        call.kwargs["target"]()
                 articolo.refresh_from_db()
 
                 self.assertEqual(
@@ -957,6 +1225,9 @@ class ArticleImageSignalTests(TransactionTestCase):
 
                 articolo.foto = "/media/images/second.jpg"
                 articolo.save(update_fields=["foto"])
+                for call in fake_thread.call_args_list:
+                    if call.kwargs.get("name", "").startswith("PrepareArticleImages-"):
+                        call.kwargs["target"]()
                 articolo.refresh_from_db()
 
                 variant_path = media_root / articolo.image_16x9.name

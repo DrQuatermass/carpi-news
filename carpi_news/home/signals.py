@@ -1,16 +1,18 @@
 import logging
 import threading
-from django.db.models.signals import post_save, pre_save
+from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
 from django.core.cache import cache
 from django.core.cache.utils import make_template_fragment_key
 from django.core.files.base import ContentFile
+from django.utils import timezone
 from .models import Articolo
 from .image_variants import (
     ArticleImageVariantError,
     ensure_article_image_variants,
     has_all_article_image_variants,
 )
+from .image_validation import validate_articolo_images
 from .email_notifications import send_article_approval_notification
 from .social_sharing import social_manager
 from .indexing_notifier import notifier
@@ -19,6 +21,17 @@ import io
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
+
+
+def invalidate_categorie_menu_cache():
+    cache.delete('categorie_menu')
+    cache.delete('categorie_menu_rubriche_end')
+
+
+@receiver(post_save, sender=Articolo)
+@receiver(post_delete, sender=Articolo)
+def invalidate_categorie_menu_on_article_change(sender, instance, **kwargs):
+    invalidate_categorie_menu_cache()
 
 
 def generate_responsive_versions(image_path, widths=[400, 600, 800], quality=65):
@@ -193,15 +206,12 @@ def convert_foto_upload_to_webp(sender, instance, **kwargs):
 
 
 @receiver(post_save, sender=Articolo)
-def generate_responsive_images_on_save(sender, instance, created, **kwargs):
+def generate_responsive_images_on_save(sender, instance, created, update_fields=None, **kwargs):
     """
     Genera versioni responsive quando viene salvato un articolo approvato.
     Le bozze non devono materializzare immagini derivate: la foto principale puo'
     ancora cambiare prima dell'approvazione.
     """
-    from django.conf import settings
-    import threading
-
     approval_state = None
     if created:
         approval_state = cache.get(f'article_approval_state_new_{id(instance)}')
@@ -215,7 +225,10 @@ def generate_responsive_images_on_save(sender, instance, created, **kwargs):
     else:
         was_approved = False
         is_approved = instance.approvato
-        image_changed = False
+        image_changed = created or update_fields is None or bool({"foto", "foto_upload"} & set(update_fields or []))
+
+    if update_fields and set(update_fields).issubset({"foto_valida", "image_16x9", "image_4x3", "image_1x1"}):
+        return
 
     if not is_approved:
         populated_variant_fields = [
@@ -233,34 +246,59 @@ def generate_responsive_images_on_save(sender, instance, created, **kwargs):
             instance.image_4x3 = ""
             instance.image_1x1 = ""
             logger.info("Varianti immagine rimosse da articolo non approvato %s", instance.pk)
+        if image_changed:
+            def validate_in_background():
+                fresh_instance = Articolo.objects.get(pk=instance.pk)
+                validate_articolo_images(fresh_instance)
+
+            thread = threading.Thread(target=validate_in_background, name=f"ValidateArticleImages-{instance.pk}")
+            thread.daemon = True
+            thread.start()
         return
 
     approval_started = (not was_approved and is_approved) or (created and is_approved)
-    should_generate_variants = approval_started or image_changed or not has_all_article_image_variants(instance)
-    if not should_generate_variants:
+    if approval_started:
+        return
+    should_prepare_images = image_changed or not has_all_article_image_variants(instance)
+    if not should_prepare_images:
         return
 
-    try:
-        variant_fields = ensure_article_image_variants(instance, force=image_changed)
-        if variant_fields:
-            logger.info(f"Generate {len(variant_fields)} varianti NewsArticle per {instance.titolo}")
-    except ArticleImageVariantError as e:
-        logger.warning(f"Immagine articolo non processabile per varianti NewsArticle ({instance.titolo}): {e}")
-    except Exception as e:
-        logger.error(f"Errore generazione varianti NewsArticle per {instance.titolo}: {e}", exc_info=True)
+    def prepare_in_background():
+        fresh_instance = Articolo.objects.get(pk=instance.pk)
+        validate_articolo_images(fresh_instance)
+        image_changed_in_thread = image_changed
+        try:
+            if fresh_instance.approvato:
+                variant_fields = ensure_article_image_variants(fresh_instance, force=image_changed_in_thread)
+                if variant_fields:
+                    logger.info(f"Generate {len(variant_fields)} varianti NewsArticle per {fresh_instance.titolo}")
+        except ArticleImageVariantError as e:
+            logger.warning(f"Immagine articolo non processabile per varianti NewsArticle ({fresh_instance.titolo}): {e}")
+        except Exception as e:
+            logger.error(f"Errore generazione varianti NewsArticle per {fresh_instance.titolo}: {e}", exc_info=True)
+
+        generate_responsive_images_for_article(fresh_instance)
+
+    thread = threading.Thread(target=prepare_in_background, name=f"PrepareArticleImages-{instance.pk}")
+    thread.daemon = True
+    thread.start()
+
+
+def generate_responsive_images_for_article(instance):
+    from django.conf import settings
 
     image_path = None
 
-    # Priorità 1: foto_upload (upload manuale)
+    # PrioritÃ  1: foto_upload (upload manuale)
     if instance.foto_upload:
         image_path = instance.foto_upload.path
-    # Priorità 2: foto che punta a /media/images/ (scaricata dai monitor)
+    # PrioritÃ  2: foto che punta a /media/images/ (scaricata dai monitor)
     elif instance.foto and instance.foto.startswith('/media/images/'):
         # Converti URL relativo in path assoluto
         relative_path = instance.foto.replace('/media/', '')
         image_path = str(Path(settings.MEDIA_ROOT) / relative_path)
 
-    # Se non c'è immagine locale, esci
+    # Se non c'Ã¨ immagine locale, esci
     if not image_path:
         return
 
@@ -269,27 +307,21 @@ def generate_responsive_images_on_save(sender, instance, created, **kwargs):
         logger.warning(f"Immagine non trovata per generazione responsive: {image_path}")
         return
 
-    # Esegui in background per non bloccare il salvataggio
-    def generate_in_background():
-        try:
-            logger.info(f"Generazione versioni responsive per: {image_path}")
-            created_files = generate_responsive_versions(image_path, widths=[400, 600, 800], quality=65)
-            if created_files:
-                logger.info(f"Generate {len(created_files)} versioni responsive per {instance.titolo}")
-            else:
-                logger.warning(f"Nessuna versione responsive creata per: {instance.titolo} (possibile immagine troppo piccola o versioni già esistenti)")
-        except Exception as e:
-            logger.error(f"Errore generazione responsive in background per {instance.titolo}: {e}", exc_info=True)
-
-    # Avvia thread in background
-    thread = threading.Thread(target=generate_in_background)
-    thread.daemon = True
-    thread.start()
+    try:
+        logger.info(f"Generazione versioni responsive per: {image_path}")
+        created_files = generate_responsive_versions(image_path, widths=[400, 600, 800], quality=65)
+        if created_files:
+            logger.info(f"Generate {len(created_files)} versioni responsive per {instance.titolo}")
+        else:
+            logger.warning(f"Nessuna versione responsive creata per: {instance.titolo} (possibile immagine troppo piccola o versioni giÃ  esistenti)")
+    except Exception as e:
+        logger.error(f"Errore generazione responsive in background per {instance.titolo}: {e}", exc_info=True)
 
 
 def ensure_publication_images_ready(instance):
     """Genera immagine locale e varianti articolo prima di social e indicizzazione."""
     try:
+        validate_articolo_images(instance)
         created = ensure_article_image_variants(instance)
         if created:
             logger.info(
@@ -438,6 +470,13 @@ def handle_article_approval(sender, instance, created, **kwargs):
     # 2. L'articolo è nuovo e già approvato (auto-approvazione)
     # 3. Per pubbliredazionali: condividi SOLO se anche pagato (payment_status='completed')
     if (not was_approved and is_approved) or (created and is_approved):
+        if instance.data_pubblicazione and instance.data_pubblicazione > timezone.now():
+            logger.info(
+                "Articolo '%s' approvato ma programmato per il futuro. Pubblicazione rimandata.",
+                instance.titolo,
+            )
+            return
+
         # Per pubbliredazionali, verifica anche che siano pagati
         if instance.is_pubbliredazionale:
             if instance.payment_status != 'completed':

@@ -1,6 +1,5 @@
 from django import template
 from django.utils import timezone
-from django.db import models
 from admin_panel.models import Banner
 import random
 
@@ -124,11 +123,6 @@ def show_banner(context, position):
 
         # Selezione randomica pesata
         banner = weighted_random_choice(banners)
-
-        # Incrementa le impressioni
-        if banner:
-            banner.impressions += 1
-            banner.save(update_fields=['impressions'])
 
         return {
             'banner': banner,
