@@ -26,7 +26,7 @@ python manage.py collectstatic --noinput
 
 # 6. Restart Django
 echo "5. Restart servizio Django..."
-sudo systemctl restart carpi_news
+sudo systemctl restart gunicorn
 
 # 7. Setup cron job per processing pubbliredazionali
 echo "6. Setup cron job..."
@@ -39,7 +39,7 @@ echo ""
 echo "=== DEPLOY COMPLETATO ==="
 echo ""
 echo "Verifiche da fare:"
-echo "1. Controlla servizio: sudo systemctl status carpi_news"
-echo "2. Controlla logs: tail -50 /var/www/carpi-news/logs/django.log"
+echo "1. Controlla servizio: sudo systemctl status gunicorn"
+echo "2. Controlla logs: tail -50 /var/www/carpi-news/carpi_news/logs/*.log"
 echo "3. Configura cron job (vedi sopra)"
 echo "4. Test workflow: crea pubbliredazionale → attendi generazione → approva admin → verifica email"
