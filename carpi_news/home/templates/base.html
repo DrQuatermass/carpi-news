@@ -471,5 +471,41 @@
       */
     </script>
     {% endblock %}
+
+    <!-- Beacon impression banner: conta solo banner visibili almeno al 50% nel viewport
+         (gli slot nascosti come article_middle non contano finché non vengono mostrati) -->
+    <script>
+    (function() {
+        const sent = new Set();
+
+        function send(id) {
+            if (!id || sent.has(id)) return;
+            sent.add(id);
+            const url = `/banner/impression/${id}/`;
+            if (navigator.sendBeacon) {
+                navigator.sendBeacon(url);
+            } else {
+                fetch(url, { method: 'POST', keepalive: true, credentials: 'same-origin' }).catch(() => {});
+            }
+        }
+
+        const banners = document.querySelectorAll('[data-banner-id]');
+        if (!banners.length) return;
+
+        if ('IntersectionObserver' in window) {
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach((entry) => {
+                    if (entry.isIntersecting) {
+                        send(entry.target.getAttribute('data-banner-id'));
+                        observer.unobserve(entry.target);
+                    }
+                });
+            }, { threshold: 0.5 });
+            banners.forEach((el) => observer.observe(el));
+        } else {
+            banners.forEach((el) => send(el.getAttribute('data-banner-id')));
+        }
+    })();
+    </script>
 </body>
 </html>
