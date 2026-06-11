@@ -351,7 +351,8 @@ class ShareLinkTests(TestCase):
         self.assertEqual(response.status_code, 404)
         self.assertIsNone(cache.get(f"articolo_ctx_{self.articolo.slug}"))
 
-    def test_article_detail_uses_editorial_headline_everywhere(self):
+    def test_article_detail_title_tag_uses_seo_title(self):
+        """Il <title> usa titolo_seo; H1, social e schema restano sull'headline editoriale."""
         self.articolo.titolo = "Headline editoriale unica"
         self.articolo.titolo_seo = "Titolo SEO diverso"
         self.articolo.save(update_fields=["titolo", "titolo_seo"])
@@ -360,12 +361,23 @@ class ShareLinkTests(TestCase):
         response = self.client.get(reverse("dettaglio_articolo", kwargs={"slug": self.articolo.slug}))
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "<title>Headline editoriale unica — Ombra del Portico</title>")
+        self.assertContains(response, "<title>Titolo SEO diverso — Ombra del Portico</title>")
         self.assertContains(response, '<meta property="og:title" content="Headline editoriale unica">')
         self.assertContains(response, '<meta name="twitter:title" content="Headline editoriale unica">')
         self.assertContains(response, '<h1 class="article-title">Headline editoriale unica</h1>')
         self.assertContains(response, '"headline": "Headline editoriale unica"')
-        self.assertNotContains(response, "Titolo SEO diverso")
+
+    def test_article_detail_title_tag_falls_back_to_titolo(self):
+        """Senza titolo_seo il <title> usa il titolo editoriale."""
+        self.articolo.titolo = "Headline editoriale unica"
+        self.articolo.titolo_seo = ""
+        self.articolo.save(update_fields=["titolo", "titolo_seo"])
+        cache.delete(f"articolo_ctx_{self.articolo.slug}")
+
+        response = self.client.get(reverse("dettaglio_articolo", kwargs={"slug": self.articolo.slug}))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "<title>Headline editoriale unica — Ombra del Portico</title>")
 
     def test_audit_headlines_outputs_articles_over_limit(self):
         long_title = "Titolo molto lungo " + ("x" * 90)

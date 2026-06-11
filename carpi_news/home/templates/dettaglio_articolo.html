@@ -5,7 +5,7 @@
 {% load banner_tags %}
 {% load webp_images %}
 
-{% block title %}{{ articolo.editorial_headline }} — Ombra del Portico{% endblock %}
+{% block title %}{{ articolo.seo_title }} — Ombra del Portico{% endblock %}
 
 {% block og_type %}article{% endblock %}
 {% block og_url %}https://ombradelportico.it{{ request.path }}{% endblock %}
@@ -23,7 +23,7 @@
 {% block twitter_image %}{{ articolo.get_social_image_url }}{% endblock %}
 {% block twitter_creator %}{{ TWITTER_SITE }}{% endblock %}
 
-{% block meta_description %}{{ articolo.sommario|striptags|truncate_sentences:160 }}{% endblock %}
+{% block meta_description %}{{ articolo.sommario|striptags|truncate_sentences:150 }}{% endblock %}
 {% block meta_keywords %}{{ articolo.meta_keywords }}{% endblock %}
 
 {% block extra_css %}
@@ -204,7 +204,7 @@
       "@type": "ListItem",
       "position": 2,
       "name": "{{ articolo.categoria }}",
-      "item": "https://ombradelportico.it/?categoria={{ articolo.categoria|urlencode }}"
+      "item": "https://ombradelportico.it/categoria/{{ articolo.categoria_slug }}/"
     },
     {
       "@type": "ListItem",
