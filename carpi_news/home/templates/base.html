@@ -1,4 +1,5 @@
 {% load static %}
+{% load seo_filters %}
 <!DOCTYPE html>
 <html lang="it" prefix="og: https://ogp.me/ns# fb: https://ogp.me/ns/fb#">
 <head>
@@ -92,11 +93,11 @@
             
             <!-- Menu desktop -->
             <ul class="nav-links desktop-nav">
-                <li><a href="{% url 'home' %}?categoria=tutti" rel="nofollow" {% if not categoria_attiva or categoria_attiva == 'Home' %}class="active"{% endif %}>Home</a></li>
+                <li><a href="{% url 'home' %}" {% if not categoria_attiva or categoria_attiva == 'Home' %}class="active"{% endif %}>Home</a></li>
 
                 {% for categoria in categorie_disponibili %}
                     {% if categoria != 'Rubriche' and categoria != 'Cosa fare oggi' %}
-                    <li><a href="{% url 'home' %}?categoria={{ categoria|urlencode }}" rel="nofollow" {% if categoria_attiva == categoria %}class="active"{% endif %}>{{ categoria }}</a></li>
+                    <li><a href="{% url 'categoria_articoli' categoria|categoria_slug %}" {% if categoria_attiva == categoria %}class="active"{% endif %}>{{ categoria }}</a></li>
                     {% endif %}
                 {% endfor %}
 
@@ -106,9 +107,9 @@
                 <li class="dropdown">
                     <a href="#" class="dropdown-toggle" aria-expanded="false" aria-haspopup="true">Rubriche</a>
                     <ul class="dropdown-menu" role="menu">
-                        <li role="none"><a href="{% url 'home' %}?categoria=Cosa fare oggi" rel="nofollow" role="menuitem">Cosa fare oggi</a></li>
-                        <li role="none"><a href="{% url 'home' %}?categoria=L'Eco del Consiglio" rel="nofollow" role="menuitem">L'Eco del consiglio</a></li>
-                        <li role="none"><a href="{% url 'home' %}?categoria=Editoriale" rel="nofollow" role="menuitem">Editoriale</a></li>
+                        <li role="none"><a href="{% url 'categoria_articoli' 'cosa-fare-oggi' %}" role="menuitem">Cosa fare oggi</a></li>
+                        <li role="none"><a href="{% url 'categoria_articoli' 'eco-del-consiglio' %}" role="menuitem">L'Eco del consiglio</a></li>
+                        <li role="none"><a href="{% url 'categoria_articoli' 'editoriale' %}" role="menuitem">Editoriale</a></li>
                         <li role="none"><a href="/caplet/" role="menuitem">Caplet</a></li>
                     </ul>
                 </li>
@@ -125,18 +126,18 @@
                 <!-- Dropdown menu mobile -->
                 <div class="mobile-dropdown" id="mobileDropdown">
                     <ul class="mobile-nav-links">
-                        <li><a href="{% url 'home' %}?categoria=tutti" rel="nofollow" {% if not categoria_attiva or categoria_attiva == 'Home' %}class="active"{% endif %}>Home</a></li>
+                        <li><a href="{% url 'home' %}" {% if not categoria_attiva or categoria_attiva == 'Home' %}class="active"{% endif %}>Home</a></li>
 
                         {% for categoria in categorie_disponibili %}
                             {% if categoria != 'Rubriche' and categoria != 'Cosa fare oggi' %}
-                            <li><a href="{% url 'home' %}?categoria={{ categoria|urlencode }}" rel="nofollow" {% if categoria_attiva == categoria %}class="active"{% endif %}>{{ categoria }}</a></li>
+                            <li><a href="{% url 'categoria_articoli' categoria|categoria_slug %}" {% if categoria_attiva == categoria %}class="active"{% endif %}>{{ categoria }}</a></li>
                             {% endif %}
                         {% endfor %}
 
                         <!-- Rubriche nel menu mobile -->
-                        <li><a href="{% url 'home' %}?categoria=Cosa fare oggi" rel="nofollow">Cosa fare oggi</a></li>
-                        <li><a href="{% url 'home' %}?categoria=L'Eco del Consiglio" rel="nofollow">L'Eco del consiglio</a></li>
-                        <li><a href="{% url 'home' %}?categoria=Editoriale" rel="nofollow">Editoriale</a></li>
+                        <li><a href="{% url 'categoria_articoli' 'cosa-fare-oggi' %}">Cosa fare oggi</a></li>
+                        <li><a href="{% url 'categoria_articoli' 'eco-del-consiglio' %}">L'Eco del consiglio</a></li>
+                        <li><a href="{% url 'categoria_articoli' 'editoriale' %}">Editoriale</a></li>
                         <li><a href="/caplet/">Caplet</a></li>
                     </ul>
                 </div>
@@ -221,7 +222,7 @@
                     <h3>Link Utili</h3>
                     <ul class="footer-useful-links" style="list-style: none; padding: 0; margin: 0;">
                         <li style="margin-bottom: 0.8rem; list-style: none;"><a href="{% url 'newsletter_subscribe' %}" style="color: rgba(255, 255, 255, 0.8); text-decoration: none;">Iscriviti alla Newsletter</a></li>
-                        <li style="margin-bottom: 0.8rem; list-style: none;"><a href="{% url 'pubblicita' %}" rel="nofollow" style="color: rgba(255, 255, 255, 0.8); text-decoration: none;">Acquista Spazi Pubblicitari</a></li>
+                        <li style="margin-bottom: 0.8rem; list-style: none;"><a href="{% url 'pubblicita' %}" style="color: rgba(255, 255, 255, 0.8); text-decoration: none;">Acquista Spazi Pubblicitari</a></li>
                     </ul>
                 </div>
                 <div class="footer-section footer-contacts">
@@ -279,11 +280,11 @@
                 <p>&copy; {{ current_year }} Ombra del Portico. Tutti i diritti riservati.</p>
                 <p class="footer-tagline">Informazione locale di qualità per Carpi e dintorni</p>
                 <div class="footer-links">
-                    <a href="{% url 'privacy-policy' %}" rel="nofollow">Privacy Policy</a>
+                    <a href="{% url 'privacy-policy' %}">Privacy Policy</a>
                     <span class="separator">|</span>
-                    <a href="{% url 'about' %}" rel="nofollow">Chi siamo</a>
+                    <a href="{% url 'about' %}">Chi siamo</a>
                     <span class="separator">|</span>
-                    <a href="{% url 'pubblicita' %}" rel="nofollow">Pubblicità</a>
+                    <a href="{% url 'pubblicita' %}">Pubblicità</a>
                 </div>
             </div>
         </div>
@@ -300,7 +301,7 @@
             <div class="cookie-actions">
                 <button id="cookie-accept" class="cookie-btn cookie-accept" aria-label="Accetta tutti i cookie">Accetta tutti</button>
                 <button id="cookie-essential" class="cookie-btn cookie-essential" aria-label="Accetta solo cookie essenziali">Solo essenziali</button>
-                <a href="{% url 'privacy-policy' %}" rel="nofollow" class="cookie-link">Privacy Policy</a>
+                <a href="{% url 'privacy-policy' %}" class="cookie-link">Privacy Policy</a>
             </div>
         </div>
     </div>

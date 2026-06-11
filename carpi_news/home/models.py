@@ -16,6 +16,18 @@ logger = logging.getLogger(__name__)
 class Articolo(models.Model):
     HEADLINE_MAX_LENGTH = 95
 
+    # Mappa categoria -> slug URL (deve restare allineata a views.CATEGORIA_MAP)
+    CATEGORIA_SLUG_MAP = {
+        'Attualità': 'attualita',
+        'Cronaca': 'cronaca',
+        'Sport': 'sport',
+        'Cultura & Eventi': 'cultura-eventi',
+        'Politica': 'politica',
+        'Cosa fare oggi': 'cosa-fare-oggi',
+        'Editoriale': 'editoriale',
+        "L'Eco del Consiglio": 'eco-del-consiglio',
+    }
+
     CATEGORIA_CHOICES = [
         ('Attualità', 'Attualità'),
         ('Cronaca', 'Cronaca'),
@@ -147,6 +159,16 @@ class Articolo(models.Model):
     def editorial_headline(self):
         """Fonte unica per H1, title social e headline NewsArticle."""
         return (self.titolo or '').strip()
+
+    @property
+    def seo_title(self):
+        """Title tag per Google: titolo_seo se presente, altrimenti il titolo editoriale."""
+        return (self.titolo_seo or '').strip() or self.editorial_headline
+
+    @property
+    def categoria_slug(self):
+        """Slug della categoria per URL /categoria/<slug>/ (breadcrumb, link interni)."""
+        return self.CATEGORIA_SLUG_MAP.get(self.categoria, 'attualita')
 
     def _warn_if_headline_too_long(self):
         headline = self.editorial_headline

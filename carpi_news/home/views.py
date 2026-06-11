@@ -124,6 +124,9 @@ CATEGORIA_MAP = {
     'cultura-eventi': 'Cultura & Eventi',
     'politica': 'Politica',
     'rubriche': 'Rubriche',
+    'cosa-fare-oggi': 'Cosa fare oggi',
+    'editoriale': 'Editoriale',
+    'eco-del-consiglio': "L'Eco del Consiglio",
 }
 
 
@@ -572,7 +575,8 @@ def sitemap(request):
     template = loader.get_template('sitemap.xml')
     context = {
         'articles': articles,
-        'last_update': last_update
+        'last_update': last_update,
+        'categoria_slugs': list(CATEGORIA_MAP.keys()),
     }
     return HttpResponse(template.render(context, request), content_type='application/xml')
 

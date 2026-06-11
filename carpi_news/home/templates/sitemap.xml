@@ -8,6 +8,33 @@
     <lastmod>{{ last_update|date:"c" }}</lastmod>
   </url>
 
+  <!-- Pagine statiche -->
+  <url>
+    <loc>https://ombradelportico.it/cinema/</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://ombradelportico.it/eventi/</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://ombradelportico.it/about/</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.4</priority>
+  </url>
+
+  <!-- Pagine categoria -->
+  {% for slug in categoria_slugs %}
+  <url>
+    <loc>https://ombradelportico.it/categoria/{{ slug }}/</loc>
+    <changefreq>hourly</changefreq>
+    <priority>0.6</priority>
+    <lastmod>{{ last_update|date:"c" }}</lastmod>
+  </url>
+  {% endfor %}
+
   <!-- Articoli -->
   {% for article in articles %}
   <url>
