@@ -583,7 +583,7 @@
                         <a href="{% url 'home' %}">Home</a>
                     </li>
                     <li>
-                        <a href="{% url 'home' %}?categoria={{ articolo.categoria|urlencode }}">{{ articolo.categoria }}</a>
+                        <a href="{% url 'categoria_articoli' articolo.categoria_slug %}">{{ articolo.categoria }}</a>
                     </li>
                     <li class="active">
                         <span>{{ articolo.editorial_headline }}</span>
