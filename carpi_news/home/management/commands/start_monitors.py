@@ -31,6 +31,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         monitor_name = options.get('monitor')
         daemon_mode = options.get('daemon', False)
+        stagger = options.get('stagger', 0)
 
         # Carica monitor attivi dal database
         if monitor_name:
@@ -88,7 +89,9 @@ class Command(BaseCommand):
         try:
             # Avvia monitor come thread NON-daemon di default (continueranno dopo che il comando termina)
             # Solo se l'utente specifica --daemon, usa daemon mode
-            results = manager.start_all_monitors(daemon=daemon_mode)
+            if stagger:
+                self.stdout.write(f'Avvio sfalsato: {stagger}s tra un monitor e l\'altro ({added_count} monitor, ~{stagger * max(added_count - 1, 0)}s totali)')
+            results = manager.start_all_monitors(daemon=daemon_mode, stagger=stagger)
             success_count = sum(1 for success in results.values() if success)
 
             for monitor_name, started in results.items():

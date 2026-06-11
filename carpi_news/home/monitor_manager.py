@@ -80,10 +80,12 @@ class MonitorManager:
         logger.info(f"Monitor {config_name} fermato")
         return True
     
-    def start_all_monitors(self, daemon: bool = False) -> Dict[str, bool]:
-        """Avvia tutti i monitor configurati"""
+    def start_all_monitors(self, daemon: bool = False, stagger: int = 0) -> Dict[str, bool]:
+        """Avvia tutti i monitor configurati, sfalsati di `stagger` secondi per evitare picchi di carico"""
         results = {}
-        for config_name in self.monitors:
+        for i, config_name in enumerate(self.monitors):
+            if stagger and i:
+                time.sleep(stagger)
             results[config_name] = self.start_monitor(config_name, daemon=daemon)
         return results
     
