@@ -28,9 +28,25 @@ from home.management.commands.retry_failed_social_shares import Command as Retry
 from home.models import Articolo, InstagramOptOut, ShortLink, SocialPublicationLog
 from home.seo_locations import detect_municipality
 from home.share_links import build_share_url, build_short_share_url
-from home.universal_news_monitor import parse_ai_article_json
+from home.universal_news_monitor import SiteConfig, YouTubeAPIScraper, parse_ai_article_json
 from home.web_search_tool import WebSearchTool
 from home.views import custom_404
+
+
+class YouTubeScraperExclusionTests(SimpleTestCase):
+    def test_fallback_video_ids_skip_excluded_videos(self):
+        config = SiteConfig(
+            name="YouTube Test",
+            base_url="https://www.youtube.com/",
+            scraper_type="youtube_api",
+            fallback_video_ids=["skipme", "keepme"],
+            excluded_video_ids=["skipme"],
+        )
+        scraper = YouTubeAPIScraper(config, {})
+
+        articles = scraper._scrape_from_fallback_ids()
+
+        self.assertEqual([article["video_id"] for article in articles], ["keepme"])
 
 
 class WebSearchToolPdfTests(SimpleTestCase):

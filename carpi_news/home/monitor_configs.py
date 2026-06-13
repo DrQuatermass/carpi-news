@@ -172,6 +172,7 @@ YOUTUBE_PLAYLIST_2_CONFIG = SiteConfig(
     api_key="AIzaSyCbZnwmOERY27gUwWqaGnRShZgk48TOdZo",
     playlist_id="PLjPk0q8kILQj0_8e2IcrPLCfj7czVoPb2",
     max_results=5,
+    excluded_video_ids=["jEQTPq7psEA"],
 
     # Rate limiting per evitare il ban di YouTube
     transcript_delay=60,  # secondi di pausa tra le richieste di trascrizione

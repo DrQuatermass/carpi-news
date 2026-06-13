@@ -1273,6 +1273,7 @@ class YouTubeAPIScraper(BaseScraper):
         self.api_key = config.config.get('api_key')
         self.playlist_id = config.config.get('playlist_id')
         self.fallback_video_ids = config.config.get('fallback_video_ids', [])
+        self.excluded_video_ids = set(config.config.get('excluded_video_ids', []))
         
         # Se non abbiamo API key/playlist ma abbiamo video IDs di fallback, va bene
         if not self.api_key or not self.playlist_id:
@@ -1290,6 +1291,9 @@ class YouTubeAPIScraper(BaseScraper):
         if pending_videos:
             self.logger.info(f"Processando {len(pending_videos)} video in retry")
             for video_id in pending_videos:
+                if self._is_video_excluded(video_id):
+                    self.logger.info(f"Video YouTube escluso dal retry: {video_id}")
+                    continue
                 try:
                     article_data = {
                         'title': f"Consiglio Comunale Carpi - Video {video_id} (Retry)",
@@ -1343,12 +1347,17 @@ class YouTubeAPIScraper(BaseScraper):
             articles = []
             for item in data.get('items', []):
                 try:
+                    video_id = item['snippet']['resourceId']['videoId']
+                    if self._is_video_excluded(video_id):
+                        self.logger.info(f"Video YouTube escluso dalla playlist: {video_id}")
+                        continue
+
                     article_data = {
                         'title': item['snippet']['title'][:200],
-                        'url': f"https://www.youtube.com/watch?v={item['snippet']['resourceId']['videoId']}",
+                        'url': f"https://www.youtube.com/watch?v={video_id}",
                         'preview': item['snippet']['description'][:500],
                         'image_url': item['snippet'].get('thumbnails', {}).get('medium', {}).get('url'),
-                        'video_id': item['snippet']['resourceId']['videoId'],
+                        'video_id': video_id,
                         'published_at': item['snippet']['publishedAt']
                     }
                     articles.append(article_data)
@@ -1369,6 +1378,10 @@ class YouTubeAPIScraper(BaseScraper):
             
             for video_id in self.fallback_video_ids:
                 try:
+                    if self._is_video_excluded(video_id):
+                        self.logger.info(f"Video YouTube escluso dal fallback: {video_id}")
+                        continue
+
                     article_data = {
                         'title': f"Consiglio Comunale Carpi - Video {video_id}",
                         'url': f"https://www.youtube.com/watch?v={video_id}",
@@ -1396,6 +1409,9 @@ class YouTubeAPIScraper(BaseScraper):
         except Exception as e:
             self.logger.error(f"Errore nell'estrazione contenuto YouTube: {e}")
             return None
+
+    def _is_video_excluded(self, video_id: str) -> bool:
+        return bool(video_id and video_id in self.excluded_video_ids)
     
     def get_video_transcript(self, video_id: str) -> Optional[str]:
         """Estrae trascrizione da video YouTube con rate limiting e gestione dirette"""
