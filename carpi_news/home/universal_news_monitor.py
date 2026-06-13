@@ -398,6 +398,10 @@ class BaseScraper(ABC):
         """Ottiene il contenuto completo di un articolo"""
         pass
 
+    def mark_article_processed(self, article_data: Dict[str, Any]) -> None:
+        """Hook opzionale per segnare una sorgente come processata dopo il salvataggio."""
+        return None
+
 
 class HTMLScraper(BaseScraper):
     """Scraper per siti HTML generici"""
@@ -2136,22 +2140,20 @@ class EmailScraper(BaseScraper):
             mail.login(self.email, self.password)
             mail.select(self.mailbox)
 
-            # Cerca email non lette
-            status, messages = mail.search(None, 'UNSEEN')
+            # Cerca email non lette usando UID stabili, non sequence number IMAP.
+            status, messages = mail.uid('SEARCH', None, 'UNSEEN')
 
             if status == 'OK':
-                email_ids = messages[0].split()
-                self.logger.info(f"Trovate {len(email_ids)} email non lette")
+                email_uids = messages[0].split()
+                self.logger.info(f"Trovate {len(email_uids)} email non lette")
 
-                for email_id in email_ids[-10:]:  # Prendi massimo ultime 10 email
+                for email_uid in email_uids[-10:]:  # Prendi massimo ultime 10 email
                     try:
-                        article = self._process_email(mail, email_id)
+                        article = self._process_email(mail, email_uid)
                         if article:
                             articles.append(article)
-                            # Marca come letta
-                            mail.store(email_id, '+FLAGS', '\\Seen')
                     except Exception as e:
-                        self.logger.error(f"Errore processamento email {email_id}: {e}")
+                        self.logger.error(f"Errore processamento email UID {email_uid}: {e}")
 
             mail.close()
             mail.logout()
@@ -2161,13 +2163,15 @@ class EmailScraper(BaseScraper):
 
         return articles
 
-    def _process_email(self, mail, email_id) -> Optional[Dict[str, Any]]:
+    def _process_email(self, mail, email_uid) -> Optional[Dict[str, Any]]:
         """Processa singola email"""
         try:
             # Fetch email
-            status, msg_data = mail.fetch(email_id, '(RFC822)')
+            status, msg_data = mail.uid('FETCH', email_uid, '(RFC822)')
             if status != 'OK':
                 return None
+
+            email_uid_str = email_uid.decode('ascii', errors='replace') if isinstance(email_uid, bytes) else str(email_uid)
 
             # Parse email
             email_message = self.email_lib.message_from_bytes(msg_data[0][1])
@@ -2212,7 +2216,7 @@ class EmailScraper(BaseScraper):
             self.logger.info(f"Email processata: {subject[:50]}... (Tipo: {content_type})")
 
             # Per tweet usa l'URL del tweet, per comunicati usa email://
-            article_url = source_url if source_url else f"email://{email_id}"
+            article_url = source_url if source_url else f"email://{email_uid_str}"
 
             return {
                 'title': subject,
@@ -2222,14 +2226,42 @@ class EmailScraper(BaseScraper):
                 'date': self._parse_email_date(date_received),
                 'sender': sender,
                 'image': image_url,
+                'image_url': image_url,
                 'content_type': content_type,  # 'twitter' o 'comunicato'
                 'category_override': category,  # Categoria specifica
-                'links_content': links_content  # Contenuto dei link estratti
+                'links_content': links_content,  # Contenuto dei link estratti
+                '_email_uid': email_uid_str
             }
 
         except Exception as e:
             self.logger.error(f"Errore processing email: {e}")
             return None
+
+    def mark_article_processed(self, article_data: Dict[str, Any]) -> None:
+        """Marca una email come letta solo dopo un salvataggio/duplicato confermato."""
+        email_uid = article_data.get('_email_uid')
+        if not email_uid:
+            return
+
+        try:
+            try:
+                mail = self.imaplib.IMAP4_SSL(self.imap_server, self.imap_port)
+            except Exception as e:
+                self.logger.info(f"SSL fallito durante mark seen, provo connessione normale: {e}")
+                mail = self.imaplib.IMAP4(self.imap_server, 143)
+                mail.starttls()
+
+            mail.login(self.email, self.password)
+            mail.select(self.mailbox)
+            status, _ = mail.uid('STORE', email_uid, '+FLAGS', '(\\Seen)')
+            if status == 'OK':
+                self.logger.info(f"Email UID {email_uid} marcata come letta dopo processamento")
+            else:
+                self.logger.warning(f"Impossibile marcare letta email UID {email_uid}: status={status}")
+            mail.close()
+            mail.logout()
+        except Exception as e:
+            self.logger.error(f"Errore marcando letta email UID {email_uid}: {e}")
 
     def _detect_content_type(self, content: str, sender: str, subject: str, raw_html: str = "") -> tuple[str, str, Optional[str], Optional[str]]:
         """Rileva automaticamente il tipo di contenuto, estrae immagini e determina fonte"""
@@ -2269,11 +2301,11 @@ class EmailScraper(BaseScraper):
 
         if is_comunicato:
             # Estrai immagine standard, fonte vuota per comunicati
-            standard_image = self._extract_first_image(content)
+            standard_image = self._extract_first_image(raw_html or content)
             return 'comunicato', 'Comunicati Stampa', standard_image, None
 
         # Default: tratta come comunicato generico
-        return 'comunicato', 'Comunicati Stampa', self._extract_first_image(content), None
+        return 'comunicato', 'Comunicati Stampa', self._extract_first_image(raw_html or content), None
 
     def _extract_twitter_image(self, content: str) -> Optional[str]:
         """Estrae URL immagini da contenuto Twitter"""
@@ -2976,9 +3008,11 @@ class UniversalNewsMonitor:
                                 processed_count += 1
                                 # Aggiungi hash solo se articolo effettivamente creato
                                 self.seen_articles[article_hash] = datetime.now().isoformat()
+                                self.scraper.mark_article_processed(article_data)
                         else:
                             # Articolo già esistente, aggiungi comunque l'hash per evitare ricontrolli DB
                             self.seen_articles[article_hash] = datetime.now().isoformat()
+                            self.scraper.mark_article_processed(article_data)
                             self.logger.debug(f"Articolo già esistente nel DB: {article_data['title'][:50]}...")
                     else:
                         self.logger.debug(f"Articolo già visto in memoria: {article_data['title'][:50]}...")
@@ -3000,6 +3034,17 @@ class UniversalNewsMonitor:
                 monitor.save(update_fields=['last_run'])
         except Exception as e:
             self.logger.debug(f"Impossibile aggiornare last_run: {e}")
+
+    def _article_exists_for_data(self, article_data: Dict[str, Any]) -> bool:
+        """Verifica se il processamento ha realmente prodotto o trovato un articolo."""
+        article_url = article_data.get('url')
+        title = article_data.get('title')
+
+        if article_url and Articolo.objects.filter(fonte=article_url).exists():
+            return True
+        if title and Articolo.objects.filter(titolo=title).exists():
+            return True
+        return False
     
     def should_auto_approve(self, category: str) -> bool:
         """Determina se un articolo deve essere auto-approvato basandosi sulla configurazione"""
@@ -3057,10 +3102,22 @@ class UniversalNewsMonitor:
                 self.logger.warning("[DEBUG] Chiamata generate_ai_article()...")
                 result = self.generate_ai_article(article_data)
                 self.logger.info(f"Articolo AI generato: {result}")
+                if not self._article_exists_for_data(article_data):
+                    self.logger.warning(
+                        "Generazione AI senza articolo salvato: "
+                        f"{result}. La sorgente restera' da processare."
+                    )
+                    return False
             else:
                 self.logger.warning("[DEBUG] AI disabilitata, salvataggio diretto")
                 # Salva direttamente senza AI
                 self.save_article_directly(article_data)
+                if not self._article_exists_for_data(article_data):
+                    self.logger.warning(
+                        "Salvataggio diretto completato senza articolo nel DB. "
+                        "La sorgente restera' da processare."
+                    )
+                    return False
 
             return True
 
@@ -3347,6 +3404,7 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
                     tags=tags_estratti,
                     fonte=article_data['url'],
                     foto=article_data.get('image_url'),
+                    foto_valida=True,
                     fonti_web=used_sources if used_sources else None,  # Salva fonti web utilizzate
                     ai_model_used=ai_model_used,  # Modello AI usato (Anthropic o OpenAI fallback)
                     data_evento=data_evento,  # Imposta data evento se disponibile
@@ -3744,6 +3802,7 @@ Rielabora questa notizia seguendo le istruzioni del sistema. Rispondi SOLO con J
                 tags=tags_estratti,
                 fonte=article_data['url'],
                 foto=article_data.get('image_url'),
+                foto_valida=True,
                 data_evento=data_evento,  # Imposta data evento se disponibile
                 approvato=auto_approve,  # Auto-approva se configurato
                 data_pubblicazione=timezone.now()
