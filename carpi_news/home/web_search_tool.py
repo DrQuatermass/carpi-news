@@ -414,10 +414,10 @@ class WebSearchTool:
                 return None
 
             # Controlla se è un PDF
-            content_type = response.headers.get('Content-Type', '').lower()
-            if 'application/pdf' in content_type or url.lower().endswith('.pdf'):
-                self.logger.info(f"Rilevato PDF: {url}")
-                content_data = self._extract_pdf_content(response.content, url)
+            if self._response_looks_like_pdf(response, url):
+                final_url = getattr(response, 'url', url) or url
+                self.logger.info(f"Rilevato PDF: {final_url}")
+                content_data = self._extract_pdf_content(response.content, final_url)
             else:
                 # Parse HTML
                 soup = BeautifulSoup(response.text, 'html.parser')
@@ -442,6 +442,28 @@ class WebSearchTool:
         except Exception as e:
             self.logger.error(f"Errore generico scaricamento contenuto da {url}: {e}")
             return None
+
+    def _response_looks_like_pdf(self, response, requested_url: str) -> bool:
+        """Riconosce PDF anche quando il server manda header imprecisi."""
+        headers = getattr(response, 'headers', {}) or {}
+        content_type = headers.get('Content-Type', headers.get('content-type', '')).lower()
+        content_disposition = headers.get(
+            'Content-Disposition',
+            headers.get('content-disposition', '')
+        ).lower()
+        final_url = (getattr(response, 'url', '') or requested_url or '').lower()
+        requested_url = (requested_url or '').lower()
+        final_path = urlparse(final_url).path.lower()
+        requested_path = urlparse(requested_url).path.lower()
+        content = getattr(response, 'content', b'') or b''
+
+        return (
+            'application/pdf' in content_type
+            or final_path.endswith('.pdf')
+            or requested_path.endswith('.pdf')
+            or '.pdf' in content_disposition
+            or content[:5] == b'%PDF-'
+        )
 
     def _extract_pdf_content(self, pdf_bytes: bytes, url: str) -> Optional[Dict[str, Any]]:
         """

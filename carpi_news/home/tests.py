@@ -29,7 +29,30 @@ from home.models import Articolo, InstagramOptOut, ShortLink, SocialPublicationL
 from home.seo_locations import detect_municipality
 from home.share_links import build_share_url, build_short_share_url
 from home.universal_news_monitor import parse_ai_article_json
+from home.web_search_tool import WebSearchTool
 from home.views import custom_404
+
+
+class WebSearchToolPdfTests(SimpleTestCase):
+    def test_response_looks_like_pdf_with_weak_server_headers(self):
+        tool = WebSearchTool()
+
+        response = Mock()
+        response.headers = {"Content-Type": "text/html"}
+        response.url = "https://example.com/download"
+        response.content = b"%PDF-1.7\n..."
+
+        self.assertTrue(tool._response_looks_like_pdf(response, "https://example.com/download"))
+
+    def test_response_looks_like_pdf_from_redirected_pdf_url(self):
+        tool = WebSearchTool()
+
+        response = Mock()
+        response.headers = {"Content-Type": "application/octet-stream"}
+        response.url = "https://example.com/files/document.pdf?download=1"
+        response.content = b""
+
+        self.assertTrue(tool._response_looks_like_pdf(response, "https://example.com/download"))
 
 
 class AIArticleParsingTests(SimpleTestCase):
