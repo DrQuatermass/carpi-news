@@ -28,6 +28,7 @@ from home.management.commands.retry_failed_social_shares import Command as Retry
 from home.models import Articolo, InstagramOptOut, ShortLink, SocialPublicationLog
 from home.seo_locations import detect_municipality
 from home.share_links import build_share_url, build_short_share_url
+from home.social_sharing import SocialMediaManager
 from home.universal_news_monitor import SiteConfig, YouTubeAPIScraper, parse_ai_article_json
 from home.web_search_tool import WebSearchTool
 from home.views import custom_404
@@ -1330,6 +1331,7 @@ class RetryFailedSocialSharesCommandTests(TestCase):
             sommario="Sommario",
             categoria="Cronaca",
             approvato=True,
+            foto="https://example.com/image.jpg",
             data_pubblicazione=timezone.now(),
         )
 
@@ -1341,7 +1343,8 @@ class RetryFailedSocialSharesCommandTests(TestCase):
             error_message="Container non ready",
         )
         SocialPublicationLog.objects.filter(articolo=self.articolo).update(
-            published_at=timezone.now() - timedelta(minutes=30)
+            published_at=timezone.now() - timedelta(minutes=30),
+            updated_at=timezone.now() - timedelta(minutes=30),
         )
 
         items = RetryFailedSocialSharesCommand()._retry_items({
@@ -1370,7 +1373,8 @@ class RetryFailedSocialSharesCommandTests(TestCase):
             success=True,
         )
         SocialPublicationLog.objects.filter(articolo=self.articolo).update(
-            published_at=timezone.now() - timedelta(minutes=30)
+            published_at=timezone.now() - timedelta(minutes=30),
+            updated_at=timezone.now() - timedelta(minutes=30),
         )
 
         items = RetryFailedSocialSharesCommand()._retry_items({
@@ -1392,7 +1396,8 @@ class RetryFailedSocialSharesCommandTests(TestCase):
             error_message="Container non ready",
         )
         SocialPublicationLog.objects.filter(pk=recent_log.pk).update(
-            published_at=timezone.now() - timedelta(minutes=30)
+            published_at=timezone.now() - timedelta(minutes=30),
+            updated_at=timezone.now() - timedelta(minutes=30),
         )
 
         old_article = Articolo.objects.create(
@@ -1401,6 +1406,7 @@ class RetryFailedSocialSharesCommandTests(TestCase):
             sommario="Sommario",
             categoria="Cronaca",
             approvato=True,
+            foto="https://example.com/image.jpg",
             data_pubblicazione=timezone.now(),
         )
         old_log = SocialPublicationLog.objects.create(
@@ -1410,7 +1416,8 @@ class RetryFailedSocialSharesCommandTests(TestCase):
             error_message="Container non ready",
         )
         SocialPublicationLog.objects.filter(pk=old_log.pk).update(
-            published_at=timezone.now() - timedelta(minutes=120)
+            published_at=timezone.now() - timedelta(minutes=120),
+            updated_at=timezone.now() - timedelta(minutes=120),
         )
 
         items = RetryFailedSocialSharesCommand()._retry_items({
@@ -1435,7 +1442,8 @@ class RetryFailedSocialSharesCommandTests(TestCase):
             error_message="Container non ready",
         )
         SocialPublicationLog.objects.filter(articolo=self.articolo).update(
-            published_at=timezone.now() - timedelta(minutes=30)
+            published_at=timezone.now() - timedelta(minutes=30),
+            updated_at=timezone.now() - timedelta(minutes=30),
         )
 
         call_command(
@@ -1458,7 +1466,8 @@ class RetryFailedSocialSharesCommandTests(TestCase):
             error_message="Container non ready",
         )
         SocialPublicationLog.objects.filter(articolo=self.articolo).update(
-            published_at=timezone.now() - timedelta(minutes=30)
+            published_at=timezone.now() - timedelta(minutes=30),
+            updated_at=timezone.now() - timedelta(minutes=30),
         )
 
         call_command(
@@ -1472,6 +1481,58 @@ class RetryFailedSocialSharesCommandTests(TestCase):
         )
 
         retry_mock.assert_called_once_with(self.articolo, only_platforms=["instagram_story"])
+
+    def test_instagram_reel_retry_skips_recent_in_progress_slot(self):
+        log = SocialPublicationLog.objects.create(
+            articolo=self.articolo,
+            platform="instagram_reel",
+            success=False,
+            error_message="In progress...",
+        )
+        SocialPublicationLog.objects.filter(pk=log.pk).update(
+            published_at=timezone.now() - timedelta(hours=2),
+            updated_at=timezone.now() - timedelta(minutes=5),
+        )
+        manager = SocialMediaManager()
+        manager.platforms["instagram_reel"]["enabled"] = True
+
+        with patch.object(manager, "_share_to_instagram_reel") as share_mock:
+            results = manager.retry_failed_platforms_only(
+                self.articolo,
+                only_platforms=["instagram_reel"],
+            )
+
+        self.assertEqual(results["instagram_reel"], False)
+        share_mock.assert_not_called()
+
+    def test_instagram_reel_retry_uses_publication_slot_and_finalizes(self):
+        log = SocialPublicationLog.objects.create(
+            articolo=self.articolo,
+            platform="instagram_reel",
+            success=False,
+            error_message="Container non ready",
+        )
+        SocialPublicationLog.objects.filter(pk=log.pk).update(
+            published_at=timezone.now() - timedelta(hours=2),
+            updated_at=timezone.now() - timedelta(hours=2),
+        )
+        manager = SocialMediaManager()
+        manager.platforms["instagram_reel"]["enabled"] = True
+
+        with (
+            patch.object(manager, "_share_to_instagram_reel", return_value=(True, "ig-media-1")) as share_mock,
+            patch.object(manager, "_tracking_link", return_value=("", None)),
+        ):
+            results = manager.retry_failed_platforms_only(
+                self.articolo,
+                only_platforms=["instagram_reel"],
+            )
+
+        self.assertEqual(results["instagram_reel"], True)
+        share_mock.assert_called_once_with(self.articolo)
+        log.refresh_from_db()
+        self.assertTrue(log.success)
+        self.assertEqual(log.instagram_media_id, "ig-media-1")
 
 
 @override_settings(

@@ -224,7 +224,8 @@ class SocialMediaManager:
 
             if log_entry and log_entry.error_message == 'In progress...':
                 stale_after = timezone.now() - timedelta(minutes=15)
-                if log_entry.published_at and log_entry.published_at > stale_after:
+                last_touch = log_entry.updated_at or log_entry.published_at
+                if last_touch and last_touch > stale_after:
                     logger.info(f"{platform}: pubblicazione in corso da altro worker, skip")
                     return False, False
                 logger.warning(
@@ -234,7 +235,7 @@ class SocialMediaManager:
             if log_entry:
                 log_entry.success = False
                 log_entry.error_message = 'In progress...'
-                log_entry.save(update_fields=['success', 'error_message'])
+                log_entry.save(update_fields=['success', 'error_message', 'updated_at'])
             else:
                 SocialPublicationLog.objects.create(
                     articolo=articolo,
@@ -278,7 +279,7 @@ class SocialMediaManager:
             if instagram_media_id not in media_ids:
                 media_ids.append(instagram_media_id)
                 log.instagram_media_ids = media_ids[-50:]
-                log.save(update_fields=['instagram_media_ids'])
+                log.save(update_fields=['instagram_media_ids', 'updated_at'])
 
     def _refresh_facebook_link_preview(self, article_url: str, access_token: str) -> None:
         """
@@ -878,16 +879,20 @@ class SocialMediaManager:
             ).exists():
                 results['instagram_story'] = True
             else:
-                success, error_msg = self._share_to_instagram_story(articolo)
-                results['instagram_story'] = success
-                shared_url, short_link = self._tracking_link(articolo, 'instagram', 'story')
-                self._finalize_publication(
-                    articolo, 'instagram_story', success,
-                    None if success else error_msg,
-                    shared_url=shared_url,
-                    short_link=short_link,
-                    instagram_media_id=error_msg if success else "",
-                )
+                should_share, _ = self._prepare_publication_slot(articolo, 'instagram_story')
+                if should_share:
+                    success, error_msg = self._share_to_instagram_story(articolo)
+                    results['instagram_story'] = success
+                    shared_url, short_link = self._tracking_link(articolo, 'instagram', 'story')
+                    self._finalize_publication(
+                        articolo, 'instagram_story', success,
+                        None if success else error_msg,
+                        shared_url=shared_url,
+                        short_link=short_link,
+                        instagram_media_id=error_msg if success else "",
+                    )
+                else:
+                    results['instagram_story'] = False
 
         # Instagram Reel
         if (
@@ -900,16 +905,20 @@ class SocialMediaManager:
             ).exists():
                 results['instagram_reel'] = True
             else:
-                success, error_msg = self._share_to_instagram_reel(articolo)
-                results['instagram_reel'] = success
-                shared_url, short_link = self._tracking_link(articolo, 'instagram', 'reel')
-                self._finalize_publication(
-                    articolo, 'instagram_reel', success,
-                    None if success else error_msg,
-                    shared_url=shared_url,
-                    short_link=short_link,
-                    instagram_media_id=error_msg if success else "",
-                )
+                should_share, _ = self._prepare_publication_slot(articolo, 'instagram_reel')
+                if should_share:
+                    success, error_msg = self._share_to_instagram_reel(articolo)
+                    results['instagram_reel'] = success
+                    shared_url, short_link = self._tracking_link(articolo, 'instagram', 'reel')
+                    self._finalize_publication(
+                        articolo, 'instagram_reel', success,
+                        None if success else error_msg,
+                        shared_url=shared_url,
+                        short_link=short_link,
+                        instagram_media_id=error_msg if success else "",
+                    )
+                else:
+                    results['instagram_reel'] = False
 
         success_count = sum(1 for success in results.values() if success)
         total_count = len(results)

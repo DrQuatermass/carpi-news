@@ -133,15 +133,15 @@ class Command(BaseCommand):
             .filter(
                 success=False,
                 platform__in=selected_platforms,
-                published_at__lte=cutoff,
+                updated_at__lte=cutoff,
                 articolo__approvato=True,
             )
             .select_related("articolo")
-            .order_by("published_at")
+            .order_by("updated_at")
         )
         if newer_than_minutes > 0:
             floor = timezone.now() - timedelta(minutes=newer_than_minutes)
-            qs = qs.filter(published_at__gte=floor)
+            qs = qs.filter(updated_at__gte=floor)
         if opts["in_progress_only"]:
             qs = qs.filter(error_message="In progress...")
 
