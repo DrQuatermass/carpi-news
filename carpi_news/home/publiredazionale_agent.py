@@ -9,6 +9,7 @@ import anthropic
 import requests
 from bs4 import BeautifulSoup
 from django.conf import settings
+from django.utils import timezone
 from .api_usage_tracker import APIUsageTracker
 from .social_media_scraper import SocialMediaScraper
 
@@ -601,8 +602,6 @@ IMPORTANTE: Rispondi SOLO con il JSON, nient'altro."""
         4. Management command genera articolo dopo 107 minuti
         """
         try:
-            from datetime import timedelta
-
             # Recupera dati intervista
             interview_data = self.pubbliredazionale.interview_data or {}
 
@@ -617,6 +616,12 @@ IMPORTANTE: Rispondi SOLO con il JSON, nient'altro."""
                 logger.info("web_research mancante, eseguo ricerca...")
                 web_research = self._perform_web_research(interview_data.get('website_content', ''))
                 interview_data['web_research'] = web_research
+
+            # Marca esplicitamente il completamento: il job asincrono usa questo
+            # timestamp per calcolare quando generare l'articolo.
+            now = timezone.now()
+            interview_data['interview_complete'] = True
+            interview_data.setdefault('interview_completed_at', now.isoformat())
 
             # Salva i dati aggiornati
             self.pubbliredazionale.interview_data = interview_data

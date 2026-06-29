@@ -24,6 +24,7 @@ from admin_panel.models import Banner
 from home.context_processors import categorie_menu
 from home.content_polisher import content_polisher
 from home.image_variants import ensure_article_image_variants, generate_article_image_variants, get_article_source_image_path
+from home.management.commands.process_pending_pubbliredazionali import Command as ProcessPendingPubbliredazionaliCommand
 from home.management.commands.retry_failed_social_shares import Command as RetryFailedSocialSharesCommand
 from home.models import Articolo, InstagramOptOut, ShortLink, SocialPublicationLog
 from home.seo_locations import detect_municipality
@@ -1533,6 +1534,51 @@ class RetryFailedSocialSharesCommandTests(TestCase):
         log.refresh_from_db()
         self.assertTrue(log.success)
         self.assertEqual(log.instagram_media_id, "ig-media-1")
+
+
+class ProcessPendingPubbliredazionaliCommandTests(TestCase):
+    def make_pubbliredazionale(self, interview_data=None):
+        return Articolo.objects.create(
+            titolo="Pubbliredazionale Test",
+            contenuto="",
+            categoria="Attualita",
+            is_pubbliredazionale=True,
+            nome_azienda="Azienda Test",
+            payment_status="pending",
+            interview_data=interview_data or {},
+        )
+
+    def test_interview_without_enough_answers_is_not_complete(self):
+        pub = self.make_pubbliredazionale({
+            "conversation": [
+                {"role": "agent", "message": "Domanda iniziale"},
+                {"role": "user", "message": "Risposta"},
+            ],
+        })
+
+        complete, reason = ProcessPendingPubbliredazionaliCommand().is_interview_complete(pub)
+
+        self.assertFalse(complete)
+        self.assertIn("incompleta", reason)
+
+    def test_interview_completion_timestamp_drives_ready_time(self):
+        completed_at = timezone.now() - timedelta(hours=3)
+        pub = self.make_pubbliredazionale({
+            "interview_complete": True,
+            "interview_completed_at": completed_at.isoformat(),
+            "conversation": [
+                {"role": "agent", "message": "D1"},
+                {"role": "user", "message": "R1"},
+                {"role": "agent", "message": "D2"},
+                {"role": "user", "message": "R2"},
+                {"role": "agent", "message": "D3"},
+            ],
+        })
+
+        command = ProcessPendingPubbliredazionaliCommand()
+
+        self.assertEqual(command.get_interview_completed_at(pub), completed_at)
+        self.assertLessEqual(command.calculate_ready_time(completed_at), timezone.now())
 
 
 @override_settings(

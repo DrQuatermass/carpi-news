@@ -8,6 +8,7 @@ Cron: 0 */1 * * * cd /path && python manage.py process_pending_pubbliredazionali
 
 from django.core.management.base import BaseCommand
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from django.core.mail import send_mail
 from django.conf import settings
 from home.models import Articolo
@@ -27,37 +28,78 @@ class Command(BaseCommand):
             type=int,
             help='Processa solo un pubbliredazionale specifico',
         )
+        parser.add_argument(
+            '--status',
+            action='store_true',
+            help='Mostra lo stato dei pubbliredazionali in coda senza processarli',
+        )
+        parser.add_argument(
+            '--dry-run',
+            action='store_true',
+            help='Mostra quali pubbliredazionali verrebbero processati senza generarli',
+        )
 
     def handle(self, *args, **options):
         now = timezone.now()
+        dry_run = options.get('dry_run')
+        show_status = options.get('status')
 
         if options.get('pubbliredazionale_id'):
             # Processa pubbliredazionale specifico
             pub_id = options['pubbliredazionale_id']
             try:
                 pub = Articolo.objects.get(id=pub_id, is_pubbliredazionale=True)
+                if show_status or dry_run:
+                    self.write_pub_status(pub, now)
+                    return
                 self.process_pubbliredazionale(pub)
             except Articolo.DoesNotExist:
                 self.stdout.write(self.style.ERROR(f'Pubbliredazionale {pub_id} non trovato'))
             return
 
-        # Trova pubbliredazionali pronti per essere processati
-        pending = Articolo.objects.filter(
+        pending = list(Articolo.objects.filter(
             is_pubbliredazionale=True,
-            interview_data__isnull=False,  # Intervista completata (ha dati)
-            contenuto='',  # Articolo non ancora generato
-            payment_status='pending'  # Non ancora pagato
-        )
+            contenuto='',
+            payment_status='pending',
+        ).order_by('data_creazione'))
+
+        if show_status:
+            self.stdout.write(f'Pubbliredazionali pending senza contenuto: {len(pending)}')
+            for pub in pending:
+                self.write_pub_status(pub, now)
+            return
 
         # Filtra per quelli che hanno aspettato abbastanza
         ready_to_process = []
         for pub in pending:
-            # Calcola quando dovrebbe essere pronto basandosi sull'orario intervista
-            ready_time = self.calculate_ready_time(pub.data_creazione)
+            is_complete, reason = self.is_interview_complete(pub)
+            if not is_complete:
+                logger.info(f"Pubbliredazionale {pub.id} non pronto: {reason}")
+                continue
+
+            # Calcola quando dovrebbe essere pronto basandosi sull'orario reale
+            # di completamento intervista. Per record vecchi usa data_modifica,
+            # che viene aggiornata quando si salva l'intervista/foto.
+            base_time = self.get_interview_completed_at(pub)
+            ready_time = self.calculate_ready_time(base_time)
 
             if now >= ready_time:
                 ready_to_process.append(pub)
-                logger.info(f"Pubbliredazionale {pub.id} pronto per elaborazione (creato: {pub.data_creazione}, ready: {ready_time})")
+                logger.info(
+                    "Pubbliredazionale %s pronto per elaborazione "
+                    "(completed_at: %s, ready: %s)",
+                    pub.id,
+                    base_time,
+                    ready_time,
+                )
+            else:
+                logger.info(
+                    "Pubbliredazionale %s in attesa fino a %s "
+                    "(completed_at: %s)",
+                    pub.id,
+                    ready_time,
+                    base_time,
+                )
 
         if not ready_to_process:
             self.stdout.write(self.style.SUCCESS('Nessun pubbliredazionale da processare'))
@@ -65,9 +107,74 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS(f'Trovati {len(ready_to_process)} pubbliredazionali da processare'))
 
+        if dry_run:
+            for pub in ready_to_process:
+                self.write_pub_status(pub, now)
+            return
+
         # Processa ogni pubbliredazionale
         for pub in ready_to_process:
             self.process_pubbliredazionale(pub)
+
+    def is_interview_complete(self, pub):
+        """Ritorna se l'intervista ha materiale sufficiente per generare."""
+        interview_data = pub.interview_data or {}
+        if not interview_data:
+            return False, 'interview_data vuoto'
+
+        conversation = interview_data.get('conversation') or []
+        questions_asked = len([
+            msg for msg in conversation
+            if isinstance(msg, dict) and msg.get('role') == 'agent'
+        ])
+        user_answers = len([
+            msg for msg in conversation
+            if isinstance(msg, dict) and msg.get('role') == 'user'
+        ])
+
+        if interview_data.get('interview_complete') is True:
+            return True, 'intervista marcata completa'
+
+        if questions_asked >= 3 and user_answers >= 2:
+            return True, 'intervista completa dedotta dalla conversazione'
+
+        return False, f'intervista incompleta ({questions_asked} domande, {user_answers} risposte)'
+
+    def get_interview_completed_at(self, pub):
+        """Timestamp base per il ritardo editoriale."""
+        interview_data = pub.interview_data or {}
+        completed_at = interview_data.get('interview_completed_at')
+
+        if completed_at:
+            parsed = parse_datetime(completed_at)
+            if parsed:
+                if timezone.is_naive(parsed):
+                    return timezone.make_aware(parsed, timezone.get_current_timezone())
+                return parsed
+            logger.warning(
+                "interview_completed_at non valido per pubbliredazionale %s: %r",
+                pub.id,
+                completed_at,
+            )
+
+        return pub.data_modifica or pub.data_creazione
+
+    def write_pub_status(self, pub, now):
+        is_complete, reason = self.is_interview_complete(pub)
+        base_time = self.get_interview_completed_at(pub)
+        ready_time = self.calculate_ready_time(base_time) if is_complete else None
+        state = 'READY' if is_complete and now >= ready_time else 'WAIT'
+        if not is_complete:
+            state = 'SKIP'
+
+        self.stdout.write(
+            f'[{state}] id={pub.id} azienda="{pub.nome_azienda}" '
+            f'created={timezone.localtime(pub.data_creazione).strftime("%Y-%m-%d %H:%M")} '
+            f'modified={timezone.localtime(pub.data_modifica).strftime("%Y-%m-%d %H:%M")} '
+            f'completed_at={timezone.localtime(base_time).strftime("%Y-%m-%d %H:%M")} '
+            f'ready_at={timezone.localtime(ready_time).strftime("%Y-%m-%d %H:%M") if ready_time else "-"} '
+            f'reason="{reason}" foto={bool(pub.foto_upload)}'
+        )
 
     def calculate_ready_time(self, created_at):
         """
@@ -77,14 +184,15 @@ class Command(BaseCommand):
         - Intervista completata 08:00-18:00 → Pronto dopo 107 minuti (1h 47min)
         - Intervista completata 18:00-08:00 → Pronto ore 09:02 giorno dopo
         """
-        hour = created_at.hour
+        local_created_at = timezone.localtime(created_at)
+        hour = local_created_at.hour
 
         if 8 <= hour < 18:
             # Orario lavorativo → Pronto dopo 107 minuti
-            ready = created_at + timedelta(minutes=107)
+            ready = local_created_at + timedelta(minutes=107)
         else:
             # Sera/Notte → Pronto alle 09:02 del giorno dopo
-            next_day = created_at + timedelta(days=1)
+            next_day = local_created_at + timedelta(days=1)
             ready = next_day.replace(hour=9, minute=2, second=0, microsecond=0)
 
         return ready
