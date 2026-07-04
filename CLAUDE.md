@@ -314,8 +314,15 @@ The project uses environment variables defined in `.env` file (based on `.env.ex
 **Optional Variables**:
 - `DATABASE_URL`: PostgreSQL connection string (uses SQLite if not set)
 - `EMAIL_*`: SMTP configuration for notifications
+- `EMAIL_BACKEND`: Override email backend (e.g. `django.core.mail.backends.console.EmailBackend` in locale per non inviare email reali)
 - `YOUTUBE_API_KEY` & `YOUTUBE_PLAYLIST_ID`: YouTube integration
 - `MONITOR_INTERVAL_*`: Custom intervals for each monitor (seconds)
+- `OPENROUTER_API_KEY`: Chiave OpenRouter (necessaria se si usa DeepSeek)
+- `AI_ARTICLE_PROVIDER`: Provider di default per gli articoli — `anthropic` (default) | `openrouter`
+- `CHATBOT_PROVIDER`: Provider del chatbot — `anthropic` (default) | `openrouter`
+- `OPENROUTER_ARTICLE_MODEL`: Modello articoli (default `deepseek/deepseek-v4-pro`)
+- `OPENROUTER_CHATBOT_MODEL`: Modello chatbot (default `deepseek/deepseek-v4-pro`)
+- `OPENROUTER_BASE_URL`: Endpoint OpenRouter (default `https://openrouter.ai/api/v1`)
 
 **Virtual Environment**: 
 ```bash
@@ -328,6 +335,32 @@ source venv/bin/activate  # Unix/Linux
 cd carpi_news
 pip install -r requirements.txt
 ```
+
+## AI Provider (Anthropic / OpenRouter-DeepSeek)
+
+Sia la **generazione articoli** sia il **chatbot** possono usare due provider: **Anthropic** (Claude) o **OpenRouter** (DeepSeek). La selezione è per-componente ed è **guidata da variabili d'ambiente**, senza modifiche al codice.
+
+### Come funziona
+- **Articoli** (`home/universal_news_monitor.py` → `generate_ai_article`): il provider di default è `settings.AI_ARTICLE_PROVIDER`. Un singolo monitor può forzare il provider mettendo `"ai_provider": "openrouter"` (o `"anthropic"`) nel suo `config_data` JSON (override per-monitor). Con OpenRouter viene usato `_generate_with_openrouter` (loop Chat Completions con tool `web_search` + finalizzazione forzata, identica al path Anthropic).
+- **Chatbot** (`home/chatbot_service.py`): usa `settings.CHATBOT_PROVIDER`.
+- **Fallback automatico**: se OpenRouter fallisce o restituisce vuoto, la generazione ricade su **Claude** (nessun blocco della pipeline).
+- **Modello per-monitor**: override opzionale con `config_data "ai_openrouter_model"`.
+
+### Attivare DeepSeek (produzione)
+Nel `.env` del server:
+```env
+OPENROUTER_API_KEY=sk-or-...
+AI_ARTICLE_PROVIDER=openrouter
+CHATBOT_PROVIDER=openrouter
+```
+Rollback: rimuovere/riportare a `anthropic` queste due variabili + restart gunicorn.
+
+### Tracking costi
+Le chiamate OpenRouter sono tracciate in `APIUsage` con `api_type='openrouter'` e compaiono nella dashboard costi (`/admin/home/apiusage/dashboard/`). I prezzi indicativi sono in `home/api_usage_tracker.py` (`OPENROUTER_PRICING`) — verificare/aggiornare su openrouter.ai/models.
+
+### Note
+- Il chatbot con OpenRouter è single-shot: `deepseek/deepseek-v4-flash` sarebbe sufficiente e ~5× più economico di V4 Pro.
+- `openai` (SDK) è usato come client OpenRouter-compatibile (già dipendenza per il fallback OpenAI).
 
 ## Security Considerations
 
