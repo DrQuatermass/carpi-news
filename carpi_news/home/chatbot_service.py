@@ -127,15 +127,19 @@ class ChatbotService:
             # Genera risposta
             response = self._generate_response(intent, articles, user_message)
 
-            # Limita SEMPRE gli articoli restituiti al frontend (evita payload da migliaia di articoli)
-            articles_to_return = articles[:self.MAX_ARTICLES_DISPLAY]
-            if intent.get('request_type') == 'question' and articles:
-                # Per le domande, restituisci solo gli articoli effettivamente analizzati dall'AI
-                articles_to_read = min(intent.get('articles_needed', 3), len(articles), self.MAX_ARTICLES_DISPLAY)
-                articles_to_return = articles[:articles_to_read]
-                logger.info(f"Question type: restituiti {len(articles_to_return)} articoli analizzati su {len(articles)} trovati")
-            elif len(articles) > self.MAX_ARTICLES_DISPLAY:
-                logger.info(f"Ricerca: {len(articles)} articoli trovati, restituiti primi {self.MAX_ARTICLES_DISPLAY}")
+            # Risposte informative (saluti, aiuto, meta) non mostrano articoli
+            if intent.get('request_type') in ('greeting', 'help'):
+                articles_to_return = []
+            else:
+                # Limita SEMPRE gli articoli restituiti al frontend (evita payload da migliaia di articoli)
+                articles_to_return = articles[:self.MAX_ARTICLES_DISPLAY]
+                if intent.get('request_type') == 'question' and articles:
+                    # Per le domande, restituisci solo gli articoli effettivamente analizzati dall'AI
+                    articles_to_read = min(intent.get('articles_needed', 3), len(articles), self.MAX_ARTICLES_DISPLAY)
+                    articles_to_return = articles[:articles_to_read]
+                    logger.info(f"Question type: restituiti {len(articles_to_return)} articoli analizzati su {len(articles)} trovati")
+                elif len(articles) > self.MAX_ARTICLES_DISPLAY:
+                    logger.info(f"Ricerca: {len(articles)} articoli trovati, restituiti primi {self.MAX_ARTICLES_DISPLAY}")
 
             return {
                 'response': response,
@@ -158,6 +162,13 @@ class ChatbotService:
     )
     # Frasi che sembrano domande ma sono in realtà ricerche di eventi/attività
     _QUESTION_EXCLUSIONS = ('cosa fare', 'che fare', 'cosa c', 'cosa succede stasera')
+    # Frasi meta/informative sul bot o sul sito -> vanno trattate come 'help'
+    # (non si risponde pescando dagli articoli)
+    _INFO_PHRASES = (
+        'cosa puoi fare', 'cosa sai fare', 'come funzioni', 'a cosa servi',
+        'come ti uso', 'come posso usarti', 'chi siamo', 'chi sei', 'cosa fai',
+        'informazioni sul sito', 'contatti', 'contattare',
+    )
 
     def _coerce_question_intent(self, message, intent):
         """Forza request_type='question' quando il messaggio è chiaramente una domanda
@@ -168,6 +179,10 @@ class ChatbotService:
                 return intent
             m = (message or '').strip().lower()
             if not m:
+                return intent
+            # Frasi meta/informative ("cosa puoi fare", "chi siamo", "contatti") -> help
+            if any(p in m for p in self._INFO_PHRASES):
+                intent['request_type'] = 'help'
                 return intent
             # Frasi-evento ("cosa fare stasera"): sono ricerche di eventi, non domande
             if any(m.startswith(x) for x in self._QUESTION_EXCLUSIONS):
