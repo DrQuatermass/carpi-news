@@ -17,7 +17,9 @@
       "logo": "https://ombradelportico.it{% static 'home/images/portico_logo_news_60h.png' %}",
       "sameAs": [
         "https://www.facebook.com/ombradelportico/",
-        "https://www.instagram.com/ombradelportico/"
+        "https://www.instagram.com/ombradelportico/",
+        "https://x.com/ombradelportico",
+        "https://t.me/ombradelportico"
       ],
       "founder": {"@id": "https://ombradelportico.it/about/#sven"},
       "areaServed": {
@@ -72,7 +74,7 @@
 
         <section>
             <h2>Politica editoriale</h2>
-            <p>Selezioniamo le notizie monitorando fonti ufficiali (Comune di Carpi, ANSA, La Voce di Carpi, SulPanaro, TempoNews) e attivita' locali. Alcuni articoli sono redatti con assistenza di sistemi di intelligenza artificiale a partire dalle fonti citate, sotto supervisione editoriale della Redazione. Ogni articolo riporta sempre la fonte originale quando disponibile.</p>
+            <p>Selezioniamo le notizie monitorando fonti ufficiali (enti pubblici, agenzie di stampa e media locali) e le attivita' del territorio. Alcuni articoli sono redatti con assistenza di sistemi di intelligenza artificiale a partire dalle fonti citate, sotto supervisione editoriale della Redazione. Ogni articolo riporta sempre la fonte originale quando disponibile.</p>
         </section>
 
         <section>
@@ -105,28 +107,17 @@
                 <h3>1. Monitoraggio Multi-Fonte</h3>
                 <p>Il sistema monitora continuamente diverse fonti di informazione locali:</p>
                 <ul>
-                    <li><strong>Siti istituzionali:</strong> Comune delle Terre d'Argine, enti pubblici</li>
+                    <li><strong>Siti istituzionali:</strong> Comuni ed enti pubblici del territorio</li>
                     <li><strong>Mail:</strong> Newsletter locali e comunicati stampa</li>
                     <li><strong>Media locali:</strong> Testate giornalistiche del territorio</li>
-                    <li><strong>Sport:</strong> Carpi Calcio e altre società sportive</li>
+                    <li><strong>Sport:</strong> Società sportive locali</li>
                     <li><strong>Eventi:</strong> Calendario eventi culturali e sociali</li>
-                    <li><strong>News nazionali:</strong> Articoli da ANSA</li>
+                    <li><strong>News nazionali:</strong> Agenzie di stampa</li>
                 </ul>
             </div>
 
             <div class="feature-card">
-                <h3>2. Estrazione Intelligente</h3>
-                <p>Un sistema di scraping avanzato estrae automaticamente le notizie utilizzando diverse tecniche:</p>
-                <ul>
-                    <li>Parsing HTML per siti web tradizionali</li>
-                    <li>API WordPress e GraphQL per fonti strutturate</li>
-                    <li>Trascrizioni YouTube per contenuti video</li>
-                    <li>Filtri intelligenti per selezionare solo contenuti rilevanti</li>
-                </ul>
-            </div>
-
-            <div class="feature-card">
-                <h3>3. Elaborazione con AI</h3>
+                <h3>2. Elaborazione con AI</h3>
                 <p>Il contenuto viene processato attraverso intelligenza artificiale per:</p>
                 <ul>
                     <li>Uniformare lo stile e migliorare la leggibilità</li>
@@ -137,7 +128,7 @@
             </div>
 
             <div class="feature-card editorial-oversight">
-                <h3>4. Supervisione Editoriale Umana</h3>
+                <h3>3. Supervisione Editoriale Umana</h3>
                 <p>Ogni articolo viene <strong>personalmente revisionato</strong> prima della pubblicazione per garantire:</p>
                 <ul>
                     <li><strong>Accuratezza:</strong> Verifica dei fatti e delle informazioni riportate</li>
@@ -150,11 +141,12 @@
             </div>
 
             <div class="feature-card">
-                <h3>5. Condivisione Automatica sui Social</h3>
+                <h3>4. Condivisione Automatica sui Social</h3>
                 <p>Una volta approvati e pubblicati, gli articoli vengono automaticamente condivisi su:</p>
                 <ul>
                     <li><strong>Telegram:</strong> Canale dedicato con notifiche istantanee</li>
-                    <li><strong>Facebook:</strong> Pagina ufficiale per raggiungere la comunità</li>
+                    <li><strong>Facebook:</strong> Pagina ufficiale e Reels</li>
+                    <li><strong>Instagram:</strong> Post, Stories e Reels con link agli articoli</li>
                     <li><strong>X (Twitter):</strong> Aggiornamenti rapidi e concisi</li>
                 </ul>
                 <p>Questo garantisce una diffusione capillare delle notizie locali attraverso tutti i canali social più utilizzati dalla comunità.</p>
@@ -166,21 +158,10 @@
             <p>Il progetto è costruito con tecnologie moderne e affidabili:</p>
             <ul class="tech-list">
                 <li><strong>Django 5.2.5:</strong> Framework web Python per il backend</li>
-                <li><strong>Anthropic Claude:</strong> AI avanzata per elaborazione testi</li>
+                <li><strong>Intelligenza artificiale:</strong> modelli avanzati per l'elaborazione e la verifica dei testi</li>
                 <li><strong>BeautifulSoup:</strong> Parsing HTML per web scraping</li>
                 <li><strong>SQLite/PostgreSQL:</strong> Database per gestione contenuti</li>
                 <li><strong>Apache + Gunicorn:</strong> Server di produzione</li>
-            </ul>
-        </section>
-
-        <section>
-            <h2>Gestione delle Immagini</h2>
-            <p>Il sistema include funzionalità avanzate per la gestione delle immagini:</p>
-            <ul>
-                <li>Download automatico da fonti ufficiali (es. Comune di Carpi)</li>
-                <li>Validazione intelligente degli URL con cache efficiente</li>
-                <li>Correzione automatica di URL malformati</li>
-                <li>Storage locale per garantire disponibilità nel tempo</li>
             </ul>
         </section>
 
