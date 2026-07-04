@@ -24,6 +24,9 @@ class ChatbotService:
     # Modello Claude usato quando provider='anthropic'
     ANTHROPIC_MODEL = "claude-3-5-haiku-20241022"
 
+    # Numero massimo di articoli restituiti al frontend (evita di passarne migliaia)
+    MAX_ARTICLES_DISPLAY = 10
+
     def __init__(self):
         # Client Anthropic sempre disponibile (default + fallback)
         self.client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
@@ -121,12 +124,15 @@ class ChatbotService:
             # Genera risposta
             response = self._generate_response(intent, articles, user_message)
 
-            # Per le domande, restituisci solo gli articoli effettivamente analizzati dall'AI
-            articles_to_return = articles
+            # Limita SEMPRE gli articoli restituiti al frontend (evita payload da migliaia di articoli)
+            articles_to_return = articles[:self.MAX_ARTICLES_DISPLAY]
             if intent.get('request_type') == 'question' and articles:
-                articles_to_read = min(intent.get('articles_needed', 3), len(articles))
+                # Per le domande, restituisci solo gli articoli effettivamente analizzati dall'AI
+                articles_to_read = min(intent.get('articles_needed', 3), len(articles), self.MAX_ARTICLES_DISPLAY)
                 articles_to_return = articles[:articles_to_read]
                 logger.info(f"Question type: restituiti {len(articles_to_return)} articoli analizzati su {len(articles)} trovati")
+            elif len(articles) > self.MAX_ARTICLES_DISPLAY:
+                logger.info(f"Ricerca: {len(articles)} articoli trovati, restituiti primi {self.MAX_ARTICLES_DISPLAY}")
 
             return {
                 'response': response,
@@ -615,9 +621,9 @@ Esempi:
         # Risultati trovati - risposta con presentazione articoli
         count = len(articles)
 
-        # Per domande, genera breve introduzione con AI
+        # Per domande, genera una vera risposta basata sul contenuto degli articoli
         if request_type == 'question':
-            return self._generate_brief_intro(user_message, articles, intent)
+            return self._answer_question(user_message, articles, intent)
 
         # Per ricerche normali, risposta standard
         # Costruisci risposta
@@ -725,7 +731,7 @@ REGOLE IMPORTANTI:
 - Sii conciso e preciso (massimo 2-3 frasi)
 - Usa un tono informale e amichevole
 - NON inventare informazioni
-- Cita sempre la fonte alla fine della risposta"""
+- NON aggiungere righe "Fonte:" né riferimenti tipo "Articolo 1": le fonti vengono aggiunte automaticamente dal sistema dopo la tua risposta"""
 
         try:
             answer = self._chat(
