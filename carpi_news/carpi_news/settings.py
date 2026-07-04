@@ -347,9 +347,8 @@ OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
 # API OpenAI-compatibile: https://openrouter.ai/api/v1
 OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY', '')
 OPENROUTER_BASE_URL = os.getenv('OPENROUTER_BASE_URL', 'https://openrouter.ai/api/v1')
-# Slug modello da openrouter.ai/models (es. 'deepseek/deepseek-chat').
-# VERIFICARE lo slug esatto della variante scelta sul sito OpenRouter.
-OPENROUTER_CHATBOT_MODEL = os.getenv('OPENROUTER_CHATBOT_MODEL', 'deepseek/deepseek-chat')
+# Slug modello da openrouter.ai/models per il chatbot.
+OPENROUTER_CHATBOT_MODEL = os.getenv('OPENROUTER_CHATBOT_MODEL', 'deepseek/deepseek-v4-pro')
 # Provider del chatbot: 'anthropic' (default, comportamento invariato) | 'openrouter'
 CHATBOT_PROVIDER = os.getenv('CHATBOT_PROVIDER', 'anthropic').lower()
 # Modello OpenRouter per la generazione articoli (canary, attivato per-monitor
