@@ -3262,50 +3262,76 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
             self.logger.info(f"Inizio generazione AI articolo: '{article_data['title']}' (web search: {enable_web_search})")
             self.logger.warning("[DEBUG] Preparazione chiamata API Anthropic...")
 
-            # Prima chiamata ad Anthropic
-            # Se tools è vuoto, non passarlo all'API
-            api_params = {
-                "system": system_prompt,
-                "max_tokens": 4096,
-                "messages": [{"role": "user", "content": user_content}],
-                "model": "claude-sonnet-4-6"
-            }
-            if tools:
-                api_params["tools"] = tools
+            # --- Selezione provider AI ---
+            # Default globale da settings.AI_ARTICLE_PROVIDER (env AI_ARTICLE_PROVIDER);
+            # override per-monitor con config_data "ai_provider".
+            default_provider = getattr(settings, 'AI_ARTICLE_PROVIDER', 'anthropic')
+            provider = (self.config.config.get('ai_provider') or default_provider).lower()
+            articolo_testo = None
+            used_sources = []
+            ai_model_used = None
 
-            self.logger.warning("[DEBUG] Chiamata client.messages.create...")
-            message = client.messages.create(**api_params)
-            self.logger.warning("[DEBUG] Risposta API ricevuta")
+            if provider == 'openrouter':
+                or_result = None
+                try:
+                    or_result = self._generate_with_openrouter(
+                        system_prompt, user_content, web_search_tool_def, article_data
+                    )
+                except Exception as or_err:
+                    self.logger.error(f"[OpenRouter] Generazione fallita, fallback ad Anthropic: {or_err}", exc_info=True)
+                    or_result = None
+                if or_result and or_result[0] and or_result[0].strip():
+                    articolo_testo, used_sources, ai_model_used = or_result
+                    self.logger.info(f"[OpenRouter] Articolo generato con {ai_model_used}")
+                else:
+                    self.logger.warning("[OpenRouter] Nessun contenuto valido, fallback ad Anthropic")
 
-            # Traccia utilizzo API (prima chiamata)
-            try:
-                from home.api_usage_tracker import APIUsageTracker
-                APIUsageTracker.track_anthropic(
-                    operation='generate_article',
-                    model=api_params["model"],
-                    input_tokens=message.usage.input_tokens,
-                    output_tokens=message.usage.output_tokens,
-                    related_article=None,  # Articolo non ancora creato
-                    success=True
+            # Path Anthropic: default, oppure fallback se OpenRouter non ha prodotto nulla
+            if not (articolo_testo and articolo_testo.strip()):
+                # Prima chiamata ad Anthropic
+                # Se tools è vuoto, non passarlo all'API
+                api_params = {
+                    "system": system_prompt,
+                    "max_tokens": 4096,
+                    "messages": [{"role": "user", "content": user_content}],
+                    "model": "claude-sonnet-4-6"
+                }
+                if tools:
+                    api_params["tools"] = tools
+
+                self.logger.warning("[DEBUG] Chiamata client.messages.create...")
+                message = client.messages.create(**api_params)
+                self.logger.warning("[DEBUG] Risposta API ricevuta")
+
+                # Traccia utilizzo API (prima chiamata)
+                try:
+                    from home.api_usage_tracker import APIUsageTracker
+                    APIUsageTracker.track_anthropic(
+                        operation='generate_article',
+                        model=api_params["model"],
+                        input_tokens=message.usage.input_tokens,
+                        output_tokens=message.usage.output_tokens,
+                        related_article=None,  # Articolo non ancora creato
+                        success=True
+                    )
+                except Exception as e:
+                    self.logger.warning(f"Errore nel tracciare utilizzo API: {e}")
+
+                # Modello AI usato (di default Anthropic)
+                ai_model_used = api_params["model"]
+
+                # Processa risposta e gestisci tool use conversazionale
+                self.logger.warning("[DEBUG] Inizio _process_conversational_response...")
+                response_data = self._process_conversational_response(
+                    client, message, system_prompt, user_content, tools, web_sources, article_data, web_search_tool_def
                 )
-            except Exception as e:
-                self.logger.warning(f"Errore nel tracciare utilizzo API: {e}")
+                self.logger.warning(f"[DEBUG] _process_conversational_response completato, response_data len: {len(response_data)}")
 
-            # Modello AI usato (di default Anthropic)
-            ai_model_used = api_params["model"]
-
-            # Processa risposta e gestisci tool use conversazionale
-            self.logger.warning("[DEBUG] Inizio _process_conversational_response...")
-            response_data = self._process_conversational_response(
-                client, message, system_prompt, user_content, tools, web_sources, article_data, web_search_tool_def
-            )
-            self.logger.warning(f"[DEBUG] _process_conversational_response completato, response_data len: {len(response_data)}")
-
-            # Gestisci tuple di 2 o 3 elementi (fallback OpenAI aggiunge modello)
-            if len(response_data) == 3:
-                articolo_testo, used_sources, ai_model_used = response_data
-            else:
-                articolo_testo, used_sources = response_data
+                # Gestisci tuple di 2 o 3 elementi (fallback OpenAI aggiunge modello)
+                if len(response_data) == 3:
+                    articolo_testo, used_sources, ai_model_used = response_data
+                else:
+                    articolo_testo, used_sources = response_data
 
             if not articolo_testo:
                 raise Exception("Nessun contenuto ricevuto dalla conversazione AI")
@@ -3692,6 +3718,167 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
                 return fallback_content, web_sources
             except:
                 return "", web_sources
+
+    def _track_openrouter_usage(self, operation: str, model: str, resp):
+        """Traccia l'utilizzo di una chiamata OpenRouter (formato usage OpenAI)."""
+        try:
+            from home.api_usage_tracker import APIUsageTracker
+            u = getattr(resp, 'usage', None)
+            APIUsageTracker.track_openrouter(
+                operation=operation,
+                model=model,
+                input_tokens=getattr(u, 'prompt_tokens', 0) or 0,
+                output_tokens=getattr(u, 'completion_tokens', 0) or 0,
+                related_article=None,
+                success=True,
+            )
+        except Exception as e:
+            self.logger.warning(f"Errore nel tracciare utilizzo OpenRouter: {e}")
+
+    def _run_article_web_search(self, query: str, max_results: int, web_sources: List) -> str:
+        """Esegue una ricerca web per il loop OpenRouter e ne traccia l'uso.
+
+        Aggiorna web_sources in-place e ritorna i risultati formattati (o un
+        messaggio non bloccante se la ricerca fallisce/è vuota).
+        """
+        from home.web_search_tool import web_search_tool
+        self.logger.info(f"[OpenRouter] Ricerca web: '{query}'")
+        try:
+            results = web_search_tool.search_with_content(query, max_results, fetch_content=True)
+        except Exception as e:
+            self.logger.warning(f"[OpenRouter] web search fallita '{query}': {e}")
+            return "Ricerca web non disponibile al momento. Procedi con le informazioni disponibili."
+        if not results:
+            return "Nessun risultato dalla ricerca. Procedi con le informazioni disponibili."
+        try:
+            from home.api_usage_tracker import APIUsageTracker
+            APIUsageTracker.track_google_search(
+                operation='web_search_for_article',
+                num_queries=1,
+                related_article=None,
+                success=True,
+            )
+        except Exception as e:
+            self.logger.warning(f"[OpenRouter] Errore tracking Google Search: {e}")
+        for result in results:
+            if result['url'] not in [s['url'] for s in web_sources]:
+                web_sources.append({
+                    'url': result['url'],
+                    'title': result.get('page_title', result['title']),
+                    'query_used': query,
+                })
+        return web_search_tool.format_results_with_content_for_ai(results)
+
+    def _generate_with_openrouter(self, system_prompt: str, initial_user_content: str,
+                                  web_search_tool_def: Dict, article_data: Dict[str, Any]):
+        """Genera l'articolo via OpenRouter (Chat Completions) con loop tool-use e
+        finalizzazione forzata, replicando il comportamento del path Anthropic.
+
+        Ritorna (contenuto, web_sources, model_name) oppure None su errore/contenuto vuoto,
+        così che il chiamante possa ricorrere al fallback Anthropic.
+        """
+        from openai import OpenAI
+        from django.conf import settings
+
+        api_key = getattr(settings, 'OPENROUTER_API_KEY', '')
+        if not api_key:
+            self.logger.error("[OpenRouter] OPENROUTER_API_KEY mancante: impossibile generare")
+            return None
+
+        model = (self.config.config.get('ai_openrouter_model')
+                 or getattr(settings, 'OPENROUTER_ARTICLE_MODEL', 'deepseek/deepseek-v4-pro'))
+        client = OpenAI(
+            base_url=getattr(settings, 'OPENROUTER_BASE_URL', 'https://openrouter.ai/api/v1'),
+            api_key=api_key,
+            default_headers={
+                'HTTP-Referer': getattr(settings, 'SITE_URL', 'https://ombradelportico.it'),
+                'X-Title': 'Ombra del Portico',
+            },
+        )
+
+        # Tool web_search in formato OpenAI (function calling)
+        tools = None
+        if web_search_tool_def:
+            tools = [{
+                "type": "function",
+                "function": {
+                    "name": web_search_tool_def["name"],
+                    "description": web_search_tool_def["description"],
+                    "parameters": web_search_tool_def["input_schema"],
+                },
+            }]
+
+        web_sources = []
+        conversation = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": initial_user_content},
+        ]
+        max_iterations = 5
+        natural_end = False
+        text = ''
+
+        for iteration in range(max_iterations):
+            params = {"model": model, "max_tokens": 4096, "messages": conversation}
+            if tools:
+                params["tools"] = tools
+                params["tool_choice"] = "auto"
+            limit_conversation_messages(params["messages"], self.logger)
+            resp = client.chat.completions.create(**params)
+            self._track_openrouter_usage('generate_article_openrouter', model, resp)
+
+            msg = resp.choices[0].message
+            tool_calls = getattr(msg, 'tool_calls', None)
+            if not tool_calls:
+                text = msg.content or ''
+                natural_end = True
+                self.logger.info(f"[OpenRouter] Conversazione completata dopo {iteration} iterazioni")
+                break
+
+            conversation.append({
+                "role": "assistant",
+                "content": msg.content or "",
+                "tool_calls": [{
+                    "id": tc.id,
+                    "type": "function",
+                    "function": {"name": tc.function.name, "arguments": tc.function.arguments},
+                } for tc in tool_calls],
+            })
+            for tc in tool_calls:
+                try:
+                    args = json.loads(tc.function.arguments or "{}")
+                except Exception:
+                    args = {}
+                query = args.get("query", "")
+                formatted = self._run_article_web_search(query, args.get("max_results", 3), web_sources)
+                conversation.append({
+                    "role": "tool",
+                    "tool_call_id": tc.id,
+                    "content": formatted,
+                })
+
+        # Finalizzazione forzata (come produzione): stesura finale senza tool
+        if not natural_end:
+            self.logger.warning(f"[OpenRouter] Limite {max_iterations} iterazioni raggiunto, forzo stesura finale")
+            conversation.append({
+                "role": "user",
+                "content": (
+                    "Hai raggiunto il limite massimo di ricerche. Non usare altri strumenti. "
+                    "Genera ora l'articolo finale usando solo le informazioni disponibili e "
+                    "rispondi esclusivamente con il JSON richiesto dal system prompt."
+                ),
+            })
+            params = {"model": model, "max_tokens": 4096, "messages": conversation}
+            if tools:
+                params["tools"] = tools
+                params["tool_choice"] = "none"
+            limit_conversation_messages(params["messages"], self.logger)
+            resp = client.chat.completions.create(**params)
+            self._track_openrouter_usage('generate_article_openrouter_final', model, resp)
+            text = resp.choices[0].message.content or ''
+
+        if not (text and text.strip()):
+            return None
+        return text, web_sources, model
 
     def _generate_with_openai_fallback(self, article_data: Dict[str, Any], system_prompt: str, web_search_tool_def: Dict = None) -> tuple[str, list, str]:
         """Fallback a OpenAI GPT-4 Turbo quando Anthropic è sovraccarico

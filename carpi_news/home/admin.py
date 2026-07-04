@@ -1148,7 +1148,8 @@ class APIUsageAdmin(admin.ModelAdmin):
             total_calls=Count('id'),
             anthropic_calls=Count('id', filter=Q(api_type='anthropic')),
             google_calls=Count('id', filter=Q(api_type='google_search')),
-            openai_calls=Count('id', filter=Q(api_type='openai'))
+            openai_calls=Count('id', filter=Q(api_type='openai')),
+            openrouter_calls=Count('id', filter=Q(api_type='openrouter'))
         )
 
         # Stats ultimi 7 giorni
@@ -1203,9 +1204,11 @@ class APIUsageAdmin(admin.ModelAdmin):
             total_calls=Count('id'),
             anthropic_cost=Sum(F('cost_total'), filter=Q(api_type='anthropic')),
             openai_cost=Sum(F('cost_total'), filter=Q(api_type='openai')),
+            openrouter_cost=Sum(F('cost_total'), filter=Q(api_type='openrouter')),
             google_cost=Sum(F('cost_total'), filter=Q(api_type='google_search')),
             anthropic_calls=Count('id', filter=Q(api_type='anthropic')),
             openai_calls=Count('id', filter=Q(api_type='openai')),
+            openrouter_calls=Count('id', filter=Q(api_type='openrouter')),
             google_calls=Count('id', filter=Q(api_type='google_search')),
             total_input_tokens=Sum('input_tokens'),
             total_output_tokens=Sum('output_tokens'),
@@ -1232,10 +1235,12 @@ class APIUsageAdmin(admin.ModelAdmin):
                     'date': date_str,
                     'anthropic_cost': 0,
                     'openai_cost': 0,
+                    'openrouter_cost': 0,
                     'google_cost': 0,
                     'total_cost': 0,
                     'anthropic_calls': 0,
                     'openai_calls': 0,
+                    'openrouter_calls': 0,
                     'google_calls': 0,
                     'total_calls': 0
                 }

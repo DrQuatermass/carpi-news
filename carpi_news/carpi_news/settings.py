@@ -287,7 +287,7 @@ YOUTUBE_PLAYLIST_MONITOR = {
 }
 
 # Email Configuration
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_BACKEND = os.getenv('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
 EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
 EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
 EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True').lower() in ['true', '1', 'yes']
@@ -342,6 +342,23 @@ if not DEBUG:
 # AI API Configuration
 ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY', '')
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
+
+# OpenRouter (POC: attualmente usato solo dal chatbot)
+# API OpenAI-compatibile: https://openrouter.ai/api/v1
+OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY', '')
+OPENROUTER_BASE_URL = os.getenv('OPENROUTER_BASE_URL', 'https://openrouter.ai/api/v1')
+# Slug modello da openrouter.ai/models (es. 'deepseek/deepseek-chat').
+# VERIFICARE lo slug esatto della variante scelta sul sito OpenRouter.
+OPENROUTER_CHATBOT_MODEL = os.getenv('OPENROUTER_CHATBOT_MODEL', 'deepseek/deepseek-chat')
+# Provider del chatbot: 'anthropic' (default, comportamento invariato) | 'openrouter'
+CHATBOT_PROVIDER = os.getenv('CHATBOT_PROVIDER', 'anthropic').lower()
+# Modello OpenRouter per la generazione articoli (canary, attivato per-monitor
+# via config_data "ai_provider": "openrouter"; override per-monitor "ai_openrouter_model").
+OPENROUTER_ARTICLE_MODEL = os.getenv('OPENROUTER_ARTICLE_MODEL', 'deepseek/deepseek-v4-pro')
+# Provider di default per la generazione articoli quando il monitor non specifica
+# "ai_provider" nel config_data. 'anthropic' (default sicuro) | 'openrouter'.
+# Il monitor può sempre fare override per-monitor con config_data "ai_provider".
+AI_ARTICLE_PROVIDER = os.getenv('AI_ARTICLE_PROVIDER', 'anthropic').lower()
 
 # PayPal Payment Configuration
 PAYPAL_MODE = os.getenv('PAYPAL_MODE', 'sandbox')  # sandbox or live

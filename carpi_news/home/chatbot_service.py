@@ -21,8 +21,82 @@ logger = logging.getLogger(__name__)
 class ChatbotService:
     """Servizio per gestire le conversazioni del chatbot"""
 
+    # Modello Claude usato quando provider='anthropic'
+    ANTHROPIC_MODEL = "claude-3-5-haiku-20241022"
+
     def __init__(self):
+        # Client Anthropic sempre disponibile (default + fallback)
         self.client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+
+        # Selezione provider (POC OpenRouter). Default 'anthropic' = comportamento invariato.
+        self.provider = getattr(settings, 'CHATBOT_PROVIDER', 'anthropic')
+        self.or_client = None
+        self.model = self.ANTHROPIC_MODEL
+
+        if self.provider == 'openrouter':
+            or_key = getattr(settings, 'OPENROUTER_API_KEY', '')
+            if or_key:
+                from openai import OpenAI
+                self.or_client = OpenAI(
+                    base_url=getattr(settings, 'OPENROUTER_BASE_URL', 'https://openrouter.ai/api/v1'),
+                    api_key=or_key,
+                    default_headers={
+                        'HTTP-Referer': 'https://ombradelportico.it',
+                        'X-Title': 'Ombra del Portico',
+                    },
+                )
+                self.model = getattr(settings, 'OPENROUTER_CHATBOT_MODEL', 'deepseek/deepseek-chat')
+                logger.info(f"Chatbot: provider OpenRouter attivo, modello {self.model}")
+            else:
+                # Provider richiesto ma chiave assente: torna ad Anthropic per sicurezza
+                logger.warning("CHATBOT_PROVIDER=openrouter ma OPENROUTER_API_KEY assente: uso Anthropic")
+                self.provider = 'anthropic'
+
+    def _chat(self, system_prompt, user_content, max_tokens, temperature, operation):
+        """
+        Chiamata LLM astratta sul provider attivo.
+
+        Ritorna il testo della risposta (già .strip()) e traccia l'utilizzo.
+        Con provider='anthropic' il comportamento è identico al codice originale.
+        Eventuali eccezioni sono propagate ai chiamanti (che hanno già i loro fallback).
+        """
+        if self.provider == 'openrouter' and self.or_client is not None:
+            response = self.or_client.chat.completions.create(
+                model=self.model,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_content},
+                ],
+            )
+            text = (response.choices[0].message.content or "").strip()
+            usage = getattr(response, 'usage', None)
+            APIUsageTracker.track_openrouter(
+                operation=operation,
+                model=self.model,
+                input_tokens=getattr(usage, 'prompt_tokens', 0) or 0,
+                output_tokens=getattr(usage, 'completion_tokens', 0) or 0,
+                success=True,
+            )
+            return text
+
+        # Default: Anthropic
+        message = self.client.messages.create(
+            model=self.model,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_content}],
+        )
+        APIUsageTracker.track_anthropic(
+            operation=operation,
+            model=self.model,
+            input_tokens=message.usage.input_tokens,
+            output_tokens=message.usage.output_tokens,
+            success=True,
+        )
+        return message.content[0].text.strip()
 
     def process_message(self, user_message, conversation_history=None):
         """
@@ -122,28 +196,14 @@ Esempi:
 """
 
         try:
-            message = self.client.messages.create(
-                model="claude-3-5-haiku-20241022",  # Modello veloce ed economico
+            # Bassa temperatura per risposte più deterministiche (JSON)
+            response_text = self._chat(
+                system_prompt=system_prompt,
+                user_content=user_message,
                 max_tokens=500,
-                temperature=0.1,  # Bassa temperatura per risposte più deterministiche
-                system=system_prompt,
-                messages=[{
-                    "role": "user",
-                    "content": user_message
-                }]
-            )
-
-            # Traccia utilizzo API
-            APIUsageTracker.track_anthropic(
+                temperature=0.1,
                 operation='chatbot_intent_analysis',
-                model='claude-3-5-haiku-20241022',
-                input_tokens=message.usage.input_tokens,
-                output_tokens=message.usage.output_tokens,
-                success=True
             )
-
-            # Estrai il JSON dalla risposta
-            response_text = message.content[0].text.strip()
 
             # Rimuovi markdown code blocks se presenti
             if response_text.startswith('```'):
@@ -612,27 +672,13 @@ Domanda: "Cosa è successo ieri in corso Cabassi?"
 Risposta: "Un episodio di cronaca ha coinvolto corso Cabassi ieri, con intervento delle forze dell'ordine."""
 
         try:
-            message = self.client.messages.create(
-                model="claude-3-5-haiku-20241022",
+            intro = self._chat(
+                system_prompt=system_prompt,
+                user_content=f"Domanda: {question}\n\nArticoli:\n{context}\n\nIntroduzione breve (1-2 frasi):",
                 max_tokens=150,
                 temperature=0.3,
-                system=system_prompt,
-                messages=[{
-                    "role": "user",
-                    "content": f"Domanda: {question}\n\nArticoli:\n{context}\n\nIntroduzione breve (1-2 frasi):"
-                }]
-            )
-
-            # Traccia utilizzo API
-            APIUsageTracker.track_anthropic(
                 operation='chatbot_brief_intro',
-                model='claude-3-5-haiku-20241022',
-                input_tokens=message.usage.input_tokens,
-                output_tokens=message.usage.output_tokens,
-                success=True
             )
-
-            intro = message.content[0].text.strip()
             return intro
 
         except Exception as e:
@@ -682,32 +728,18 @@ REGOLE IMPORTANTI:
 - Cita sempre la fonte alla fine della risposta"""
 
         try:
-            message = self.client.messages.create(
-                model="claude-3-5-haiku-20241022",  # Stesso modello dell'intent
-                max_tokens=500,
-                temperature=0.3,
-                system=system_prompt,
-                messages=[{
-                    "role": "user",
-                    "content": f"""Domanda: {question}
+            answer = self._chat(
+                system_prompt=system_prompt,
+                user_content=f"""Domanda: {question}
 
 Articoli disponibili:
 {context}
 
-Rispondi alla domanda in modo conciso."""
-                }]
-            )
-
-            # Traccia utilizzo API
-            APIUsageTracker.track_anthropic(
+Rispondi alla domanda in modo conciso.""",
+                max_tokens=500,
+                temperature=0.3,
                 operation='chatbot_question_answering',
-                model='claude-3-5-haiku-20241022',
-                input_tokens=message.usage.input_tokens,
-                output_tokens=message.usage.output_tokens,
-                success=True
             )
-
-            answer = message.content[0].text.strip()
 
             # Aggiungi fonte se non già presente
             if articles_to_read == 1 and not any(src in answer for src in sources):

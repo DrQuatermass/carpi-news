@@ -56,6 +56,18 @@ class APIUsageTracker:
         },
     }
 
+    # Prezzi OpenRouter (USD per million tokens)
+    # ATTENZIONE: valori indicativi - VERIFICARE su https://openrouter.ai/models
+    # I prezzi OpenRouter cambiano spesso; aggiornare questa tabella dopo la scelta.
+    OPENROUTER_PRICING = {
+        'deepseek/deepseek-chat': {
+            'input': 0.28,
+            'output': 1.10
+        },
+    }
+    # Fallback se il modello non è in tabella (evita crash, ma il costo sarà impreciso)
+    OPENROUTER_PRICING_DEFAULT = {'input': 0.30, 'output': 1.20}
+
     # Prezzo Google Custom Search API
     # https://developers.google.com/custom-search/v1/overview
     # 100 query gratuite al giorno, poi $5 per 1000 queries
@@ -194,6 +206,65 @@ class APIUsageTracker:
 
         except Exception as e:
             logger.error(f"Errore nel tracciare utilizzo API OpenAI: {e}", exc_info=True)
+            return None
+
+    @classmethod
+    def track_openrouter(cls, operation, model, input_tokens, output_tokens,
+                         related_article=None, success=True, error_message=''):
+        """
+        Traccia una chiamata API OpenRouter e calcola i costi
+
+        NOTA: i prezzi in OPENROUTER_PRICING sono indicativi - verificare su
+        openrouter.ai/models e aggiornare la tabella dopo la scelta del modello.
+        Il record viene salvato con api_type='openrouter' (valido a livello DB
+        anche senza aggiungerlo a API_TYPES, quindi nessuna migrazione richiesta).
+
+        Args:
+            operation: Nome dell'operazione (es. 'chatbot_intent_analysis')
+            model: Slug modello OpenRouter (es. 'deepseek/deepseek-chat')
+            input_tokens: Numero di token di input
+            output_tokens: Numero di token di output
+            related_article: Istanza di Articolo correlato (opzionale)
+            success: Se la chiamata è riuscita
+            error_message: Messaggio di errore se fallita
+
+        Returns:
+            Istanza APIUsage creata
+        """
+        try:
+            from home.models import APIUsage
+
+            pricing = cls.OPENROUTER_PRICING.get(model, cls.OPENROUTER_PRICING_DEFAULT)
+
+            input_cost = Decimal(str((input_tokens / 1_000_000) * pricing['input']))
+            output_cost = Decimal(str((output_tokens / 1_000_000) * pricing['output']))
+
+            input_cost = input_cost.quantize(Decimal('0.000001'))
+            output_cost = output_cost.quantize(Decimal('0.000001'))
+
+            usage = APIUsage.objects.create(
+                api_type='openrouter',
+                operation=operation,
+                model=model,
+                input_tokens=input_tokens,
+                output_tokens=output_tokens,
+                input_cost=input_cost,
+                output_cost=output_cost,
+                cost_total=input_cost + output_cost,
+                related_article=related_article,
+                success=success,
+                error_message=error_message
+            )
+
+            logger.info(f"API OpenRouter tracciata: {operation} - {model} - "
+                       f"Input: {input_tokens} tok (${input_cost}) - "
+                       f"Output: {output_tokens} tok (${output_cost}) - "
+                       f"Totale: ${usage.cost_total}")
+
+            return usage
+
+        except Exception as e:
+            logger.error(f"Errore nel tracciare utilizzo API OpenRouter: {e}", exc_info=True)
             return None
 
     @classmethod
