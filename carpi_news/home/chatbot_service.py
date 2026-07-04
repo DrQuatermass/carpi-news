@@ -116,6 +116,9 @@ class ChatbotService:
             # Analizza l'intento dell'utente usando Claude
             intent = self._analyze_intent(user_message)
 
+            # Rete di sicurezza: domande fattuali a volte classificate male come 'search'
+            intent = self._coerce_question_intent(user_message, intent)
+
             logger.info(f"Chatbot intent: {intent}")
 
             # Cerca articoli in base all'intento
@@ -147,6 +150,42 @@ class ChatbotService:
                 'articles': [],
                 'intent': {}
             }
+
+    # Parole interrogative che identificano una domanda fattuale
+    _QUESTION_STARTERS = (
+        'chi', 'quando', 'dove', 'perché', 'perche', 'quanto', 'quanti',
+        'quante', 'quanta', 'quale', 'quali', 'come', "cos'è", 'cosa', 'che',
+    )
+    # Frasi che sembrano domande ma sono in realtà ricerche di eventi/attività
+    _QUESTION_EXCLUSIONS = ('cosa fare', 'che fare', 'cosa c', 'cosa succede stasera')
+
+    def _coerce_question_intent(self, message, intent):
+        """Forza request_type='question' quando il messaggio è chiaramente una domanda
+        ma l'AI l'ha classificato diversamente (es. 'Chi è il sindaco di Carpi').
+        """
+        try:
+            if not isinstance(intent, dict):
+                return intent
+            m = (message or '').strip().lower()
+            if not m:
+                return intent
+            # Frasi-evento ("cosa fare stasera"): sono ricerche di eventi, non domande
+            if any(m.startswith(x) for x in self._QUESTION_EXCLUSIONS):
+                if intent.get('request_type') == 'question':
+                    intent['request_type'] = 'search'
+                return intent
+            if intent.get('request_type') == 'question':
+                return intent
+            first_word = m.split()[0]
+            looks_like_question = m.endswith('?') or first_word in self._QUESTION_STARTERS
+            if looks_like_question:
+                intent['request_type'] = 'question'
+                if not intent.get('articles_needed') or intent.get('articles_needed', 0) < 1:
+                    intent['articles_needed'] = 5
+                logger.info(f"Intent forzato a 'question' da euristica per: '{message}'")
+        except Exception as e:
+            logger.warning(f"Errore in _coerce_question_intent: {e}")
+        return intent
 
     def _analyze_intent(self, user_message):
         """
@@ -212,18 +251,27 @@ Esempi:
             )
 
             # Rimuovi markdown code blocks se presenti
+            response_text = response_text.strip()
             if response_text.startswith('```'):
-                response_text = re.sub(r'^```json?\s*|\s*```$', '', response_text, flags=re.MULTILINE)
+                response_text = re.sub(r'^```json?\s*|\s*```$', '', response_text, flags=re.MULTILINE).strip()
 
-            intent = json.loads(response_text)
+            # Parser robusto: se il modello aggiunge testo attorno al JSON,
+            # estrai comunque il primo oggetto {...} invece di cadere sul fallback regex
+            try:
+                intent = json.loads(response_text)
+            except json.JSONDecodeError:
+                match = re.search(r'\{.*\}', response_text, flags=re.DOTALL)
+                if not match:
+                    raise
+                intent = json.loads(match.group(0))
 
             logger.info(f"Intent estratto da '{user_message}': {intent}")
             logger.info(f"Keywords estratte: {intent.get('keywords', [])}")
             return intent
 
         except Exception as e:
-            logger.error(f"Errore analisi intent: {e}", exc_info=True)
-            # Fallback: analisi semplice basata su regex
+            # Fallback gestito (es. il modello non ha restituito JSON valido): analisi regex semplice
+            logger.warning(f"Analisi intent AI non riuscita, uso fallback semplice: {e}")
             return self._simple_intent_analysis(user_message)
 
     def _simple_intent_analysis(self, message):
