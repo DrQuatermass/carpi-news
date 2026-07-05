@@ -25,6 +25,10 @@ class APIUsageTracker:
             'input': 1.00,   # $1 per MTok
             'output': 5.00   # $5 per MTok
         },
+        'claude-haiku-4-5-20251001': {
+            'input': 1.00,   # $1 per MTok
+            'output': 5.00   # $5 per MTok
+        },
         'claude-3-opus-20240229': {
             'input': 15.00,
             'output': 75.00

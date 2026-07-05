@@ -21,8 +21,8 @@ logger = logging.getLogger(__name__)
 class ChatbotService:
     """Servizio per gestire le conversazioni del chatbot"""
 
-    # Modello Claude usato quando provider='anthropic'
-    ANTHROPIC_MODEL = "claude-3-5-haiku-20241022"
+    # Modello Claude usato quando provider='anthropic' (e come fallback di OpenRouter)
+    ANTHROPIC_MODEL = "claude-haiku-4-5-20251001"
 
     # Numero massimo di articoli restituiti al frontend (evita di passarne migliaia)
     MAX_ARTICLES_DISPLAY = 10
