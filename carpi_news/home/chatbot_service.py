@@ -64,29 +64,42 @@ class ChatbotService:
         Eventuali eccezioni sono propagate ai chiamanti (che hanno già i loro fallback).
         """
         if self.provider == 'openrouter' and self.or_client is not None:
-            response = self.or_client.chat.completions.create(
-                model=self.model,
-                max_tokens=max_tokens,
-                temperature=temperature,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_content},
-                ],
-            )
-            text = (response.choices[0].message.content or "").strip()
-            usage = getattr(response, 'usage', None)
-            APIUsageTracker.track_openrouter(
-                operation=operation,
-                model=self.model,
-                input_tokens=getattr(usage, 'prompt_tokens', 0) or 0,
-                output_tokens=getattr(usage, 'completion_tokens', 0) or 0,
-                success=True,
-            )
-            return text
+            try:
+                response = self.or_client.chat.completions.create(
+                    model=self.model,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_content},
+                    ],
+                    # DeepSeek V4 è un modello "reasoning": senza disabilitarlo il
+                    # ragionamento consuma max_tokens e il contenuto torna vuoto/None
+                    extra_body={"reasoning": {"enabled": False}},
+                )
+                text = (response.choices[0].message.content or "").strip()
+                usage = getattr(response, 'usage', None)
+                APIUsageTracker.track_openrouter(
+                    operation=operation,
+                    model=self.model,
+                    input_tokens=getattr(usage, 'prompt_tokens', 0) or 0,
+                    output_tokens=getattr(usage, 'completion_tokens', 0) or 0,
+                    success=bool(text),
+                )
+                if text:
+                    return text
+                logger.warning(f"OpenRouter contenuto vuoto per '{operation}', fallback ad Anthropic")
+            except Exception as e:
+                logger.warning(f"OpenRouter fallito per '{operation}' ({e}), fallback ad Anthropic")
+            # Fallback a Claude se OpenRouter fallisce o restituisce contenuto vuoto
+            return self._chat_anthropic(system_prompt, user_content, max_tokens, temperature, operation)
 
-        # Default: Anthropic
+        return self._chat_anthropic(system_prompt, user_content, max_tokens, temperature, operation)
+
+    def _chat_anthropic(self, system_prompt, user_content, max_tokens, temperature, operation):
+        """Chiamata a Claude: provider di default e fallback quando OpenRouter fallisce."""
         message = self.client.messages.create(
-            model=self.model,
+            model=self.ANTHROPIC_MODEL,
             max_tokens=max_tokens,
             temperature=temperature,
             system=system_prompt,
@@ -94,7 +107,7 @@ class ChatbotService:
         )
         APIUsageTracker.track_anthropic(
             operation=operation,
-            model=self.model,
+            model=self.ANTHROPIC_MODEL,
             input_tokens=message.usage.input_tokens,
             output_tokens=message.usage.output_tokens,
             success=True,
