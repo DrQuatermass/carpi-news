@@ -3210,25 +3210,23 @@ class UniversalNewsMonitor:
             if enable_web_search:
                 web_search_tool_def = {
                     "name": "web_search",
-                    "description": """MANDATORY: Always search the web to verify facts and enrich articles with additional information.
+                    "description": """OBBLIGATORIO: usa la ricerca web per verificare fatti (nomi, date, luoghi, organizzazioni) e arricchire l'articolo con contesto e dettagli.
 
-                    You MUST use this tool for EVERY article to:
-                    - VERIFY dates, names, places, and facts mentioned in the article
-                    - FIND additional details about people, organizations, or events
-                    - DISCOVER related context, background, or recent developments
-                    - CHECK for updates or corrections to the information provided
-                    - ENRICH the article with relevant statistics, quotes, or related news
+                    COME SCRIVERE LA QUERY (decisivo per ottenere risultati):
+                    - BREVE: 2-4 parole chiave essenziali (nomi propri, luogo, tema). MAI una frase lunga.
+                    - NON attaccare l'anno o numeri ai nomi: scrivi "Manuela Ghizzoni Fondazione Fossoli", NON "Manuela Ghizzoni2026".
+                    - Parti generico: le query troppo specifiche restituiscono ZERO risultati. Meglio poche parole giuste.
+                    - Esempi:
+                        BUONA: "Yoga Radio Bruno Estate Carpi"  |  CATTIVA: "Yoga Radio Bruno Estate 2026 Carpi piazza Martiri luglio"
+                        BUONA: "Orchestra Tangenziale Villotti documentario"  |  CATTIVA: "Doc orchestra ritmica tangenziale raccordi Villotti Negroni anziani ottantenni"
 
-                    ALWAYS perform at least one search to fact-check the article content.
-                    Then decide whether the search results are relevant enough to include as sources.
-                    Focus on factual verification and content enrichment, not just style improvements.
-                    Search for specific details that can make the article more informative and accurate.""",
+                    Fai almeno una ricerca per il fact-checking, poi decidi se i risultati sono abbastanza pertinenti da includerli come fonti (se non lo sono, non includerli).""",
                     "input_schema": {
                         "type": "object",
                         "properties": {
                             "query": {
                                 "type": "string",
-                                "description": "Specific search query related to the article content"
+                                "description": "Query BREVE: 2-4 parole chiave (nomi, luogo, tema). No frasi lunghe, no anno attaccato ai nomi."
                             },
                             "max_results": {
                                 "type": "integer",
@@ -3252,7 +3250,7 @@ Contenuto principale da rielaborare:
 {links_section}
 
 Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
-{f"OBBLIGATORIO: Devi SEMPRE usare web_search almeno una volta per verificare fatti e approfondire l'articolo. Cerca informazioni specifiche sui nomi, luoghi, date, organizzazioni e eventi menzionati. Dopo aver fatto le ricerche, decidi autonomamente se i risultati sono abbastanza rilevanti e specifici da includere come fonti, oppure se è meglio non includere fonti generiche o poco pertinenti." if enable_web_search else "Lavora solo con il contenuto fornito."}"""
+{f"OBBLIGATORIO: Devi SEMPRE usare web_search almeno una volta per verificare fatti e approfondire l'articolo. Usa query BREVI (2-4 parole chiave: nomi propri, luogo, tema), non frasi lunghe e senza attaccare l'anno ai nomi. Dopo aver fatto le ricerche, decidi autonomamente se i risultati sono abbastanza rilevanti e specifici da includere come fonti, oppure se è meglio non includere fonti generiche o poco pertinenti." if enable_web_search else "Lavora solo con il contenuto fornito."}"""
 
             user_content = truncate_ai_source_text(user_content, self.logger, label="Messaggio user generate_article")
 
