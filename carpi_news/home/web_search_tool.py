@@ -423,6 +423,9 @@ class WebSearchTool:
                 soup = BeautifulSoup(response.text, 'html.parser')
                 # Estrai contenuto principale
                 content_data = self._extract_main_content(soup, url)
+                # Estrai data di pubblicazione (per valutare la freschezza della fonte)
+                if content_data:
+                    content_data['published_date'] = self._extract_publish_date(soup)
 
             if content_data:
                 # Cache il risultato
@@ -685,6 +688,47 @@ class WebSearchTool:
             self.logger.error(f"Errore euristica contenuto: {e}")
             return None
 
+    def _extract_publish_date(self, soup: BeautifulSoup) -> Optional[str]:
+        """Estrae la data di pubblicazione (YYYY-MM-DD) dai meta tag/JSON-LD comuni.
+
+        Serve all'AI per valutare la freschezza della fonte ed evitare di
+        presentare informazioni datate come attuali. Ritorna None se non trovata.
+        """
+        try:
+            meta_selectors = [
+                {'property': 'article:published_time'},
+                {'property': 'article:modified_time'},
+                {'itemprop': 'datePublished'},
+                {'name': 'date'},
+                {'name': 'pubdate'},
+                {'name': 'publish-date'},
+                {'property': 'og:updated_time'},
+            ]
+            for attrs in meta_selectors:
+                el = soup.find('meta', attrs=attrs)
+                if el and el.get('content'):
+                    return str(el['content']).strip()[:10]
+
+            time_el = soup.find('time')
+            if time_el and time_el.get('datetime'):
+                return str(time_el['datetime']).strip()[:10]
+
+            import json as _json
+            for script in soup.find_all('script', type='application/ld+json'):
+                try:
+                    data = _json.loads(script.string or '')
+                except Exception:
+                    continue
+                items = data if isinstance(data, list) else [data]
+                for it in items:
+                    if isinstance(it, dict):
+                        dp = it.get('datePublished') or it.get('dateCreated')
+                        if dp:
+                            return str(dp).strip()[:10]
+        except Exception as e:
+            self.logger.debug(f"Estrazione data non riuscita: {e}")
+        return None
+
     def _extract_title(self, soup: BeautifulSoup) -> str:
         """Estrae il titolo della pagina"""
         try:
@@ -787,7 +831,8 @@ class WebSearchTool:
                         enhanced_result.update({
                             'full_content': content_data['content'],
                             'page_title': content_data['title'],
-                            'content_length': content_data['length']
+                            'content_length': content_data['length'],
+                            'published_date': content_data.get('published_date')
                         })
                         successful_downloads += 1
                     else:
@@ -818,12 +863,17 @@ class WebSearchTool:
         if not results:
             return "Nessun risultato di ricerca disponibile."
 
-        formatted = "=== RISULTATI RICERCA WEB CON CONTENUTO COMPLETO ===\n\n"
+        formatted = ("=== RISULTATI RICERCA WEB CON CONTENUTO COMPLETO ===\n"
+                     "ATTENZIONE ALLE DATE: controlla la 'Data pubblicazione' di ogni fonte. "
+                     "Non presentare informazioni datate come attuali; privilegia le fonti recenti "
+                     "e verifica la coerenza cronologica con la data odierna.\n\n")
 
         for i, result in enumerate(results, 1):
             formatted += f"**Risultato {i}:**\n"
             formatted += f"Titolo: {result.get('page_title', result['title'])}\n"
             formatted += f"URL: {result['url']}\n"
+            pub_date = result.get('published_date')
+            formatted += f"Data pubblicazione: {pub_date if pub_date else 'non disponibile'}\n"
 
             # Usa contenuto completo se disponibile, altrimenti snippet
             content = result.get('full_content', result.get('snippet', ''))
