@@ -32,6 +32,10 @@
         border-left-color: #7C4DFF;
     }
 
+    .stat-card.openai {
+        border-left-color: #10A37F;
+    }
+
     .stat-card.google {
         border-left-color: #FF9800;
     }
@@ -236,6 +240,14 @@
             </div>
         </div>
 
+        <div class="stat-card openai">
+            <div class="stat-label">🧠 OpenAI</div>
+            <div class="stat-value">${{ total_stats.openai_cost|floatformat:6|default:"0.000000" }}</div>
+            <div class="stat-detail">
+                {{ total_stats.openai_calls|default:0 }} chiamate
+            </div>
+        </div>
+
         <div class="stat-card google">
             <div class="stat-label">🔍 Google Search</div>
             <div class="stat-value">${{ total_stats.google_cost|floatformat:6|default:"0.000000" }}</div>
@@ -256,6 +268,7 @@
                     <th>Data</th>
                     <th>Anthropic</th>
                     <th>OpenRouter</th>
+                    <th>OpenAI</th>
                     <th>Google Search</th>
                     <th>Totale Giorno</th>
                     <th>Chiamate</th>
@@ -267,6 +280,7 @@
                     <td><strong>{{ day.date }}</strong></td>
                     <td>${{ day.anthropic_cost|floatformat:6 }} <span style="color: #999; font-size: 11px;">({{ day.anthropic_calls }} chiamate)</span></td>
                     <td>${{ day.openrouter_cost|floatformat:6 }} <span style="color: #999; font-size: 11px;">({{ day.openrouter_calls }} chiamate)</span></td>
+                    <td>${{ day.openai_cost|floatformat:6 }} <span style="color: #999; font-size: 11px;">({{ day.openai_calls }} chiamate)</span></td>
                     <td>${{ day.google_cost|floatformat:6 }} <span style="color: #999; font-size: 11px;">({{ day.google_calls }} chiamate)</span></td>
                     <td><span class="cost-badge">${{ day.total_cost|floatformat:6 }}</span></td>
                     <td>{{ day.total_calls }}</td>
