@@ -3232,7 +3232,7 @@ class UniversalNewsMonitor:
                             },
                             "max_results": {
                                 "type": "integer",
-                                "default": 3,
+                                "default": 2,
                                 "description": "Numero massimo di risultati (1-5)"
                             }
                         },
@@ -3479,7 +3479,7 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
         try:
             conversation = [{"role": "user", "content": initial_user_content}]
             current_message = message
-            max_iterations = 5  # Limite per evitare loop infiniti
+            max_iterations = 3  # Limite iterazioni: taglia le ricerche a vuoto della coda
             iteration = 0
 
             while iteration < max_iterations:
@@ -3506,7 +3506,7 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
                 for tool_use in tool_uses:
                     if tool_use.name == "web_search":
                         query = tool_use.input.get("query", "")
-                        max_results = tool_use.input.get("max_results", 3)
+                        max_results = tool_use.input.get("max_results", 2)
 
                         self.logger.info(f"Claude richiede ricerca web: '{query}'")
 
@@ -3813,7 +3813,7 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": initial_user_content},
         ]
-        max_iterations = 5
+        max_iterations = 3  # Limite iterazioni: taglia le ricerche a vuoto della coda
         natural_end = False
         text = ''
 
@@ -3851,7 +3851,7 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
                 except Exception:
                     args = {}
                 query = args.get("query", "")
-                formatted = self._run_article_web_search(query, args.get("max_results", 3), web_sources)
+                formatted = self._run_article_web_search(query, args.get("max_results", 2), web_sources)
                 conversation.append({
                     "role": "tool",
                     "tool_call_id": tc.id,
