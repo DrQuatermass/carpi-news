@@ -1751,6 +1751,27 @@ class GraphQLScraper(BaseScraper):
             self.logger.error(f"Errore nell'estrazione da query personalizzata: {e}")
             return []
     
+    def _format_evento_datetime(self, raw) -> Optional[str]:
+        """Converte un datetime evento della GraphQL all'ora locale italiana.
+
+        La GraphQL restituisce datetime ISO SENZA timezone ma in UTC
+        (es. '2026-07-02T19:00:00' per un evento delle 21:00 CEST): senza
+        conversione l'orario passato all'AI risultava anticipato di 1-2 ore.
+        """
+        if not raw:
+            return None
+        try:
+            from datetime import datetime as _dt, timezone as _tz
+            from zoneinfo import ZoneInfo
+            dt = _dt.fromisoformat(str(raw))
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=_tz.utc)  # naive = UTC dalla GraphQL
+            local = dt.astimezone(ZoneInfo('Europe/Rome'))
+            return local.strftime('%d/%m/%Y alle ore %H:%M')
+        except Exception as e:
+            self.logger.warning(f"Formattazione data evento fallita per '{raw}': {e}")
+            return str(raw)
+
     def _extract_event_from_graphql(self, evento: Dict) -> Optional[Dict[str, Any]]:
         """Estrae dati evento da risposta GraphQL"""
         try:
@@ -1782,11 +1803,13 @@ class GraphQLScraper(BaseScraper):
             if descrizione_estesa:
                 content_parts.append(descrizione_estesa)
             
-            # Aggiungi informazioni pratiche
-            if evento.get('dataOraInizio'):
-                content_parts.append(f"Data inizio: {evento['dataOraInizio']}")
-            if evento.get('dataOraFine'):
-                content_parts.append(f"Data fine: {evento['dataOraFine']}")
+            # Aggiungi informazioni pratiche (orari convertiti in ora locale italiana)
+            inizio_fmt = self._format_evento_datetime(evento.get('dataOraInizio'))
+            if inizio_fmt:
+                content_parts.append(f"Data e ora inizio: {inizio_fmt}")
+            fine_fmt = self._format_evento_datetime(evento.get('dataOraFine'))
+            if fine_fmt:
+                content_parts.append(f"Data e ora fine: {fine_fmt}")
             if evento.get('costo'):
                 content_parts.append(f"Costo: {evento['costo']}")
             
