@@ -3220,7 +3220,7 @@ class UniversalNewsMonitor:
                         BUONA: "Yoga Radio Bruno Estate Carpi"  |  CATTIVA: "Yoga Radio Bruno Estate 2026 Carpi piazza Martiri luglio"
                         BUONA: "Orchestra Tangenziale Villotti documentario"  |  CATTIVA: "Doc orchestra ritmica tangenziale raccordi Villotti Negroni anziani ottantenni"
 
-                    ATTENZIONE ALLE DATE: ogni risultato riporta la "Data pubblicazione". Controlla la freschezza delle fonti: NON presentare come attuali informazioni datate, privilegia le fonti recenti e verifica la coerenza cronologica con la data odierna.
+                    ATTENZIONE ALLE DATE: ogni risultato riporta la "Data pubblicazione". Puoi usare anche fonti datate (per contesto e retroscena), ma colloca ogni fatto nel suo tempo: NON scambiare un fatto passato per attuale (cariche, ruoli e situazioni possono essere cambiati nel frattempo). Verifica la coerenza con la data odierna.
 
                     Fai almeno una ricerca per il fact-checking, poi decidi se i risultati sono abbastanza pertinenti da includerli come fonti (se non lo sono, non includerli).""",
                     "input_schema": {

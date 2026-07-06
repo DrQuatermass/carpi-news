@@ -864,9 +864,10 @@ class WebSearchTool:
             return "Nessun risultato di ricerca disponibile."
 
         formatted = ("=== RISULTATI RICERCA WEB CON CONTENUTO COMPLETO ===\n"
-                     "ATTENZIONE ALLE DATE: controlla la 'Data pubblicazione' di ogni fonte. "
-                     "Non presentare informazioni datate come attuali; privilegia le fonti recenti "
-                     "e verifica la coerenza cronologica con la data odierna.\n\n")
+                     "ATTENZIONE ALLE DATE: puoi usare anche fonti datate (utili per contesto e "
+                     "retroscena), ma colloca ogni fatto nel suo tempo. Il rischio da evitare e' "
+                     "scambiare un fatto passato per attuale: cariche, ruoli e situazioni possono "
+                     "essere cambiati. Controlla la 'Data pubblicazione' e la coerenza con la data odierna.\n\n")
 
         for i, result in enumerate(results, 1):
             formatted += f"**Risultato {i}:**\n"
