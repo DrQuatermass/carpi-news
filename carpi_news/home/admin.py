@@ -1236,12 +1236,12 @@ class APIUsageAdmin(admin.ModelAdmin):
                     'anthropic_cost': 0,
                     'openai_cost': 0,
                     'openrouter_cost': 0,
-                    'google_cost': 0,
+                    'google_search_cost': 0,
                     'total_cost': 0,
                     'anthropic_calls': 0,
                     'openai_calls': 0,
                     'openrouter_calls': 0,
-                    'google_calls': 0,
+                    'google_search_calls': 0,
                     'total_calls': 0
                 }
 
