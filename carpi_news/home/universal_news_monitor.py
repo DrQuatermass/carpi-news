@@ -2252,6 +2252,14 @@ class EmailScraper(BaseScraper):
             # Rileva tipo di contenuto automaticamente
             content_type, category, image_url, source_url = self._detect_content_type(content, sender, subject, raw_html_content)
 
+            # I comunicati stampa allegano spesso la foto come file: ha priorità
+            # sull'immagine estratta dall'HTML (che è tipicamente un logo/firma).
+            if content_type != 'twitter':
+                attached_image = self._extract_attached_image(email_message, email_uid_str)
+                if attached_image:
+                    image_url = attached_image
+                    self.logger.info(f"Immagine allegata usata per l'articolo: {attached_image}")
+
             # Estrai e verifica link nel contenuto
             links_content = self._extract_and_fetch_links(content)
 
@@ -2819,6 +2827,76 @@ class EmailScraper(BaseScraper):
         except Exception:
             pass
         return None
+
+    def _extract_attached_image(self, email_message, unique_id: str) -> Optional[str]:
+        """Estrae l'immagine allegata (o inline) dall'email e la salva in /media/.
+
+        Sceglie l'allegato immagine più grande per evitare loghi, firme e pixel
+        di tracking. Restituisce l'URL /media/... locale, oppure None.
+        """
+        try:
+            if not email_message.is_multipart():
+                return None
+
+            import re
+            import hashlib
+
+            best_bytes = None
+            best_ext = '.jpg'
+            best_size = 0
+
+            for part in email_message.walk():
+                ctype = part.get_content_type()
+                if not ctype.startswith('image/'):
+                    continue
+
+                try:
+                    payload = part.get_payload(decode=True)
+                except Exception:
+                    payload = None
+                if not payload:
+                    continue
+
+                size = len(payload)
+                # Scarta immagini troppo piccole: loghi, firme, pixel di tracking
+                if size < 8000:
+                    continue
+
+                if size > best_size:
+                    best_size = size
+                    best_bytes = payload
+                    subtype = ctype.split('/', 1)[1].lower()
+                    ext_map = {
+                        'jpeg': '.jpg', 'jpg': '.jpg', 'png': '.png',
+                        'gif': '.gif', 'webp': '.webp'
+                    }
+                    best_ext = ext_map.get(subtype, '.jpg')
+
+            if not best_bytes:
+                return None
+
+            image_hash = hashlib.sha256(best_bytes).hexdigest()
+            media_dir = os.path.join(settings.MEDIA_ROOT, 'images', 'downloaded')
+            os.makedirs(media_dir, exist_ok=True)
+
+            # Dedup: riusa un file già salvato con lo stesso hash
+            for existing in os.listdir(media_dir):
+                if image_hash[:16] in existing:
+                    self.logger.info(f"Immagine allegata già esistente riutilizzata: {existing}")
+                    return f"{settings.MEDIA_URL}images/downloaded/{existing}"
+
+            safe_id = re.sub(r'[^A-Za-z0-9_-]', '', str(unique_id))[:20] or 'email'
+            filename = f"email_{safe_id}_{image_hash[:16]}{best_ext}"
+            file_path = os.path.join(media_dir, filename)
+            with open(file_path, 'wb') as f:
+                f.write(best_bytes)
+
+            self.logger.info(f"Immagine allegata salvata: {filename} ({best_size} bytes)")
+            return f"{settings.MEDIA_URL}images/downloaded/{filename}"
+
+        except Exception as e:
+            self.logger.error(f"Errore estrazione immagine allegata: {e}")
+            return None
 
     def _parse_email_date(self, date_str: str) -> str:
         """Parse data email"""
