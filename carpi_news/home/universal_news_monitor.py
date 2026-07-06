@@ -1767,7 +1767,10 @@ class GraphQLScraper(BaseScraper):
             if dt.tzinfo is None:
                 dt = dt.replace(tzinfo=_tz.utc)  # naive = UTC dalla GraphQL
             local = dt.astimezone(ZoneInfo('Europe/Rome'))
-            return local.strftime('%d/%m/%Y alle ore %H:%M')
+            # Giorno della settimana calcolato in codice: gli LLM spesso sbagliano a dedurlo
+            giorni = ['lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato', 'domenica']
+            giorno = giorni[local.weekday()].capitalize()
+            return f"{giorno} {local.strftime('%d/%m/%Y')} alle ore {local.strftime('%H:%M')}"
         except Exception as e:
             self.logger.warning(f"Formattazione data evento fallita per '{raw}': {e}")
             return str(raw)
@@ -3194,8 +3197,18 @@ class UniversalNewsMonitor:
 
             # Aggiungi data corrente al contesto
             self.logger.warning("[DEBUG] Creazione date_context...")
-            today_date = datetime.now().strftime("%d/%m/%Y")
-            date_context = f"\n\nIMPORTANTE: La data odierna è {today_date}. Usa questa data come riferimento per verificare fatti, nomi di cariche pubbliche e informazioni correnti e dare un valore cronologico alle informazioni che trovi online."
+            _now = datetime.now()
+            _giorni_sett = ['lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato', 'domenica']
+            today_date = _now.strftime("%d/%m/%Y")
+            today_weekday = _giorni_sett[_now.weekday()]
+            date_context = (
+                f"\n\nIMPORTANTE: La data odierna è {today_weekday} {today_date}. "
+                "Usa questa data come riferimento per verificare fatti, nomi di cariche pubbliche e informazioni correnti "
+                "e dare un valore cronologico alle informazioni che trovi online. "
+                "NON calcolare a mente il giorno della settimana di una data: usa SOLO i giorni della settimana "
+                "già indicati esplicitamente nel contenuto o nelle fonti. Se un giorno della settimana non è fornito, "
+                "riporta solo la data numerica senza inventare il giorno."
+            )
             self.logger.warning(f"[DEBUG] date_context creato: {today_date}")
 
             if content_type == 'twitter':
