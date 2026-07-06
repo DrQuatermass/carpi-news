@@ -2340,9 +2340,9 @@ class EmailScraper(BaseScraper):
         )
 
         if is_twitter:
-            # Estrai immagine Twitter e link al tweet usando HTML grezzo
-            twitter_image = self._extract_twitter_image(raw_html or content)
+            # Estrai prima il link al tweet, poi la sua immagine (via API)
             tweet_url = self._extract_tweet_url(raw_html or content)
+            twitter_image = self._extract_twitter_image(raw_html or content, tweet_url)
             return 'twitter', 'Cronaca Social', twitter_image, tweet_url
 
         # Controlla se è comunicato formale
@@ -2357,65 +2357,36 @@ class EmailScraper(BaseScraper):
         # Default: tratta come comunicato generico
         return 'comunicato', 'Comunicati Stampa', self._extract_first_image(raw_html or content), None
 
-    def _extract_twitter_image(self, content: str) -> Optional[str]:
-        """Estrae URL immagini da contenuto Twitter"""
+    def _extract_twitter_image(self, content: str, tweet_url: Optional[str] = None) -> Optional[str]:
+        """Estrae l'immagine di un tweet.
+
+        Priorità:
+          1) link diretto pbs.twimg.com già incorporato nell'email IFTTT;
+          2) foto del tweet via API fxtwitter/vxtwitter.
+        NON usa come fallback l'immagine di eventuali articoli linkati nel tweet:
+        in passato causava foto sbagliate (es. immagine di wired.it al posto di
+        quella del tweet). Meglio nessuna immagine che una sbagliata.
+        """
         import re
 
-        # Pattern per link immagini Twitter diretti
-        twitter_image_patterns = [
-            r'https://pbs\.twimg\.com/media/[\w-]+\.(?:jpg|jpeg|png|gif)',  # Immagini dirette pbs.twimg.com
-            r'pic\.twitter\.com/\w+',  # Shortlink pic.twitter.com (da espandere)
-            r'https://pic\.twitter\.com/\w+',
-            r'http://pic\.twitter\.com/\w+'
-        ]
+        # 1) Link diretto pbs.twimg.com incorporato nell'email
+        m = re.search(
+            r'https://pbs\.twimg\.com/media/[\w-]+(?:\.(?:jpg|jpeg|png|webp))?(?:\?[^\s"\'<>]*)?',
+            content
+        )
+        if m:
+            return m.group(0)
 
-        for pattern in twitter_image_patterns:
-            matches = re.findall(pattern, content)
-            if matches:
-                url = matches[0]
-                # Assicurati che abbia https://
-                if not url.startswith('http'):
-                    url = f'https://{url}'
+        # 2) Foto direttamente dal tweet tramite API
+        if not tweet_url:
+            tweet_url = self._extract_tweet_url(content)
+        if tweet_url:
+            tweet_image = self._fetch_tweet_image(tweet_url)
+            if tweet_image:
+                return tweet_image
 
-                # Se è un link pbs.twimg.com diretto, ritorna subito
-                if 'pbs.twimg.com' in url:
-                    return url
-
-                # Se è pic.twitter.com, prova a espanderlo per ottenere l'immagine reale
-                if 'pic.twitter.com' in url:
-                    try:
-                        # Cerca di estrarre l'immagine dal link del tweet che contiene il pic
-                        tweet_url = self._extract_tweet_url(content)
-                        if tweet_url:
-                            tweet_image = self._fetch_tweet_image(tweet_url)
-                            if tweet_image:
-                                return tweet_image
-                    except Exception as e:
-                        self.logger.debug(f"Errore espansione pic.twitter.com: {e}")
-
-                # Fallback: ritorna il link pic.twitter.com anche se non espanso
-                return url
-
-        # Se non trova immagini dirette, cerca link t.co e prova a espanderli
-        t_co_pattern = r'https://t\.co/\w+'
-        t_co_matches = re.findall(t_co_pattern, content)
-
-        if t_co_matches:
-            for t_co_url in t_co_matches:
-                try:
-                    # Espandi il link t.co per trovare l'URL del tweet originale
-                    expanded_url = self._expand_short_url(t_co_url)
-                    if expanded_url and ('twitter.com' in expanded_url or 'x.com' in expanded_url):
-                        # Estrai l'immagine dal tweet originale
-                        tweet_image = self._fetch_tweet_image(expanded_url)
-                        if tweet_image:
-                            return tweet_image
-                except Exception as e:
-                    self.logger.debug(f"Errore espansione t.co {t_co_url}: {e}")
-                    continue
-
-        # Fallback: cerca immagini standard
-        return self._extract_first_image(content)
+        # 3) Nessuna immagine del tweet trovata
+        return None
 
     def _extract_tweet_url(self, content: str) -> Optional[str]:
         """Estrae URL del tweet originale da contenuto IFTTT"""
@@ -2479,43 +2450,55 @@ class EmailScraper(BaseScraper):
             return None
 
     def _fetch_tweet_image(self, tweet_url: str) -> Optional[str]:
-        """Estrae l'immagine da un tweet usando vxtwitter.com API"""
-        try:
-            # Usa vxtwitter.com che fornisce metadata JSON accessibile
-            # Converti x.com o twitter.com in vxtwitter.com
-            vx_url = tweet_url.replace('x.com', 'vxtwitter.com').replace('twitter.com', 'vxtwitter.com')
+        """Estrae l'immagine di un tweet usando le API JSON fxtwitter/vxtwitter.
 
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (compatible; OmbraBot/1.0; +https://ombradelportico.it)'
-            }
+        Molto più affidabile dello scraping dell'og:image (che spesso falliva o
+        restituiva la card di un link esterno). Per i tweet-video restituisce la
+        thumbnail. Ritorna un URL pbs.twimg.com diretto, oppure None.
+        """
+        import re
 
-            response = requests.get(vx_url, headers=headers, timeout=10, allow_redirects=True)
-            if response.status_code != 200:
-                # Fallback: prova con x.com diretto
-                return self._fetch_tweet_image_fallback(tweet_url)
-
-            soup = BeautifulSoup(response.content, 'html.parser')
-
-            # vxtwitter fornisce Open Graph meta tags affidabili
-            og_image = soup.find('meta', property='og:image')
-            if og_image and og_image.get('content'):
-                image_url = og_image['content']
-                if 'twimg.com' in image_url or 'pbs.twimg.com' in image_url:
-                    return image_url
-
-            # Cerca anche twitter:image
-            twitter_image = soup.find('meta', attrs={'name': 'twitter:image'})
-            if twitter_image and twitter_image.get('content'):
-                image_url = twitter_image['content']
-                if 'twimg.com' in image_url or 'pbs.twimg.com' in image_url:
-                    return image_url
-
-            # Fallback
-            return self._fetch_tweet_image_fallback(tweet_url)
-
-        except Exception as e:
-            self.logger.debug(f"Errore fetch immagine tweet {tweet_url}: {e}")
+        m = re.search(r'(?:twitter\.com|x\.com|vxtwitter\.com|fxtwitter\.com)/([^/]+)/status/(\d+)', tweet_url)
+        if not m:
             return None
+        handle, tweet_id = m.group(1), m.group(2)
+
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (compatible; OmbraBot/1.0; +https://ombradelportico.it)'
+        }
+
+        def _is_photo(url: str) -> bool:
+            base = url.lower().split('?')[0]
+            return base.endswith(('.jpg', '.jpeg', '.png', '.webp'))
+
+        # 1) fxtwitter JSON
+        try:
+            r = requests.get(f'https://api.fxtwitter.com/{handle}/status/{tweet_id}', headers=headers, timeout=10)
+            if r.status_code == 200:
+                media = ((r.json().get('tweet') or {}).get('media')) or {}
+                photos = media.get('photos') or []
+                if photos and photos[0].get('url'):
+                    return photos[0]['url']
+                videos = media.get('videos') or []
+                if videos and videos[0].get('thumbnail_url'):
+                    return videos[0]['thumbnail_url']
+        except Exception as e:
+            self.logger.debug(f"fxtwitter fallito per {tweet_url}: {e}")
+
+        # 2) vxtwitter JSON (fallback)
+        try:
+            r = requests.get(f'https://api.vxtwitter.com/{handle}/status/{tweet_id}', headers=headers, timeout=10)
+            if r.status_code == 200:
+                media_urls = r.json().get('mediaURLs') or []
+                for u in media_urls:
+                    if _is_photo(u):
+                        return u
+                if media_urls:  # es. solo video: usa comunque il primo media
+                    return media_urls[0]
+        except Exception as e:
+            self.logger.debug(f"vxtwitter fallito per {tweet_url}: {e}")
+
+        return None
 
     def _fetch_tweet_image_fallback(self, tweet_url: str) -> Optional[str]:
         """Metodo fallback per estrarre immagini da tweet"""
