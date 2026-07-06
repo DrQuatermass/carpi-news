@@ -3818,7 +3818,9 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
         text = ''
 
         for iteration in range(max_iterations):
-            params = {"model": model, "max_tokens": 4096, "messages": conversation}
+            # max_tokens generoso: DeepSeek V4 è reasoning, serve spazio per ragionamento +
+            # stesura articolo, altrimenti l'articolo esce vuoto o troncato
+            params = {"model": model, "max_tokens": 8192, "messages": conversation}
             if tools:
                 params["tools"] = tools
                 params["tool_choice"] = "auto"
@@ -3867,7 +3869,15 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
                     "rispondi esclusivamente con il JSON richiesto dal system prompt."
                 ),
             })
-            params = {"model": model, "max_tokens": 4096, "messages": conversation}
+            # DeepSeek V4 è reasoning: sulla finalizzazione (contesto pesante dopo 5 ricerche)
+            # reasoning + articolo sforavano i 4096 token e il contenuto tornava vuoto -> fallback
+            # a Claude. Alziamo max_tokens per lasciare spazio a entrambi, mantenendo il reasoning
+            # attivo (migliore sintesi delle fonti).
+            params = {
+                "model": model,
+                "max_tokens": 8192,
+                "messages": conversation,
+            }
             if tools:
                 params["tools"] = tools
                 params["tool_choice"] = "none"
