@@ -109,6 +109,13 @@ class Command(BaseCommand):
                     if not dry_run:
                         art.contenuto = relinked
                         art.save(update_fields=['contenuto'])
+
+                # Avanzamento periodico (il dettaglio si ferma ai primi --show)
+                if idx % 200 == 0:
+                    self.stdout.write(
+                        f'  ...avanzamento {idx}/{total} | modificati finora: {changed} '
+                        f'| link {links_before_tot} -> {links_after_tot}'
+                    )
             except Exception as e:
                 errors += 1
                 self.stdout.write(self.style.ERROR(
