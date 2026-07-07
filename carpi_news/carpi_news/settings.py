@@ -359,6 +359,16 @@ OPENROUTER_ARTICLE_MODEL = os.getenv('OPENROUTER_ARTICLE_MODEL', 'deepseek/deeps
 # Il monitor può sempre fare override per-monitor con config_data "ai_provider".
 AI_ARTICLE_PROVIDER = os.getenv('AI_ARTICLE_PROVIDER', 'anthropic').lower()
 
+# Tuning del linking interno (ottimizzazione SEO/GSC). Regolabili da .env.
+# - INTERNAL_LINK_MAX: tetto assoluto di link per articolo (per articoli molto lunghi)
+# - INTERNAL_LINK_MIN: minimo garantito per articoli brevi
+# - INTERNAL_LINK_WORDS_PER_LINK: 1 link ogni N parole (tetto proporzionale alla lunghezza)
+# - INTERNAL_LINK_RELEVANCE_MIN: soglia coseno TF-IDF sotto cui il link viene scartato
+INTERNAL_LINK_MAX = int(os.getenv('INTERNAL_LINK_MAX', '14'))
+INTERNAL_LINK_MIN = int(os.getenv('INTERNAL_LINK_MIN', '3'))
+INTERNAL_LINK_WORDS_PER_LINK = int(os.getenv('INTERNAL_LINK_WORDS_PER_LINK', '100'))
+INTERNAL_LINK_RELEVANCE_MIN = float(os.getenv('INTERNAL_LINK_RELEVANCE_MIN', '0.06'))
+
 # PayPal Payment Configuration
 PAYPAL_MODE = os.getenv('PAYPAL_MODE', 'sandbox')  # sandbox or live
 PAYPAL_CLIENT_ID = os.getenv('PAYPAL_CLIENT_ID', '')

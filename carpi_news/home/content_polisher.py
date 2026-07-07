@@ -430,7 +430,7 @@ class ContentPolisher:
         
         return '\n\n'.join(result)
 
-    def add_internal_links(self, content: str, article_title: str = "", current_article_slug: str = None, current_article_date=None, max_links: int = 8, one_per_target: bool = True, source_tfidf: dict = None, relevance_min: float = 0.05) -> str:
+    def add_internal_links(self, content: str, article_title: str = "", current_article_slug: str = None, current_article_date=None, max_links: int = None, one_per_target: bool = True, source_tfidf: dict = None, relevance_min: float = None) -> str:
         """
         Aggiunge link interni usando i tag <strong> per identificare entità rilevanti
 
@@ -455,8 +455,26 @@ class ContentPolisher:
             import logging
             from home.models import Articolo
             from django.utils import timezone
+            from django.conf import settings
 
             logger = logging.getLogger(__name__)
+
+            # Parametri di tuning (regolabili da settings/.env senza toccare il codice)
+            if max_links is None:
+                max_links = getattr(settings, 'INTERNAL_LINK_MAX', 14)
+            if relevance_min is None:
+                relevance_min = getattr(settings, 'INTERNAL_LINK_RELEVANCE_MIN', 0.07)
+            words_per_link = getattr(settings, 'INTERNAL_LINK_WORDS_PER_LINK', 100)
+            min_links = getattr(settings, 'INTERNAL_LINK_MIN', 3)
+
+            # Tetto proporzionale alla lunghezza: articoli lunghi -> più link (fino a
+            # max_links), articoli brevi -> pochi (almeno min_links). Ottimizza per SEO.
+            _plain = re.sub(r'<[^>]+>', ' ', content or '')
+            _word_count = len(re.findall(r'\w+', _plain))
+            if words_per_link and words_per_link > 0:
+                effective_max = max(min_links, min(_word_count // words_per_link, max_links))
+            else:
+                effective_max = max_links
 
             # Verifica che ci siano articoli approvati
             if Articolo.objects.filter(approvato=True).count() < 3:
@@ -513,6 +531,13 @@ class ContentPolisher:
                 if len(letters_only) < 3:
                     continue
 
+                # Scarta le àncore-quantità/date: iniziano con un numero
+                # (es. "15 milioni di euro", "40 posti letto", "8 luglio"). Anchor
+                # pessime per la SEO e spesso link fuori tema.
+                first_token = entity_text.strip().split(' ', 1)[0]
+                if first_token[:1].isdigit():
+                    continue
+
                 # Soglia di pertinenza: linka solo "nomi propri robusti" per evitare
                 # sigle/parole comuni ambigue. Robusto = almeno 2 parole, oppure una
                 # singola parola con iniziale maiuscola (nome proprio).
@@ -540,8 +565,8 @@ class ContentPolisher:
             linked_slugs = set()     # Traccia destinazioni già usate (max 1 link per articolo)
 
             for entity_text in entities:
-                # Tetto di link per articolo: evita articoli sovra-linkati
-                if max_links and links_applied >= max_links:
+                # Tetto di link per articolo (proporzionale alla lunghezza)
+                if links_applied >= effective_max:
                     break
 
                 # Salta se questa entità è già stata linkata
@@ -583,7 +608,7 @@ class ContentPolisher:
                     continue
 
                 matching_article = None
-                if source_tfidf and relevance_min is not None:
+                if source_tfidf:
                     # Gate di rilevanza TF-IDF: tra i candidati (parola intera) tieni solo
                     # quelli tematicamente affini all'articolo corrente e scegli il PIU'
                     # pertinente (non il più recente). Blocca se nessuno supera la soglia.
