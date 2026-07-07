@@ -501,6 +501,23 @@ class ContentPolisher:
                 if entity_text.isdigit():
                     continue
 
+                # Escludi orari (es. "19.00", "9:30") e intervalli orari
+                if re.fullmatch(r'\d{1,2}[.:]\d{2}(\s*[-–]\s*\d{1,2}[.:]\d{2})?', entity_text):
+                    continue
+
+                # Escludi token dominati da cifre/punteggiatura: servono almeno 3 lettere
+                letters_only = re.sub(r'[^A-Za-zÀ-ÖØ-öø-ÿ]', '', entity_text)
+                if len(letters_only) < 3:
+                    continue
+
+                # Soglia di pertinenza: linka solo "nomi propri robusti" per evitare
+                # sigle/parole comuni ambigue. Robusto = almeno 2 parole, oppure una
+                # singola parola con iniziale maiuscola (nome proprio).
+                is_multiword = ' ' in entity_text.strip()
+                starts_upper = entity_text.strip()[:1].isupper()
+                if not (is_multiword or starts_upper):
+                    continue
+
                 entities.add(entity_text)
 
             if not entities:
@@ -537,11 +554,18 @@ class ContentPolisher:
                 if current_article_date:
                     query = query.filter(data_pubblicazione__lt=current_article_date)
 
-                # Ordina per data DESC per trovare il più recente tra i precedenti
-                matching_article = query.order_by('-data_pubblicazione').first()
+                # icontains (a sottostringa) restituisce un superset: p.es. "ARCI"
+                # matcherebbe "marciapiede". Scorriamo i candidati dal più recente e
+                # teniamo il primo che contiene l'entità come PAROLA INTERA.
+                word_re = re.compile(r'(?<!\w)' + re.escape(entity_text) + r'(?!\w)', re.IGNORECASE)
+                matching_article = None
+                for candidate in query.order_by('-data_pubblicazione')[:100]:
+                    if word_re.search(candidate.contenuto or ''):
+                        matching_article = candidate
+                        break
 
                 if not matching_article:
-                    logger.debug(f"Internal Linking: entità '{entity_text}' non trovata in altri articoli")
+                    logger.debug(f"Internal Linking: entità '{entity_text}' non trovata come parola intera in altri articoli")
                     continue
 
                 # Applica il link alla prima occorrenza dell'entità in grassetto nel contenuto
