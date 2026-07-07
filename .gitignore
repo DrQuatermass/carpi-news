@@ -79,3 +79,6 @@ reel_preview*.mp4
 # Facebook credentials (sensitive)
 get_facebook_*.py
 carpi_news/home/management/commands/send_emails_ses.py
+
+# Indice TF-IDF locale (rigenerato per ambiente con build_tfidf_index)
+carpi_news/tfidf_data/

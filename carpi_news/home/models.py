@@ -82,6 +82,7 @@ class Articolo(models.Model):
     image_1x1 = models.ImageField(upload_to='images/articles/', max_length=180, blank=True, null=True, help_text="Versione WebP 1200x1200 per NewsArticle")
     richieste_modifica = models.TextField(blank=True, null=True, help_text="Richieste specifiche per la rigenerazione AI dell'articolo")
     fonti_web = models.JSONField(blank=True, null=True, help_text="Fonti web utilizzate durante la generazione AI con ricerca web")
+    tfidf_terms = models.JSONField(blank=True, null=True, help_text="Vettore TF-IDF (termine->peso) per il gate di rilevanza del linking interno")
     ai_model_used = models.CharField(max_length=50, blank=True, null=True, help_text="Modello AI utilizzato per generare l'articolo (es. claude-3-7-sonnet, gpt-4-turbo)")
     views = models.PositiveIntegerField(default=0, help_text="Numero di visualizzazioni dell'articolo")
     spotlight = models.BooleanField(default=False, db_index=True, help_text="Articolo in evidenza nella sezione spotlight (max 4)")

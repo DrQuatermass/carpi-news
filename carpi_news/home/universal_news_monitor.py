@@ -3569,6 +3569,13 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
                 self.logger.warning("[DEBUG] Chiamata articolo.save()...")
                 articolo.save()
                 self.logger.warning(f"[DEBUG] Articolo salvato! ID: {articolo.id}")
+                # Salva il vettore TF-IDF così l'articolo diventa un bersaglio
+                # valido per il linking dei futuri articoli (no-op se manca l'indice).
+                try:
+                    from home import tfidf_relevance
+                    tfidf_relevance.update_article_vector(articolo)
+                except Exception as _tferr:
+                    self.logger.warning(f"Calcolo TF-IDF articolo {articolo.id} fallito: {_tferr}")
                 download_article_image_in_background(
                     articolo.id,
                     article_data.get('image_url'),

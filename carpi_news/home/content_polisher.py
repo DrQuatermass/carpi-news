@@ -430,7 +430,7 @@ class ContentPolisher:
         
         return '\n\n'.join(result)
 
-    def add_internal_links(self, content: str, article_title: str = "", current_article_slug: str = None, current_article_date=None, max_links: int = 8, one_per_target: bool = True) -> str:
+    def add_internal_links(self, content: str, article_title: str = "", current_article_slug: str = None, current_article_date=None, max_links: int = 8, one_per_target: bool = True, source_tfidf: dict = None, relevance_min: float = 0.05) -> str:
         """
         Aggiunge link interni usando i tag <strong> per identificare entità rilevanti
 
@@ -570,18 +570,41 @@ class ContentPolisher:
                 # matcherebbe "marciapiede". Scorriamo i candidati dal più recente e
                 # teniamo il primo che contiene l'entità come PAROLA INTERA.
                 word_re = re.compile(r'(?<!\w)' + re.escape(entity_text) + r'(?!\w)', re.IGNORECASE)
-                matching_article = None
+                matches = []
                 for candidate in query.order_by('-data_pubblicazione')[:100]:
                     # Max 1 link per destinazione: salta gli articoli già linkati
                     if one_per_target and candidate.slug in linked_slugs:
                         continue
                     if word_re.search(candidate.contenuto or ''):
-                        matching_article = candidate
-                        break
+                        matches.append(candidate)
 
-                if not matching_article:
+                if not matches:
                     logger.debug(f"Internal Linking: entità '{entity_text}' non trovata come parola intera in altri articoli")
                     continue
+
+                matching_article = None
+                if source_tfidf and relevance_min is not None:
+                    # Gate di rilevanza TF-IDF: tra i candidati (parola intera) tieni solo
+                    # quelli tematicamente affini all'articolo corrente e scegli il PIU'
+                    # pertinente (non il più recente). Blocca se nessuno supera la soglia.
+                    from home import tfidf_relevance
+                    scored = [
+                        (tfidf_relevance.cosine(source_tfidf, c.tfidf_terms), c)
+                        for c in matches if getattr(c, 'tfidf_terms', None)
+                    ]
+                    qualifying = [(s, c) for s, c in scored if s >= relevance_min]
+                    if qualifying:
+                        matching_article = max(qualifying, key=lambda sc: sc[0])[1]
+                    elif scored:
+                        # Candidati valutabili ma nessuno pertinente: NON linkare
+                        logger.debug(f"Internal Linking: '{entity_text}' bloccata (nessun bersaglio pertinente, max sim={max(s for s,_ in scored):.3f})")
+                        continue
+                    else:
+                        # Nessun candidato ha ancora il vettore TF-IDF: fallback al più recente
+                        matching_article = matches[0]
+                else:
+                    # Gate disattivato: comportamento classico (più recente)
+                    matching_article = matches[0]
 
                 # Applica il link alla prima occorrenza dell'entità in grassetto nel contenuto
                 # Pattern: cerca <strong>entità</strong> ma NON dentro link esistenti
@@ -642,7 +665,17 @@ class ContentPolisher:
             Dizionario con contenuto pulito e formattato
         """
         polished = article_data.copy()
-        
+
+        # Vettore TF-IDF dell'articolo corrente per il gate di rilevanza dei link
+        # interni. Se l'indice non esiste ancora, resta {} e il gate si disattiva.
+        source_tfidf = None
+        try:
+            from home import tfidf_relevance
+            _src_text = ' '.join(str(polished.get(k, '')) for k in ('titolo', 'title', 'sommario', 'contenuto', 'content'))
+            source_tfidf = tfidf_relevance.vector_from_text(_src_text) or None
+        except Exception:
+            source_tfidf = None
+
         # Pulisci titolo (SOLO pulizia, NO formattazione HTML)
         if 'title' in polished:
             polished['title'] = self.clean_title_plain(polished['title'])
@@ -657,7 +690,8 @@ class ContentPolisher:
             # Aggiungi link interni
             polished['content'] = self.add_internal_links(
                 formatted,
-                article_title=polished.get('title', polished.get('titolo', ''))
+                article_title=polished.get('title', polished.get('titolo', '')),
+                source_tfidf=source_tfidf
             )
 
         if 'contenuto' in polished:
@@ -666,7 +700,8 @@ class ContentPolisher:
             # Aggiungi link interni
             polished['contenuto'] = self.add_internal_links(
                 formatted,
-                article_title=polished.get('titolo', polished.get('title', ''))
+                article_title=polished.get('titolo', polished.get('title', '')),
+                source_tfidf=source_tfidf
             )
 
         # Pulisci preview/sommario (SOLO pulizia, NO formattazione HTML)

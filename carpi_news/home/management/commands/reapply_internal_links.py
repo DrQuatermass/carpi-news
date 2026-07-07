@@ -80,12 +80,17 @@ class Command(BaseCommand):
                 original = art.contenuto or ''
                 links_before = len(COUNT_LINKS_RE.findall(original))
 
+                # Vettore TF-IDF dell'articolo (per il gate di rilevanza)
+                from home import tfidf_relevance
+                source_tfidf = tfidf_relevance.article_vector(art) or None
+
                 stripped = self._strip_internal_links(original)
                 relinked = polisher.add_internal_links(
                     stripped,
                     article_title=art.titolo,
                     current_article_slug=art.slug,
                     current_article_date=art.data_pubblicazione,
+                    source_tfidf=source_tfidf,
                 )
                 links_after = len(COUNT_LINKS_RE.findall(relinked))
 
