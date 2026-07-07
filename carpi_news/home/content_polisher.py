@@ -615,7 +615,10 @@ class ContentPolisher:
                 # teniamo il primo che contiene l'entità come PAROLA INTERA.
                 word_re = re.compile(r'(?<!\w)' + re.escape(entity_text) + r'(?!\w)', re.IGNORECASE)
                 matches = []
-                for candidate in query.order_by('-data_pubblicazione')[:100]:
+                # .only(): carica solo i campi necessari (no fonti_web/altri) per non
+                # far esplodere la memoria con 100 candidati per entità.
+                candidates = query.only('slug', 'titolo', 'contenuto', 'tfidf_terms').order_by('-data_pubblicazione')[:100]
+                for candidate in candidates:
                     # Max 1 link per destinazione: salta gli articoli già linkati
                     if one_per_target and candidate.slug in linked_slugs:
                         continue

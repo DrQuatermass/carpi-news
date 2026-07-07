@@ -65,7 +65,10 @@ class Command(BaseCommand):
         if limit:
             qs = qs[:limit]
 
-        total = qs.count()
+        # Carica solo i PK (leggerissimo), poi processa UN articolo alla volta.
+        # Su server con poca RAM caricare tutto il corpus insieme causava OOM.
+        pks = list(qs.values_list('pk', flat=True))
+        total = len(pks)
         if dry_run:
             self.stdout.write(self.style.WARNING('\n[DRY RUN] Nessuna modifica verra\' salvata\n'))
         self.stdout.write(f'=== Riapplicazione internal links a {total} articoli ===\n')
@@ -75,8 +78,10 @@ class Command(BaseCommand):
         links_before_tot = links_after_tot = 0
         shown = 0
 
-        for idx, art in enumerate(qs, 1):
+        _fields = ('id', 'slug', 'titolo', 'contenuto', 'sommario', 'tfidf_terms', 'data_pubblicazione')
+        for idx, pk in enumerate(pks, 1):
             try:
+                art = Articolo.objects.only(*_fields).get(pk=pk)
                 original = art.contenuto or ''
                 links_before = len(COUNT_LINKS_RE.findall(original))
 
