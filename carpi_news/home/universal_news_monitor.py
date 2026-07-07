@@ -47,6 +47,22 @@ Esempio: ["Carpi calcio", "Serie D", "stadio Cabassi"]
 MAX_SOURCE_CHARS = 20000  # ~6.500 token - margine extra
 
 
+# Guardrail anti-invenzione per fonti brevissime (tweet della Polizia Locale, ecc.).
+# I tweet contengono pochissime informazioni: il modello tende a "riempire" con
+# dettagli plausibili ma inventati (reazioni, numeri, conseguenze, scene). Qui gli
+# imponiamo di restare aderente ai fatti dichiarati, anche a costo di un articolo corto.
+TWITTER_FIDELITY_GUARDRAILS = """
+
+FEDELTA' AI FATTI (OBBLIGATORIO - la fonte e' un tweet, quindi molto breve):
+- Riporta SOLO i fatti realmente presenti nel tweet o confermati dalla ricerca web. Non inventare nulla.
+- NON aggiungere dettagli non verificabili: reazioni della gente, code ai supermercati, disagi a bar/negozi, numeri di persone coinvolte, dichiarazioni, orari, cause del problema, tempi di ripristino, se non sono esplicitamente nel tweet o in una fonte verificata.
+- NON descrivere scene o conseguenze che non puoi verificare ("cittadini alle prese con...", "in tanti si sono riversati...").
+- Puoi aggiungere solo contesto FATTUALE e verificabile (es. chi e' il gestore del servizio, dove si trova un luogo), citandolo dalla ricerca web.
+- Se il tweet dice poco, l'articolo sara' breve: va bene. Meglio 4-5 frase corrette che un pezzo lungo pieno di dettagli inventati.
+- Nel dubbio su un dettaglio, omettilo.
+"""
+
+
 ARTICLE_OUTPUT_GUARDRAILS = """
 
 REGOLE DI OUTPUT OBBLIGATORIE:
@@ -3276,7 +3292,7 @@ class UniversalNewsMonitor:
                 base_prompt = self.config.config.get('ai_twitter_prompt',
                     self.config.config.get('ai_system_prompt',
                     """Sei un giornalista esperto. Rielabora questa notizia per il giornale locale."""))
-                system_prompt = base_prompt + date_context + ARTICLE_OUTPUT_GUARDRAILS + TAGS_INSTRUCTION
+                system_prompt = base_prompt + date_context + TWITTER_FIDELITY_GUARDRAILS + ARTICLE_OUTPUT_GUARDRAILS + TAGS_INSTRUCTION
             else:
                 base_prompt = self.config.config.get('ai_system_prompt',
                     """Sei un giornalista esperto. Rielabora questa notizia per il giornale locale.""")
