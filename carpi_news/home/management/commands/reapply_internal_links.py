@@ -107,8 +107,11 @@ class Command(BaseCommand):
                             f'({links_before} -> {links_after} link)'
                         ))
                     if not dry_run:
-                        art.contenuto = relinked
-                        art.save(update_fields=['contenuto'])
+                        # Aggiornamento diretto: NON usare save() qui. save() farebbe
+                        # scattare i post_save (generazione immagini responsive, ecc.)
+                        # per ogni articolo, con migliaia di thread -> esaurimento
+                        # risorse. .update() scrive solo il campo, senza signal.
+                        Articolo.objects.filter(pk=art.pk).update(contenuto=relinked)
 
                 # Avanzamento periodico (il dettaglio si ferma ai primi --show)
                 if idx % 200 == 0:

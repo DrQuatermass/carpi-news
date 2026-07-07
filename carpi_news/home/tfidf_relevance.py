@@ -182,8 +182,9 @@ def build_index(queryset=None, save_articles=True, batch_log=None):
             top = dict(sorted(raw.items(), key=lambda kv: kv[1], reverse=True)[:TOP_K])
             norm = math.sqrt(sum(v * v for v in top.values())) or 1e-9
             vec = {t: v / norm for t, v in top.items()}
-            a.tfidf_terms = vec
-            a.save(update_fields=['tfidf_terms'])
+            # .update() diretto: evita i post_save (generazione immagini, ecc.) su
+            # ogni articolo durante il backfill di massa.
+            Articolo.objects.filter(pk=a.id).update(tfidf_terms=vec)
             updated += 1
             if batch_log and updated % 100 == 0:
                 batch_log(updated, N)
@@ -198,7 +199,10 @@ def update_article_vector(art):
         return False
     vec = vector_from_text(article_text(art), idf=idf)
     if vec:
+        from home.models import Articolo
+        # .update() diretto: non ri-triggerare i post_save (l'articolo è già stato
+        # salvato dal chiamante; qui aggiorniamo solo il vettore).
+        Articolo.objects.filter(pk=art.pk).update(tfidf_terms=vec)
         art.tfidf_terms = vec
-        art.save(update_fields=['tfidf_terms'])
         return True
     return False
