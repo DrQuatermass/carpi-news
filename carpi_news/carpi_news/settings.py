@@ -363,11 +363,18 @@ AI_ARTICLE_PROVIDER = os.getenv('AI_ARTICLE_PROVIDER', 'anthropic').lower()
 # - INTERNAL_LINK_MAX: tetto assoluto di link per articolo (per articoli molto lunghi)
 # - INTERNAL_LINK_MIN: minimo garantito per articoli brevi
 # - INTERNAL_LINK_WORDS_PER_LINK: 1 link ogni N parole (tetto proporzionale alla lunghezza)
-# - INTERNAL_LINK_RELEVANCE_MIN: soglia coseno TF-IDF sotto cui il link viene scartato
 INTERNAL_LINK_MAX = int(os.getenv('INTERNAL_LINK_MAX', '14'))
 INTERNAL_LINK_MIN = int(os.getenv('INTERNAL_LINK_MIN', '3'))
 INTERNAL_LINK_WORDS_PER_LINK = int(os.getenv('INTERNAL_LINK_WORDS_PER_LINK', '100'))
-INTERNAL_LINK_RELEVANCE_MIN = float(os.getenv('INTERNAL_LINK_RELEVANCE_MIN', '0.06'))
+
+# Soglia di rilevanza TF-IDF ADATTIVA alla lunghezza dell'articolo:
+# articoli corti -> soglia alta (più selettivi), articoli lunghi -> soglia bassa
+# (più link, hanno più temi affini). Interpolata linearmente tra i due estremi.
+# Per una soglia FISSA, imposta SHORT e LONG allo stesso valore.
+INTERNAL_LINK_RELEVANCE_SHORT = float(os.getenv('INTERNAL_LINK_RELEVANCE_SHORT', '0.07'))
+INTERNAL_LINK_RELEVANCE_LONG = float(os.getenv('INTERNAL_LINK_RELEVANCE_LONG', '0.05'))
+INTERNAL_LINK_SHORT_WORDS = int(os.getenv('INTERNAL_LINK_SHORT_WORDS', '350'))
+INTERNAL_LINK_LONG_WORDS = int(os.getenv('INTERNAL_LINK_LONG_WORDS', '1000'))
 
 # PayPal Payment Configuration
 PAYPAL_MODE = os.getenv('PAYPAL_MODE', 'sandbox')  # sandbox or live

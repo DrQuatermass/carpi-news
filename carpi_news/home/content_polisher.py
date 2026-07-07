@@ -462,19 +462,38 @@ class ContentPolisher:
             # Parametri di tuning (regolabili da settings/.env senza toccare il codice)
             if max_links is None:
                 max_links = getattr(settings, 'INTERNAL_LINK_MAX', 14)
-            if relevance_min is None:
-                relevance_min = getattr(settings, 'INTERNAL_LINK_RELEVANCE_MIN', 0.07)
             words_per_link = getattr(settings, 'INTERNAL_LINK_WORDS_PER_LINK', 100)
             min_links = getattr(settings, 'INTERNAL_LINK_MIN', 3)
 
-            # Tetto proporzionale alla lunghezza: articoli lunghi -> più link (fino a
-            # max_links), articoli brevi -> pochi (almeno min_links). Ottimizza per SEO.
+            # Lunghezza articolo (in parole) per i parametri adattivi
             _plain = re.sub(r'<[^>]+>', ' ', content or '')
             _word_count = len(re.findall(r'\w+', _plain))
+
+            # Tetto proporzionale alla lunghezza: articoli lunghi -> più link (fino a
+            # max_links), articoli brevi -> pochi (almeno min_links). Ottimizza per SEO.
             if words_per_link and words_per_link > 0:
                 effective_max = max(min_links, min(_word_count // words_per_link, max_links))
             else:
                 effective_max = max_links
+
+            # Soglia di rilevanza ADATTIVA alla lunghezza (se non forzata dal chiamante):
+            # articoli lunghi -> soglia più bassa (più link, hanno più temi affini),
+            # articoli corti -> soglia più alta (restano stretti, niente link forzati).
+            # Interpolazione lineare tra (short_words, r_short) e (long_words, r_long).
+            if relevance_min is None:
+                r_short = getattr(settings, 'INTERNAL_LINK_RELEVANCE_SHORT', 0.07)
+                r_long = getattr(settings, 'INTERNAL_LINK_RELEVANCE_LONG', 0.05)
+                w_short = getattr(settings, 'INTERNAL_LINK_SHORT_WORDS', 350)
+                w_long = getattr(settings, 'INTERNAL_LINK_LONG_WORDS', 1000)
+                if _word_count <= w_short:
+                    relevance_min = r_short
+                elif _word_count >= w_long:
+                    relevance_min = r_long
+                elif w_long > w_short:
+                    frac = (_word_count - w_short) / float(w_long - w_short)
+                    relevance_min = r_short + frac * (r_long - r_short)
+                else:
+                    relevance_min = r_short
 
             # Verifica che ci siano articoli approvati
             if Articolo.objects.filter(approvato=True).count() < 3:
