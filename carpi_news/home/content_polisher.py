@@ -430,7 +430,7 @@ class ContentPolisher:
         
         return '\n\n'.join(result)
 
-    def add_internal_links(self, content: str, article_title: str = "", current_article_slug: str = None, current_article_date=None) -> str:
+    def add_internal_links(self, content: str, article_title: str = "", current_article_slug: str = None, current_article_date=None, max_links: int = 8, one_per_target: bool = True) -> str:
         """
         Aggiunge link interni usando i tag <strong> per identificare entità rilevanti
 
@@ -464,7 +464,10 @@ class ContentPolisher:
 
             # Estrai tutte le entità in grassetto (tag <strong>)
             # Escludi quelle dentro heading (h1-h6)
-            entities = set()
+            # Lista ordinata (ordine del documento) senza duplicati: così, quando
+            # si applica il tetto max_links, vincono le entità che appaiono prima.
+            entities = []
+            seen_entities = set()
 
             # Prima rimuoviamo tutti gli heading dal contenuto temporaneamente
             content_without_headings = re.sub(r'<h[1-6][^>]*>.*?</h[1-6]>', '', content, flags=re.DOTALL | re.IGNORECASE)
@@ -518,7 +521,11 @@ class ContentPolisher:
                 if not (is_multiword or starts_upper):
                     continue
 
-                entities.add(entity_text)
+                key = entity_text.lower()
+                if key in seen_entities:
+                    continue
+                seen_entities.add(key)
+                entities.append(entity_text)
 
             if not entities:
                 logger.info(f"Internal Linking: nessuna entità in grassetto trovata per '{article_title[:50]}...'")
@@ -530,8 +537,13 @@ class ContentPolisher:
             modified_content = content
             links_applied = 0
             linked_entities = set()  # Traccia entità già linkate per evitare duplicati
+            linked_slugs = set()     # Traccia destinazioni già usate (max 1 link per articolo)
 
             for entity_text in entities:
+                # Tetto di link per articolo: evita articoli sovra-linkati
+                if max_links and links_applied >= max_links:
+                    break
+
                 # Salta se questa entità è già stata linkata
                 entity_lower = entity_text.lower()
                 if entity_lower in linked_entities:
@@ -560,6 +572,9 @@ class ContentPolisher:
                 word_re = re.compile(r'(?<!\w)' + re.escape(entity_text) + r'(?!\w)', re.IGNORECASE)
                 matching_article = None
                 for candidate in query.order_by('-data_pubblicazione')[:100]:
+                    # Max 1 link per destinazione: salta gli articoli già linkati
+                    if one_per_target and candidate.slug in linked_slugs:
+                        continue
                     if word_re.search(candidate.contenuto or ''):
                         matching_article = candidate
                         break
@@ -602,6 +617,7 @@ class ContentPolisher:
                     modified_content = modified_content[:match_start] + replacement + modified_content[match_end:]
                     links_applied += 1
                     linked_entities.add(entity_lower)  # Marca come linkata
+                    linked_slugs.add(matching_article.slug)  # Destinazione usata
                     logger.debug(f"Internal Linking: linkato '{entity_text}' -> {matching_article.slug}")
                     break  # Solo prima occorrenza
 
