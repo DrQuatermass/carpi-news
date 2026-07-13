@@ -38,8 +38,7 @@
         {% endwith %}
     {% endif %}
 {% else %}
-    {# Nessun banner - mostra AdSense #}
-    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3345905614586761" crossorigin="anonymous"></script>
+    {# Nessun banner - mostra AdSense. Loader adsbygoogle.js caricato solo con consenso (window.loadAdSense in base.html) #}
     {% if position != 'between_articles' %}
         <div class="banner-horizontal-reserved has-adsense" style="margin: 20px 0; text-align: center; width: 100%; grid-column: 1 / -1;">
             <ins class="adsbygoogle adsense-fluid-unit"

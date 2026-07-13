@@ -339,6 +339,9 @@
             // Cookie banner listeners
             document.getElementById('cookie-accept')?.addEventListener('click', () => {
                 setCookieConsent('all');
+                // Consenso concesso: carica GA e AdSense ora
+                if (window.loadGoogleAnalytics) window.loadGoogleAnalytics();
+                if (window.loadAdSense) window.loadAdSense();
             });
 
             document.getElementById('cookie-essential')?.addEventListener('click', () => {
@@ -444,32 +447,53 @@
     <!-- Chatbot JavaScript - caricamento differito (non critico per LCP) -->
     <script src="{% static 'home/js/chatbot.js' %}?v=2026010804" defer></script>
 
-    <!-- Google Analytics - Deferred e Idle Callback -->
+    <!-- Google Analytics - caricato SOLO con consenso analytics (GDPR / Garante) -->
     <script>
-      // Carica GA solo quando il browser è idle (dopo tutte le risorse critiche)
-      (window.requestIdleCallback || window.setTimeout)(function() {
-        var script = document.createElement('script');
-        script.src = 'https://www.googletagmanager.com/gtag/js?id=G-MSCYFFSNGD';
-        script.async = true;
-        document.head.appendChild(script);
+      // GA viene richiesto solo se l'utente ha scelto "Accetta tutti".
+      // Con "Solo essenziali" o senza scelta, gtag.js non viene mai caricato:
+      // nessun cookie _ga, nessun dato inviato a Google prima del consenso.
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
 
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
-        gtag('js', new Date());
-        gtag('config', 'G-MSCYFFSNGD');
-      }, { timeout: 3000 });
+      window.loadGoogleAnalytics = function() {
+        if (window.__gaLoaded) return;
+        window.__gaLoaded = true;
+        // Carica quando il browser è idle (dopo le risorse critiche)
+        (window.requestIdleCallback || window.setTimeout)(function() {
+          var script = document.createElement('script');
+          script.src = 'https://www.googletagmanager.com/gtag/js?id=G-MSCYFFSNGD';
+          script.async = true;
+          document.head.appendChild(script);
 
-      // Carica AdSense in idle (evita blocco LCP/FCP)
-      // TODO: decommentare quando AdSense è pronto
-      /*
-      (window.requestIdleCallback || window.setTimeout)(function() {
-        var ads = document.createElement('script');
-        ads.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3345905614586761';
-        ads.async = true;
-        ads.crossOrigin = 'anonymous';
-        document.head.appendChild(ads);
-      }, { timeout: 5000 });
-      */
+          gtag('js', new Date());
+          gtag('config', 'G-MSCYFFSNGD');
+        }, { timeout: 3000 });
+      };
+
+      // Consenso analytics già dato in una visita precedente → carica subito
+      if (localStorage.getItem('cookie-consent') === 'all') {
+        window.loadGoogleAnalytics();
+      }
+
+      // AdSense - caricato SOLO con consenso (cookie pubblicitari / profilazione).
+      // Il loader adsbygoogle.js è ciò che contatta Google e setta i cookie:
+      // finché non viene caricato, gli eventuali .push({}) restano inerti (solo array).
+      window.loadAdSense = function() {
+        if (window.__adsLoaded) return;
+        window.__adsLoaded = true;
+        (window.requestIdleCallback || window.setTimeout)(function() {
+          var ads = document.createElement('script');
+          ads.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3345905614586761';
+          ads.async = true;
+          ads.crossOrigin = 'anonymous';
+          document.head.appendChild(ads);
+        }, { timeout: 3000 });
+      };
+
+      // Consenso già dato in una visita precedente → carica subito
+      if (localStorage.getItem('cookie-consent') === 'all') {
+        window.loadAdSense();
+      }
     </script>
     {% endblock %}
 
