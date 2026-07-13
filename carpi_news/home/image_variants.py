@@ -70,7 +70,14 @@ def _center_crop_box(image_width, image_height, target_ratio):
     return (0, top, image_width, top + crop_height)
 
 
-def crop_resize_webp(source_path, output_path, size, quality=82):
+# Qualità JPEG per la variante social. Il JPEG serve perché Facebook, WhatsApp e
+# LinkedIn non renderizzano in modo affidabile le anteprime con og:image WebP.
+SOCIAL_JPEG_QUALITY = 85
+
+
+def _crop_resize(source_path, size):
+    """Apre l'immagine, la ritaglia (smart o centrato) e la ridimensiona a `size`.
+    Restituisce l'oggetto PIL RGB pronto per il salvataggio nel formato voluto."""
     target_width, target_height = size
     target_ratio = target_width / target_height
 
@@ -81,9 +88,22 @@ def crop_resize_webp(source_path, output_path, size, quality=82):
             crop_box = _center_crop_box(img.width, img.height, target_ratio)
 
         cropped = img.crop(crop_box)
-        resized = cropped.resize((target_width, target_height), Image.Resampling.LANCZOS)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        resized.save(output_path, "WebP", quality=quality, method=6)
+        return cropped.resize((target_width, target_height), Image.Resampling.LANCZOS)
+
+
+def crop_resize_webp(source_path, output_path, size, quality=82):
+    resized = _crop_resize(source_path, size)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    resized.save(output_path, "WebP", quality=quality, method=6)
+
+
+def crop_resize_social_jpeg(source_path, output_path, size=None, quality=SOCIAL_JPEG_QUALITY):
+    """Genera la variante social in JPEG (di default nel formato 16x9 1200x675)."""
+    if size is None:
+        size = ARTICLE_IMAGE_VARIANTS["16x9"]
+    resized = _crop_resize(source_path, size)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    resized.save(output_path, "JPEG", quality=quality, optimize=True, progressive=True)
 
 
 def get_article_source_image_path(article):
@@ -149,6 +169,14 @@ def get_article_variant_path(article, aspect):
     return Path(settings.MEDIA_ROOT) / "images" / "articles" / f"{image_slug}-{aspect}.webp"
 
 
+def get_article_social_jpeg_path(article):
+    """Path su disco della variante social JPEG (16x9), gemella del webp."""
+    image_slug = (article.slug or "")[:MAX_IMAGE_SLUG_LENGTH].rstrip("-")
+    if not image_slug:
+        return None
+    return Path(settings.MEDIA_ROOT) / "images" / "articles" / f"{image_slug}-16x9.jpg"
+
+
 def missing_article_image_variants(article):
     missing = []
     for aspect, field_name in ARTICLE_IMAGE_VARIANT_FIELDS.items():
@@ -202,6 +230,16 @@ def generate_article_image_variants(article, source_path=None, force=False, qual
         type(article).objects.filter(pk=article.pk).update(**created)
         for field_name, relative_name in created.items():
             getattr(article, field_name).name = relative_name
+
+    # Variante social JPEG (gemella della 16x9): compatibilità anteprime
+    # Facebook/WhatsApp/LinkedIn, che non gestiscono bene og:image WebP.
+    social_jpeg_path = get_article_social_jpeg_path(article)
+    if social_jpeg_path and (force or not social_jpeg_path.exists()):
+        try:
+            crop_resize_social_jpeg(source_path, social_jpeg_path)
+            logger.info("Variante social JPEG creata: %s", social_jpeg_path.name)
+        except (OSError, UnidentifiedImageError) as exc:
+            logger.warning("JPEG social non generato per articolo %s: %s", article.pk, exc)
 
     return created
 

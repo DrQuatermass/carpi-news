@@ -428,6 +428,17 @@ class Articolo(models.Model):
         fallback_image = f"{site_url}{static('home/images/portico_logo_nopayoff.png')}"
 
         if self.image_16x9:
+            # Preferisci la variante JPEG gemella se presente su disco: Facebook,
+            # WhatsApp e LinkedIn non renderizzano in modo affidabile og:image WebP.
+            try:
+                webp_name = self.image_16x9.name
+            except (ValueError, AttributeError):
+                webp_name = ''
+            if webp_name.endswith('.webp'):
+                import os
+                jpeg_name = webp_name[:-5] + '.jpg'
+                if os.path.exists(os.path.join(settings.MEDIA_ROOT, jpeg_name)):
+                    return f"{site_url}{self.image_16x9.url[:-5]}.jpg"
             image_16x9_url = self._absolute_media_field_url(self.image_16x9)
             if image_16x9_url:
                 return image_16x9_url
