@@ -116,9 +116,20 @@ class Command(BaseCommand):
             'settembre': 9, 'ottobre': 10, 'novembre': 11, 'dicembre': 12
         }
 
-        # Anno corrente o prossimo
-        anno_corrente = datetime.now().year
-        mese_corrente = datetime.now().month
+        # Anno/mese di RIFERIMENTO: la data di pubblicazione dell'articolo,
+        # NON datetime.now(). Gli eventi vengono annunciati poco prima di
+        # accadere, quindi ancoriamo l'anno inferito al momento in cui
+        # l'articolo è stato scritto. Così il comando è idempotente: rieseguirlo
+        # in un anno successivo non fa "slittare" avanti gli eventi senza anno
+        # esplicito (es. un evento di "settembre" pubblicato nel 2025 resta 2025
+        # anche se il comando viene rilanciato nel 2026).
+        data_riferimento = (
+            articolo.data_pubblicazione
+            or articolo.data_creazione
+            or datetime.now()
+        )
+        anno_corrente = data_riferimento.year
+        mese_corrente = data_riferimento.month
 
         # Pattern 1: "28 al 31 ottobre" - prende la data di inizio
         pattern1 = r'(\d{1,2})\s+al\s+\d{1,2}\s+(gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)'
