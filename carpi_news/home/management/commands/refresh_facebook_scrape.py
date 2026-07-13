@@ -39,6 +39,9 @@ class Command(BaseCommand):
                             help='Pausa in secondi tra una chiamata e l altra (default 0.6)')
         parser.add_argument('--verify', action='store_true',
                             help="Stampa l'immagine restituita da Facebook per ogni URL")
+        parser.add_argument('--all', action='store_true',
+                            help='Ri-scrapa TUTTI gli articoli approvati, non solo quelli '
+                                 'con og:image cambiato (image_16x9). Sconsigliato: quota FB.')
 
     def _access_token(self):
         app_id = getattr(settings, 'FACEBOOK_APP_ID', '')
@@ -64,6 +67,11 @@ class Command(BaseCommand):
         site_url = getattr(settings, 'SITE_URL', 'https://ombradelportico.it').rstrip('/')
 
         qs = Articolo.objects.filter(approvato=True).exclude(slug='').order_by('-data_pubblicazione')
+        if not options['all']:
+            # Default: solo gli articoli il cui og:image e' effettivamente cambiato
+            # (hanno la variante 16x9 -> ora servita in JPEG). Ri-scrapare gli altri
+            # non cambia nulla e brucia la quota di scrape di Facebook.
+            qs = qs.exclude(image_16x9='').filter(image_16x9__isnull=False)
         if days:
             from django.utils import timezone
             from datetime import timedelta
@@ -80,6 +88,7 @@ class Command(BaseCommand):
         ok = failed = 0
         endpoint = f"https://graph.facebook.com/{GRAPH_VERSION}/"
 
+        aborted = False
         for i, art in enumerate(qs.iterator(), 1):
             url = f"{site_url}{reverse('dettaglio_articolo', args=[art.slug])}"
 
@@ -87,14 +96,22 @@ class Command(BaseCommand):
                 self.stdout.write(url)
                 continue
 
-            result = self._scrape(endpoint, url, token, verify)
-            if result is True or isinstance(result, str):
+            status, payload = self._scrape(endpoint, url, token)
+            if status == 'ok':
                 ok += 1
-                if verify and isinstance(result, str):
-                    self.stdout.write(f'[OK] {url}\n     img: {result}')
+                if verify:
+                    self.stdout.write(f'[OK] {url}\n     img: {payload or "(nessuna)"}')
+            elif status == 'rate':
+                # Limite app: tutte le chiamate successive fallirebbero fino al
+                # reset (circa 1 ora). Inutile continuare: fermati e informa.
+                self.stdout.write(self.style.ERROR(
+                    f'\nRate limit Facebook raggiunto (code {payload}). Interrompo.'
+                ))
+                aborted = True
+                break
             else:
                 failed += 1
-                self.stdout.write(self.style.ERROR(f'[FAIL] {url}\n       {result}'))
+                self.stdout.write(self.style.ERROR(f'[FAIL] {url}\n       {payload}'))
 
             if i % 25 == 0:
                 self.stdout.write(f'  ... {i}/{total} (ok={ok} fail={failed})')
@@ -105,10 +122,17 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS('RIEPILOGO:'))
         self.stdout.write(f'Re-scrape OK: {ok}')
         self.stdout.write(f'Falliti: {failed}')
+        if aborted:
+            self.stdout.write(self.style.WARNING(
+                'Quota di scrape Facebook esaurita. Gli URL gia fatti restano validi.\n'
+                'Riprova tra circa 1 ora, oppure restringi con --days N (es. --days 15)\n'
+                'e/o aumenta --sleep. Facebook comunque ri-scrapa da solo al primo share.'
+            ))
         self.stdout.write('=' * 70)
 
-    def _scrape(self, endpoint, url, token, verify, attempt=1):
-        """Ritorna True/str(img) se ok, oppure una stringa di errore."""
+    def _scrape(self, endpoint, url, token):
+        """Ritorna una tupla (status, payload):
+          ('ok', img_url|None) | ('rate', code) | ('error', messaggio)."""
         try:
             r = requests.post(
                 endpoint,
@@ -116,29 +140,21 @@ class Command(BaseCommand):
                 timeout=30,
             )
         except requests.RequestException as exc:
-            return f'richiesta fallita: {exc}'
+            return ('error', f'richiesta fallita: {exc}')
 
         try:
             data = r.json()
         except ValueError:
-            return f'HTTP {r.status_code}: risposta non JSON'
+            return ('error', f'HTTP {r.status_code}: risposta non JSON')
 
         if 'error' in data:
             err = data['error']
             code = err.get('code')
-            # Rate limit: attendi ed eventualmente riprova (max 3 tentativi).
-            if (code in RATE_LIMIT_CODES or r.status_code == 429) and attempt <= 3:
-                wait = 60 * attempt
-                self.stdout.write(self.style.WARNING(
-                    f'  rate limit (code {code}), attendo {wait}s (tentativo {attempt}/3)...'
-                ))
-                time.sleep(wait)
-                return self._scrape(endpoint, url, token, verify, attempt + 1)
-            return f"errore Graph: {err.get('message')} (code {code})"
+            if code in RATE_LIMIT_CODES or r.status_code == 429:
+                return ('rate', code)
+            return ('error', f"errore Graph: {err.get('message')} (code {code})")
 
-        if verify:
-            img = data.get('image')
-            if isinstance(img, list) and img:
-                return img[0].get('url', '') or True
-            return True
-        return True
+        img = data.get('image')
+        if isinstance(img, list) and img:
+            return ('ok', img[0].get('url', ''))
+        return ('ok', None)
