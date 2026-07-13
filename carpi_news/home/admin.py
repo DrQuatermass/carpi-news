@@ -252,7 +252,7 @@ class ArticoloAdmin(admin.ModelAdmin):
         if obj and obj.is_pubbliredazionale:
             return (
                 ('Informazioni Base', {
-                    'fields': ('titolo', 'titolo_seo', 'slug', 'contenuto', 'sommario', 'categoria', 'tags', 'autore', 'foto', 'foto_upload', 'image_16x9', 'image_4x3', 'image_1x1')
+                    'fields': ('titolo', 'titolo_seo', 'slug', 'contenuto', 'sommario', 'spunto_social', 'categoria', 'tags', 'autore', 'foto', 'foto_upload', 'image_16x9', 'image_4x3', 'image_1x1')
                 }),
                 ('Pubbliredazionale - Informazioni Azienda', {
                     'fields': ('nome_azienda', 'sito_web', 'pubbliredazionale_user')
@@ -277,7 +277,7 @@ class ArticoloAdmin(admin.ModelAdmin):
         else:
             return (
                 ('Informazioni Base', {
-                    'fields': ('titolo', 'titolo_seo', 'slug', 'contenuto', 'sommario', 'categoria', 'tags', 'autore', 'data_evento', 'foto', 'foto_upload', 'image_16x9', 'image_4x3', 'image_1x1')
+                    'fields': ('titolo', 'titolo_seo', 'slug', 'contenuto', 'sommario', 'spunto_social', 'categoria', 'tags', 'autore', 'data_evento', 'foto', 'foto_upload', 'image_16x9', 'image_4x3', 'image_1x1')
                 }),
                 ('Pubblicazione', {
                     'fields': ('approvato', 'spotlight', 'escludi_newsletter', 'fonte', 'data_pubblicazione', 'views')

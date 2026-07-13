@@ -1072,6 +1072,12 @@ class SocialMediaManager:
             if len(articolo.sommario) > 500:
                 message += "..."
 
+            # Domanda "acchiappa-commenti" generata dall'AI (solo Facebook, per ora).
+            # Se vuota, il post resta identico a prima (nessuna regressione).
+            spunto = (getattr(articolo, 'spunto_social', '') or '').strip()
+            if spunto:
+                message += f"\n\n{spunto}"
+
             # Aggiorna la cache Open Graph prima di pubblicare.
             # Evita il parametro picture su /feed: non è affidabile per link post moderni.
             self._refresh_facebook_link_preview(article_url, page_token)

@@ -72,12 +72,20 @@ REGOLE DI OUTPUT OBBLIGATORIE:
 - Evita elenchi puntati salvo necessita' giornalistica reale.
 - Usa frasi fluide con virgole; evita trattini e incisi con "-".
 - Rispondi solo con JSON valido, senza markdown, senza blocchi ``` e senza testo fuori dal JSON.
-- Il JSON deve avere esattamente questi campi: "titolo", "titolo_seo", "sommario", "contenuto", "tags".
+- Il JSON deve avere esattamente questi campi: "titolo", "titolo_seo", "sommario", "contenuto", "tags", "spunto_social".
 - "titolo": titolo editoriale narrativo e coinvolgente per il lettore.
 - "titolo_seo": title tag per Google, MAX 60 caratteri, struttura SOGGETTO + LUOGO + AZIONE, deve contenere le parole chiave esatte che qualcuno cercherebbe su Google per questa notizia. Includi sempre "Carpi" o il nome specifico della persona/luogo. STILE: cronaca giornalistica italiana naturale come voce.it, sulpanaro.net, modenatoday.it. VIETATI: titoli clickbait ("rivoluzione silenziosa", "non crederai", "svela il segreto"), frasi che iniziano con "Quando la/il", metafore astratte, "X rock" fuori contesto musica, parole inventate o storpiate. Esempio buono: "AIMAG Carpi: Morelli chiede trasparenza sulle nomine". Esempio CATTIVO: "Tortellini rock quando pasta diventa rivoluzione silenziosa". Se non riesci a creare un titolo_seo migliore del titolo, usa "".
 - "sommario" deve essere plain text, senza HTML.
 - "contenuto" deve contenere HTML con <p>, <strong>, <h2>/<h3> dove serve, mai <h1>.
 - "tags" deve essere un array di stringhe.
+- "spunto_social": UNA sola frase (60-140 caratteri) che verra' messa in fondo al post Facebook per invitare i lettori a commentare. Non riassume la notizia: apre una conversazione. In italiano, rivolta ai lettori ("voi/diteci/raccontateci"), senza hashtag, senza link, senza il nome della testata, al massimo 1 emoji. Scegli la LEVA giusta in base alla categoria:
+  * Attualita'/Politica/Economia -> OPINIONE: presenta due letture legittime e chiedi da che parte stanno, mai faziosa (es. "Investimento lungimirante o toppa prima di svendere? Diteci la vostra.").
+  * Sanita'/Sociale/Scuola -> ESPERIENZA personale, tono rispettoso (es. "Chi ha vissuto il pronto soccorso: vi torna questa foto?").
+  * Sport -> ORGOGLIO + TAG, o pronostico per il calcio (es. "Applausi ai ragazzi nei commenti, taggate chi gioca con voi!").
+  * Cultura & Eventi -> PARTECIPAZIONE/TAG/RICORDO (es. "Chi si organizza? Taggate la compagnia." oppure "Quale brano vorreste sentire?").
+  * Cronaca (fatti non luttuosi) -> CURIOSITA' o MEMORIA locale (es. "Chi se lo ricorda com'era prima?").
+  * Cosa fare oggi -> SONDAGGIO leggero (es. "Si esce o divano e ventilatore? Dove andate?").
+  REGOLA DI SICUREZZA (prevale sulla categoria): se la notizia e' un LUTTO, un INCIDENTE GRAVE, una MALATTIA, una TRAGEDIA o cronaca nera con vittime, NIENTE domanda-opinione e niente morbosita': usa un invito alla vicinanza o al ricordo (es. "Lascia un pensiero per la famiglia.") e in quel caso puo' finire con "." invece che con "?". Mai toni allarmistici o clickbait.
 """
 
 
@@ -3479,6 +3487,7 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
                 contenuto = parsed_article.get('contenuto', '')
                 sommario = content_polisher.clean_content_plain(parsed_article.get('sommario', ''))
                 tags_estratti = normalize_ai_tags(parsed_article.get('tags'), category)
+                spunto_social = (parsed_article.get('spunto_social') or '').strip().strip('"\'').strip()[:280]
             else:
                 self.logger.warning("[DEBUG] Risposta AI non JSON, uso parser legacy")
                 articolo_testo, tags_estratti = extract_tags(articolo_testo, category)
@@ -3495,6 +3504,7 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
                 if not contenuto:
                     contenuto = content_polisher.clean_content(articolo_testo)
                 titolo_seo = ''
+                spunto_social = ''
 
             # Rileva se l'AI ha rifiutato/avvisato invece di generare un articolo
             # (il titolo supera i 200 caratteri: l'AI ha scritto un avviso invece di seguire il formato)
@@ -3557,6 +3567,7 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
                     sommario=polished_data.get('sommario', ''),
                     categoria=category,
                     tags=tags_estratti,
+                    spunto_social=spunto_social,
                     fonte=article_data['url'],
                     foto=article_data.get('image_url'),
                     foto_valida=True,

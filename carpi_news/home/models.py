@@ -51,6 +51,10 @@ class Articolo(models.Model):
     )
     contenuto = models.TextField()
     sommario = models.TextField(max_length=5000, blank=True)
+    spunto_social = models.CharField(
+        max_length=280, blank=True, default='',
+        help_text="Domanda finale per il post Facebook (genera commenti). Generata dall'AI, modificabile prima dell'approvazione. Se vuota, il post resta come prima."
+    )
     categoria = models.CharField(max_length=100, choices=CATEGORIA_CHOICES, default='Attualità', db_index=True)
     tags = models.CharField(
         max_length=200,
