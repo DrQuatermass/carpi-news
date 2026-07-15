@@ -1,5 +1,6 @@
 import logging
 import re
+import unicodedata
 from datetime import datetime
 
 import requests
@@ -7,6 +8,17 @@ from bs4 import BeautifulSoup
 
 
 logger = logging.getLogger(__name__)
+
+
+def _strip_accents(text):
+    """Rimuove gli accenti per il matching delle date.
+
+    I siti dei cinema scrivono i giorni con l'accento (es. "Mercoledì 15"),
+    mentre i pattern usano la forma senza accento ("mercoledi"). Normalizzando
+    il testo sorgente il confronto funziona a prescindere dall'accento.
+    I nomi dei mesi italiani non hanno accenti, quindi l'operazione e' sicura.
+    """
+    return unicodedata.normalize('NFKD', text).encode('ascii', 'ignore').decode('ascii')
 
 USER_AGENT_HEADERS = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -77,7 +89,7 @@ def _scrape_tmb_cinema(name, address, website, placeholder_default=False):
             text_elem = card.find('div', class_='t-entry-text')
             if not text_elem:
                 continue
-            info_text = text_elem.get_text(separator=' ', strip=True).lower()
+            info_text = _strip_accents(text_elem.get_text(separator=' ', strip=True).lower())
 
             today_showtimes = []
             for pattern in date_ctx['today_patterns']:
@@ -124,6 +136,49 @@ def scrape_corso():
     )
 
 
+def _scrape_ariston_arena(url, date_ctx):
+    """Programmazione dell'Arena San Rocco (cinema estivo Ariston).
+
+    In estate l'Ariston non pubblica gli orari nella home ma in un articolo
+    dedicato, con un film per sera nel formato:
+    "Mercoledi 15 luglio VITA PRIVATA di Rebecca Zlotowski, con ...".
+    Il titolo (in maiuscolo) e' compreso tra la data e il connettore " di "
+    (minuscolo) del regista. L'orario e' fisso ("INIZIO PROIEZIONE ORE 21:15").
+    """
+    films = []
+    try:
+        response = requests.get(url, headers=USER_AGENT_HEADERS, timeout=10)
+        if response.status_code != 200:
+            return films
+
+        soup = BeautifulSoup(response.content, 'html.parser')
+        article = soup.find('article') or soup
+        text = _strip_accents(article.get_text(separator=' ', strip=True))
+
+        show_match = re.search(r'inizio proiezione ore\s*(\d{1,2}[:.]\d{2})', text, re.IGNORECASE)
+        showtime = show_match.group(1).replace('.', ':') if show_match else '21:15'
+
+        day = date_ctx['today_day']
+        month = date_ctx['today_month_it']
+        date_match = re.search(rf"\b0?{day}\b\s+{month}\s+", text, re.IGNORECASE)
+        if not date_match:
+            return films
+
+        rest = text[date_match.end():]
+        # Titolo in maiuscolo fino al connettore " di " (minuscolo) del regista.
+        title_match = re.match(r"(.+?)\s+di\s", rest)
+        title = title_match.group(1).strip() if title_match else rest.split('  ')[0].strip()[:80]
+        if title and len(title) >= 3:
+            films.append({
+                'title': title,
+                'image': '',
+                'info': _today_info(date_ctx, [showtime]),
+            })
+    except Exception as exc:
+        logger.error("Errore parsing Arena Ariston: %s", exc)
+    return films
+
+
 def scrape_ariston():
     date_ctx = cinema_date_context()
     films = []
@@ -148,6 +203,13 @@ def scrape_ariston():
             if not title or len(title) < 3:
                 continue
 
+            # In estate la programmazione e' nell'articolo dedicato "Arena San Rocco".
+            if 'arena' in _strip_accents(title.lower()):
+                arena_url = title_link.get('href') if title_link else None
+                if arena_url:
+                    films.extend(_scrape_ariston_arena(arena_url, date_ctx))
+                continue
+
             excerpt = article.find('div', class_='entry-excerpt')
             if not excerpt:
                 continue
@@ -155,7 +217,7 @@ def scrape_ariston():
             today_showtimes = []
             has_today = False
             for line in excerpt.get_text(separator='\n').split('\n'):
-                line_lower = line.strip().lower()
+                line_lower = _strip_accents(line.strip().lower())
                 if not line_lower:
                     continue
                 for pattern in date_ctx['today_patterns']:
@@ -211,7 +273,7 @@ def scrape_spacecity():
             schedule_section = movie_div.find('div', class_='schedule-section-show')
             if not schedule_section:
                 continue
-            schedule_full_text = schedule_section.get_text(separator=' ', strip=True)
+            schedule_full_text = _strip_accents(schedule_section.get_text(separator=' ', strip=True))
 
             today_showtimes = []
             for pattern in date_ctx['today_patterns']:
