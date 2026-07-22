@@ -58,8 +58,7 @@
 <meta property="article:tag" content="{{ tag }}">
 {% endfor %}
 
-<!-- Meta keywords e geolocalizzazione -->
-<meta name="author" content="Redazione Ombra del Portico">
+<!-- Geolocalizzazione -->
 <meta name="geo.region" content="IT-ER">
 <meta name="geo.placename" content="{{ articolo.seo_location.name }}">
 <meta name="geo.position" content="{{ articolo.seo_location.geo_position }}">
@@ -74,30 +73,18 @@
   "image": [{% for image_url in articolo.get_newsarticle_image_urls %}"{{ image_url }}"{% if not forloop.last %}, {% endif %}{% endfor %}],
   "datePublished": "{{ articolo.data_pubblicazione|date:'c' }}",
   "dateModified": "{{ articolo.data_modifica|date:'c' }}",
-{% if articolo.autore == "Redazione Ombra del Portico" or articolo.autore == "" or not articolo.autore %}
-  "author": {
-    "@type": "Organization",
-    "name": "Redazione Ombra del Portico",
-    "url": "https://ombradelportico.it/about/",
-    "logo": {
-      "@type": "ImageObject",
-      "url": "https://ombradelportico.it{% static 'home/images/portico_logo_news_60h.png' %}",
-      "width": 110,
-      "height": 60
-    }
-  },
-{% else %}
   "author": {
     "@type": "Person",
-    "name": "{{ articolo.autore|escapejs }}",
-    "url": "https://ombradelportico.it/about/",
+    "@id": "https://ombradelportico.it/autore/sven-rinaldi/#person",
+    "name": "Sven Rinaldi",
+    "jobTitle": "Direttore editoriale",
+    "url": "https://ombradelportico.it/autore/sven-rinaldi/",
     "worksFor": {
       "@type": "Organization",
       "name": "Ombra del Portico",
       "url": "https://ombradelportico.it/"
     }
   },
-{% endif %}
   "publisher": {
     "@type": "Organization",
     "name": "Ombra del Portico",
@@ -599,7 +586,7 @@
             <br>
             <h1 class="article-title">{{ articolo.editorial_headline }}</h1>
             <p class="article-byline">
-              di <strong>{{ articolo.autore }}</strong>
+              A cura di <strong><a href="{% url 'autore-sven' %}">Sven Rinaldi</a></strong>, direttore editoriale
               · <time datetime="{{ articolo.data_pubblicazione|date:'c' }}">
                 {{ articolo.data_pubblicazione|date:"j F Y" }}
               </time>
@@ -607,6 +594,7 @@
                 · <span class="updated">aggiornato {{ articolo.data_modifica|date:"j F Y" }}</span>
               {% endif %}
             </p>
+            <p class="article-byline-note"><small>Articolo prodotto con processo editoriale assistito da AI e revisionato prima della pubblicazione.</small></p>
             <br>
 
             <!-- Banner inizio articolo -->

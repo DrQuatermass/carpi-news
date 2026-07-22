@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Sven Rinaldi — Sviluppatore e direttore editoriale di Ombra del Portico{% endblock %}
+
+{% block extra_css %}
+<meta name="description" content="Sven Rinaldi, sviluppatore e direttore editoriale di Ombra del Portico. Costruisco software per il giornalismo: strumenti che liberano i giornalisti dal lavoro ripetitivo per dedicarsi all'approfondimento. Ogni articolo di ODP passa dalla mia revisione.">
+<link rel="canonical" href="https://ombradelportico.it/autore/sven-rinaldi/">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "ProfilePage",
+  "url": "https://ombradelportico.it/autore/sven-rinaldi/",
+  "mainEntity": {
+    "@type": "Person",
+    "@id": "https://ombradelportico.it/autore/sven-rinaldi/#person",
+    "name": "Sven Rinaldi",
+    "jobTitle": "Direttore editoriale",
+    "description": "Sviluppatore. Costruisce software per il giornalismo e cura la revisione editoriale di Ombra del Portico.",
+    "url": "https://ombradelportico.it/autore/sven-rinaldi/",
+    "email": "redazione@ombradelportico.it",
+    "worksFor": {
+      "@type": "NewsMediaOrganization",
+      "@id": "https://ombradelportico.it/about/#organization",
+      "name": "Ombra del Portico",
+      "url": "https://ombradelportico.it/"
+    },
+    "homeLocation": {
+      "@type": "Place",
+      "name": "Carpi, Emilia-Romagna, Italia"
+    },
+    "knowsAbout": ["Carpi", "informazione locale", "intelligenza artificiale", "sviluppo software", "Python"],
+    "sameAs": ["https://www.linkedin.com/in/svenrinaldi/"]
+  }
+}
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="about-content">
+        <nav class="breadcrumb" aria-label="Percorso" style="font-size:.85rem;margin-bottom:12px">
+            <a href="{% url 'home' %}">Home</a> · <span>Autore</span>
+        </nav>
+
+        <h1>Sven Rinaldi</h1>
+        <p class="subtitle">Sviluppatore · Direttore editoriale di Ombra del Portico · Carpi</p>
+
+        <section class="intro-section">
+            <p>Sono Sven Rinaldi, sviluppatore. Non sono un giornalista: <strong>costruisco software per il giornalismo</strong>. Ombra del Portico è il progetto con cui sviluppo questo strumento e, allo stesso tempo, un vero servizio di informazione locale per Carpi di cui rivedo personalmente ogni articolo prima della pubblicazione.</p>
+        </section>
+
+        <section>
+            <h2>L'idea dietro Ombra del Portico</h2>
+            <p>Le redazioni oggi devono produrre una quantità enorme di contenuti per stare dietro ai ritmi del web e dei social. È un lavoro che rischia di togliere tempo ed energie agli articoli che contano davvero: gli approfondimenti, le inchieste, il racconto del territorio — tutto ciò che richiede la professionalità di un giornalista vero.</p>
+            <p>Il mio obiettivo è costruire uno strumento che si faccia carico del lavoro ripetitivo — monitoraggio delle fonti, prima stesura, aggiornamenti continui — così che i giornalisti possano dedicare più tempo a ciò che solo loro sanno fare. Ombra del Portico è il mio laboratorio sul campo: qui sviluppo e metto alla prova questo strumento su notizie reali, ogni giorno.</p>
+        </section>
+
+        <section>
+            <h2>Chi sono</h2>
+            <p>Sono di Carpi, dove mi sono diplomato al Liceo Scientifico Manfredo Fanti. Ho alle spalle oltre vent'anni nei reparti operativi e commerciali di aziende in settori diversi — intermediazione immobiliare, logistica dell'ultimo miglio, gestione flotte — dove ho progettato processi e sistemi gestionali per far funzionare meglio il lavoro dei team. Negli ultimi anni mi sono formato nel machine learning e ho imparato a programmare in Python (Django, Pandas, scikit-learn, PyTorch): con questi strumenti costruisco il software che uso ogni giorno.</p>
+        </section>
+
+        <section>
+            <h2>Come nascono gli articoli</h2>
+            <p>Il sistema che ho sviluppato non si limita a riscrivere quello che trova. Il processo è questo:</p>
+            <ol>
+                <li><strong>Monitoraggio.</strong> Segue di continuo le fonti locali — enti pubblici, media del territorio, società sportive, comunicati stampa, eventi.</li>
+                <li><strong>Verifica e approfondimento.</strong> Quando individua una notizia la controlla e la approfondisce: incrocia più fonti e fa ricerca sul web per confermare fatti, date, nomi e contesto.</li>
+                <li><strong>Bozza con le fonti.</strong> Solo a quel punto produce una bozza dell'articolo, corredata di <strong>tutte le fonti citate</strong> e consultabili.</li>
+                <li><strong>Revisione umana.</strong> La bozza arriva a me: <strong>ogni singolo articolo passa dalla mia revisione e approvazione prima di andare online.</strong></li>
+            </ol>
+            <p>La tecnologia fa il lavoro di raccolta e verifica; la responsabilità di quello che leggi resta di una persona — io.</p>
+        </section>
+
+        <section class="team-section">
+            <h2>Scrivimi</h2>
+            <div class="team-card">
+                <p>Per segnalazioni, correzioni o per dirmi la tua:</p>
+                <ul class="contact-inline">
+                    <li><strong>Email:</strong> <a href="mailto:redazione@ombradelportico.it">redazione@ombradelportico.it</a></li>
+                    <li><strong>LinkedIn:</strong> <a href="https://www.linkedin.com/in/svenrinaldi/" rel="me noopener" target="_blank">linkedin.com/in/svenrinaldi</a></li>
+                </ul>
+            </div>
+            <p style="margin-top:14px"><a href="{% url 'about' %}">Scopri di più su Ombra del Portico →</a></p>
+        </section>
+    </div>
+</div>
+{% endblock %}

@@ -10,9 +10,14 @@
     <!-- SEO Meta Tags -->
     <meta name="description" content="{% block meta_description %}Notizie di Carpi in tempo reale: cronaca, eventi, sport e cultura carpigiana. Il portale di informazione locale aggiornato ogni giorno.{% endblock %}">
     <meta name="keywords" content="{% block meta_keywords %}Carpi, notizie Carpi, cronaca Carpi, eventi Carpi, giornale Carpi, Ombra del Portico{% endblock %}">
-    <meta name="author" content="Redazione Ombra del Portico">
+    <meta name="author" content="{% block meta_author %}Sven Rinaldi{% endblock %}">
     {% block robots_meta %}<meta name="robots" content="index, follow, max-image-preview:large">{% endblock %}
     <meta name="theme-color" content="#966C42">
+    <style>
+      /* Colore link coerente col sito per byline e pagine editoriali (evita il blu di default) */
+      .about-content a, .article-byline a { color: #8B4513; text-decoration: none; font-weight: 600; }
+      .about-content a:hover, .article-byline a:hover { color: #A0522D; text-decoration: underline; }
+    </style>
 
     <!-- Google Search Console Verification -->
     <meta name="google-site-verification" content="GlBF3RuTovbxvJLo9YKFzapvPrJPGx1s53lJNVykiNM">

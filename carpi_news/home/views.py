@@ -694,6 +694,14 @@ def about(request):
     return render(request, "about.html", context)
 
 
+def autore_sven(request):
+    """Pagina autore di Sven Rinaldi (direttore editoriale) - baricentro sulla persona."""
+    context = {
+        'current_year': timezone.now().year,
+    }
+    return render(request, "autore_sven_rinaldi.html", context)
+
+
 def pubblicita(request):
     """Vista per la pagina di pubblicitÃ  e pricing"""
     import html as _html

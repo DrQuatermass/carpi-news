@@ -62,16 +62,6 @@ class Articolo(models.Model):
         default='',
         help_text='Tag separati da virgola. Es: "Carpi calcio, Serie D, Carpi FC"'
     )
-    autore = models.CharField(
-        max_length=120,
-        default="Redazione Ombra del Portico",
-        db_index=True,
-        help_text=(
-            "Autore dell'articolo. Default 'Redazione Ombra del Portico'. "
-            "Usa nome persona reale per editoriali firmati o pubbliredazionali "
-            "con firma dell'autore."
-        )
-    )
     slug = models.SlugField(max_length=100, unique=True, blank=True)
     approvato = models.BooleanField(default=False, db_index=True)
     fonte = models.URLField(max_length=500, blank=True, null=True)

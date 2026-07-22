@@ -16,6 +16,7 @@ urlpatterns = [
     path('articolo/<slug:slug>/fonti/', views.fonti_articolo, name='fonti_articolo'),
     path('privacy-policy/', views.privacy_policy, name='privacy-policy'),
     path('about/', views.about, name='about'),
+    path('autore/sven-rinaldi/', views.autore_sven, name='autore-sven'),
     path('pubblicita/', views.pubblicita, name='pubblicita'),
     path('caplet/', views.caplet, name='caplet'),
     path('cinema/', views.programmazione_cinema, name='programmazione_cinema'),

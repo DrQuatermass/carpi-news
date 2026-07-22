@@ -21,7 +21,7 @@
         "https://x.com/ombradelportico",
         "https://t.me/ombradelportico"
       ],
-      "founder": {"@id": "https://ombradelportico.it/about/#sven"},
+      "founder": {"@id": "https://ombradelportico.it/autore/sven-rinaldi/#person"},
       "areaServed": {
         "@type": "City",
         "name": "Carpi",
@@ -38,10 +38,11 @@
     },
     {
       "@type": "Person",
-      "@id": "https://ombradelportico.it/about/#sven",
+      "@id": "https://ombradelportico.it/autore/sven-rinaldi/#person",
       "name": "Sven Rinaldi",
-      "jobTitle": "Fondatore",
-      "url": "https://ombradelportico.it/about/",
+      "jobTitle": "Direttore editoriale",
+      "url": "https://ombradelportico.it/autore/sven-rinaldi/",
+      "sameAs": ["https://www.linkedin.com/in/svenrinaldi/"],
       "worksFor": {"@id": "https://ombradelportico.it/about/#organization"}
     }
   ]
@@ -62,13 +63,14 @@
         <section class="team-section">
             <h2>Chi siamo</h2>
             <div class="team-card">
-                <h3>Sven Rinaldi - Fondatore</h3>
+                <h3><a href="{% url 'autore-sven' %}">Sven Rinaldi</a> — Fondatore e direttore editoriale</h3>
                 <p>Sviluppatore software con esperienza nell'innovazione digitale e automazione. Ho fondato Ombra del Portico per offrire alla comunità carpigiana un servizio di informazione locale che nessun media tradizionale può permettersi: monitoraggio continuo 24/7, aggregazione multi-fonte e verifica incrociata dei contenuti.</p>
                 <p><strong>Contatti diretti:</strong></p>
                 <ul class="contact-inline">
                     <li><strong>Email:</strong> <a href="mailto:redazione@ombradelportico.it">redazione@ombradelportico.it</a></li>
                     <li><strong>Telefono:</strong> <a href="tel:+393463332864">346 333 28 64</a></li>
                 </ul>
+                <p style="margin-top:12px"><a href="{% url 'autore-sven' %}">Profilo completo dell'autore →</a></p>
             </div>
         </section>
 

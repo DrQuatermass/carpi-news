@@ -182,7 +182,7 @@ class ArticoliFeedRSS(Feed):
     
     def item_author_name(self, item):
         """Autore dell'articolo"""
-        return "Ombra del Portico"
+        return "Sven Rinaldi"
     
     def item_categories(self, item):
         """Categorie dell'articolo"""
