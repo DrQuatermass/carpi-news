@@ -137,6 +137,18 @@ EXCLUDED_ALIAS_PATTERNS = {
     ),
 }
 
+# Alias che sono anche nomi comuni. L'occorrenza vale come localita' solo se
+# non e' preceduta da articolo/preposizione ("nel cortile di Palazzo dei Pio")
+# e non e' seguita dal complemento di specificazione di un altro luogo
+# ("Cortile di Villa Berti"). Restano riconosciute "sagra a Cortile" e
+# "Cortile di Carpi".
+COMMON_NOUN_ALIASES = {
+    "cortile": {
+        "prefix": r"(?:in|nel|nello|nei|negli|il|lo|i|gli|un|uno|del|dello|dei|degli|dal|dallo|dai|al|allo|ai|sul|sullo|sui|questo|quel|suo|loro|proprio)\s+$",
+        "suffix": r"\s+d(?:i|el|ella|ello|elle|ei|egli)\b(?!\s+carpi\b)",
+    },
+}
+
 
 def _normalize_text(value):
     text = strip_tags(value or "")
@@ -180,6 +192,15 @@ def _candidate_places():
             yield alias, data
 
 
+def _is_common_noun_use(text, match, rules):
+    """True se l'occorrenza e' il nome comune e non la localita'."""
+    preceding = text[max(0, match.start() - 20):match.start()]
+    if re.search(rules["prefix"], preceding):
+        return True
+    following = text[match.end():match.end() + 30]
+    return bool(re.match(rules["suffix"], following))
+
+
 def _best_location_in_text(value):
     text = _normalize_text(value)
     if not text:
@@ -194,7 +215,10 @@ def _best_location_in_text(value):
             continue
 
         pattern = rf"(?<!\w){re.escape(normalized_alias)}(?!\w)"
+        common_noun = COMMON_NOUN_ALIASES.get(normalized_alias)
         for match in re.finditer(pattern, text):
+            if common_noun and _is_common_noun_use(text, match, common_noun):
+                continue
             matches.append((match.start(), -len(normalized_alias), data))
 
     if not matches:
