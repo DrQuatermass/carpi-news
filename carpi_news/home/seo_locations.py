@@ -145,7 +145,7 @@ EXCLUDED_ALIAS_PATTERNS = {
 COMMON_NOUN_ALIASES = {
     "cortile": {
         "prefix": r"(?:in|nel|nello|nei|negli|il|lo|i|gli|un|uno|del|dello|dei|degli|dal|dallo|dai|al|allo|ai|sul|sullo|sui|questo|quel|suo|loro|proprio)\s+$",
-        "suffix": r"\s+d(?:i|el|ella|ello|elle|ei|egli)\b(?!\s+carpi\b)",
+        "suffix": r"\s+(?:d['’]|d(?:i|el|ella|ello|elle|ei|egli)\b(?!\s+carpi\b))",
     },
 }
 
