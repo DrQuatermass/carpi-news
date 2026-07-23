@@ -26,6 +26,10 @@
 {% block meta_description %}{{ articolo.sommario|striptags|truncate_sentences:150 }}{% endblock %}
 {% block meta_keywords %}{{ articolo.meta_keywords }}{% endblock %}
 
+{# "Cosa fare oggi" e' un riepilogo di eventi gia' pubblicati singolarmente:
+   resta online per i lettori ma fuori dall'indice (0 click in 180 giorni). #}
+{% block robots_meta %}{% if articolo.categoria == "Cosa fare oggi" %}<meta name="robots" content="noindex, follow">{% else %}<meta name="robots" content="index, follow, max-image-preview:large">{% endif %}{% endblock %}
+
 {% block extra_css %}
 <meta name="news_keywords" content="{{ articolo.meta_keywords }}">
 <style>

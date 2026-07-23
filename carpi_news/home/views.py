@@ -589,11 +589,15 @@ def sitemap(request):
     now = timezone.now()
     cutoff_date = now - timedelta(days=30)
 
-    # Articoli ultimi 30 giorni (solo pubblicati, non futuri)
+    # Articoli ultimi 30 giorni (solo pubblicati, non futuri).
+    # "Cosa fare oggi" e' escluso: e' in noindex perche' riepiloga eventi gia'
+    # pubblicati singolarmente.
     articles = Articolo.objects.filter(
         approvato=True,
         data_pubblicazione__gte=cutoff_date,
         data_pubblicazione__lte=now
+    ).exclude(
+        categoria='Cosa fare oggi'
     ).order_by('-data_pubblicazione')
 
     # Aggiungi campo days_old per prioritÃ  dinamiche
@@ -609,7 +613,7 @@ def sitemap(request):
     context = {
         'articles': articles,
         'last_update': last_update,
-        'categoria_slugs': list(CATEGORIA_MAP.keys()),
+        'categoria_slugs': [slug for slug in CATEGORIA_MAP if slug != 'cosa-fare-oggi'],
     }
     return HttpResponse(template.render(context, request), content_type='application/xml')
 
@@ -622,6 +626,8 @@ def sitemap_archive(request):
     articles = Articolo.objects.filter(
         approvato=True,
         data_pubblicazione__lt=cutoff_date
+    ).exclude(
+        categoria='Cosa fare oggi'
     ).only('slug', 'data_pubblicazione').order_by('-data_pubblicazione')[:10000]
 
     logger.info(f"Generata sitemap archivio con {articles.count()} articoli")
