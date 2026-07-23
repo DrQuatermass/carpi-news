@@ -71,6 +71,41 @@ def _today_info(date_ctx, showtimes):
     return info
 
 
+def _normalize_showtimes(showtimes):
+    """Orari in formato HH:MM, senza duplicati e ordinati.
+
+    I siti dei cinema scrivono gli orari sia come "21:15" sia come "21.15":
+    lo ScreeningEvent di schema.org ha bisogno di un orario normalizzato per
+    costruire la startDate, che per Google e' obbligatoria.
+    """
+    normalized = set()
+    for raw in showtimes or []:
+        match = re.match(r'^(\d{1,2})[:.](\d{2})$', str(raw).strip())
+        if not match:
+            continue
+        hour, minute = int(match.group(1)), int(match.group(2))
+        if hour > 23 or minute > 59:
+            continue
+        normalized.add(f"{hour:02d}:{minute:02d}")
+    return sorted(normalized)
+
+
+def _film_entry(date_ctx, title, image, showtimes):
+    """Voce film con data e orari strutturati oltre alla stringa leggibile.
+
+    `date` e `showtimes` servono allo schema.org della pagina cinema; `info`
+    resta il testo mostrato nel template.
+    """
+    normalized = _normalize_showtimes(showtimes)
+    return {
+        'title': title,
+        'image': image if image else '',
+        'info': _today_info(date_ctx, normalized),
+        'date': date_ctx['today'].date().isoformat(),
+        'showtimes': normalized,
+    }
+
+
 def _scrape_tmb_cinema(name, address, website, placeholder_default=False):
     date_ctx = cinema_date_context()
     films = []
@@ -109,11 +144,7 @@ def _scrape_tmb_cinema(name, address, website, placeholder_default=False):
                 if 'placeholder' in image_lower or (placeholder_default and 'default' in image_lower):
                     image = ''
 
-            films.append({
-                'title': title,
-                'image': image if image else '',
-                'info': _today_info(date_ctx, today_showtimes),
-            })
+            films.append(_film_entry(date_ctx, title, image, today_showtimes))
         except Exception as exc:
             logger.error("Errore parsing film %s: %s", name, exc)
     return cinema_payload(name, address, website, films)
@@ -169,11 +200,7 @@ def _scrape_ariston_arena(url, date_ctx):
         title_match = re.match(r"(.+?)\s+di\s", rest)
         title = title_match.group(1).strip() if title_match else rest.split('  ')[0].strip()[:80]
         if title and len(title) >= 3:
-            films.append({
-                'title': title,
-                'image': '',
-                'info': _today_info(date_ctx, [showtime]),
-            })
+            films.append(_film_entry(date_ctx, title, '', [showtime]))
     except Exception as exc:
         logger.error("Errore parsing Arena Ariston: %s", exc)
     return films
@@ -237,11 +264,7 @@ def scrape_ariston():
                 if img_elem:
                     image = img_elem.get('src', '') or img_elem.get('data-src', '')
 
-            films.append({
-                'title': title,
-                'image': image if image else '',
-                'info': _today_info(date_ctx, sorted(set(today_showtimes))),
-            })
+            films.append(_film_entry(date_ctx, title, image, today_showtimes))
         except Exception as exc:
             logger.error("Errore parsing articolo Ariston: %s", exc)
     return cinema_payload('Cinema Ariston', 'Via Ernesto Boccaletti 3, San Marino di Carpi', website, films)
@@ -288,11 +311,7 @@ def scrape_spacecity():
             else:
                 continue
 
-            films.append({
-                'title': title,
-                'image': image if image else '',
-                'info': _today_info(date_ctx, today_showtimes),
-            })
+            films.append(_film_entry(date_ctx, title, image, today_showtimes))
         except Exception as exc:
             logger.error("Errore parsing film Space City: %s", exc)
     return cinema_payload('Space City Multisala', "Viale dell'Industria 9, Carpi", website, films)

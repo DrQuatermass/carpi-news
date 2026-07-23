@@ -33,39 +33,72 @@ CINEMA_FRESH_TTL = 21600
 CINEMA_STALE_TTL = 7 * 24 * 60 * 60
 
 
+def _screening_start_dates(film, today):
+    """startDate ISO 8601 delle proiezioni di un film.
+
+    Per Google la startDate e' obbligatoria su Event/ScreeningEvent: senza,
+    l'elemento viene scartato in fase di parsing e non compare nemmeno tra gli
+    errori del report. La cache stale puo' contenere programmazioni di giorni
+    passati: in quel caso l'evento viene omesso invece di pubblicare una data
+    non valida. Se gli orari non sono stati estratti si ripiega sulla sola
+    data, comunque accettata dallo standard.
+    """
+    from datetime import time as time_cls
+
+    try:
+        film_date = datetime.strptime(film.get('date') or '', '%Y-%m-%d').date()
+    except (ValueError, TypeError):
+        return []
+    if film_date < today:
+        return []
+
+    start_dates = []
+    for showtime in film.get('showtimes') or []:
+        try:
+            hour, minute = (int(part) for part in str(showtime).split(':'))
+            naive = datetime.combine(film_date, time_cls(hour, minute))
+        except (ValueError, TypeError):
+            continue
+        start_dates.append(timezone.make_aware(naive).isoformat())
+    return start_dates or [film_date.isoformat()]
+
+
 def _build_cinema_schema(cinema_data):
+    today = timezone.localdate()
     schema_graph = []
     for cinema in cinema_data:
         for film in cinema.get('films', []):
-            schema_graph.append({
-                "@type": "ScreeningEvent",
-                "name": film.get('title', ''),
-                "location": {
-                    "@type": "MovieTheater",
-                    "name": cinema.get('name', ''),
-                    "address": {
-                        "@type": "PostalAddress",
-                        "streetAddress": cinema.get('address', ''),
-                        "addressLocality": "Carpi",
-                        "addressRegion": "MO",
-                        "addressCountry": "IT"
-                    },
-                    "url": cinema.get('website', '')
-                },
-                "workPresented": {
-                    "@type": "Movie",
+            for start_date in _screening_start_dates(film, today):
+                schema_graph.append({
+                    "@type": "ScreeningEvent",
                     "name": film.get('title', ''),
-                    **({"image": film["image"]} if film.get("image") else {})
-                },
-                "url": "https://ombradelportico.it/cinema/",
-                "eventStatus": "https://schema.org/EventScheduled",
-                "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
-                "organizer": {
-                    "@type": "Organization",
-                    "name": cinema.get('name', ''),
-                    "url": cinema.get('website', '')
-                }
-            })
+                    "startDate": start_date,
+                    "location": {
+                        "@type": "MovieTheater",
+                        "name": cinema.get('name', ''),
+                        "address": {
+                            "@type": "PostalAddress",
+                            "streetAddress": cinema.get('address', ''),
+                            "addressLocality": "Carpi",
+                            "addressRegion": "MO",
+                            "addressCountry": "IT"
+                        },
+                        "url": cinema.get('website', '')
+                    },
+                    "workPresented": {
+                        "@type": "Movie",
+                        "name": film.get('title', ''),
+                        **({"image": film["image"]} if film.get("image") else {})
+                    },
+                    "url": "https://ombradelportico.it/cinema/",
+                    "eventStatus": "https://schema.org/EventScheduled",
+                    "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
+                    "organizer": {
+                        "@type": "Organization",
+                        "name": cinema.get('name', ''),
+                        "url": cinema.get('website', '')
+                    }
+                })
     return json.dumps({
         "@context": "https://schema.org",
         "@graph": schema_graph
