@@ -132,7 +132,12 @@
 </script>
 
 {% if articolo.data_evento and articolo.categoria == "Cultura & Eventi" and request.GET.social_share != "1" %}
-<!-- Schema.org JSON-LD Event (articoli con data evento) -->
+{# Schema.org Event: solo proprieta' che sappiamo davvero dall'articolo.
+   Niente performer/organizer (non siamo noi a organizzare l'evento), niente
+   offers (il prezzo non e' un dato che abbiamo: dichiararlo gratuito era falso
+   per gli eventi a pagamento) e niente endDate, che non conosciamo per gli
+   eventi su piu' giorni. La localita' arriva dall'articolo, non e' piu' Carpi
+   fissa. #}
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -140,7 +145,6 @@
   "name": "{{ articolo.titolo|escapejs }}",
   "description": "{{ articolo.sommario|striptags|escapejs }}",
   "startDate": "{{ articolo.data_evento|date:'Y-m-d' }}",
-  "endDate": "{{ articolo.data_evento|date:'Y-m-d' }}",
   "eventStatus": "https://schema.org/EventScheduled",
   "eventAttendanceMode": "https://schema.org/OfflineEventAttendanceMode",
   "image": "{{ articolo.get_social_image_url }}",
@@ -148,32 +152,14 @@
   "inLanguage": "it-IT",
   "location": {
     "@type": "Place",
-    "name": "Carpi",
+    "name": "{{ articolo.seo_location.name|escapejs }}",
     "address": {
       "@type": "PostalAddress",
-      "addressLocality": "Carpi",
-      "addressRegion": "MO",
-      "postalCode": "41012",
-      "addressCountry": "IT"
+      "addressLocality": "{{ articolo.seo_location.addressLocality|escapejs }}",
+      "addressRegion": "{{ articolo.seo_location.region|escapejs }}",
+      "postalCode": "{{ articolo.seo_location.cap }}",
+      "addressCountry": "{{ articolo.seo_location.country }}"
     }
-  },
-  "performer": {
-    "@type": "Organization",
-    "name": "Ombra del Portico",
-    "url": "https://ombradelportico.it"
-  },
-  "organizer": {
-    "@type": "Organization",
-    "name": "Ombra del Portico",
-    "url": "https://ombradelportico.it"
-  },
-  "offers": {
-    "@type": "Offer",
-    "url": "{{ canonical_url }}",
-    "price": "0",
-    "priceCurrency": "EUR",
-    "availability": "https://schema.org/InStock",
-    "validFrom": "{{ articolo.data_pubblicazione|date:'c' }}"
   }
 }
 </script>
