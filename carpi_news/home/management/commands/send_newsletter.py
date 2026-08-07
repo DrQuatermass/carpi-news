@@ -1,5 +1,6 @@
 import logging
 import os
+import time
 from django.core.management.base import BaseCommand
 from django.core.mail import EmailMultiAlternatives, get_connection
 from django.template.loader import render_to_string
@@ -75,6 +76,37 @@ class Command(BaseCommand):
         finally:
             if lock_file:
                 lock_file.close()
+
+    def _send_with_retry(self, msg, connection, max_attempts=3):
+        """Invia un messaggio riusando la connessione condivisa; se cade
+        (es. drop/limite connessioni Aruba → 'please run connect() first'),
+        chiude e riapre la connessione e ritenta. Così un singolo drop
+        transitorio non fa fallire l'intero batch."""
+        last_exc = None
+        for attempt in range(max_attempts):
+            try:
+                msg.send()
+                return
+            except Exception as e:
+                last_exc = e
+                # Ultimo tentativo: non riconnettere, propaga l'errore
+                if attempt == max_attempts - 1:
+                    break
+                logger.warning(
+                    f"Invio fallito (tentativo {attempt + 1}/{max_attempts}) per "
+                    f"{', '.join(msg.to)}: {e}. Riapro la connessione SMTP e ritento."
+                )
+                # Riapre la connessione condivisa (msg.connection è lo stesso oggetto)
+                try:
+                    connection.close()
+                except Exception:
+                    pass
+                try:
+                    connection.open()
+                except Exception as open_exc:
+                    last_exc = open_exc
+                time.sleep(1)
+        raise last_exc
 
     def _do_send(self, dry_run, preview_only, force, allow_no_today):
         from home.views import _get_newsletter_context
@@ -164,7 +196,12 @@ class Command(BaseCommand):
         connection = get_connection() if not dry_run else None
         try:
             if connection:
-                connection.open()
+                # L'apertura iniziale può fallire (drop/limite connessioni Aruba): non blocca,
+                # ci pensa il retry per-messaggio a riaprire la connessione.
+                try:
+                    connection.open()
+                except Exception as e:
+                    logger.warning(f"Apertura connessione SMTP iniziale fallita, riprovo per-messaggio: {e}")
 
             for subscriber in subscribers:
                 email_ctx = {
@@ -193,7 +230,7 @@ class Command(BaseCommand):
                         connection=connection,
                     )
                     msg.attach_alternative(html_body, 'text/html')
-                    msg.send()
+                    self._send_with_retry(msg, connection)
                     inviati += 1
 
                 except Exception as e:
