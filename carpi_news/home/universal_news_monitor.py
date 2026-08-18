@@ -3170,12 +3170,11 @@ class UniversalNewsMonitor:
 
                     # Controllo duplicati sia in memoria che nel database
                     if article_hash not in self.seen_articles:
-                        # Controllo duplicati nel database prima di processare
-                        # Controlla sia per URL esatto che per titolo simile
+                        # Dedup solo sull'URL della fonte: se due testate danno la
+                        # stessa notizia con lo stesso titolo, entrambe devono passare
                         existing_by_url = Articolo.objects.filter(fonte=article_data['url']).exists()
-                        existing_by_title = Articolo.objects.filter(titolo=article_data['title']).exists()
 
-                        if not existing_by_url and not existing_by_title:
+                        if not existing_by_url:
                             success = self.process_new_article(article_data)
                             if success:
                                 processed_count += 1
@@ -3213,11 +3212,10 @@ class UniversalNewsMonitor:
         article_url = article_data.get('url')
         title = article_data.get('title')
 
-        if article_url and Articolo.objects.filter(fonte=article_url).exists():
-            return True
-        if title and Articolo.objects.filter(titolo=title).exists():
-            return True
-        return False
+        if article_url:
+            return Articolo.objects.filter(fonte=article_url).exists()
+        # Senza URL (es. editoriali) il titolo resta l'unica chiave disponibile
+        return bool(title) and Articolo.objects.filter(titolo=title).exists()
     
     def should_auto_approve(self, category: str) -> bool:
         """Determina se un articolo deve essere auto-approvato basandosi sulla configurazione"""
@@ -3313,12 +3311,9 @@ class UniversalNewsMonitor:
 
             client = Anthropic(api_key=api_key)
 
-            preliminary_title = article_data.get('title')
             existing = None
             if article_data.get('url'):
                 existing = Articolo.objects.filter(fonte=article_data['url']).first()
-            if not existing and preliminary_title:
-                existing = Articolo.objects.filter(titolo=preliminary_title).first()
             if existing:
                 self.logger.info(f"Articolo saltato (pre-check duplicato): {existing.titolo}")
                 return f"Articolo gia' esistente con ID: {existing.id}"
