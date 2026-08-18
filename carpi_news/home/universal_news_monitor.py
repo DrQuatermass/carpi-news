@@ -430,6 +430,40 @@ class BaseScraper(ABC):
 class HTMLScraper(BaseScraper):
     """Scraper per siti HTML generici"""
 
+    # Mesi abbreviati usati nelle liste di articoli in italiano (es. "18 Ago 2026")
+    MESI_IT = {
+        'gen': 1, 'feb': 2, 'mar': 3, 'apr': 4, 'mag': 5, 'giu': 6,
+        'lug': 7, 'ago': 8, 'set': 9, 'ott': 10, 'nov': 11, 'dic': 12,
+    }
+
+    def _extract_item_date(self, item):
+        """Estrae la data di pubblicazione dall'elemento di listing, se configurata."""
+        date_selector = self.config.config.get('date_selector')
+        if not date_selector:
+            return None
+
+        date_elem = item.select_one(date_selector)
+        if not date_elem:
+            return None
+
+        raw = date_elem.get_text(strip=True)
+        match = re.search(r'(\d{1,2})\s+([A-Za-zà-ÿ]{3,})\.?\s+(\d{4})', raw)
+        if not match:
+            self.logger.debug(f"Data non riconosciuta in '{raw}'")
+            return None
+
+        giorno, mese_txt, anno = match.groups()
+        mese = self.MESI_IT.get(mese_txt.lower()[:3])
+        if not mese:
+            self.logger.debug(f"Mese non riconosciuto in '{raw}'")
+            return None
+
+        try:
+            return datetime(int(anno), mese, int(giorno)).date()
+        except ValueError:
+            self.logger.debug(f"Data non valida in '{raw}'")
+            return None
+
     def _is_excluded_image(self, img_elem) -> bool:
         """Scarta immagini di layout, loghi, icone e placeholder."""
         classes = img_elem.get('class', '')
@@ -821,9 +855,21 @@ class HTMLScraper(BaseScraper):
                     filtered_items.append(item)
             news_items = filtered_items[:20]
         
+        # Scarta articoli troppo vecchi se il monitor ha un limite di eta'
+        max_age_days = self.config.config.get('max_age_days')
+
         # Estrai dati da ogni elemento
         for item in news_items:
             try:
+                if max_age_days is not None:
+                    item_date = self._extract_item_date(item)
+                    # Se la data non e' leggibile non scartiamo: meglio un doppione di una notizia persa
+                    if item_date is not None:
+                        eta = (timezone.localdate() - item_date).days
+                        if eta > max_age_days:
+                            self.logger.debug(f"Articolo scartato: {eta} giorni fa (max {max_age_days})")
+                            continue
+
                 article_data = self._extract_article_from_html(item, page_url)
                 if article_data:
                     articles.append(article_data)
