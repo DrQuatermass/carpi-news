@@ -433,7 +433,7 @@ class BaseScraper(ABC):
         Il confronto per sottostringa faceva passare "Carpi" dentro il verbo
         "carpire" ("carpire la fiducia" e' ricorrente nei comunicati sulle
         truffe), pubblicando cronaca nazionale come notizia locale.
-        Il confine  si applica solo al lato della keyword che inizia o
+        Il confine di parola si applica solo al lato della keyword che inizia o
         finisce con un carattere alfanumerico, per non rompere keyword come "ORA!".
         """
         keyword = (keyword or '').strip().lower()
@@ -442,9 +442,9 @@ class BaseScraper(ABC):
 
         pattern = re.escape(keyword)
         if keyword[0].isalnum():
-            pattern = r'' + pattern
+            pattern = r'\b' + pattern
         if keyword[-1].isalnum():
-            pattern = pattern + r''
+            pattern = pattern + r'\b'
 
         return re.search(pattern, text) is not None
 
