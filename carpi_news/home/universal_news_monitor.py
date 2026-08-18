@@ -426,6 +426,32 @@ class BaseScraper(ABC):
         """Hook opzionale per segnare una sorgente come processata dopo il salvataggio."""
         return None
 
+    @staticmethod
+    def _keyword_matches(keyword: str, text: str) -> bool:
+        """Cerca la keyword nel testo, a parola intera quando ha senso.
+
+        Il confronto per sottostringa faceva passare "Carpi" dentro il verbo
+        "carpire" ("carpire la fiducia" e' ricorrente nei comunicati sulle
+        truffe), pubblicando cronaca nazionale come notizia locale.
+        Il confine  si applica solo al lato della keyword che inizia o
+        finisce con un carattere alfanumerico, per non rompere keyword come "ORA!".
+        """
+        keyword = (keyword or '').strip().lower()
+        if not keyword:
+            return False
+
+        pattern = re.escape(keyword)
+        if keyword[0].isalnum():
+            pattern = r'' + pattern
+        if keyword[-1].isalnum():
+            pattern = pattern + r''
+
+        return re.search(pattern, text) is not None
+
+    def _any_keyword_matches(self, keywords: List[str], text: str) -> bool:
+        """True se almeno una delle keyword compare nel testo."""
+        return any(self._keyword_matches(k, text) for k in keywords)
+
 
 class HTMLScraper(BaseScraper):
     """Scraper per siti HTML generici"""
@@ -675,7 +701,7 @@ class HTMLScraper(BaseScraper):
                         url_filter_keywords = self.config.config.get('url_filter_keywords', [])
                         if url_filter_keywords:
                             url_and_title = f"{article_url} {title}".lower()
-                            has_url_keyword = any(keyword.lower() in url_and_title for keyword in url_filter_keywords)
+                            has_url_keyword = self._any_keyword_matches(url_filter_keywords, url_and_title)
                             if not has_url_keyword:
                                 self.logger.debug(f"Skipping article (URL filter): {title[:50]}...")
                                 continue
@@ -687,7 +713,7 @@ class HTMLScraper(BaseScraper):
                         filter_keywords = self.config.config.get('content_filter_keywords', [])
                         if filter_keywords:
                             content_to_check = f"{title} {description} {full_content or ''}".lower()
-                            has_keyword = any(keyword.lower() in content_to_check for keyword in filter_keywords)
+                            has_keyword = self._any_keyword_matches(filter_keywords, content_to_check)
                             if not has_keyword:
                                 self.logger.debug(f"Skipping article (no keywords in full content): {title[:50]}...")
                                 continue
@@ -946,7 +972,7 @@ class HTMLScraper(BaseScraper):
             # Scarica contenuto completo per il filtro
             full_content = self.get_full_content(article_url)
             content_to_check = f"{title} {content_preview} {full_content or ''}".lower()
-            has_keyword = any(keyword.lower() in content_to_check for keyword in filter_keywords)
+            has_keyword = self._any_keyword_matches(filter_keywords, content_to_check)
             if not has_keyword:
                 self.logger.debug(f"Articolo scartato: nessuna keyword trovata. Keywords: {filter_keywords}, URL: {article_url}")
                 return None
