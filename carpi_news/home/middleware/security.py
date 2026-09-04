@@ -16,9 +16,22 @@ class SEOMiddleware:
         self.get_response = get_response
         self.canonical_domain = 'ombradelportico.it'
 
+    @staticmethod
+    def _original_host(request):
+        """
+        Host richiesto dal client. Dietro Apache (ProxyPass senza ProxyPreserveHost)
+        l'header Host e' quello del backend e l'host reale arriva in X-Forwarded-Host,
+        che con piu' proxy in catena puo' essere una lista "a, b" e puo' avere la porta.
+        Si usa il primo valore, senza porta, e non passa da ALLOWED_HOSTS
+        (USE_X_FORWARDED_HOST rifiutava tutto con 400).
+        """
+        forwarded = request.META.get('HTTP_X_FORWARDED_HOST', '')
+        host = forwarded.split(',')[0].strip() if forwarded else request.get_host()
+        return host.split(':')[0].strip().lower()
+
     def __call__(self, request):
         # Ottieni host e schema
-        host = request.get_host().lower()
+        host = self._original_host(request)
         scheme = 'https' if request.is_secure() else 'http'
 
         # Flag per controllare se serve redirect

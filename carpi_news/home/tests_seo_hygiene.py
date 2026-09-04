@@ -17,8 +17,8 @@ from home.models import Articolo
 
 @override_settings(
     DEBUG=False,
-    ALLOWED_HOSTS=["ombradelportico.it", "www.ombradelportico.it", "testserver"],
-    USE_X_FORWARDED_HOST=True,
+    # solo l'host del backend: X-Forwarded-Host NON deve passare da ALLOWED_HOSTS
+    ALLOWED_HOSTS=["ombradelportico.it"],
 )
 class SEOMiddlewareForwardedHostTests(SimpleTestCase):
     """Dietro Apache l'host reale arriva in X-Forwarded-Host: il redirect www deve scattare."""
@@ -27,35 +27,44 @@ class SEOMiddlewareForwardedHostTests(SimpleTestCase):
         self.factory = RequestFactory()
         self.middleware = SEOMiddleware(lambda request: HttpResponse("ok"))
 
-    def test_www_in_forwarded_host_redirects_permanently_to_bare_domain(self):
-        request = self.factory.get(
-            "/articolo/esempio/?page=2",
-            secure=True,
-            HTTP_HOST="ombradelportico.it",
-            HTTP_X_FORWARDED_HOST="www.ombradelportico.it",
-        )
+    def _get(self, path="/", **extra):
+        return self.factory.get(path, secure=True, HTTP_HOST="ombradelportico.it", **extra)
 
-        response = self.middleware(request)
+    def test_www_in_forwarded_host_redirects_permanently_to_bare_domain(self):
+        response = self.middleware(self._get("/articolo/esempio/?page=2", HTTP_X_FORWARDED_HOST="www.ombradelportico.it"))
 
         self.assertEqual(response.status_code, 301)
         self.assertEqual(response["Location"], "https://ombradelportico.it/articolo/esempio/?page=2")
 
-    def test_bare_domain_passes_through(self):
-        request = self.factory.get(
-            "/articolo/esempio/",
-            secure=True,
-            HTTP_HOST="ombradelportico.it",
-            HTTP_X_FORWARDED_HOST="ombradelportico.it",
-        )
+    def test_forwarded_host_list_uses_first_value(self):
+        # piu' proxy in catena: "host-client, host-intermedio"
+        response = self.middleware(self._get(HTTP_X_FORWARDED_HOST="www.ombradelportico.it, ombradelportico.it"))
 
-        response = self.middleware(request)
+        self.assertEqual(response.status_code, 301)
+        self.assertEqual(response["Location"], "https://ombradelportico.it/")
+
+    def test_forwarded_host_with_port_is_handled(self):
+        response = self.middleware(self._get(HTTP_X_FORWARDED_HOST="www.ombradelportico.it:443"))
+
+        self.assertEqual(response.status_code, 301)
+        self.assertEqual(response["Location"], "https://ombradelportico.it/")
+
+    def test_bare_domain_in_forwarded_host_passes_through(self):
+        response = self.middleware(self._get("/articolo/esempio/", HTTP_X_FORWARDED_HOST="ombradelportico.it"))
+
+        self.assertEqual(response.status_code, 200)
+
+    def test_unexpected_forwarded_host_never_raises(self):
+        # valore non in ALLOWED_HOSTS: nessun 400, la richiesta passa
+        response = self.middleware(self._get(HTTP_X_FORWARDED_HOST="ombradelportico.it, ombradelportico.it"))
 
         self.assertEqual(response.status_code, 200)
 
     def test_www_in_host_header_still_redirects(self):
         request = self.factory.get("/", secure=True, HTTP_HOST="www.ombradelportico.it")
 
-        response = self.middleware(request)
+        with override_settings(ALLOWED_HOSTS=["ombradelportico.it", "www.ombradelportico.it"]):
+            response = self.middleware(request)
 
         self.assertEqual(response.status_code, 301)
         self.assertEqual(response["Location"], "https://ombradelportico.it/")

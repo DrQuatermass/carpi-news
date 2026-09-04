@@ -325,11 +325,10 @@ CSRF_COOKIE_SAMESITE = 'Lax'
 if not DEBUG:
     # HTTPS Redirect e Proxy SSL Header (necessario per Apache reverse proxy)
     SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-    # Dietro Apache (ProxyPass) l'header Host visto da Django e' quello del backend:
-    # senza questo il SEOMiddleware non vede mai "www." e il redirect www -> non-www
-    # non scatta (www.ombradelportico.it rispondeva 200 con il sito duplicato).
-    # mod_proxy invia X-Forwarded-Host con l'host originale richiesto dal client.
-    USE_X_FORWARDED_HOST = True
+    # NB: niente USE_X_FORWARDED_HOST. Il redirect www -> non-www legge X-Forwarded-Host
+    # direttamente nel SEOMiddleware (home/middleware/security.py), senza far passare
+    # quel valore dalla validazione ALLOWED_HOSTS: attivarlo qui il 04/09/2026 ha
+    # prodotto 400 Bad Request su tutto il sito.
     SECURE_SSL_REDIRECT = os.getenv('SECURE_SSL_REDIRECT', 'True').lower() in ['true', '1', 'yes']
 
     # HSTS (HTTP Strict Transport Security) - 1 anno

@@ -9,12 +9,12 @@ e i duplicati che oggi fanno sembrare il sito piu' "industriale" di quanto sia.
 
 | File | Modifica | Perche' |
 |---|---|---|
-| `carpi_news/settings.py` | `USE_X_FORWARDED_HOST = True` (solo produzione) | dietro Apache Django vedeva l'host del backend: il `SEOMiddleware` non intercettava mai `www.` e `https://www.ombradelportico.it/...` rispondeva 200 con il sito duplicato |
+| `home/middleware/security.py` | `SEOMiddleware` legge l'host reale da `X-Forwarded-Host` (primo valore, senza porta) | dietro Apache Django vedeva l'host del backend: il middleware non intercettava mai `www.` e `https://www.ombradelportico.it/...` rispondeva 200 con il sito duplicato. **Non** usare `USE_X_FORWARDED_HOST`: provato il 04/09/2026, Apache manda un valore che `ALLOWED_HOSTS` rifiuta e tutto il sito risponde 400 |
 | `home/templates/robots.txt` | `Disallow: /s/` e `Disallow: /articolo/*/fonti/` (anche per Googlebot-News); rimosso `Crawl-delay` | l'8% delle richieste di Googlebot erano 302 sui short link; le pagine `/fonti/` (noindex) assorbivano scansione "di rilevamento" |
 | `home/templates/dettaglio_articolo.html` | `rel="nofollow"` sul link "Visualizza le fonti" | coerente con il blocco in robots |
 | `home/templates/homepage.html` | rimosso `potentialAction/SearchAction` con `?categoria={search_term_string}` | generava URL `/?categoria=...` scoperti da Google (duplicati delle pagine categoria); markup deprecato |
 | `home/views.py` | canonical di `/?categoria=Nome` -> `/categoria/<slug>/` | prima puntava alla homepage |
-| `home/tests_seo_hygiene.py` | 8 test nuovi | middleware con `X-Forwarded-Host`, robots, canonical, nofollow, JSON-LD |
+| `home/tests_seo_hygiene.py` | 11 test nuovi | middleware con `X-Forwarded-Host` (anche lista e porta), robots, canonical, nofollow, JSON-LD |
 
 Nota: la Google Indexing API per gli articoli era gia' disattivata dal 23/11/2025
 (`indexing_notifier.py`); resta solo IndexNow. Nessuna modifica necessaria.
@@ -24,8 +24,8 @@ Nota: la Google Indexing API per gli articoli era gia' disattivata dal 23/11/202
 ```bash
 ssh root@ombradelportico.it
 cd /var/www/carpi-news && git pull
-grep -n "^ALLOWED_HOSTS" carpi_news/.env   # DEVE contenere ombradelportico.it e www.ombradelportico.it
 sudo systemctl restart gunicorn
+curl -sI https://ombradelportico.it/ | head -1   # 200
 ```
 
 ## Verifica (dal PC)
@@ -39,8 +39,9 @@ curl -s "https://ombradelportico.it/?categoria=Cronaca" | grep -o '<link rel="ca
 #   atteso: href="https://ombradelportico.it/categoria/cronaca/"
 ```
 
-Se `www` risponde ancora 200: Apache non inoltra `X-Forwarded-Host`
-(`ProxyAddHeaders Off`?). In quel caso aggiungere nel VirtualHost :443, prima dei ProxyPass:
+Se `www` risponde ancora 200: Apache non inoltra `X-Forwarded-Host` (o lo inoltra con un
+valore diverso: `grep -rn "Forwarded\|ProxyPreserveHost\|ProxyPass" /etc/apache2/sites-enabled/`).
+In quel caso aggiungere nel VirtualHost :443, prima dei ProxyPass:
 
 ```apache
 RewriteEngine On
@@ -66,7 +67,7 @@ MIGRATION_MODULES = {'home': None, 'admin_panel': None}
 DJANGO_SETTINGS_MODULE=odp_test_settings PYTHONPATH=<cartella del file> python manage.py test home.tests_seo_hygiene
 ```
 
-Eseguiti il 04/09/2026: 8/8 OK. `ShareLinkTests` + `ErrorPageTests`: 48/50, i 2 che
+Eseguiti il 04/09/2026: 11/11 OK. `ShareLinkTests` + `ErrorPageTests`: 48/50, i 2 che
 falliscono (`og:image` con varianti immagine) falliscono anche senza queste modifiche.
 
 ## Dopo il deploy: cosa guardare in Search Console
