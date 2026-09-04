@@ -27,7 +27,6 @@ urlpatterns = [
     path('instagram/search/', views.link_in_bio_search, name='link_in_bio_search'),
     path('s/<str:token>/', views.short_link_redirect, name='short_link_redirect'),
     path('banner/impression/<int:banner_id>/', views.banner_impression, name='banner_impression'),
-    path('beacon/view/<int:articolo_id>/', views.article_view_beacon, name='article_view_beacon'),
     path('webhooks/instagram/', include('home.webhook_urls')),
 
     # Chatbot API

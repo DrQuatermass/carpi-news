@@ -83,37 +83,20 @@ falliscono (`og:image` con varianti immagine) falliscono anche senza queste modi
 
 ---
 
-# Contatore letture, banner cookie, Consent Mode (04/09/2026, secondo giro)
+# Banner cookie e Consent Mode (04/09/2026, secondo giro)
 
-## Perche'
-Il contatore `views` veniva incrementato a ogni richiesta della pagina che non avesse
-"bot/crawler/spider/..." nello user-agent. `facebookexternalhit` (il crawler di Facebook,
-che ricarica la pagina a ogni condivisione o anteprima) non contiene quelle parole e da
-solo faceva l'85% delle richieste bot sugli articoli. Misura sui 243 articoli pubblicati
-dal 18/07 (log Apache completi): 89.035 views nel DB contro 6.494 letture umane (x13,7);
-per articolo: DB ≈ 300 richieste di crawler + 2,6 x letture umane.
+Il contatore `views` resta com'era (incremento in `dettaglio_articolo` a ogni richiesta
+non riconosciuta come bot, dedup di sessione): e' un contatore di richieste, non di
+lettori. Le letture reali si misurano con il tool "visite" (log Apache, bot esclusi).
+Per riferimento: sui 243 articoli pubblicati dal 18/07 il contatore segnava 89.035
+contro 6.494 letture umane nei log (x13,7), perche' `facebookexternalhit` non contiene
+"bot" e ricarica la pagina a ogni condivisione. Un beacon JS cookieless era stato
+provato e ritirato lo stesso giorno per scelta editoriale.
 
-## Cosa cambia
 | File | Modifica |
 |---|---|
-| `home/views.py` | `dettaglio_articolo` non incrementa piu' `views` e non crea piu' la sessione; nuova vista `article_view_beacon` (POST, csrf-exempt, 204): filtra i crawler per user-agent (incluso facebookexternalhit, whatsapp, telegram, lighthouse...), dedup 30 minuti su hash (articolo, IP, UA) in cache, nessun dato utente salvato |
-| `carpi_news/urls.py` | `beacon/view/<id>/` |
-| `home/templates/dettaglio_articolo.html` | `navigator.sendBeacon` dopo 2 s di pagina visibile |
-| `home/templates/robots.txt` | `Disallow: /beacon/` e `/banner/impression/` |
 | `home/templates/base.html` | testo del banner senza "continuando la navigazione accetti" (non e' consenso valido per il Garante e non corrispondeva al codice); link "Preferenze cookie" nel footer che riapre il banner; Consent Mode v2 (`gtag('consent','default', tutto denied)` + `update` a granted su "Accetta tutti") |
-| `home/management/commands/ricalibra_views.py` | ricalibra i contatori: dai log (CSV `slug,views_umane`) per gli articoli dal 18/07, per divisione (default 13,7) per gli altri; backup in `views_precedente.csv`; `--dry-run` |
-| `home/tests_views_beacon.py` | 8 test |
-
-## Deploy
-```bash
-cd /var/www/carpi-news && git pull origin banners && sudo systemctl restart gunicorn
-# ricalibrazione (CSV in analisi/views_umane.csv sul PC, da copiare sul server):
-cd carpi_news && ../venv/bin/python manage.py ricalibra_views --csv /var/www/carpi-news/views_umane.csv --dry-run
-../venv/bin/python manage.py ricalibra_views --csv /var/www/carpi-news/views_umane.csv
-```
-Nota: i valori ricalibrati per gli articoli precedenti al 18/07 sono una stima (divisione
-per il rapporto medio misurato); l'ordinamento "piu' letti" non cambia. I contatori da
-qui in avanti contano solo letture con JS eseguito.
+| `home/templates/robots.txt` | `Disallow: /banner/impression/` (beacon impression banner) |
 
 ## Consenso: numeri e doppio prompt
 Dal 13/07/2026 GA parte solo con "Accetta tutti". Tra il 18/07 e il 02/09 GA ha visto il
