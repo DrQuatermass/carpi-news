@@ -39,9 +39,12 @@ curl -s "https://ombradelportico.it/?categoria=Cronaca" | grep -o '<link rel="ca
 #   atteso: href="https://ombradelportico.it/categoria/cronaca/"
 ```
 
-Se `www` risponde ancora 200: Apache non inoltra `X-Forwarded-Host` (o lo inoltra con un
-valore diverso: `grep -rn "Forwarded\|ProxyPreserveHost\|ProxyPass" /etc/apache2/sites-enabled/`).
-In quel caso aggiungere nel VirtualHost :443, prima dei ProxyPass:
+**Fatto il 04/09/2026 direttamente in Apache.** Il VirtualHost :443
+(`/etc/apache2/sites-enabled/000-default-le-ssl.conf`) contiene `RequestHeader set
+X-Forwarded-Host "ombradelportico.it"` scritto a mano, quindi Django non vede mai l'host
+"www" (ed e' anche la causa del 400 con `USE_X_FORWARDED_HOST`: mod_proxy accoda un secondo
+valore). Il redirect e' stato messo nel VirtualHost, subito dopo `ServerAlias`, prima del proxy
+(backup in `/root/000-default-le-ssl.conf.bak-*`):
 
 ```apache
 RewriteEngine On
@@ -49,7 +52,9 @@ RewriteCond %{HTTP_HOST} ^www\.ombradelportico\.it$ [NC]
 RewriteRule ^ https://ombradelportico.it%{REQUEST_URI} [R=301,L]
 ```
 
-poi `sudo apachectl configtest && sudo systemctl reload apache2`.
+poi `sudo apachectl configtest && sudo systemctl reload apache2`. Verificato: `https://www...` -> 301
+verso il dominio nudo, query string conservata. Resta un doppio salto solo per `http://www...`
+(prima su `https://www`, poi sul dominio nudo): innocuo, viene dal RewriteRule di certbot nel :80.
 
 ## Test
 
@@ -75,3 +80,46 @@ falliscono (`og:image` con varianti immagine) falliscono anche senza queste modi
 - Impostazioni > Statistiche di scansione > "Per risposta": la quota 302 deve scendere.
 - "Per scopo" > Rilevamento: e' il segnale della rivalutazione; oggi e' ~0 dal 24/6.
 - Indicizzazione > Pagine > "Rilevata, ma attualmente non indicizzata": oggi 1.390, in crescita.
+
+---
+
+# Contatore letture, banner cookie, Consent Mode (04/09/2026, secondo giro)
+
+## Perche'
+Il contatore `views` veniva incrementato a ogni richiesta della pagina che non avesse
+"bot/crawler/spider/..." nello user-agent. `facebookexternalhit` (il crawler di Facebook,
+che ricarica la pagina a ogni condivisione o anteprima) non contiene quelle parole e da
+solo faceva l'85% delle richieste bot sugli articoli. Misura sui 243 articoli pubblicati
+dal 18/07 (log Apache completi): 89.035 views nel DB contro 6.494 letture umane (x13,7);
+per articolo: DB ≈ 300 richieste di crawler + 2,6 x letture umane.
+
+## Cosa cambia
+| File | Modifica |
+|---|---|
+| `home/views.py` | `dettaglio_articolo` non incrementa piu' `views` e non crea piu' la sessione; nuova vista `article_view_beacon` (POST, csrf-exempt, 204): filtra i crawler per user-agent (incluso facebookexternalhit, whatsapp, telegram, lighthouse...), dedup 30 minuti su hash (articolo, IP, UA) in cache, nessun dato utente salvato |
+| `carpi_news/urls.py` | `beacon/view/<id>/` |
+| `home/templates/dettaglio_articolo.html` | `navigator.sendBeacon` dopo 2 s di pagina visibile |
+| `home/templates/robots.txt` | `Disallow: /beacon/` e `/banner/impression/` |
+| `home/templates/base.html` | testo del banner senza "continuando la navigazione accetti" (non e' consenso valido per il Garante e non corrispondeva al codice); link "Preferenze cookie" nel footer che riapre il banner; Consent Mode v2 (`gtag('consent','default', tutto denied)` + `update` a granted su "Accetta tutti") |
+| `home/management/commands/ricalibra_views.py` | ricalibra i contatori: dai log (CSV `slug,views_umane`) per gli articoli dal 18/07, per divisione (default 13,7) per gli altri; backup in `views_precedente.csv`; `--dry-run` |
+| `home/tests_views_beacon.py` | 8 test |
+
+## Deploy
+```bash
+cd /var/www/carpi-news && git pull origin banners && sudo systemctl restart gunicorn
+# ricalibrazione (CSV in analisi/views_umane.csv sul PC, da copiare sul server):
+cd carpi_news && ../venv/bin/python manage.py ricalibra_views --csv /var/www/carpi-news/views_umane.csv --dry-run
+../venv/bin/python manage.py ricalibra_views --csv /var/www/carpi-news/views_umane.csv
+```
+Nota: i valori ricalibrati per gli articoli precedenti al 18/07 sono una stima (divisione
+per il rapporto medio misurato); l'ordinamento "piu' letti" non cambia. I contatori da
+qui in avanti contano solo letture con JS eseguito.
+
+## Consenso: numeri e doppio prompt
+Dal 13/07/2026 GA parte solo con "Accetta tutti". Tra il 18/07 e il 02/09 GA ha visto il
+39% delle pagine e il 27% dei visitatori rispetto ai log del server: sei lettori su dieci
+rifiutano o ignorano il banner. Il secondo prompt che compare dopo "Accetta tutti" e' il
+messaggio Funding Choices di AdSense (CMP certificato richiesto da Google per l'EEA): si
+configura in AdSense, non nel repo. Per avere un solo prompt: usare il CMP di Google come
+unico banner (con Consent Mode gia' predisposto qui), oppure disattivare il messaggio in
+AdSense > Privacy e messaggi (solo con un altro CMP certificato).

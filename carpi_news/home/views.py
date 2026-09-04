@@ -499,26 +499,11 @@ def dettaglio_articolo(request, slug):
             'articoli_correlati': articoli_correlati,
         }, 600)
 
-    # Incrementa il contatore delle views solo se non visto in questa sessione
-    session_key = f'viewed_article_{articolo.pk}'
-    if not request.session.get(session_key, False):
-        from django.db.models import F
-
-        # Verifica che non sia un bot noto
-        user_agent = request.META.get('HTTP_USER_AGENT', '').lower()
-        bot_keywords = ['bot', 'crawler', 'spider', 'scraper', 'curl', 'wget', 'python-requests']
-        is_bot = any(keyword in user_agent for keyword in bot_keywords)
-
-        if not is_bot:
-            Articolo.objects.filter(pk=articolo.pk).update(views=F('views') + 1)
-            # Segna come visto in questa sessione (scade con la sessione)
-            request.session[session_key] = True
-            articolo.views = (articolo.views or 0) + 1
-            logger.info(f"Visualizzazione unica articolo: {articolo.titolo} (views: {articolo.views})")
-        else:
-            logger.debug(f"Bot rilevato, view non contata: {articolo.titolo} (UA: {user_agent[:100]})")
-    else:
-        logger.debug(f"Articolo giÃ  visto in questa sessione: {articolo.titolo}")
+    # Il contatore views NON viene piu' incrementato qui: il conteggio lato server
+    # contava anche i crawler (facebookexternalhit da solo faceva l'85% delle richieste
+    # sugli articoli: ~14 "views" per ogni lettura umana). Ora conta il beacon JS
+    # (article_view_beacon), che i crawler non eseguono. Niente sessione: nessun cookie
+    # e pagina cacheabile.
 
     canonical_url = canonical_article_url(articolo)
 
@@ -1267,6 +1252,40 @@ def banner_impression(request, banner_id):
         )
         if updated:
             cache.set(cache_key, True, 600)
+
+    return HttpResponse(status=204)
+
+
+# User-agent che il conteggio views deve ignorare (oltre a chi non esegue JS).
+# facebookexternalhit non contiene "bot": era la causa dei contatori gonfiati.
+VIEW_BEACON_BOT_KEYWORDS = (
+    'bot', 'crawler', 'spider', 'scraper', 'curl', 'wget', 'python-requests',
+    'facebookexternalhit', 'externalhit', 'whatsapp', 'telegram', 'slurp',
+    'headless', 'phantom', 'lighthouse', 'inspectiontool', 'preview', 'fetch',
+)
+
+
+@csrf_exempt
+@require_POST
+def article_view_beacon(request, articolo_id):
+    """
+    Beacon JS che conta una lettura dell'articolo. Cookieless: dedup per 30 minuti
+    su hash (articolo, IP, user-agent) tenuto solo in cache, nessun dato salvato
+    sull'utente. I crawler non eseguono JS e in piu' vengono filtrati per user-agent.
+    """
+    import hashlib
+
+    user_agent = request.META.get('HTTP_USER_AGENT', '').lower()
+    if not user_agent or any(k in user_agent for k in VIEW_BEACON_BOT_KEYWORDS):
+        return HttpResponse(status=204)
+
+    ip = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR', '')).split(',')[0].strip()
+    digest = hashlib.sha1(f"{ip}|{user_agent[:120]}".encode('utf-8', 'ignore')).hexdigest()[:20]
+    cache_key = f"article_view:{articolo_id}:{digest}"
+    if not cache.get(cache_key):
+        updated = Articolo.objects.filter(pk=articolo_id, approvato=True).update(views=F('views') + 1)
+        if updated:
+            cache.set(cache_key, True, 1800)
 
     return HttpResponse(status=204)
 

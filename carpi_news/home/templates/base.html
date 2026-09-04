@@ -228,6 +228,7 @@
                     <ul class="footer-useful-links" style="list-style: none; padding: 0; margin: 0;">
                         <li style="margin-bottom: 0.8rem; list-style: none;"><a href="{% url 'newsletter_subscribe' %}" style="color: rgba(255, 255, 255, 0.8); text-decoration: none;">Iscriviti alla Newsletter</a></li>
                         <li style="margin-bottom: 0.8rem; list-style: none;"><a href="{% url 'pubblicita' %}" style="color: rgba(255, 255, 255, 0.8); text-decoration: none;">Acquista Spazi Pubblicitari</a></li>
+                        <li style="margin-bottom: 0.8rem; list-style: none;"><a href="#" id="cookie-preferences" style="color: rgba(255, 255, 255, 0.8); text-decoration: none;">Preferenze cookie</a></li>
                     </ul>
                 </div>
                 <div class="footer-section footer-contacts">
@@ -301,7 +302,7 @@
         <div class="cookie-content">
             <div class="cookie-text">
                 <p><strong>🍪 Utilizzo dei Cookie</strong></p>
-                <p>Questo sito utilizza cookie tecnici necessari per il funzionamento e cookie analytics per migliorare l'esperienza utente. Continuando la navigazione accetti l'uso dei cookie.</p>
+                <p>Usiamo solo cookie tecnici, necessari al funzionamento del sito. Con "Accetta tutti" attivi anche Google Analytics (statistiche) e Google AdSense (pubblicit&agrave;), che usano cookie di terze parti. Con "Solo essenziali" il sito funziona lo stesso e non viene caricato nessuno dei due. Puoi cambiare scelta in qualsiasi momento dal link "Preferenze cookie" a fondo pagina.</p>
             </div>
             <div class="cookie-actions">
                 <button id="cookie-accept" class="cookie-btn cookie-accept" aria-label="Accetta tutti i cookie">Accetta tutti</button>
@@ -347,6 +348,17 @@
                 // Consenso concesso: carica GA e AdSense ora
                 if (window.loadGoogleAnalytics) window.loadGoogleAnalytics();
                 if (window.loadAdSense) window.loadAdSense();
+            });
+
+            // Link "Preferenze cookie" nel footer: azzera la scelta e rimostra il banner
+            document.getElementById('cookie-preferences')?.addEventListener('click', (e) => {
+                e.preventDefault();
+                localStorage.removeItem('cookie-consent');
+                localStorage.removeItem('cookie-date');
+                const b = document.getElementById('cookie-banner');
+                b.style.animation = '';
+                b.style.display = 'block';
+                b.scrollIntoView({ block: 'end' });
             });
 
             document.getElementById('cookie-essential')?.addEventListener('click', () => {
@@ -460,9 +472,28 @@
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
 
+      // Consent Mode v2: tutto negato finche' l'utente non sceglie "Accetta tutti".
+      // Le chiamate restano in dataLayer e vengono lette da gtag.js/AdSense quando caricati.
+      gtag('consent', 'default', {
+        ad_storage: 'denied',
+        ad_user_data: 'denied',
+        ad_personalization: 'denied',
+        analytics_storage: 'denied',
+        wait_for_update: 500
+      });
+      window.grantGoogleConsent = function() {
+        gtag('consent', 'update', {
+          ad_storage: 'granted',
+          ad_user_data: 'granted',
+          ad_personalization: 'granted',
+          analytics_storage: 'granted'
+        });
+      };
+
       window.loadGoogleAnalytics = function() {
         if (window.__gaLoaded) return;
         window.__gaLoaded = true;
+        window.grantGoogleConsent();
         // Carica quando il browser è idle (dopo le risorse critiche)
         (window.requestIdleCallback || window.setTimeout)(function() {
           var script = document.createElement('script');

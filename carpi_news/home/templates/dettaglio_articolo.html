@@ -1187,4 +1187,26 @@
   });
 })();
 </script>
+<!-- Beacon lettura articolo: conta una lettura umana (i crawler non eseguono JS).
+     Cookieless, nessun identificatore: dedup lato server in cache per 30 minuti. -->
+<script>
+(function () {
+  var url = "{% url 'article_view_beacon' articolo.id %}";
+  var sent = false;
+  function send() {
+    if (sent || document.visibilityState === 'hidden') return;
+    sent = true;
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon(url);
+    } else {
+      fetch(url, { method: 'POST', keepalive: true, credentials: 'same-origin' }).catch(function () {});
+    }
+  }
+  // dopo 2 secondi con pagina visibile: filtra i caricamenti accidentali
+  setTimeout(send, 2000);
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible') setTimeout(send, 2000);
+  });
+})();
+</script>
 {% endblock %}
