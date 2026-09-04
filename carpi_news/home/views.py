@@ -229,6 +229,13 @@ def home(request):
     page_number = request.GET.get('page', 1)
     page_obj = paginator.get_page(page_number)
     site_url = getattr(settings, 'SITE_URL', 'https://ombradelportico.it').rstrip('/')
+    # /?categoria=Nome e' un duplicato di /categoria/<slug>/: il canonical deve puntare
+    # all'URL pulito, non alla homepage (altrimenti Google li vede come copie della home)
+    if not categoria_slug and categoria and categoria != 'tutti':
+        categoria_slug = next(
+            (slug for slug, nome in CATEGORIA_MAP.items() if nome.lower() == categoria.lower()),
+            None,
+        )
     canonical_path = f"/categoria/{categoria_slug}/" if categoria_slug else "/"
     if page_obj.number > 1:
         canonical_url = f"{site_url}{canonical_path}?page={page_obj.number}"

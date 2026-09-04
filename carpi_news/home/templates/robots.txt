@@ -27,6 +27,14 @@ Disallow: /media/proxy_cache/
 # Blocca endpoint applicativi senza valore SEO
 Disallow: /api/chatbot/
 
+# Short link social (/s/<token>/): redirect 302 tracciato verso l'articolo con UTM.
+# Il contenuto e' gia' raggiungibile dall'URL canonico: scansionarli e' solo spreco.
+Disallow: /s/
+
+# Pagine "fonti" degli articoli: noindex + canonical verso l'articolo.
+# Non vanno indicizzate: evitiamo che Googlebot le scansioni in rilevamento.
+Disallow: /articolo/*/fonti/
+
 # Sitemap per indicizzazione completa
 Sitemap: https://ombradelportico.it/sitemap_index.xml
 Sitemap: https://ombradelportico.it/sitemap.xml
@@ -41,9 +49,11 @@ User-agent: Twitterbot
 Allow: /image-proxy/
 Allow: /
 
-User-agent: GoogleBot-News
+User-agent: Googlebot-News
 Allow: /
 Allow: /feed/
-
-# Crawl-delay per bot generici (1 secondo tra richieste)
-Crawl-delay: 1
+Disallow: /admin/
+Disallow: /django-admin/
+Disallow: /gestionale/
+Disallow: /s/
+Disallow: /articolo/*/fonti/
