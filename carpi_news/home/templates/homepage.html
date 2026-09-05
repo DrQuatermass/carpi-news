@@ -8,8 +8,8 @@
 
 {% block meta_description %}{% if categoria_attiva == 'Attualità' %}Le ultime notizie di Carpi e dintorni. Cronaca, fatti del giorno e aggiornamenti in tempo reale.{% elif categoria_attiva == 'Cronaca' %}Cronaca locale di Carpi: fatti, incidenti, interventi delle forze dell'ordine e notizie dal territorio.{% elif categoria_attiva == 'Sport' %}Sport a Carpi: risultati, classifiche e notizie su calcio, atletica, karate, rugby, nuoto e tutte le discipline locali.{% elif categoria_attiva == 'Cultura & Eventi' %}Cultura ed eventi a Carpi: mostre, concerti, teatro, sagre e tutto quello che succede in città.{% elif categoria_attiva == 'Politica' %}Politica a Carpi: Comune, Giunta, Consiglio Comunale e decisioni che riguardano i cittadini.{% elif categoria_attiva == 'Rubriche' %}Le rubriche di Ombra del Portico: approfondimenti, opinioni e punti di vista sulla vita di Carpi.{% else %}Notizie di Carpi in tempo reale: cronaca, eventi, sport e cultura carpigiana. Il portale di informazione locale aggiornato ogni giorno con le ultime notizie da Carpi e dintorni.{% endif %}{% endblock %}
 
-{# noindex sui filtri categoria via query string (versione non canonica della
-   pagina) e sull'hub "Cosa fare oggi", i cui articoli sono tutti in noindex. #}
+{% comment %}noindex sui filtri categoria via query string (versione non canonica della
+   pagina) e sull'hub "Cosa fare oggi", i cui articoli sono tutti in noindex.{% endcomment %}
 {% block robots_meta %}{% if request.GET.categoria or categoria_attiva == "Cosa fare oggi" %}<meta name="robots" content="noindex, follow">{% else %}<meta name="robots" content="index, follow, max-image-preview:large">{% endif %}{% endblock %}
 
 {% block extra_css %}

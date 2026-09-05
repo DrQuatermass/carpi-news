@@ -165,6 +165,18 @@ class Articolo(models.Model):
         """Slug della categoria per URL /categoria/<slug>/ (breadcrumb, link interni)."""
         return self.CATEGORIA_SLUG_MAP.get(self.categoria, 'attualita')
 
+    @property
+    def n_fonti(self):
+        """Numero di fonti consultabili: fonte principale + fonti web non nascoste.
+        Usato dal badge "Verificato su N fonti" nel dettaglio articolo."""
+        count = 1 if self.fonte else 0
+        if isinstance(self.fonti_web, list):
+            count += sum(
+                1 for f in self.fonti_web
+                if isinstance(f, dict) and f.get('url') and f.get('hidden') is not True
+            )
+        return count
+
     def _warn_if_headline_too_long(self):
         headline = self.editorial_headline
         if len(headline) <= self.HEADLINE_MAX_LENGTH:

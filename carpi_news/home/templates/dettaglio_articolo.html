@@ -26,13 +26,19 @@
 {% block meta_description %}{{ articolo.sommario|striptags|truncate_sentences:150 }}{% endblock %}
 {% block meta_keywords %}{{ articolo.meta_keywords }}{% endblock %}
 
-{# "Cosa fare oggi" e' un riepilogo di eventi gia' pubblicati singolarmente:
-   resta online per i lettori ma fuori dall'indice (0 click in 180 giorni). #}
+{% comment %}"Cosa fare oggi" e' un riepilogo di eventi gia' pubblicati singolarmente:
+   resta online per i lettori ma fuori dall'indice (0 click in 180 giorni).{% endcomment %}
 {% block robots_meta %}{% if articolo.categoria == "Cosa fare oggi" %}<meta name="robots" content="noindex, follow">{% else %}<meta name="robots" content="index, follow, max-image-preview:large">{% endif %}{% endblock %}
 
 {% block extra_css %}
 <meta name="news_keywords" content="{{ articolo.meta_keywords }}">
 <style>
+.article-meta {
+  color: #7A5734;
+  font-size: 0.85rem;
+  font-style: italic;
+}
+.article-meta .updated { color: #888; }
 .article-byline {
   color: #666;
   font-size: 0.9rem;
@@ -48,6 +54,102 @@
 }
 .article-byline .updated {
   color: #888;
+}
+/* Barra strumenti sotto la firma: lettura vocale + badge fonti, toni caldi del sito */
+.article-tools {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  margin: 0.2rem 0 1.6rem 0;
+  padding: 10px 0 12px 0;
+  border-top: 1px solid rgba(150, 108, 66, 0.18);
+  border-bottom: 1px solid rgba(150, 108, 66, 0.18);
+}
+.tts-player {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.tts-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 30px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 500;
+  line-height: 1;
+  padding: 10px 18px;
+  transition: all 0.3s ease;
+}
+/* Il CSS del sito forza display su alcuni elementi: l'attributo hidden va ribadito */
+.article-tools[hidden], .tts-player[hidden], .tts-btn[hidden], .tts-btn svg.tts-hide { display: none !important; }
+.tts-main {
+  background: linear-gradient(135deg, #966C42 0%, #7A5734 100%);
+  color: #fff;
+  box-shadow: 0 4px 15px rgba(150, 108, 66, 0.3);
+}
+.tts-main:hover, .tts-main:focus-visible {
+  background: linear-gradient(135deg, #7A5734 0%, #5E3E21 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(150, 108, 66, 0.4);
+}
+.tts-main:active { transform: translateY(0); }
+.tts-sec {
+  background: transparent;
+  color: #7A5734;
+  border: 1px solid rgba(150, 108, 66, 0.45);
+  padding: 9px 12px;
+}
+.tts-sec:hover, .tts-sec:focus-visible {
+  background: rgba(150, 108, 66, 0.1);
+  border-color: #966C42;
+}
+.tts-rate { min-width: 48px; justify-content: center; font-variant-numeric: tabular-nums; font-weight: 700; font-size: 0.82rem; }
+.tts-status { color: #5A5A5A; font-size: 0.85rem; font-style: italic; }
+.article-trust {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 0;
+  margin-left: auto;
+  font-size: 0.82rem;
+  color: #7A5734;
+}
+.trust-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: inherit;
+  text-decoration: none;
+  font-weight: 600;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+.trust-item svg { color: #966C42; flex-shrink: 0; }
+.trust-item + .trust-item::before {
+  content: "\00b7";
+  margin: 0 8px;
+  color: rgba(150, 108, 66, 0.6);
+  font-weight: 400;
+}
+.trust-link { border-bottom: 1px solid rgba(150, 108, 66, 0.35); transition: all 0.2s ease; }
+.trust-link:hover, .trust-link:focus-visible { color: #5E3E21; border-bottom-color: #5E3E21; }
+.tts-reading {
+  background: rgba(196, 150, 90, 0.16);
+  box-shadow: 0 0 0 8px rgba(196, 150, 90, 0.16);
+  border-radius: 4px;
+  transition: background 0.3s;
+}
+@media (max-width: 600px) {
+  .article-tools { gap: 8px 10px; }
+  .tts-btn { font-size: 0.85rem; padding: 9px 14px; }
+  .article-trust { margin-left: 0; flex-basis: 100%; gap: 6px 16px; }
+  .trust-item + .trust-item::before { content: none; margin: 0; }
 }
 </style>
 
@@ -132,12 +234,12 @@
 </script>
 
 {% if articolo.data_evento and articolo.categoria == "Cultura & Eventi" and request.GET.social_share != "1" %}
-{# Schema.org Event: solo proprieta' che sappiamo davvero dall'articolo.
+{% comment %}Schema.org Event: solo proprieta' che sappiamo davvero dall'articolo.
    Niente performer/organizer (non siamo noi a organizzare l'evento), niente
    offers (il prezzo non e' un dato che abbiamo: dichiararlo gratuito era falso
    per gli eventi a pagamento) e niente endDate, che non conosciamo per gli
    eventi su piu' giorni. La localita' arriva dall'articolo, non e' piu' Carpi
-   fissa. #}
+   fissa.{% endcomment %}
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -569,23 +671,49 @@
             </nav>
 
             <div class="article-meta">
-                <time datetime="{{ articolo.data_pubblicazione|date:'Y-m-d' }}">
-                       {{ articolo.data_pubblicazione|italian_date }}
-                </time>
+                <time datetime="{{ articolo.data_pubblicazione|date:'c' }}">{{ articolo.data_pubblicazione|italian_date }}</time>
+                {% if articolo.data_modifica > articolo.data_pubblicazione %}
+                · <span class="updated">aggiornato <time datetime="{{ articolo.data_modifica|date:'c' }}">{{ articolo.data_modifica|italian_date }}</time></span>
+                {% endif %}
             </div>
             <br>
             <h1 class="article-title">{{ articolo.editorial_headline }}</h1>
+            {# Chi risponde dell'articolo: revisione umana e responsabilita' editoriale (eccezione art. 50(4) AI Act). #}
             <p class="article-byline">
-              A cura di <strong><a href="{% url 'autore-sven' %}">Sven Rinaldi</a></strong>, direttore editoriale
-              · <time datetime="{{ articolo.data_pubblicazione|date:'c' }}">
-                {{ articolo.data_pubblicazione|date:"j F Y" }}
-              </time>
-              {% if articolo.data_modifica > articolo.data_pubblicazione %}
-                · <span class="updated">aggiornato {{ articolo.data_modifica|date:"j F Y" }}</span>
-              {% endif %}
+              Revisione editoriale di <strong><a href="{% url 'autore-sven' %}">Sven Rinaldi</a></strong>
             </p>
-            <p class="article-byline-note"><small>Articolo prodotto con processo editoriale assistito da AI e revisionato prima della pubblicazione.</small></p>
-            <br>
+
+            <!-- Barra strumenti articolo: lettura vocale (voce del browser, nessun server, nessun cookie)
+                 + riga di trasparenza: fonti, metodo di scrittura, link a "Come lavoriamo".
+                 I controlli audio sono nascosti e mostrati via JS solo se il browser li supporta. -->
+            <div class="article-tools" id="article-tools">
+                <div class="tts-player" id="tts-player" hidden>
+                    <button type="button" class="tts-btn tts-main" id="tts-play" aria-label="Ascolta l'articolo">
+                        <svg class="tts-ico-play" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+                        <svg class="tts-ico-pause tts-hide" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+                        <span class="tts-label">Ascolta l'articolo</span>
+                    </button>
+                    <button type="button" class="tts-btn tts-sec" id="tts-stop" aria-label="Interrompi la lettura" hidden>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M6 6h12v12H6z"/></svg>
+                    </button>
+                    <button type="button" class="tts-btn tts-sec tts-rate" id="tts-rate" aria-label="Velocit&agrave; di lettura" title="Velocit&agrave; di lettura">1&times;</button>
+                    <span class="tts-status" id="tts-status" aria-live="polite"></span>
+                </div>
+                <div class="article-trust">
+                    {% if articolo.n_fonti %}
+                    <a href="{% url 'fonti_articolo' articolo.slug %}" class="trust-item trust-link" rel="nofollow"
+                       title="Consulta le fonti utilizzate per questo articolo">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+                        Verificato su {{ articolo.n_fonti }} font{{ articolo.n_fonti|pluralize:"e,i" }}
+                    </a>
+                    {% endif %}
+                    <span class="trust-item">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                        Scritto con assistenza IA
+                    </span>
+                    <a href="{% url 'about' %}" class="trust-item trust-link">Come lavoriamo</a>
+                </div>
+            </div>
 
             <!-- Banner inizio articolo -->
             {% show_banner 'article_top' %}
@@ -651,6 +779,161 @@
                         }
                     }
                 }
+            })();
+            </script>
+
+            <script>
+            (function() {
+                // Lettura vocale dell'articolo con la voce del browser (Web Speech API).
+                // Nessuna chiamata al server, nessun cookie: funziona solo se il browser lo supporta.
+                if (!('speechSynthesis' in window) || !('SpeechSynthesisUtterance' in window)) return;
+                var synth = window.speechSynthesis;
+                var player = document.getElementById('tts-player');
+                var playBtn = document.getElementById('tts-play');
+                var stopBtn = document.getElementById('tts-stop');
+                var rateBtn = document.getElementById('tts-rate');
+                var status = document.getElementById('tts-status');
+                var content = document.getElementById('article-content');
+                var title = document.querySelector('h1.article-title');
+                if (!player || !playBtn || !content) return;
+                var label = playBtn.querySelector('.tts-label');
+                var icoPlay = playBtn.querySelector('.tts-ico-play');
+                var icoPause = playBtn.querySelector('.tts-ico-pause');
+
+                // Blocchi da leggere: titolo + paragrafi/titoli/elenchi del corpo, esclusi i banner.
+                var blocks = [];
+                if (title) blocks.push(title);
+                content.querySelectorAll('h2, h3, p, li').forEach(function(el) {
+                    if (el.closest('[id^="article-h2-banner"]')) return;
+                    if (el.textContent.trim().length < 2) return;
+                    blocks.push(el);
+                });
+                if (blocks.length < 2) return;
+                player.hidden = false;
+                var tools = document.getElementById('article-tools');
+                if (tools) tools.hidden = false;
+
+                // Frasi per blocco, precalcolate per il contatore di avanzamento.
+                var pieces = blocks.map(function(b) { return chunks(b.textContent); });
+                var totalPieces = pieces.reduce(function(n, p) { return n + p.length; }, 0);
+                var donePieces = 0;
+
+                var RATES = [1, 1.25, 1.5, 0.85];
+                var rateIdx = 0;
+                var state = 'idle'; // idle | playing | paused
+                var current = -1;
+                var queueId = 0;
+                var voice = null;
+
+                function pickVoice() {
+                    var voices = synth.getVoices().filter(function(v) { return /^it/i.test(v.lang); });
+                    if (!voices.length) return null;
+                    var prefs = [/natural/i, /google/i, /elsa|isabella|diego/i, /alice|federica|luca/i];
+                    for (var i = 0; i < prefs.length; i++) {
+                        var m = voices.filter(function(v) { return prefs[i].test(v.name); });
+                        if (m.length) return m[0];
+                    }
+                    return voices[0];
+                }
+                voice = pickVoice();
+                synth.addEventListener('voiceschanged', function() { voice = pickVoice(); });
+
+                // Spezza il testo in frasi (< ~220 caratteri): Chrome tronca le frasi troppo lunghe.
+                function chunks(text) {
+                    var clean = text.replace(/\s+/g, ' ').trim();
+                    var parts = clean.match(/[^.!?;:]+[.!?;:]+["\u00bb\u201d)]?\s*|[^.!?;:]+$/g) || [clean];
+                    var out = [], buf = '';
+                    parts.forEach(function(p) {
+                        if ((buf + p).length > 220 && buf) { out.push(buf.trim()); buf = ''; }
+                        buf += p;
+                    });
+                    if (buf.trim()) out.push(buf.trim());
+                    return out;
+                }
+
+                function setHighlight(idx) {
+                    blocks.forEach(function(b) { b.classList.remove('tts-reading'); });
+                    if (idx < 0 || idx >= blocks.length) return;
+                    var el = blocks[idx];
+                    el.classList.add('tts-reading');
+                    var r = el.getBoundingClientRect();
+                    if (r.top < 80 || r.bottom > window.innerHeight - 80) {
+                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                }
+
+                function render() {
+                    var playing = state === 'playing';
+                    // Gli SVG non espongono la proprieta' .hidden: si usa una classe.
+                    icoPlay.classList.toggle('tts-hide', playing);
+                    icoPause.classList.toggle('tts-hide', !playing);
+                    label.textContent = state === 'idle' ? "Ascolta l'articolo" : (playing ? 'Pausa' : 'Riprendi');
+                    stopBtn.hidden = state === 'idle';
+                    status.textContent = state === 'idle' ? '' : ('Lettura ' + Math.min(99, Math.round(100 * donePieces / totalPieces)) + '%');
+                }
+
+                function speakBlock(idx, myId) {
+                    if (myId !== queueId) return;
+                    if (idx >= blocks.length) { stop(); return; }
+                    current = idx;
+                    setHighlight(idx);
+                    render();
+                    var list = pieces[idx];
+                    var k = 0;
+                    function nextPiece() {
+                        if (myId !== queueId) return;
+                        if (k >= list.length) { speakBlock(idx + 1, myId); return; }
+                        var u = new SpeechSynthesisUtterance(list[k++]);
+                        u.lang = 'it-IT';
+                        if (voice) u.voice = voice;
+                        u.rate = RATES[rateIdx];
+                        u.onend = function() { donePieces++; render(); nextPiece(); };
+                        u.onerror = function(e) {
+                            if (e.error === 'interrupted' || e.error === 'canceled') return;
+                            nextPiece();
+                        };
+                        synth.speak(u);
+                    }
+                    nextPiece();
+                }
+
+                function start(fromIdx) {
+                    queueId++;
+                    synth.cancel();
+                    state = 'playing';
+                    donePieces = pieces.slice(0, fromIdx).reduce(function(n, p) { return n + p.length; }, 0);
+                    speakBlock(fromIdx, queueId);
+                }
+
+                function stop() {
+                    queueId++;
+                    synth.cancel();
+                    state = 'idle';
+                    current = -1;
+                    donePieces = 0;
+                    setHighlight(-1);
+                    render();
+                }
+
+                playBtn.addEventListener('click', function() {
+                    if (state === 'idle') { start(0); return; }
+                    if (state === 'playing') { synth.pause(); state = 'paused'; render(); return; }
+                    // In pausa: su alcuni browser resume() non riparte; in quel caso si riprende dal blocco corrente.
+                    synth.resume();
+                    state = 'playing';
+                    render();
+                    setTimeout(function() {
+                        if (state === 'playing' && !synth.speaking) start(Math.max(current, 0));
+                    }, 400);
+                });
+                stopBtn.addEventListener('click', stop);
+                rateBtn.addEventListener('click', function() {
+                    rateIdx = (rateIdx + 1) % RATES.length;
+                    rateBtn.textContent = String(RATES[rateIdx]).replace('.', ',') + '\u00d7';
+                    if (state === 'playing') start(Math.max(current, 0));
+                });
+                window.addEventListener('pagehide', function() { synth.cancel(); });
+                render();
             })();
             </script>
 
