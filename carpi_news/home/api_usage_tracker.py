@@ -13,6 +13,14 @@ class APIUsageTracker:
     # Prezzi Anthropic (USD per million tokens)
     # https://www.anthropic.com/pricing#anthropic-api
     ANTHROPIC_PRICING = {
+        'claude-sonnet-5': {
+            'input': 2.00,   # $2 per MTok
+            'output': 10.00  # $10 per MTok
+        },
+        'claude-opus-5': {
+            'input': 5.00,   # $5 per MTok
+            'output': 25.00  # $25 per MTok
+        },
         'claude-sonnet-4-6': {
             'input': 3.00,   # $3 per MTok
             'output': 15.00  # $15 per MTok
@@ -46,6 +54,10 @@ class APIUsageTracker:
     # Prezzi OpenAI (USD per million tokens)
     # https://openai.com/api/pricing/
     OPENAI_PRICING = {
+        'gpt-5.6-sol': {
+            'input': 2.00,    # $2 per MTok
+            'output': 10.00   # $10 per MTok
+        },
         'gpt-4-turbo-2024-04-09': {
             'input': 10.00,   # $10 per MTok
             'output': 30.00   # $30 per MTok
@@ -64,6 +76,14 @@ class APIUsageTracker:
     # ATTENZIONE: valori indicativi - VERIFICARE su https://openrouter.ai/models
     # I prezzi OpenRouter cambiano spesso; aggiornare questa tabella dopo la scelta.
     OPENROUTER_PRICING = {
+        'openai/gpt-5.6-sol': {
+            'input': 2.00,
+            'output': 10.00
+        },
+        'deepseek/deepseek-v4-pro': {
+            'input': 0.95,
+            'output': 1.90
+        },
         'deepseek/deepseek-chat': {
             'input': 0.28,
             'output': 1.10
@@ -168,7 +188,7 @@ class APIUsageTracker:
             from home.models import APIUsage
 
             # Calcola i costi
-            pricing = cls.OPENAI_PRICING.get(model, cls.OPENAI_PRICING['gpt-4-turbo-2024-04-09'])
+            pricing = cls.OPENAI_PRICING.get(model, cls.OPENAI_PRICING['gpt-5.6-sol'])
 
             # Costo = (tokens / 1,000,000) * prezzo_per_MTok
             input_cost = Decimal(str((input_tokens / 1_000_000) * pricing['input']))

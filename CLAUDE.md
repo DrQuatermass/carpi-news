@@ -308,6 +308,7 @@ The project uses environment variables defined in `.env` file (based on `.env.ex
 **Required Variables**:
 - `SECRET_KEY`: Django secret key (generate with `generate_secret_key.py`)
 - `ANTHROPIC_API_KEY`: Required for AI content processing
+- `ANTHROPIC_MODEL`: Modello Claude per articoli, rigenerazione admin, pubbliredazionali e "cosa fare oggi" (default `claude-sonnet-5`; rollback `claude-sonnet-4-6`). Parametri thinking/effort centralizzati in `home/anthropic_params.py`; il chatbot usa Haiku 4.5 (`chatbot_service.py`)
 - `DEBUG`: Set to False for production
 - `ALLOWED_HOSTS`: Comma-separated list of allowed domains
 
@@ -320,7 +321,8 @@ The project uses environment variables defined in `.env` file (based on `.env.ex
 - `OPENROUTER_API_KEY`: Chiave OpenRouter (necessaria se si usa DeepSeek)
 - `AI_ARTICLE_PROVIDER`: Provider di default per gli articoli — `anthropic` (default) | `openrouter`
 - `CHATBOT_PROVIDER`: Provider del chatbot — `anthropic` (default) | `openrouter`
-- `OPENROUTER_ARTICLE_MODEL`: Modello articoli (default `deepseek/deepseek-v4-pro`)
+- `OPENROUTER_ARTICLE_MODEL`: Modello articoli (default `openai/gpt-5.6-sol`, scelto col confronto a 4 modelli del 22/09/2026)
+- `OPENAI_FALLBACK_MODEL`: Modello OpenAI (API dirette, `OPENAI_API_KEY`) usato come fallback sui 529 di Anthropic (default `gpt-5.6-sol`)
 - `OPENROUTER_CHATBOT_MODEL`: Modello chatbot (default `deepseek/deepseek-v4-pro`)
 - `OPENROUTER_BASE_URL`: Endpoint OpenRouter (default `https://openrouter.ai/api/v1`)
 
@@ -338,7 +340,7 @@ pip install -r requirements.txt
 
 ## AI Provider (Anthropic / OpenRouter-DeepSeek)
 
-Sia la **generazione articoli** sia il **chatbot** possono usare due provider: **Anthropic** (Claude) o **OpenRouter** (DeepSeek). La selezione è per-componente ed è **guidata da variabili d'ambiente**, senza modifiche al codice.
+Sia la **generazione articoli** sia il **chatbot** possono usare due provider: **Anthropic** (Claude) o **OpenRouter** (qualsiasi slug: GPT-5.6 Sol in produzione dal 22/09/2026, DeepSeek per il chatbot). La selezione è per-componente ed è **guidata da variabili d'ambiente**, senza modifiche al codice.
 
 ### Come funziona
 - **Articoli** (`home/universal_news_monitor.py` → `generate_ai_article`): il provider di default è `settings.AI_ARTICLE_PROVIDER`. Un singolo monitor può forzare il provider mettendo `"ai_provider": "openrouter"` (o `"anthropic"`) nel suo `config_data` JSON (override per-monitor). Con OpenRouter viene usato `_generate_with_openrouter` (loop Chat Completions con tool `web_search` + finalizzazione forzata, identica al path Anthropic).

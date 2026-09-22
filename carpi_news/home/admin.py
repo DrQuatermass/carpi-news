@@ -550,18 +550,19 @@ ISTRUZIONI:
             prompt_base += "\n\nFornisci SOLO il contenuto dell'articolo riscritto, senza commenti aggiuntivi:"
             
             # Chiamata all'API Anthropic
-            model_name = "claude-sonnet-4-6"
+            from home.anthropic_params import anthropic_model, thinking_params, response_text
+            model_name = anthropic_model()
             response = client.messages.create(
                 model=model_name,
-                max_tokens=4000,
-                temperature=0.3,
+                max_tokens=8192,  # thinking adattivo incluso nel budget
                 messages=[{
                     "role": "user",
                     "content": prompt_base
-                }]
+                }],
+                **thinking_params('medium'),
             )
 
-            contenuto_rigenerato = response.content[0].text.strip()
+            contenuto_rigenerato = response_text(response).strip()
 
             # Traccia utilizzo API
             try:

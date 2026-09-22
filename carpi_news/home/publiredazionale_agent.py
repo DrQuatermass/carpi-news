@@ -11,6 +11,7 @@ from bs4 import BeautifulSoup
 from django.conf import settings
 from django.utils import timezone
 from .api_usage_tracker import APIUsageTracker
+from .anthropic_params import anthropic_model, thinking_params, response_text
 from .social_media_scraper import SocialMediaScraper
 
 logger = logging.getLogger(__name__)
@@ -259,9 +260,9 @@ Rispondi SOLO con saluto + domanda."""
 
         try:
             message = self.client.messages.create(
-                model="claude-sonnet-4-6",
-                max_tokens=400,
-                temperature=0.7,
+                model=anthropic_model(),
+                max_tokens=1024,
+                **thinking_params('off'),
                 system=system_prompt,
                 messages=[{
                     "role": "user",
@@ -273,7 +274,7 @@ Rispondi SOLO con saluto + domanda."""
             try:
                 APIUsageTracker.track_anthropic(
                     operation='publiredazionale_first_question',
-                    model='claude-sonnet-4-6',
+                    model=anthropic_model(),
                     input_tokens=message.usage.input_tokens,
                     output_tokens=message.usage.output_tokens,
                     success=True,
@@ -282,7 +283,7 @@ Rispondi SOLO con saluto + domanda."""
             except Exception as track_error:
                 logger.warning(f"Errore tracciamento API (non bloccante): {track_error}")
 
-            return message.content[0].text.strip()
+            return response_text(message).strip()
 
         except Exception as e:
             logger.error(f"Errore generazione prima domanda: {e}", exc_info=True)
@@ -482,9 +483,9 @@ IMPORTANTE: Rispondi SOLO con il JSON, nient'altro."""
 
         try:
             message = self.client.messages.create(
-                model="claude-sonnet-4-6",
-                max_tokens=500,
-                temperature=0.7,
+                model=anthropic_model(),
+                max_tokens=1024,
+                **thinking_params('off'),
                 system=system_prompt,
                 messages=[{
                     "role": "user",
@@ -496,7 +497,7 @@ IMPORTANTE: Rispondi SOLO con il JSON, nient'altro."""
             try:
                 APIUsageTracker.track_anthropic(
                     operation='publiredazionale_next_question',
-                    model='claude-sonnet-4-6',
+                    model=anthropic_model(),
                     input_tokens=message.usage.input_tokens,
                     output_tokens=message.usage.output_tokens,
                     success=True
@@ -504,7 +505,7 @@ IMPORTANTE: Rispondi SOLO con il JSON, nient'altro."""
             except Exception as track_error:
                 logger.warning(f"Errore tracciamento API (non bloccante): {track_error}")
 
-            response_text = message.content[0].text.strip()
+            response_text = response_text(message).strip()
             logger.info(f"Risposta AI next_question (raw): {response_text[:500]}")
 
             # Rimuovi markdown code blocks se presenti
@@ -756,9 +757,9 @@ Contenuto del sito web:
 Genera un'analisi NARRATIVA che mi aiuti a scrivere una storia coinvolgente su questa azienda."""
 
             message = self.client.messages.create(
-                model="claude-sonnet-4-6",
-                max_tokens=800,  # Ridotto da 1500 per velocità
-                temperature=0.5,
+                model=anthropic_model(),
+                max_tokens=4096,
+                **thinking_params('low'),
                 system=system_prompt,
                 messages=[{
                     "role": "user",
@@ -769,13 +770,13 @@ Genera un'analisi NARRATIVA che mi aiuti a scrivere una storia coinvolgente su q
             # Traccia utilizzo
             APIUsageTracker.track_anthropic(
                 operation='publiredazionale_web_research',
-                model='claude-sonnet-4-6',
+                model=anthropic_model(),
                 input_tokens=message.usage.input_tokens,
                 output_tokens=message.usage.output_tokens,
                 success=True
             )
 
-            research_text = message.content[0].text.strip()
+            research_text = response_text(message).strip()
             logger.info(f"Ricerca web completata: {len(research_text)} caratteri di analisi generata")
 
             return {
@@ -851,9 +852,9 @@ Analizza l'intervista e genera una ricerca approfondita su:
 Scrivi in modo narrativo e giornalistico."""
 
             message = self.client.messages.create(
-                model="claude-sonnet-4-6",
-                max_tokens=2000,
-                temperature=0.6,
+                model=anthropic_model(),
+                max_tokens=6144,
+                **thinking_params('low'),
                 system=system_prompt,
                 messages=[{
                     "role": "user",
@@ -864,13 +865,13 @@ Scrivi in modo narrativo e giornalistico."""
             # Traccia utilizzo
             APIUsageTracker.track_anthropic(
                 operation='publiredazionale_post_interview_research',
-                model='claude-sonnet-4-6',
+                model=anthropic_model(),
                 input_tokens=message.usage.input_tokens,
                 output_tokens=message.usage.output_tokens,
                 success=True
             )
 
-            research_text = message.content[0].text.strip()
+            research_text = response_text(message).strip()
             logger.info(f"Ricerca post-intervista completata: {len(research_text)} caratteri")
 
             return {
@@ -935,9 +936,9 @@ Rispondi in formato JSON:
 }}"""
 
             message = self.client.messages.create(
-                model="claude-sonnet-4-6",
-                max_tokens=300,
-                temperature=0.3,
+                model=anthropic_model(),
+                max_tokens=1024,
+                **thinking_params('off'),
                 messages=[{
                     "role": "user",
                     "content": classification_prompt
@@ -948,7 +949,7 @@ Rispondi in formato JSON:
             try:
                 APIUsageTracker.track_anthropic(
                     operation='business_type_classification',
-                    model='claude-sonnet-4-6',
+                    model=anthropic_model(),
                     input_tokens=message.usage.input_tokens,
                     output_tokens=message.usage.output_tokens,
                     success=True,
@@ -959,7 +960,7 @@ Rispondi in formato JSON:
 
             # Parse JSON response
             import json
-            response_text = message.content[0].text.strip()
+            response_text = response_text(message).strip()
 
             # Rimuovi markdown code block se presente
             if response_text.startswith('```'):
@@ -1335,9 +1336,9 @@ Genera JSON."""
 
         try:
             message = self.client.messages.create(
-                model="claude-sonnet-4-6",
-                max_tokens=3000,  # Aumentato per articoli più ricchi
-                temperature=0.8,  # Aumentato per più creatività narrativa
+                model=anthropic_model(),
+                max_tokens=8192,
+                **thinking_params('medium'),
                 system=system_prompt,
                 messages=[{
                     "role": "user",
@@ -1348,13 +1349,13 @@ Genera JSON."""
             # Traccia utilizzo
             APIUsageTracker.track_anthropic(
                 operation='publiredazionale_article_generation',
-                model='claude-sonnet-4-6',
+                model=anthropic_model(),
                 input_tokens=message.usage.input_tokens,
                 output_tokens=message.usage.output_tokens,
                 success=True
             )
 
-            response_text = message.content[0].text.strip()
+            response_text = response_text(message).strip()
 
             # Rimuovi markdown code blocks
             if response_text.startswith('```'):
@@ -1461,9 +1462,9 @@ Restituisci JSON con:
 
         try:
             message = self.client.messages.create(
-                model="claude-sonnet-4-6",
-                max_tokens=2000,
-                temperature=0.7,
+                model=anthropic_model(),
+                max_tokens=8192,
+                **thinking_params('medium'),
                 system=system_prompt,
                 messages=[{
                     "role": "user",
@@ -1474,13 +1475,13 @@ Restituisci JSON con:
             # Traccia utilizzo
             APIUsageTracker.track_anthropic(
                 operation='publiredazionale_article_regeneration',
-                model='claude-sonnet-4-6',
+                model=anthropic_model(),
                 input_tokens=message.usage.input_tokens,
                 output_tokens=message.usage.output_tokens,
                 success=True
             )
 
-            response_text = message.content[0].text.strip()
+            response_text = response_text(message).strip()
 
             if response_text.startswith('```'):
                 import re

@@ -347,6 +347,12 @@ if not DEBUG:
 ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY', '')
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
 
+# Modello Claude per articoli, rigenerazione admin, pubbliredazionali e "cosa fare oggi".
+# Cambiare da .env per rollback (es. ANTHROPIC_MODEL=claude-sonnet-4-6) senza toccare il codice.
+# NOTA: dalla generazione Sonnet 5 in poi l'API rifiuta temperature/top_p/top_k (400)
+# e attiva il thinking adattivo di default: i parametri sono in home/anthropic_params.py.
+ANTHROPIC_MODEL = os.getenv('ANTHROPIC_MODEL', 'claude-sonnet-5')
+
 # OpenRouter (POC: attualmente usato solo dal chatbot)
 # API OpenAI-compatibile: https://openrouter.ai/api/v1
 OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY', '')
@@ -355,9 +361,13 @@ OPENROUTER_BASE_URL = os.getenv('OPENROUTER_BASE_URL', 'https://openrouter.ai/ap
 OPENROUTER_CHATBOT_MODEL = os.getenv('OPENROUTER_CHATBOT_MODEL', 'deepseek/deepseek-v4-pro')
 # Provider del chatbot: 'anthropic' (default, comportamento invariato) | 'openrouter'
 CHATBOT_PROVIDER = os.getenv('CHATBOT_PROVIDER', 'anthropic').lower()
-# Modello OpenRouter per la generazione articoli (canary, attivato per-monitor
-# via config_data "ai_provider": "openrouter"; override per-monitor "ai_openrouter_model").
-OPENROUTER_ARTICLE_MODEL = os.getenv('OPENROUTER_ARTICLE_MODEL', 'deepseek/deepseek-v4-pro')
+# Modello OpenRouter per la generazione articoli (slug da openrouter.ai/models;
+# override per-monitor con config_data "ai_openrouter_model"). Scelto GPT-5.6 Sol
+# dopo il confronto a 4 modelli del 22/09/2026 (fedelta' alla fonte e uso della ricerca).
+OPENROUTER_ARTICLE_MODEL = os.getenv('OPENROUTER_ARTICLE_MODEL', 'openai/gpt-5.6-sol')
+# Modello OpenAI (API dirette, OPENAI_API_KEY) usato come fallback quando Anthropic
+# risponde 529/overloaded. I modelli GPT-5.x rifiutano max_tokens e temperature.
+OPENAI_FALLBACK_MODEL = os.getenv('OPENAI_FALLBACK_MODEL', 'gpt-5.6-sol')
 # Provider di default per la generazione articoli quando il monitor non specifica
 # "ai_provider" nel config_data. 'anthropic' (default sicuro) | 'openrouter'.
 # Il monitor può sempre fare override per-monitor con config_data "ai_provider".

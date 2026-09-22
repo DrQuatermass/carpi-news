@@ -23,6 +23,7 @@ from django.db import transaction
 from PIL import Image
 
 from home.models import Articolo, MonitorConfig
+from home.anthropic_params import anthropic_model, thinking_params
 
 # Import platform-specific locking
 if platform.system() == 'Windows':
@@ -3480,9 +3481,10 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
                 # Se tools è vuoto, non passarlo all'API
                 api_params = {
                     "system": system_prompt,
-                    "max_tokens": 4096,
+                    "max_tokens": 8192,  # thinking adattivo incluso nel budget
                     "messages": [{"role": "user", "content": user_content}],
-                    "model": "claude-sonnet-4-6"
+                    "model": anthropic_model(),
+                    **thinking_params('medium'),
                 }
                 if tools:
                     api_params["tools"] = tools
@@ -3809,9 +3811,10 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
                     # Nuova chiamata ad Anthropic
                     api_params_iter = {
                         "system": system_prompt,
-                        "max_tokens": 4096,
+                        "max_tokens": 8192,  # thinking adattivo incluso nel budget
                         "messages": conversation,
-                        "model": "claude-sonnet-4-6"
+                        "model": anthropic_model(),
+                        **thinking_params('medium'),
                     }
                     if tools:
                         api_params_iter["tools"] = tools
@@ -3851,9 +3854,10 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
                 })
                 final_params = {
                     "system": system_prompt,
-                    "max_tokens": 4096,
+                    "max_tokens": 8192,  # thinking adattivo incluso nel budget
                     "messages": conversation,
-                    "model": "claude-sonnet-4-6"
+                    "model": anthropic_model(),
+                    **thinking_params('medium'),
                 }
                 limit_conversation_messages(final_params["messages"], self.logger)
                 final_message = client.messages.create(**final_params)
@@ -4089,7 +4093,7 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
         return text, web_sources, model
 
     def _generate_with_openai_fallback(self, article_data: Dict[str, Any], system_prompt: str, web_search_tool_def: Dict = None) -> tuple[str, list, str]:
-        """Fallback a OpenAI GPT-4 Turbo quando Anthropic è sovraccarico
+        """Fallback a OpenAI (settings.OPENAI_FALLBACK_MODEL) quando Anthropic è sovraccarico
 
         Returns:
             tuple: (contenuto, web_sources, model_name)
@@ -4130,16 +4134,17 @@ Contenuto originale:
 
 Rielabora questa notizia seguendo le istruzioni del sistema. Rispondi SOLO con JSON valido con i campi titolo, sommario, contenuto e tags."""
 
-        # Chiamata a OpenAI (senza tool use per semplicità)
+        # Chiamata a OpenAI (senza tool use per semplicità).
+        # I modelli GPT-5.x accettano solo max_completion_tokens (niente max_tokens/temperature).
+        openai_model = getattr(settings, 'OPENAI_FALLBACK_MODEL', 'gpt-5.6-sol')
         user_prompt = truncate_ai_source_text(user_prompt, self.logger, label="Messaggio user openai_fallback")
         response = client.chat.completions.create(
-            model="gpt-4-turbo-2024-04-09",
+            model=openai_model,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
             ],
-            max_tokens=4096,
-            temperature=0.7
+            max_completion_tokens=8192,
         )
 
         content = response.choices[0].message.content
@@ -4149,7 +4154,7 @@ Rielabora questa notizia seguendo le istruzioni del sistema. Rispondi SOLO con J
             from home.api_usage_tracker import APIUsageTracker
             APIUsageTracker.track_openai(
                 operation='openai_fallback',
-                model='gpt-4-turbo-2024-04-09',
+                model=openai_model,
                 input_tokens=response.usage.prompt_tokens,
                 output_tokens=response.usage.completion_tokens,
                 related_article=None,
@@ -4162,7 +4167,7 @@ Rielabora questa notizia seguendo le istruzioni del sistema. Rispondi SOLO con J
         self.logger.info(f"OpenAI fallback completato: {response.usage.total_tokens} tokens")
 
         # Nessuna fonte web (OpenAI non ha tool use in questo fallback)
-        return content, [], 'gpt-4-turbo-2024-04-09'
+        return content, [], openai_model
 
     def save_article_directly(self, article_data: Dict[str, Any]):
         """Salva articolo direttamente senza AI con protezione race condition"""

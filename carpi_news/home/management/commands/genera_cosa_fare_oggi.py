@@ -12,6 +12,7 @@ from datetime import date
 import logging
 import anthropic
 import os
+from home.anthropic_params import anthropic_model, thinking_params, response_text
 import re
 
 logger = logging.getLogger(__name__)
@@ -224,16 +225,16 @@ ISTRUZIONI:
 STILE: Giornalistico locale, caldo, coinvolgente, che valorizza il territorio."""
 
         message = client.messages.create(
-            model="claude-sonnet-4-6",
-            max_tokens=2000,
-            temperature=0.7,
+            model=anthropic_model(),
+            max_tokens=8192,  # thinking adattivo incluso nel budget
             messages=[{
                 "role": "user",
                 "content": prompt
-            }]
+            }],
+            **thinking_params('medium'),
         )
 
-        return message.content[0].text
+        return response_text(message)
 
     def _inserisci_link_eventi(self, contenuto_ai, eventi):
         """Inserisce automaticamente i link agli eventi nel testo generato dall'AI"""
