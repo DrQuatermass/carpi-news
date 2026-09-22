@@ -358,7 +358,7 @@ ANTHROPIC_MODEL = os.getenv('ANTHROPIC_MODEL', 'claude-sonnet-5')
 OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY', '')
 OPENROUTER_BASE_URL = os.getenv('OPENROUTER_BASE_URL', 'https://openrouter.ai/api/v1')
 # Slug modello da openrouter.ai/models per il chatbot.
-OPENROUTER_CHATBOT_MODEL = os.getenv('OPENROUTER_CHATBOT_MODEL', 'deepseek/deepseek-v4-pro')
+OPENROUTER_CHATBOT_MODEL = os.getenv('OPENROUTER_CHATBOT_MODEL', 'openai/gpt-5.6-sol')
 # Provider del chatbot: 'anthropic' (default, comportamento invariato) | 'openrouter'
 CHATBOT_PROVIDER = os.getenv('CHATBOT_PROVIDER', 'anthropic').lower()
 # Modello OpenRouter per la generazione articoli (slug da openrouter.ai/models;

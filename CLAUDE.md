@@ -323,7 +323,7 @@ The project uses environment variables defined in `.env` file (based on `.env.ex
 - `CHATBOT_PROVIDER`: Provider del chatbot — `anthropic` (default) | `openrouter`
 - `OPENROUTER_ARTICLE_MODEL`: Modello articoli (default `openai/gpt-5.6-sol`, scelto col confronto a 4 modelli del 22/09/2026)
 - `OPENAI_FALLBACK_MODEL`: Modello OpenAI (API dirette, `OPENAI_API_KEY`) usato come fallback sui 529 di Anthropic (default `gpt-5.6-sol`)
-- `OPENROUTER_CHATBOT_MODEL`: Modello chatbot (default `deepseek/deepseek-v4-pro`)
+- `OPENROUTER_CHATBOT_MODEL`: Modello chatbot (default `openai/gpt-5.6-sol` dal 22/09/2026)
 - `OPENROUTER_BASE_URL`: Endpoint OpenRouter (default `https://openrouter.ai/api/v1`)
 
 **Virtual Environment**: 
@@ -340,7 +340,7 @@ pip install -r requirements.txt
 
 ## AI Provider (Anthropic / OpenRouter-DeepSeek)
 
-Sia la **generazione articoli** sia il **chatbot** possono usare due provider: **Anthropic** (Claude) o **OpenRouter** (qualsiasi slug: GPT-5.6 Sol in produzione dal 22/09/2026, DeepSeek per il chatbot). La selezione è per-componente ed è **guidata da variabili d'ambiente**, senza modifiche al codice.
+Sia la **generazione articoli** sia il **chatbot** possono usare due provider: **Anthropic** (Claude) o **OpenRouter** (qualsiasi slug: GPT-5.6 Sol in produzione dal 22/09/2026 per articoli e chatbot). La selezione è per-componente ed è **guidata da variabili d'ambiente**, senza modifiche al codice.
 
 ### Come funziona
 - **Articoli** (`home/universal_news_monitor.py` → `generate_ai_article`): il provider di default è `settings.AI_ARTICLE_PROVIDER`. Un singolo monitor può forzare il provider mettendo `"ai_provider": "openrouter"` (o `"anthropic"`) nel suo `config_data` JSON (override per-monitor). Con OpenRouter viene usato `_generate_with_openrouter` (loop Chat Completions con tool `web_search` + finalizzazione forzata, identica al path Anthropic).
@@ -361,7 +361,7 @@ Rollback: rimuovere/riportare a `anthropic` queste due variabili + restart gunic
 Le chiamate OpenRouter sono tracciate in `APIUsage` con `api_type='openrouter'` e compaiono nella dashboard costi (`/admin/home/apiusage/dashboard/`). I prezzi indicativi sono in `home/api_usage_tracker.py` (`OPENROUTER_PRICING`) — verificare/aggiornare su openrouter.ai/models.
 
 ### Note
-- Il chatbot con OpenRouter è single-shot: `deepseek/deepseek-v4-flash` sarebbe sufficiente e ~5× più economico di V4 Pro.
+- Il chatbot con OpenRouter è single-shot (intent + risposta, ~1,2 centesimi a domanda con Sol); il codice disabilita il reasoning via `extra_body` e OpenRouter accetta `temperature` anche per i modelli GPT-5.x.
 - `openai` (SDK) è usato come client OpenRouter-compatibile (già dipendenza per il fallback OpenAI).
 
 ## Security Considerations
