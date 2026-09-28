@@ -6,6 +6,7 @@ from django.core.cache import cache
 from django.core.cache.utils import make_template_fragment_key
 from django.core.files.base import ContentFile
 from django.utils import timezone
+from django.db import close_old_connections
 from .models import Articolo
 from .image_variants import (
     ArticleImageVariantError,
@@ -329,6 +330,16 @@ def ensure_publication_images_ready(instance):
                 instance.titolo,
                 ", ".join(created),
             )
+
+        # Versioni 400/600/800w per lo srcset di homepage e articolo: senza, ai telefoni
+        # arriva l'originale (LCP lento). Prima si generavano solo a un salvataggio successivo.
+        def responsive_in_background(pk=instance.pk):
+            try:
+                generate_responsive_images_for_article(Articolo.objects.get(pk=pk))
+            finally:
+                close_old_connections()
+
+        threading.Thread(target=responsive_in_background, name=f"ResponsiveImages-{instance.pk}", daemon=True).start()
         return created
     except ArticleImageVariantError as e:
         logger.warning(
