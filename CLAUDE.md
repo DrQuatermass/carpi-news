@@ -327,6 +327,8 @@ The project uses environment variables defined in `.env` file (based on `.env.ex
 - `OPENROUTER_BASE_URL`: Endpoint OpenRouter (default `https://openrouter.ai/api/v1`)
 - `RIELABORA_AI_PROVIDER`: provider della rielaborazione su richiesta (tasto "Rielabora con AI") — `anthropic` (default) | `openrouter` | `monitor` (= provider del monitor d'origine). Vale solo per questo flusso
 - `RIELABORA_ANTHROPIC_MODEL`: modello Claude della rielaborazione su richiesta (default `claude-opus-5`, scelto per la qualità di scrittura; ~10 centesimi ad articolo)
+- `RUBRICHE_ANTHROPIC_MODEL`: modello Claude delle rubriche quotidiane via cron, editoriale e "Cosa fare oggi" (default `claude-opus-5`)
+- `RUBRICHE_MAX_RICERCHE`: ricerche web massime per rubrica (default `3`; `0` spegne la ricerca)
 - `RIELABORA_EMAIL_CONFERMA`: tasto "Rielabora con AI" nelle email di notifica. `False` (default) = un clic, la pagina `/rielabora/<token>/` invia da sola la conferma via JavaScript; `True` = pagina di conferma con tasto e campo "richieste di modifica". In entrambi i casi il GET non avvia nulla (i controlli antispam della posta aprono i link da soli)
 
 **Virtual Environment**: 
@@ -364,6 +366,12 @@ Rollback: rimuovere/riportare a `anthropic` queste due variabili + restart gunic
 - Il tasto "Rielabora con AI" (`home/rielaborazione_ai.py`) usa prompt e ricerca web del monitor d'origine ma provider e modello propri: `RIELABORA_AI_PROVIDER` / `RIELABORA_ANTHROPIC_MODEL` (default Claude Opus 5). Override per-monitor del modello Claude: `config_data "ai_anthropic_model"`.
 - `SOURCE_FIDELITY_GUARDRAILS` (`home/universal_news_monitor.py`) è aggiunto a ogni system prompt: nessun fatto, numero o virgolettato che non sia nella fonte o nelle ricerche; articolo più breve se la fonte è scarna; incongruenze della fonte segnalate al lettore.
 - Se Claude declina la richiesta (`stop_reason: refusal`) o risponde 529, la generazione passa al fallback OpenAI (`OPENAI_FALLBACK_MODEL`).
+
+### Rubriche quotidiane (editoriale, Cosa fare oggi)
+- `editoriale.py` e `genera_cosa_fare_oggi` generano con `home/rubriche_ai.py` → `genera_con_ricerca`: modello `RUBRICHE_ANTHROPIC_MODEL`, ricerca web con lo stesso strumento dei monitor (`web_search_tool`), regola di fedeltà ai fatti in coda al prompt.
+- Costi in `APIUsage` con operation `editoriale_quotidiano` e `cosa_fare_oggi` (ricerche: `web_search_<operation>`). Indicativamente 25 centesimi l'editoriale, 10 "Cosa fare oggi".
+- Le pagine lette nelle ricerche finiscono in `Articolo.fonti_web`, il modello in `ai_model_used`.
+- "Cosa fare oggi" passa al modello il testo completo di ogni evento (prima solo 200 caratteri di sommario).
 
 ### Tracking costi
 Le chiamate OpenRouter sono tracciate in `APIUsage` con `api_type='openrouter'` e compaiono nella dashboard costi (`/admin/home/apiusage/dashboard/`). I prezzi indicativi sono in `home/api_usage_tracker.py` (`OPENROUTER_PRICING`) — verificare/aggiornare su openrouter.ai/models.

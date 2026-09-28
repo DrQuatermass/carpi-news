@@ -20,7 +20,10 @@ from home.models import Articolo
 from home.logger_config import setup_centralized_logger
 from home.content_polisher import ContentPolisher
 from django.templatetags.static import static
-import anthropic
+from home.rubriche_ai import genera_con_ricerca
+
+# Fonti web e modello dell'ultima generazione, salvati con l'editoriale
+ULTIMA_GENERAZIONE = {'fonti_web': [], 'modello': None}
 
 def setup_logging():
     """Configura il logging per l'editoriale"""
@@ -136,25 +139,18 @@ ESEMPIO DI FORMATO RICHIESTO CON LINK:
     logging.info("Prompt salvato in debug_prompt.txt")
     
     try:
-        # Chiamata all'AI con retry
-        logging.info("Inizializzazione client Anthropic...")
-        
         from django.conf import settings
-        api_key = settings.ANTHROPIC_API_KEY
-        if not api_key:
+        if not settings.ANTHROPIC_API_KEY:
             logging.error("ANTHROPIC_API_KEY non configurata!")
             return None, None
-            
-        client = anthropic.Anthropic(api_key=api_key)
-        logging.info("Client Anthropic inizializzato con successo")
-        
-        response = client.messages.create(
-            model="claude-sonnet-4-6",
-            max_tokens=4000,
-            messages=[{"role": "user", "content": prompt_editoriale}]
-        )
-            
-        contenuto_completo = response.content[0].text
+
+        # Modello, ricerca web e tracking costi: home/rubriche_ai.py
+        esito = genera_con_ricerca(prompt_editoriale, operation='editoriale_quotidiano')
+        ULTIMA_GENERAZIONE['fonti_web'] = esito['fonti_web']
+        ULTIMA_GENERAZIONE['modello'] = esito['modello']
+        logging.info("Editoriale generato con %s, %d ricerche web" % (esito['modello'], esito['ricerche']))
+
+        contenuto_completo = esito['testo']
         
         # Estrai titolo e contenuto
         linee = contenuto_completo.split('\n')
@@ -216,6 +212,8 @@ def salva_editoriale(titolo, contenuto, data_ieri, numero_articoli):
         slug=slug,
         approvato=False, 
         data_pubblicazione=timezone.now(),
+        fonti_web=ULTIMA_GENERAZIONE['fonti_web'] or None,
+        ai_model_used=ULTIMA_GENERAZIONE['modello'],
     
         foto=static('home/images/portico_logo_nopayoff.png'),
     )

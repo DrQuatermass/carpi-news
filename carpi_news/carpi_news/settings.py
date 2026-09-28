@@ -361,6 +361,11 @@ ANTHROPIC_MODEL = os.getenv('ANTHROPIC_MODEL', 'claude-sonnet-5')
 RIELABORA_AI_PROVIDER = os.getenv('RIELABORA_AI_PROVIDER', 'anthropic').lower()
 RIELABORA_ANTHROPIC_MODEL = os.getenv('RIELABORA_ANTHROPIC_MODEL', 'claude-opus-5')
 
+# Rubriche quotidiane via cron (editoriale.py, genera_cosa_fare_oggi): modello e numero
+# massimo di ricerche web per testo (0 = ricerca spenta). Vedi home/rubriche_ai.py.
+RUBRICHE_ANTHROPIC_MODEL = os.getenv('RUBRICHE_ANTHROPIC_MODEL', 'claude-opus-5')
+RUBRICHE_MAX_RICERCHE = int(os.getenv('RUBRICHE_MAX_RICERCHE', '3'))
+
 # OpenRouter (POC: attualmente usato solo dal chatbot)
 # API OpenAI-compatibile: https://openrouter.ai/api/v1
 OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY', '')

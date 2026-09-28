@@ -10,9 +10,7 @@ from django.db import models
 from home.models import Articolo
 from datetime import date
 import logging
-import anthropic
-import os
-from home.anthropic_params import anthropic_model, thinking_params, response_text
+from home.rubriche_ai import genera_con_ricerca
 import re
 
 logger = logging.getLogger(__name__)
@@ -120,7 +118,9 @@ class Command(BaseCommand):
             categoria='Cosa fare oggi',
             foto='/static/home/images/Oggi.webp',
             approvato=True,
-            data_pubblicazione=timezone.now()
+            data_pubblicazione=timezone.now(),
+            fonti_web=getattr(self, '_fonti_web', None) or None,
+            ai_model_used=getattr(self, '_modello', None),
         )
 
         self.stdout.write('\n' + '='*70)
@@ -176,6 +176,7 @@ class Command(BaseCommand):
                 'numero': i,
                 'titolo': evento.titolo,
                 'sommario': evento.sommario,
+                'testo': re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', ' ', evento.contenuto or '')).strip()[:1500],
                 'slug': evento.slug,
                 'categoria': evento.categoria
             })
@@ -196,11 +197,9 @@ class Command(BaseCommand):
 
     def _genera_con_ai(self, eventi_info, giorno_settimana, giorno, mese):
         """Usa Claude per generare un articolo narrativo"""
-        client = anthropic.Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
-
         # Prepara lista eventi per il prompt
         lista_eventi = "\n".join([
-            f"{e['numero']}. {e['titolo']}\n   Categoria: {e['categoria']}\n   Descrizione: {e['sommario'][:200]}..."
+            f"{e['numero']}. {e['titolo']}\n   Categoria: {e['categoria']}\n   Sommario: {e['sommario']}\n   Testo della notizia: {e['testo']}"
             for e in eventi_info
         ])
 
@@ -224,17 +223,13 @@ ISTRUZIONI:
 
 STILE: Giornalistico locale, caldo, coinvolgente, che valorizza il territorio."""
 
-        message = client.messages.create(
-            model=anthropic_model(),
-            max_tokens=8192,  # thinking adattivo incluso nel budget
-            messages=[{
-                "role": "user",
-                "content": prompt
-            }],
-            **thinking_params('medium'),
-        )
+        # Modello, ricerca web e tracking costi: home/rubriche_ai.py
+        esito = genera_con_ricerca(prompt, operation='cosa_fare_oggi')
+        self._fonti_web = esito['fonti_web']
+        self._modello = esito['modello']
+        logger.info("Cosa fare oggi generato con %s, %d ricerche web" % (esito['modello'], esito['ricerche']))
 
-        return response_text(message)
+        return esito['testo']
 
     def _inserisci_link_eventi(self, contenuto_ai, eventi):
         """Inserisce automaticamente i link agli eventi nel testo generato dall'AI"""
