@@ -373,6 +373,11 @@ OPENAI_FALLBACK_MODEL = os.getenv('OPENAI_FALLBACK_MODEL', 'gpt-5.6-sol')
 # Il monitor può sempre fare override per-monitor con config_data "ai_provider".
 AI_ARTICLE_PROVIDER = os.getenv('AI_ARTICLE_PROVIDER', 'anthropic').lower()
 
+# Tasto "Rielabora con AI" nelle email: False (default) = un clic, la pagina conferma da sola via
+# JavaScript; True = pagina di conferma con tasto e campo "richieste di modifica" (redazioni con
+# piu' persone, o se i controlli antispam della posta aprono i link da soli).
+RIELABORA_EMAIL_CONFERMA = os.getenv('RIELABORA_EMAIL_CONFERMA', 'False').lower() in ['true', '1', 'yes']
+
 # Tuning del linking interno (ottimizzazione SEO/GSC). Regolabili da .env.
 # - INTERNAL_LINK_MAX: tetto assoluto di link per articolo (per articoli molto lunghi)
 # - INTERNAL_LINK_MIN: minimo garantito per articoli brevi

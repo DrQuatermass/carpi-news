@@ -325,6 +325,7 @@ The project uses environment variables defined in `.env` file (based on `.env.ex
 - `OPENAI_FALLBACK_MODEL`: Modello OpenAI (API dirette, `OPENAI_API_KEY`) usato come fallback sui 529 di Anthropic (default `gpt-5.6-sol`)
 - `OPENROUTER_CHATBOT_MODEL`: Modello chatbot (default `openai/gpt-5.6-sol` dal 22/09/2026)
 - `OPENROUTER_BASE_URL`: Endpoint OpenRouter (default `https://openrouter.ai/api/v1`)
+- `RIELABORA_EMAIL_CONFERMA`: tasto "Rielabora con AI" nelle email di notifica. `False` (default) = un clic, la pagina `/rielabora/<token>/` invia da sola la conferma via JavaScript; `True` = pagina di conferma con tasto e campo "richieste di modifica". In entrambi i casi il GET non avvia nulla (i controlli antispam della posta aprono i link da soli)
 
 **Virtual Environment**: 
 ```bash

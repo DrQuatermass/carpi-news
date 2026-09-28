@@ -27,6 +27,7 @@ Disallow: /media/proxy_cache/
 # Blocca endpoint applicativi senza valore SEO
 Disallow: /api/chatbot/
 Disallow: /banner/impression/
+Disallow: /rielabora/
 
 # Short link social (/s/<token>/): redirect 302 tracciato verso l'articolo con UTM.
 # Il contenuto e' gia' raggiungibile dall'URL canonico: scansionarli e' solo spreco.

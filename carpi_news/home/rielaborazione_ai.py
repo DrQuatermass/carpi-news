@@ -132,3 +132,24 @@ def avvia_rielaborazione(articolo_id, richieste_modifica=None):
 
 def in_corso(articolo_id):
     return bool(cache.get(CACHE_KEY.format(articolo_id)))
+
+
+# --- Link firmato per il tasto "Rielabora" nelle email -------------------------------
+# Il link apre una pagina di conferma (GET senza effetti: i controlli antispam dei client
+# di posta aprono i link da soli); la rielaborazione parte solo col POST di conferma.
+TOKEN_SALT = 'rielabora-da-email'
+TOKEN_MAX_AGE = 14 * 24 * 3600
+
+
+def token_email(articolo_id):
+    from django.core.signing import TimestampSigner
+    return TimestampSigner(salt=TOKEN_SALT).sign(str(articolo_id))
+
+
+def articolo_id_da_token(token):
+    """Id dell'articolo, oppure None se il token e' falso o scaduto."""
+    from django.core.signing import BadSignature, SignatureExpired, TimestampSigner
+    try:
+        return int(TimestampSigner(salt=TOKEN_SALT).unsign(token, max_age=TOKEN_MAX_AGE))
+    except (BadSignature, SignatureExpired, ValueError):
+        return None

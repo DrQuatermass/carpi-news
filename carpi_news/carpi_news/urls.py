@@ -6,7 +6,7 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from django.views.generic import TemplateView, RedirectView
-from home import views
+from home import views, views_rielabora
 from home.feeds import ArticoliFeedRSS, ArticoliFeedAtom, ArticoliRecentiFeed
 from home.image_proxy import image_proxy_view
 
@@ -26,6 +26,7 @@ urlpatterns = [
     path('instagram/', views.link_in_bio, name='link_in_bio'),
     path('instagram/search/', views.link_in_bio_search, name='link_in_bio_search'),
     path('s/<str:token>/', views.short_link_redirect, name='short_link_redirect'),
+    path('rielabora/<str:token>/', views_rielabora.rielabora_da_email, name='rielabora_da_email'),
     path('banner/impression/<int:banner_id>/', views.banner_impression, name='banner_impression'),
     path('webhooks/instagram/', include('home.webhook_urls')),
 

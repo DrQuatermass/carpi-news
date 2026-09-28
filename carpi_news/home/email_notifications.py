@@ -57,16 +57,27 @@ def send_article_approval_notification(articolo):
                         <td style="padding: 8px 0;">{model_display}</td>
                     </tr>'''
 
-        # Notizia grezza (monitor con rielaborazione su richiesta): va rielaborata, non approvata
+        # Notizia grezza (monitor con generazione AI spenta): va rielaborata, non approvata
+        from home.rielaborazione_ai import token_email
         grezza = getattr(articolo, 'da_rielaborare', False)
+        admin_url = f"{base_url}/admin/home/articolo/{articolo.id}/change/"
+        # Apre una pagina di conferma: la rielaborazione parte solo premendo "Rielabora" li'
+        rielabora_url = f"{base_url}/rielabora/{token_email(articolo.id)}/"
         titolo_email = 'Nuova notizia da rielaborare' if grezza else 'Nuovo Articolo da Approvare'
-        testo_bottone = '🤖 Apri e rielabora con AI' if grezza else '✓ Approva Articolo'
+        testo_bottone = '🤖 Rielabora con AI' if grezza else '✓ Approva Articolo'
+        url_bottone = rielabora_url if grezza else admin_url
         colore_bottone = '#c9302c' if grezza else '#28a745'
         nota_grezza = (
             '<p style="color: #a94442; font-size: 14px; margin-bottom: 15px;">'
-            'Testo originale della fonte, non rielaborato: se ti interessa, apri la scheda e premi '
-            '"Rielabora con AI" accanto ad Approvato.</p>'
+            'Testo originale della fonte, non rielaborato: se ti interessa, rielaboralo con l\'AI '
+            '(si apre una pagina di conferma).</p>'
         ) if grezza else ''
+        link_secondario = (
+            f'oppure apri la scheda: <a href="{admin_url}" style="color: #007cba;">{admin_url}</a>'
+            if grezza else
+            f'<a href="{rielabora_url}" style="color: #007cba;">🔄 Rielabora di nuovo con AI</a>'
+            f' · oppure apri: <a href="{admin_url}" style="color: #007cba;">{admin_url}</a>'
+        )
 
         # Oggetto email
         subject = (
@@ -118,12 +129,12 @@ def send_article_approval_notification(articolo):
 
             <div style="text-align: center; margin: 30px 0;">
                 {nota_grezza}
-                <a href="{base_url}/admin/home/articolo/{articolo.id}/change/"
+                <a href="{url_bottone}"
                    style="display: inline-block; background: {colore_bottone}; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 16px;">
                    {testo_bottone}
                 </a>
                 <p style="margin-top: 10px; color: #6c757d; font-size: 14px;">
-                    oppure apri: <a href="{base_url}/admin/home/articolo/{articolo.id}/change/" style="color: #007cba;">{base_url}/admin/home/articolo/{articolo.id}/change/</a>
+                    {link_secondario}
                 </p>
             </div>
 
@@ -137,7 +148,7 @@ def send_article_approval_notification(articolo):
         # Versione testo semplice
         ai_model_text = f"Modello AI: {articolo.ai_model_used}\n" if articolo.ai_model_used else ""
         plain_message = f"""
-NUOVO ARTICOLO DA APPROVARE
+{titolo_email.upper()}
 
 Titolo: {articolo.titolo}
 Categoria: {articolo.categoria}
@@ -152,8 +163,9 @@ Contenuto completo:
 {articolo.contenuto}
 
 ========================================
-APPROVA ARTICOLO:
-{base_url}/admin/home/articolo/{articolo.id}/change/
+{"RIELABORA CON AI:" if grezza else "APPROVA ARTICOLO:"}
+{url_bottone}
+{"Scheda: " + admin_url if grezza else "Rielabora di nuovo con AI: " + rielabora_url}
 ========================================
 
 ---

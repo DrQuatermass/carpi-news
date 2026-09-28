@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Rielabora con AI - Ombra del Portico</title>
+    <style>
+        body { margin: 0; padding: 24px 16px; background: #f5efe6; font-family: Arial, sans-serif; color: #2c2c2c; }
+        .box { max-width: 640px; margin: 0 auto; background: #fff; border: 1px solid #e3d6c3; border-radius: 10px; padding: 24px; }
+        h1 { font-size: 1.2rem; margin: 0 0 16px; color: #7a5530; }
+        h2 { font-size: 1.05rem; margin: 0 0 8px; }
+        .meta { font-size: 0.9rem; color: #666; margin: 4px 0; word-break: break-all; }
+        textarea { width: 100%; box-sizing: border-box; min-height: 90px; margin: 8px 0 16px; padding: 8px; font: inherit; border: 1px solid #ccc; border-radius: 6px; }
+        button { width: 100%; padding: 14px; font-size: 1rem; font-weight: bold; color: #fff; background: #c9302c; border: 0; border-radius: 6px; cursor: pointer; }
+        .ok { background: #eaf6ea; border: 1px solid #b7dcb7; padding: 12px; border-radius: 6px; }
+        .warn { background: #fff4e0; border: 1px solid #f0c98a; padding: 12px; border-radius: 6px; }
+        a { color: #7a5530; }
+    </style>
+</head>
+<body>
+<div class="box">
+    <h1>🤖 Rielabora con AI</h1>
+
+    {% if stato == 'link_non_valido' %}
+        <p class="warn">Link non valido o scaduto (i link nelle email valgono 14 giorni). Apri l'articolo dall'admin e usa il tasto accanto ad "Approvato".</p>
+    {% else %}
+        <h2>{{ articolo.titolo }}</h2>
+        {% if articolo.fonte %}<p class="meta">Fonte: <a href="{{ articolo.fonte }}" target="_blank" rel="noopener">{{ articolo.fonte|truncatechars:80 }}</a></p>{% endif %}
+        <p class="meta">Regole: <strong>{{ regole }}</strong> · ricerca web {{ ricerca_web|yesno:"attiva,spenta" }}</p>
+
+        {% if stato == 'avviata' %}
+            <p class="ok">Rielaborazione avviata. Richiede 1-3 minuti: al termine ricevi l'email con l'articolo da approvare.</p>
+        {% elif stato == 'in_corso' %}
+            <p class="warn">C'è già una rielaborazione in corso per questo articolo: riceverai l'email al termine.</p>
+        {% elif stato == 'auto' %}
+            <p class="meta">Avvio della rielaborazione…</p>
+            <form id="auto-rielabora" method="post">
+                {% csrf_token %}
+                <noscript><button type="submit">Rielabora</button></noscript>
+            </form>
+            <script>document.getElementById('auto-rielabora').submit();</script>
+        {% else %}
+            <form method="post">
+                {% csrf_token %}
+                <label for="richieste">Richieste di modifica (facoltative)</label>
+                <textarea id="richieste" name="richieste_modifica" placeholder="Es. taglio più breve, cita l'orario, titolo sul risultato...">{{ articolo.richieste_modifica|default:"" }}</textarea>
+                <button type="submit">Rielabora</button>
+            </form>
+        {% endif %}
+        <p class="meta" style="margin-top:16px;"><a href="/admin/home/articolo/{{ articolo.pk }}/change/">Apri la scheda nell'admin</a></p>
+    {% endif %}
+</div>
+</body>
+</html>
