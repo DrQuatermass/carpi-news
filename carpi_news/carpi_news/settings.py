@@ -353,6 +353,14 @@ OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
 # e attiva il thinking adattivo di default: i parametri sono in home/anthropic_params.py.
 ANTHROPIC_MODEL = os.getenv('ANTHROPIC_MODEL', 'claude-sonnet-5')
 
+# Rielaborazione su richiesta (tasto "Rielabora con AI" in admin e nelle email):
+# pochi articoli al giorno, scelti e riletti a mano, quindi si privilegia la scrittura.
+# Provider e modello valgono SOLO per questo flusso; monitor automatici, chatbot e
+# pubbliredazionali restano sulle loro impostazioni.
+# RIELABORA_AI_PROVIDER: 'anthropic' | 'openrouter' | 'monitor' (= regole del monitor d'origine)
+RIELABORA_AI_PROVIDER = os.getenv('RIELABORA_AI_PROVIDER', 'anthropic').lower()
+RIELABORA_ANTHROPIC_MODEL = os.getenv('RIELABORA_ANTHROPIC_MODEL', 'claude-opus-5')
+
 # OpenRouter (POC: attualmente usato solo dal chatbot)
 # API OpenAI-compatibile: https://openrouter.ai/api/v1
 OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY', '')

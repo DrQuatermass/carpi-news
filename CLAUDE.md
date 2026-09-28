@@ -325,6 +325,8 @@ The project uses environment variables defined in `.env` file (based on `.env.ex
 - `OPENAI_FALLBACK_MODEL`: Modello OpenAI (API dirette, `OPENAI_API_KEY`) usato come fallback sui 529 di Anthropic (default `gpt-5.6-sol`)
 - `OPENROUTER_CHATBOT_MODEL`: Modello chatbot (default `openai/gpt-5.6-sol` dal 22/09/2026)
 - `OPENROUTER_BASE_URL`: Endpoint OpenRouter (default `https://openrouter.ai/api/v1`)
+- `RIELABORA_AI_PROVIDER`: provider della rielaborazione su richiesta (tasto "Rielabora con AI") — `anthropic` (default) | `openrouter` | `monitor` (= provider del monitor d'origine). Vale solo per questo flusso
+- `RIELABORA_ANTHROPIC_MODEL`: modello Claude della rielaborazione su richiesta (default `claude-opus-5`, scelto per la qualità di scrittura; ~10 centesimi ad articolo)
 - `RIELABORA_EMAIL_CONFERMA`: tasto "Rielabora con AI" nelle email di notifica. `False` (default) = un clic, la pagina `/rielabora/<token>/` invia da sola la conferma via JavaScript; `True` = pagina di conferma con tasto e campo "richieste di modifica". In entrambi i casi il GET non avvia nulla (i controlli antispam della posta aprono i link da soli)
 
 **Virtual Environment**: 
@@ -357,6 +359,11 @@ AI_ARTICLE_PROVIDER=openrouter
 CHATBOT_PROVIDER=openrouter
 ```
 Rollback: rimuovere/riportare a `anthropic` queste due variabili + restart gunicorn.
+
+### Rielaborazione su richiesta e fedeltà alla fonte
+- Il tasto "Rielabora con AI" (`home/rielaborazione_ai.py`) usa prompt e ricerca web del monitor d'origine ma provider e modello propri: `RIELABORA_AI_PROVIDER` / `RIELABORA_ANTHROPIC_MODEL` (default Claude Opus 5). Override per-monitor del modello Claude: `config_data "ai_anthropic_model"`.
+- `SOURCE_FIDELITY_GUARDRAILS` (`home/universal_news_monitor.py`) è aggiunto a ogni system prompt: nessun fatto, numero o virgolettato che non sia nella fonte o nelle ricerche; articolo più breve se la fonte è scarna; incongruenze della fonte segnalate al lettore.
+- Se Claude declina la richiesta (`stop_reason: refusal`) o risponde 529, la generazione passa al fallback OpenAI (`OPENAI_FALLBACK_MODEL`).
 
 ### Tracking costi
 Le chiamate OpenRouter sono tracciate in `APIUsage` con `api_type='openrouter'` e compaiono nella dashboard costi (`/admin/home/apiusage/dashboard/`). I prezzi indicativi sono in `home/api_usage_tracker.py` (`OPENROUTER_PRICING`) — verificare/aggiornare su openrouter.ai/models.

@@ -16,8 +16,10 @@ Note sui modelli dalla generazione Sonnet 5 / Opus 5 in poi:
 from django.conf import settings
 
 
-def anthropic_model() -> str:
-    return getattr(settings, 'ANTHROPIC_MODEL', 'claude-sonnet-5')
+def anthropic_model(override: str = None) -> str:
+    """Modello Claude da usare. ``override`` (es. config "ai_anthropic_model" del
+    monitor o della rielaborazione su richiesta) vince su settings.ANTHROPIC_MODEL."""
+    return override or getattr(settings, 'ANTHROPIC_MODEL', 'claude-sonnet-5')
 
 
 def thinking_params(mode: str = 'medium') -> dict:

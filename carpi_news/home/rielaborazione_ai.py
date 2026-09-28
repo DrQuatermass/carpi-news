@@ -5,9 +5,10 @@ Usata da:
   rielaborazione su richiesta, ma anche qualsiasi altro articolo);
 - tasto "Rigenera Articolo con AI" (stessa pipeline + richieste di modifica).
 
-Passa da UniversalNewsMonitor.generate_ai_article, quindi usa lo stesso provider
-(AI_ARTICLE_PROVIDER / ai_provider del monitor), lo stesso system prompt, la ricerca web
-e l'output JSON che compila titolo, titolo SEO, sommario, contenuto, tag e spunto social.
+Passa da UniversalNewsMonitor.generate_ai_article, quindi usa il system prompt e la
+ricerca web del monitor d'origine e l'output JSON che compila titolo, titolo SEO, sommario,
+contenuto, tag e spunto social. Provider e modello sono invece quelli dedicati a questo
+flusso (settings.RIELABORA_AI_PROVIDER / RIELABORA_ANTHROPIC_MODEL, default Claude Opus 5).
 """
 import logging
 import re
@@ -47,6 +48,18 @@ def trova_monitor(articolo):
     return candidati[0] if candidati else None
 
 
+def _modello_rielaborazione():
+    """Provider e modello dedicati alla rielaborazione su richiesta (vedi settings).
+    Con RIELABORA_AI_PROVIDER='monitor' restano quelli del monitor d'origine."""
+    provider = getattr(settings, 'RIELABORA_AI_PROVIDER', 'anthropic')
+    if provider not in ('anthropic', 'openrouter'):
+        return {}
+    scelta = {'ai_provider': provider}
+    if provider == 'anthropic':
+        scelta['ai_anthropic_model'] = getattr(settings, 'RIELABORA_ANTHROPIC_MODEL', 'claude-opus-5')
+    return scelta
+
+
 def _site_config(articolo, monitor):
     from home.universal_news_monitor import SiteConfig
 
@@ -54,6 +67,7 @@ def _site_config(articolo, monitor):
         sc = monitor.to_site_config()
         sc.config['use_ai_generation'] = True
         sc.config['ai_api_key'] = settings.ANTHROPIC_API_KEY
+        sc.config.update(_modello_rielaborazione())
         if not sc.config.get('ai_system_prompt'):
             sc.config['ai_system_prompt'] = PROMPT_DEFAULT
         if monitor.scraper_type != 'html':
@@ -71,6 +85,7 @@ def _site_config(articolo, monitor):
         enable_web_search=True,
         ai_system_prompt=PROMPT_DEFAULT,
         ai_api_key=settings.ANTHROPIC_API_KEY,
+        **_modello_rielaborazione(),
     )
 
 

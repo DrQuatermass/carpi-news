@@ -64,6 +64,18 @@ FEDELTA' AI FATTI (OBBLIGATORIO - la fonte e' un tweet, quindi molto breve):
 """
 
 
+SOURCE_FIDELITY_GUARDRAILS = """
+
+FEDELTA' ALLA FONTE (questa regola prevale su stile, tono e lunghezza):
+Scrivi per un giornale locale: chi legge conosce i luoghi e le persone, e un dettaglio plausibile ma non verificato viene riconosciuto subito come errore. Per questo:
+- Ogni fatto dell'articolo deve comparire nel contenuto da rielaborare oppure nei risultati delle ricerche web. Vale per numeri, date, orari, distanze, eta', nomi, cariche, luoghi, risultati, precedenti, affluenze e storia passata. Se un dato non c'e', non scriverlo e non stimarlo.
+- Virgolettati: riporta soltanto frasi presenti nella fonte, con le stesse parole e attribuite alla stessa persona. Non creare citazioni, non allungarle, non attribuire frasi a soggetti generici come "i medici" o "gli organizzatori".
+- Il tono locale e le immagini vanno bene finche' non affermano fatti. Formule come "come ogni anno", "nelle edizioni passate", "a due passi da", "da sempre" sono affermazioni di fatto: usale solo se la fonte le sostiene.
+- Se la fonte e' scarna scrivi un articolo piu' breve. La lunghezza non e' un obiettivo, la completezza rispetto alla fonte si'.
+- Se la fonte contiene un'incongruenza (date che non tornano, numeri in contrasto tra loro) segnalala nel testo con una frase chiara per il lettore, invece di scegliere una versione o di tacere.
+- Dalle ricerche web prendi solo informazioni che riguardano davvero questa notizia, e collocale nel loro tempo. Risultati generici o su altri soggetti non vanno usati.
+"""
+
 ARTICLE_OUTPUT_GUARDRAILS = """
 
 REGOLE DI OUTPUT OBBLIGATORIE:
@@ -3374,11 +3386,11 @@ class UniversalNewsMonitor:
                 base_prompt = self.config.config.get('ai_twitter_prompt',
                     self.config.config.get('ai_system_prompt',
                     """Sei un giornalista esperto. Rielabora questa notizia per il giornale locale."""))
-                system_prompt = base_prompt + date_context + TWITTER_FIDELITY_GUARDRAILS + ARTICLE_OUTPUT_GUARDRAILS + TAGS_INSTRUCTION
+                system_prompt = base_prompt + date_context + TWITTER_FIDELITY_GUARDRAILS + SOURCE_FIDELITY_GUARDRAILS + ARTICLE_OUTPUT_GUARDRAILS + TAGS_INSTRUCTION
             else:
                 base_prompt = self.config.config.get('ai_system_prompt',
                     """Sei un giornalista esperto. Rielabora questa notizia per il giornale locale.""")
-                system_prompt = base_prompt + date_context + ARTICLE_OUTPUT_GUARDRAILS + TAGS_INSTRUCTION
+                system_prompt = base_prompt + date_context + SOURCE_FIDELITY_GUARDRAILS + ARTICLE_OUTPUT_GUARDRAILS + TAGS_INSTRUCTION
 
             # Costruisci contenuto con eventuali link (MANTENIAMO)
             links_section = ""
@@ -3496,7 +3508,7 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
                     "system": system_prompt,
                     "max_tokens": 8192,  # thinking adattivo incluso nel budget
                     "messages": [{"role": "user", "content": user_content}],
-                    "model": anthropic_model(),
+                    "model": anthropic_model(self.config.config.get('ai_anthropic_model')),
                     **thinking_params('medium'),
                 }
                 if tools:
@@ -3756,6 +3768,11 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
                 response_content = ""
                 tool_uses = []
 
+                # I modelli Claude piu' recenti possono declinare una richiesta (HTTP 200,
+                # stop_reason "refusal", contenuto vuoto): si passa al fallback OpenAI
+                if getattr(current_message, 'stop_reason', None) == 'refusal':
+                    raise RuntimeError("Anthropic refusal: il modello ha declinato la richiesta")
+
                 # Analizza i blocchi di contenuto
                 for content_block in current_message.content:
                     if content_block.type == "text":
@@ -3883,7 +3900,7 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
                         "system": system_prompt,
                         "max_tokens": 8192,  # thinking adattivo incluso nel budget
                         "messages": conversation,
-                        "model": anthropic_model(),
+                        "model": anthropic_model(self.config.config.get('ai_anthropic_model')),
                         **thinking_params('medium'),
                     }
                     if tools:
@@ -3926,7 +3943,7 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
                     "system": system_prompt,
                     "max_tokens": 8192,  # thinking adattivo incluso nel budget
                     "messages": conversation,
-                    "model": anthropic_model(),
+                    "model": anthropic_model(self.config.config.get('ai_anthropic_model')),
                     **thinking_params('medium'),
                 }
                 limit_conversation_messages(final_params["messages"], self.logger)
@@ -3967,9 +3984,9 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
         except Exception as e:
             error_str = str(e)
 
-            # Se errore 529 (Overloaded), prova fallback OpenAI
-            if "529" in error_str or "overloaded" in error_str.lower():
-                self.logger.warning(f"Anthropic API sovraccarica (529), fallback a OpenAI...")
+            # Se errore 529 (Overloaded) o rifiuto del modello, prova fallback OpenAI
+            if "529" in error_str or "overloaded" in error_str.lower() or "refusal" in error_str.lower():
+                self.logger.warning(f"Anthropic non disponibile ({error_str[:80]}), fallback a OpenAI...")
                 try:
                     content, sources, openai_model = self._generate_with_openai_fallback(
                         article_data, system_prompt, web_search_tool_def
