@@ -59,7 +59,6 @@
     <!-- Preconnect per performance -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://www.googletagmanager.com" crossorigin>
     <link rel="dns-prefetch" href="https://pagead2.googlesyndication.com">
     <link rel="dns-prefetch" href="https://fundingchoicesmessages.google.com">
 
@@ -70,6 +69,30 @@
 
     <!-- CSS principale -->
     <link rel="stylesheet" href="{% static 'home/css/style.min.css'%}?v=15">
+    <style>
+      /* Slot AdSense: finche' Google non riempie lo slot (sito non pronto, niente consenso,
+         nessun annuncio disponibile) mostra l'invito ad acquistare lo spazio.
+         Sparisce solo quando l'annuncio e' davvero servito (data-ad-status="filled"). */
+      .has-adsense { position: relative; }
+      .has-adsense .ad-slot-promo {
+        position: absolute; inset: 0; z-index: 3;
+        display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.2rem;
+        min-height: 150px; padding: 1rem; box-sizing: border-box;
+        border: 1px solid rgba(150, 108, 66, 0.15); border-radius: 12px;
+        background: linear-gradient(135deg, rgba(150, 108, 66, 0.03) 0%, rgba(184, 149, 106, 0.06) 100%);
+        text-decoration: none; text-align: center; font-family: 'Georgia', serif; cursor: pointer;
+        transition: border-color 0.3s ease, box-shadow 0.3s ease;
+      }
+      .has-adsense .ad-slot-promo:hover {
+        border-color: rgba(150, 108, 66, 0.3);
+        box-shadow: 0 4px 20px rgba(150, 108, 66, 0.08);
+      }
+      .ad-slot-promo-title { font-size: 0.95rem; font-weight: 600; letter-spacing: 2px; color: rgba(150, 108, 66, 0.6); }
+      .ad-slot-promo-cta { font-size: 0.85rem; font-weight: 600; text-decoration: underline; color: rgba(150, 108, 66, 0.7); }
+      .has-adsense:has(ins.adsbygoogle[data-ad-status="filled"]) .ad-slot-promo { display: none; }
+      /* Slot in griglia: senza annuncio ha l'altezza di una card, non collassa */
+      .banner-card-slot.has-adsense:not(:has(ins.adsbygoogle[data-ad-status="filled"])) { min-height: 300px !important; }
+    </style>
 
     <!-- Chatbot CSS - caricato in modo non bloccante -->
     <link rel="stylesheet"
@@ -297,20 +320,8 @@
     </footer>
 
     {% block cookie_banner %}
-    <!-- Cookie Banner -->
-    <div id="cookie-banner" class="cookie-banner" style="display: none;">
-        <div class="cookie-content">
-            <div class="cookie-text">
-                <p><strong>🍪 Utilizzo dei Cookie</strong></p>
-                <p>Usiamo solo cookie tecnici, necessari al funzionamento del sito. Con "Accetta tutti" attivi anche Google Analytics (statistiche) e Google AdSense (pubblicit&agrave;), che usano cookie di terze parti. Con "Solo essenziali" il sito funziona lo stesso e non viene caricato nessuno dei due. Puoi cambiare scelta in qualsiasi momento dal link "Preferenze cookie" a fondo pagina.</p>
-            </div>
-            <div class="cookie-actions">
-                <button id="cookie-accept" class="cookie-btn cookie-accept" aria-label="Accetta tutti i cookie">Accetta tutti</button>
-                <button id="cookie-essential" class="cookie-btn cookie-essential" aria-label="Accetta solo cookie essenziali">Solo essenziali</button>
-                <a href="{% url 'privacy-policy' %}" class="cookie-link">Privacy Policy</a>
-            </div>
-        </div>
-    </div>
+    {# Nessun banner interno: la richiesta di consenso la fa la CMP certificata di Google
+       ("Privacy e messaggi" in AdSense), servita da adsbygoogle.js solo sulle pagine con uno slot AdSense. #}
     {% endblock %}
 
     {% block javascript %}
@@ -318,55 +329,14 @@
         // Polyfill requestIdleCallback
         window.requestIdleCallback = window.requestIdleCallback || function(cb) { setTimeout(cb, 1); };
 
-        // Cookie Banner Management
-        function checkCookieConsent() {
-            const consent = localStorage.getItem('cookie-consent');
-            if (!consent) {
-                requestIdleCallback(() => {
-                    document.getElementById('cookie-banner').style.display = 'block';
-                }, { timeout: 2000 });
-            }
-        }
-
-        function setCookieConsent(type) {
-            localStorage.setItem('cookie-consent', type);
-            localStorage.setItem('cookie-date', new Date().toISOString());
-
-            // Nascondi banner con animazione
-            const banner = document.getElementById('cookie-banner');
-            banner.style.animation = 'slideDown 0.5s ease-in';
-            setTimeout(() => {
-                banner.style.display = 'none';
-            }, 500);
-        }
-
-        // Event listeners per cookie banner
+        // Event listeners
         document.addEventListener('DOMContentLoaded', function() {
-            // Cookie banner listeners
-            document.getElementById('cookie-accept')?.addEventListener('click', () => {
-                setCookieConsent('all');
-                // Consenso concesso: carica GA e AdSense ora
-                if (window.loadGoogleAnalytics) window.loadGoogleAnalytics();
-                if (window.loadAdSense) window.loadAdSense();
-            });
-
-            // Link "Preferenze cookie" nel footer: azzera la scelta e rimostra il banner
+            // Link "Preferenze cookie" nel footer: riapre la scelta nella CMP di Google
+            // (carica AdSense/CMP su richiesta anche se la pagina non ha slot AdSense)
             document.getElementById('cookie-preferences')?.addEventListener('click', (e) => {
                 e.preventDefault();
-                localStorage.removeItem('cookie-consent');
-                localStorage.removeItem('cookie-date');
-                const b = document.getElementById('cookie-banner');
-                b.style.animation = '';
-                b.style.display = 'block';
-                b.scrollIntoView({ block: 'end' });
+                window.showAdConsentPreferences();
             });
-
-            document.getElementById('cookie-essential')?.addEventListener('click', () => {
-                setCookieConsent('essential');
-            });
-
-            // Controlla consenso cookie - deferred
-            requestIdleCallback(checkCookieConsent, { timeout: 2000 });
 
             // Scroll effect per header
             window.addEventListener('scroll', function() {
@@ -464,72 +434,40 @@
     <!-- Chatbot JavaScript - caricamento differito (non critico per LCP) -->
     <script src="{% static 'home/js/chatbot.js' %}?v=2026010804" defer></script>
 
-    <!-- Google Analytics - caricato SOLO con consenso analytics (GDPR / Garante) -->
+    <!-- AdSense: caricato SOLO se la pagina contiene almeno uno slot AdSense, cioe' quando
+         uno slot non ha un banner diretto (ramo else di banner_display.html / homepage.html,
+         o slot creati da homepage.js). adsbygoogle.js serve anche la CMP certificata di Google
+         ("Privacy e messaggi"), che chiede il consenso ai visitatori UE/UK/CH prima di cookie
+         e annunci personalizzati. Pagine con soli banner diretti: nessuno script Google,
+         nessuna richiesta di consenso. Google Analytics non e' piu' usato (misura: tool log-based). -->
     <script>
-      // GA viene richiesto solo se l'utente ha scelto "Accetta tutti".
-      // Con "Solo essenziali" o senza scelta, gtag.js non viene mai caricato:
-      // nessun cookie _ga, nessun dato inviato a Google prima del consenso.
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
+      window.googlefc = window.googlefc || {};
+      window.googlefc.callbackQueue = window.googlefc.callbackQueue || [];
 
-      // Consent Mode v2: tutto negato finche' l'utente non sceglie "Accetta tutti".
-      // Le chiamate restano in dataLayer e vengono lette da gtag.js/AdSense quando caricati.
-      gtag('consent', 'default', {
-        ad_storage: 'denied',
-        ad_user_data: 'denied',
-        ad_personalization: 'denied',
-        analytics_storage: 'denied',
-        wait_for_update: 500
-      });
-      window.grantGoogleConsent = function() {
-        gtag('consent', 'update', {
-          ad_storage: 'granted',
-          ad_user_data: 'granted',
-          ad_personalization: 'granted',
-          analytics_storage: 'granted'
+      window.ensureAdSense = function() {
+        if (window.__adsLoaded) return;
+        window.__adsLoaded = true;
+        var ads = document.createElement('script');
+        ads.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3345905614586761';
+        ads.async = true;
+        ads.crossOrigin = 'anonymous';
+        document.head.appendChild(ads);
+      };
+
+      // "Preferenze cookie": riapre la scelta di consenso della CMP di Google
+      window.showAdConsentPreferences = function() {
+        window.ensureAdSense();
+        window.googlefc.callbackQueue.push(function() {
+          if (window.googlefc.showRevocationMessage) window.googlefc.showRevocationMessage();
         });
       };
 
-      window.loadGoogleAnalytics = function() {
-        if (window.__gaLoaded) return;
-        window.__gaLoaded = true;
-        window.grantGoogleConsent();
-        // Carica quando il browser è idle (dopo le risorse critiche)
-        (window.requestIdleCallback || window.setTimeout)(function() {
-          var script = document.createElement('script');
-          script.src = 'https://www.googletagmanager.com/gtag/js?id=G-MSCYFFSNGD';
-          script.async = true;
-          document.head.appendChild(script);
+      document.addEventListener('DOMContentLoaded', function() {
+        if (document.querySelector('ins.adsbygoogle')) window.ensureAdSense();
+      });
 
-          gtag('js', new Date());
-          gtag('config', 'G-MSCYFFSNGD');
-        }, { timeout: 3000 });
-      };
-
-      // Consenso analytics già dato in una visita precedente → carica subito
-      if (localStorage.getItem('cookie-consent') === 'all') {
-        window.loadGoogleAnalytics();
-      }
-
-      // AdSense - caricato SOLO con consenso (cookie pubblicitari / profilazione).
-      // Il loader adsbygoogle.js è ciò che contatta Google e setta i cookie:
-      // finché non viene caricato, gli eventuali .push({}) restano inerti (solo array).
-      window.loadAdSense = function() {
-        if (window.__adsLoaded) return;
-        window.__adsLoaded = true;
-        (window.requestIdleCallback || window.setTimeout)(function() {
-          var ads = document.createElement('script');
-          ads.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3345905614586761';
-          ads.async = true;
-          ads.crossOrigin = 'anonymous';
-          document.head.appendChild(ads);
-        }, { timeout: 3000 });
-      };
-
-      // Consenso già dato in una visita precedente → carica subito
-      if (localStorage.getItem('cookie-consent') === 'all') {
-        window.loadAdSense();
-      }
+      // Pulizia delle chiavi del vecchio banner cookie interno
+      try { localStorage.removeItem('cookie-consent'); localStorage.removeItem('cookie-date'); } catch (e) {}
     </script>
     {% endblock %}
 

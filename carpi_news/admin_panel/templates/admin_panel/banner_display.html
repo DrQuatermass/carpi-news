@@ -38,7 +38,7 @@
         {% endwith %}
     {% endif %}
 {% else %}
-    {# Nessun banner - mostra AdSense. Loader adsbygoogle.js caricato solo con consenso (window.loadAdSense in base.html) #}
+    {# Nessun banner diretto - mostra AdSense. La presenza di questo slot fa caricare adsbygoogle.js e la CMP di Google (window.ensureAdSense in base.html) #}
     {% if position != 'between_articles' %}
         <div class="banner-horizontal-reserved has-adsense" style="margin: 20px 0; text-align: center; width: 100%; grid-column: 1 / -1;">
             <ins class="adsbygoogle adsense-fluid-unit"
@@ -50,6 +50,7 @@
                  data-ad-slot-mobile="8673844354"
                  data-ad-client="ca-pub-3345905614586761"></ins>
             <div style="font-size: 10px; color: #999; text-align: center; margin-top: 4px;">Pubblicità</div>
+            <a href="{% url 'pubblicita' %}" class="ad-slot-promo" aria-label="Acquista questo spazio pubblicitario"><span class="ad-slot-promo-title">SPAZIO PUBBLICITARIO</span><span class="ad-slot-promo-cta">Clicca qui per acquistare</span></a>
         </div>
     {% elif position == 'between_articles' %}
         <div class="banner-card-slot has-adsense" style="width: 100%; margin: 10px 0;">
@@ -62,6 +63,7 @@
                  data-ad-slot-mobile="8673844354"
                  data-ad-client="ca-pub-3345905614586761"></ins>
             <div style="font-size: 10px; color: #999; text-align: center; margin-top: 4px;">Pubblicità</div>
+            <a href="{% url 'pubblicita' %}" class="ad-slot-promo" aria-label="Acquista questo spazio pubblicitario"><span class="ad-slot-promo-title">SPAZIO PUBBLICITARIO</span><span class="ad-slot-promo-cta">Clicca qui per acquistare</span></a>
         </div>
     {% endif %}
 {% endif %}

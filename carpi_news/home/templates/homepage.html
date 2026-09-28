@@ -559,7 +559,7 @@
                                         </div>
                                     </div>
                                 {% else %}
-                                    {# Placeholder AdSense — loader adsbygoogle.js caricato solo con consenso (window.loadAdSense in base.html) #}
+                                    {# Placeholder AdSense — la presenza di questo slot fa caricare adsbygoogle.js e la CMP di Google (window.ensureAdSense in base.html) #}
                                     <div class="banner-card-slot has-adsense">
                                         <ins class="adsbygoogle adsense-fluid-unit"
                                              style="display:block; width:100%; max-width:100%; min-height:100%"
@@ -570,6 +570,7 @@
                                              data-ad-slot-mobile="8673844354"
                                              data-ad-client="ca-pub-3345905614586761"></ins>
                                         <div style="font-size: 10px; color: #999; text-align: center; margin-top: 5px;">Pubblicità</div>
+                                        <a href="{% url 'pubblicita' %}" class="ad-slot-promo" aria-label="Acquista questo spazio pubblicitario"><span class="ad-slot-promo-title">SPAZIO PUBBLICITARIO</span><span class="ad-slot-promo-cta">Clicca qui per acquistare</span></a>
                                     </div>
                                 {% endif %}
                             {% elif item.type == 'article' %}
@@ -643,7 +644,7 @@
 <div id="page-data" data-current-page="{{ current_page|default:1 }}" data-total-pages="{{ total_pages|default:1 }}" style="display:none"></div>
 
 <!-- Homepage JavaScript differito -->
-<script src="{% static 'home/js/homepage.js' %}?v=2026051001" defer></script>
+<script src="{% static 'home/js/homepage.js' %}?v=2026092801" defer></script>
 
 {% if request.GET.preview_mode %}
 <script>

@@ -194,6 +194,7 @@ function updatePageContent(data) {
                              data-ad-format="fluid"
                              data-ad-client="ca-pub-3345905614586761"></ins>
                         <div style="font-size: 10px; color: #999; text-align: center; margin-top: 5px;">Pubblicità</div>
+                        <a href="/pubblicita/" class="ad-slot-promo" aria-label="Acquista questo spazio pubblicitario"><span class="ad-slot-promo-title">SPAZIO PUBBLICITARIO</span><span class="ad-slot-promo-cta">Clicca qui per acquistare</span></a>
                     `;
                     const ins = bannerElement.querySelector('ins');
                     const isMobile = window.innerWidth <= 768;
@@ -201,6 +202,8 @@ function updatePageContent(data) {
                     ins.setAttribute('data-ad-slot', isMobile ? '8673844354' : '7169190997');
                     newsGrid.insertBefore(bannerElement, footerBanner);
                     (window.adsbygoogle = window.adsbygoogle || []).push({});
+                    // Slot AdSense comparso: carica AdSense (e la sua CMP) se non gia' caricato
+                    if (window.ensureAdSense) window.ensureAdSense();
                 }
                 bannerSlotIndex++;
             } else {
