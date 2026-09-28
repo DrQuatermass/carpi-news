@@ -3307,9 +3307,10 @@ class UniversalNewsMonitor:
                     )
                     return False
             else:
-                self.logger.warning("[DEBUG] AI disabilitata, salvataggio diretto")
-                # Salva direttamente senza AI
-                self.save_article_directly(article_data)
+                # AI disattivata: salva la notizia grezza, non approvabile. Le regole AI del
+                # monitor si usano solo quando premi "Rielabora con AI" accanto ad Approvato.
+                self.logger.info("AI disabilitata: salvo la notizia grezza da rielaborare")
+                self.save_article_directly(article_data, da_rielaborare=True)
                 if not self._article_exists_for_data(article_data):
                     self.logger.warning(
                         "Salvataggio diretto completato senza articolo nel DB. "
@@ -3323,8 +3324,13 @@ class UniversalNewsMonitor:
             self.logger.error(f"Errore nel processare articolo: {e}")
             return False
     
-    def generate_ai_article(self, article_data: Dict[str, Any]) -> str:
-        """Genera articolo con AI con ricerca web conversazionale integrata"""
+    def generate_ai_article(self, article_data: Dict[str, Any], existing_articolo_id: int = None) -> str:
+        """Genera articolo con AI con ricerca web conversazionale integrata.
+
+        Con existing_articolo_id aggiorna quell'articolo (rielaborazione su richiesta o
+        rigenerazione dall'admin) invece di crearne uno nuovo: stessi prompt, provider,
+        ricerca web e compilazione di tutti i campi della generazione automatica.
+        """
         self.logger.warning(f"[DEBUG] generate_ai_article START per: {article_data.get('title', 'N/A')}")
         try:
             self.logger.warning("[DEBUG] Import Anthropic...")
@@ -3339,7 +3345,7 @@ class UniversalNewsMonitor:
             client = Anthropic(api_key=api_key)
 
             existing = None
-            if article_data.get('url'):
+            if article_data.get('url') and not existing_articolo_id:
                 existing = Articolo.objects.filter(fonte=article_data['url']).first()
             if existing:
                 self.logger.info(f"Articolo saltato (pre-check duplicato): {existing.titolo}")
@@ -3432,13 +3438,20 @@ class UniversalNewsMonitor:
             content = article_data.get('full_content') or article_data.get('content', '')
             content = truncate_ai_source_text(content, self.logger)
 
+            richieste_section = ""
+            if (article_data.get('richieste_modifica') or '').strip():
+                richieste_section = (
+                    "\n\nRICHIESTE SPECIFICHE DELLA REDAZIONE (da rispettare, senza inventare fatti):\n"
+                    f"{article_data['richieste_modifica'].strip()}\n"
+                )
+
             # Contenuto iniziale per Claude con ricerca forzata
-            user_content = f"""Fonte: {article_data['url']}
+            user_content = f"""Fonte: {article_data.get('url') or 'non indicata'}
 Titolo originale: {article_data['title']}
 
 Contenuto principale da rielaborare:
 {content}
-{links_section}
+{links_section}{richieste_section}
 
 Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
 {f"OBBLIGATORIO: Devi SEMPRE usare web_search almeno una volta per verificare fatti e approfondire l'articolo. Usa query BREVI (2-4 parole chiave: nomi propri, luogo, tema), non frasi lunghe e senza attaccare l'anno ai nomi. Dopo aver fatto le ricerche, decidi autonomamente se i risultati sono abbastanza rilevanti e specifici da includere come fonti, oppure se è meglio non includere fonti generiche o poco pertinenti." if enable_web_search else "Lavora solo con il contenuto fornito."}"""
@@ -3598,6 +3611,12 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
             from django.db import transaction
 
             # Controllo atomico per prevenire duplicati da race condition
+            if existing_articolo_id:
+                return self._update_existing_with_ai(
+                    existing_articolo_id, polished_data, titolo_seo, tags_estratti,
+                    spunto_social, used_sources, ai_model_used, article_data,
+                )
+
             with transaction.atomic():
                 self.logger.warning("[DEBUG] Transaction atomic block enter")
                 # Lock a livello DB: controlla se esiste già per URL fonte o titolo
@@ -3644,6 +3663,7 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
                     ai_model_used=ai_model_used,  # Modello AI usato (Anthropic o OpenAI fallback)
                     data_evento=data_evento,  # Imposta data evento se disponibile
                     approvato=auto_approve,  # Auto-approva se configurato
+                    monitor_origine_id=self.config.config.get('monitor_config_id'),
                     data_pubblicazione=timezone.now()
                 )
                 self.logger.warning("[DEBUG] Chiamata articolo.save()...")
@@ -3668,6 +3688,52 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
         except Exception as e:
             self.logger.error(f"[DEBUG] ECCEZIONE in generate_ai_article: {e}", exc_info=True)
             return f"Errore nella generazione AI: {e}"
+
+    def _update_existing_with_ai(self, articolo_id, polished_data, titolo_seo, tags_estratti,
+                                 spunto_social, used_sources, ai_model_used, article_data) -> str:
+        """Scrive il risultato AI su un articolo esistente, compilando tutti i campi
+        come la generazione automatica. L'articolo torna sempre in attesa di approvazione."""
+        from django.db import transaction
+
+        with transaction.atomic():
+            articolo = Articolo.objects.select_for_update().get(pk=articolo_id)
+            era_grezzo = articolo.da_rielaborare
+
+            articolo.titolo = polished_data['titolo'][:200]
+            articolo.titolo_seo = titolo_seo
+            articolo.contenuto = polished_data['contenuto']
+            # Sommario vuoto -> il save() lo ricava dal nuovo contenuto
+            articolo.sommario = polished_data.get('sommario', '')
+            articolo.tags = tags_estratti
+            articolo.spunto_social = spunto_social
+            articolo.fonti_web = used_sources if used_sources else None
+            articolo.ai_model_used = ai_model_used
+            if article_data.get('event_start') and not articolo.data_evento:
+                try:
+                    event_start_str = article_data['event_start']
+                    articolo.data_evento = (
+                        datetime.fromisoformat(event_start_str).date() if 'T' in event_start_str
+                        else datetime.strptime(event_start_str, '%Y-%m-%d').date()
+                    )
+                except Exception as e:
+                    self.logger.warning(f"Errore parsing data evento: {e}")
+            if era_grezzo:
+                # Mai pubblicata: lo slug si rigenera dal nuovo titolo (non quello della fonte)
+                articolo.slug = ''
+            if not articolo.monitor_origine_id:
+                articolo.monitor_origine_id = self.config.config.get('monitor_config_id')
+            articolo.da_rielaborare = False
+            articolo.approvato = False
+            articolo.save()
+
+        try:
+            from home import tfidf_relevance
+            tfidf_relevance.update_article_vector(articolo)
+        except Exception as _tferr:
+            self.logger.warning(f"Calcolo TF-IDF articolo {articolo.id} fallito: {_tferr}")
+
+        self.logger.info(f"Articolo {articolo.id} rielaborato con {ai_model_used}")
+        return f"Articolo AI aggiornato con ID: {articolo.id}"
 
     def _process_conversational_response(self, client, message, system_prompt: str,
                                        initial_user_content: str, tools, web_sources: List, article_data: Dict[str, Any], web_search_tool_def: Dict = None):
@@ -4169,8 +4235,12 @@ Rielabora questa notizia seguendo le istruzioni del sistema. Rispondi SOLO con J
         # Nessuna fonte web (OpenAI non ha tool use in questo fallback)
         return content, [], openai_model
 
-    def save_article_directly(self, article_data: Dict[str, Any]):
-        """Salva articolo direttamente senza AI con protezione race condition"""
+    def save_article_directly(self, article_data: Dict[str, Any], da_rielaborare: bool = False):
+        """Salva articolo direttamente senza AI con protezione race condition.
+
+        Con da_rielaborare=True l'articolo e' la notizia grezza di un monitor con
+        rielaborazione su richiesta: mai auto-approvato, va rielaborato prima.
+        """
         from django.db import transaction
 
         # Controllo atomico per prevenire duplicati da race condition
@@ -4194,8 +4264,8 @@ Rielabora questa notizia seguendo le istruzioni del sistema. Rispondi SOLO con J
             })
             _, tags_estratti = extract_tags('', self.config.category)
 
-            # Determina se deve essere auto-approvato
-            auto_approve = self.should_auto_approve(self.config.category)
+            # Determina se deve essere auto-approvato (mai per le notizie grezze)
+            auto_approve = False if da_rielaborare else self.should_auto_approve(self.config.category)
 
             # Estrai data evento se presente (per Eventi Carpi GraphQL)
             data_evento = None
@@ -4212,7 +4282,7 @@ Rielabora questa notizia seguendo le istruzioni del sistema. Rispondi SOLO con J
                     self.logger.warning(f"Errore parsing data evento: {e}")
 
             articolo = Articolo(
-                titolo=polished_data['titolo'],
+                titolo=polished_data['titolo'][:200],
                 contenuto=polished_data['contenuto'],
                 categoria=self.config.category,
                 tags=tags_estratti,
@@ -4221,6 +4291,8 @@ Rielabora questa notizia seguendo le istruzioni del sistema. Rispondi SOLO con J
                 foto_valida=True,
                 data_evento=data_evento,  # Imposta data evento se disponibile
                 approvato=auto_approve,  # Auto-approva se configurato
+                monitor_origine_id=self.config.config.get('monitor_config_id'),
+                da_rielaborare=da_rielaborare,
                 data_pubblicazione=timezone.now()
             )
             articolo.save()

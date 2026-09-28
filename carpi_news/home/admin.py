@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.http import HttpResponse, JsonResponse
-from django.urls import path
+from django.urls import path, reverse
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 from django.shortcuts import redirect, render
@@ -238,13 +238,22 @@ class ArticoloAdminForm(forms.ModelForm):
             'all': ('admin/css/ckeditor_custom.css',)
         }
 
+    def clean(self):
+        cleaned = super().clean()
+        if self.instance.pk and self.instance.da_rielaborare and cleaned.get('approvato'):
+            raise forms.ValidationError(
+                "Questa è la notizia grezza presa da un'altra fonte: premi \"Rielabora con AI\" "
+                "accanto ad Approvato e approva la versione rielaborata."
+            )
+        return cleaned
+
 
 @admin.register(Articolo)
 class ArticoloAdmin(admin.ModelAdmin):
     form = ArticoloAdminForm
-    list_display = ("titolo", "titolo_seo", "categoria", "tags", "spotlight_display", "is_pubbliredazionale", "payment_status_display", "approvato", "escludi_newsletter", "data_pubblicazione", "views", "fonti_web_count")
+    list_display = ("titolo", "titolo_seo", "categoria", "tags", "spotlight_display", "is_pubbliredazionale", "payment_status_display", "approvato", "da_rielaborare", "escludi_newsletter", "data_pubblicazione", "views", "fonti_web_count")
     list_editable = ("escludi_newsletter",)
-    list_filter = ['approvato', 'spotlight', 'categoria', 'escludi_newsletter', IsPubbliredazionaleFilter, 'payment_status', HasWebSourcesFilter]
+    list_filter = ['approvato', 'da_rielaborare', 'spotlight', 'categoria', 'escludi_newsletter', IsPubbliredazionaleFilter, 'payment_status', HasWebSourcesFilter]
     search_fields = ['titolo', 'titolo_seo', 'slug', 'tags', 'nome_azienda', 'sito_web', 'pubbliredazionale_user__username']
 
     def get_fieldsets(self, request, obj=None):
@@ -280,7 +289,7 @@ class ArticoloAdmin(admin.ModelAdmin):
                     'fields': ('titolo', 'titolo_seo', 'slug', 'contenuto', 'sommario', 'spunto_social', 'categoria', 'tags', 'data_evento', 'foto', 'foto_upload', 'image_16x9', 'image_4x3', 'image_1x1')
                 }),
                 ('Pubblicazione', {
-                    'fields': ('approvato', 'spotlight', 'escludi_newsletter', 'fonte', 'data_pubblicazione', 'views')
+                    'fields': (('approvato', 'rielabora_button'), 'spotlight', 'escludi_newsletter', 'fonte', 'data_pubblicazione', 'views')
                 }),
                 ('Rigenerazione AI', {
                     'fields': ('richieste_modifica', 'fonti_web_display', 'rigenera_button')
@@ -289,7 +298,7 @@ class ArticoloAdmin(admin.ModelAdmin):
 
     def get_readonly_fields(self, request, obj=None):
         """Readonly fields dinamici"""
-        base_readonly = ['rigenera_button', 'views', 'fonti_web_display', 'total_price']
+        base_readonly = ['rigenera_button', 'rielabora_button', 'views', 'fonti_web_display', 'total_price']
         if obj and obj.is_pubbliredazionale:
             return base_readonly + ['interview_data']
         return base_readonly
@@ -316,18 +325,49 @@ class ArticoloAdmin(admin.ModelAdmin):
         )
     payment_status_display.short_description = 'Pagamento'
 
+    def _ai_button(self, obj, etichetta, colore):
+        """Pulsante dentro il form admin: invia il form alla vista di rielaborazione
+        (cosi' le "Richieste di modifica" appena scritte vengono usate subito)."""
+        from home.rielaborazione_ai import in_corso
+        if in_corso(obj.pk):
+            return format_html(
+                '<span style="display:inline-block; padding: 8px 14px; background:#f0ad4e; color:white; '
+                'border-radius:4px; font-weight:bold;">⏳ Rielaborazione in corso: ricarica tra 1-3 minuti</span>'
+            )
+        return format_html(
+            '<button type="submit" formaction="{}" formnovalidate class="button" '
+            'style="background: {}; color: white; padding: 8px 14px; border: none; border-radius: 4px; '
+            'font-weight: bold; cursor: pointer;">{}</button>',
+            f'/admin/home/articolo/{obj.pk}/rielabora/', colore, etichetta,
+        )
+
+    def rielabora_button(self, obj):
+        if not obj or not obj.pk:
+            return '-'
+        from home.rielaborazione_ai import trova_monitor
+        monitor = trova_monitor(obj)
+        regole = monitor.name if monitor else 'regole predefinite'
+        if obj.da_rielaborare:
+            return format_html(
+                '{}<p style="margin: 6px 0 0; font-size: 12px; color: #a94442;">'
+                'Notizia grezza da <strong>{}</strong>: non approvabile finché non viene rielaborata.</p>',
+                self._ai_button(obj, '🤖 Rielabora con AI', '#c9302c'), regole,
+            )
+        return format_html(
+            '{}<p style="margin: 6px 0 0; font-size: 12px; color: #666;">Regole: {}</p>',
+            self._ai_button(obj, '🤖 Rielabora con AI', '#417690'), regole,
+        )
+    rielabora_button.short_description = 'Rielaborazione'
+
     def rigenera_button(self, obj):
         if obj.pk:  # Solo per oggetti già salvati
             return format_html(
-                '<div style="margin: 10px 0;">'
-                '<a class="button" href="{}" style="background: #417690; color: white; padding: 10px 15px; '
-                'text-decoration: none; border-radius: 4px; display: inline-block; font-weight: bold;">'
-                '🤖 Rigenera Articolo con AI</a>'
+                '<div style="margin: 10px 0;">{}'
                 '<p style="margin-top: 8px; font-size: 12px; color: #666;">'
-                'Compila il campo "Richieste di modifica" sopra per personalizzare la rigenerazione, '
-                
-                '</p></div>',
-                f'/admin/home/articolo/{obj.pk}/rigenera/'
+                'Stessa pipeline della generazione automatica (modello, regole del monitor, ricerca web). '
+                'Le "Richieste di modifica" qui sopra vengono passate all\'AI. '
+                'Al termine l\'articolo torna da approvare e ricevi l\'email.</p></div>',
+                self._ai_button(obj, '🤖 Rigenera Articolo con AI', '#417690'),
             )
         return format_html('<p style="color: #666;">Salva l\'articolo prima per abilitare la rigenerazione AI</p>')
     rigenera_button.short_description = 'Rigenerazione AI'
@@ -451,7 +491,8 @@ class ArticoloAdmin(admin.ModelAdmin):
     def get_urls(self):
         urls = super().get_urls()
         custom_urls = [
-            path('<int:articolo_id>/rigenera/', self.admin_site.admin_view(self.rigenera_articolo), name='rigenera_articolo'),
+            path('<int:articolo_id>/rielabora/', self.admin_site.admin_view(self.rielabora_articolo), name='rielabora_articolo'),
+            path('<int:articolo_id>/rigenera/', self.admin_site.admin_view(self.rielabora_articolo), name='rigenera_articolo'),
             path('<int:articolo_id>/toggle_fonte/', self.admin_site.admin_view(self.toggle_fonte), name='toggle_fonte'),
         ]
         return custom_urls + urls
@@ -493,122 +534,34 @@ class ArticoloAdmin(admin.ModelAdmin):
                 status=500
             )
     
-    def rigenera_articolo(self, request, articolo_id):
+    def rielabora_articolo(self, request, articolo_id):
+        """Avvia la rielaborazione AI con le regole del monitor d'origine
+        (tasti "Rielabora con AI" e "Rigenera Articolo con AI")."""
+        change_url = reverse('admin:home_articolo_change', args=[articolo_id])
+        if request.method != 'POST':
+            return redirect(change_url)
         try:
+            from home.rielaborazione_ai import avvia_rielaborazione, trova_monitor
             articolo = Articolo.objects.get(pk=articolo_id)
-            
-            # Avvia la rigenerazione in background
-            thread = threading.Thread(target=self._rigenera_articolo_background, args=(articolo,))
-            thread.daemon = True
-            thread.start()
-            
-            messages.success(request, f'Rigenerazione dell\'articolo "{articolo.titolo}" avviata. Controlla tra qualche minuto.')
-            
+            if 'richieste_modifica' in request.POST:
+                articolo.richieste_modifica = request.POST.get('richieste_modifica', '')
+                Articolo.objects.filter(pk=articolo.pk).update(richieste_modifica=articolo.richieste_modifica)
+            if avvia_rielaborazione(articolo.pk, articolo.richieste_modifica):
+                monitor = trova_monitor(articolo)
+                messages.success(
+                    request,
+                    f'Rielaborazione di "{articolo.titolo[:80]}" avviata con le regole di '
+                    f'{monitor.name if monitor else "default"}. Richiede 1-3 minuti: al termine '
+                    f"l'articolo resta da approvare e ricevi l'email."
+                )
+            else:
+                messages.warning(request, "C'è già una rielaborazione in corso per questo articolo.")
         except Articolo.DoesNotExist:
             messages.error(request, 'Articolo non trovato.')
+            return redirect('admin:home_articolo_changelist')
         except Exception as e:
-            messages.error(request, f'Errore durante la rigenerazione: {str(e)}')
-        
-        return redirect('admin:home_articolo_changelist')
-    
-    def _rigenera_articolo_background(self, articolo):
-        import logging
-        logger = logging.getLogger(__name__)
-        
-        try:
-            logger.info(f"Inizio rigenerazione articolo: {articolo.titolo} (ID: {articolo.id})")
-            import anthropic
-            
-            # Inizializza il client Anthropic
-            from django.conf import settings
-            api_key = settings.ANTHROPIC_API_KEY
-            if not api_key:
-                logger.error("ERRORE: ANTHROPIC_API_KEY non configurata!")
-                print("ERRORE: ANTHROPIC_API_KEY non configurata!")
-                return
-                
-            client = anthropic.Anthropic(api_key=api_key)
-            
-            # Prepara il prompt per la rigenerazione
-            prompt_base = f"""Sei un giornalista esperto che deve riscrivere e migliorare questo articolo di news locale per Ombra del Portico.
-
-ARTICOLO ORIGINALE:
-Titolo: {articolo.titolo}
-Contenuto: {articolo.contenuto}
-
-ISTRUZIONI:
-- Mantieni tutte le informazioni fattuali importanti
-- Migliora lo stile giornalistico e la leggibilità
-- Usa un tono professionale ma accessibile
-- Mantieni la struttura HTML se presente
-- Non inventare informazioni non presenti nell'originale"""
-
-            # Aggiungi eventuali richieste specifiche
-            if articolo.richieste_modifica and articolo.richieste_modifica.strip():
-                prompt_base += f"\n\nRICHIESTE SPECIFICHE DI MODIFICA: {articolo.richieste_modifica}"
-            
-            prompt_base += "\n\nFornisci SOLO il contenuto dell'articolo riscritto, senza commenti aggiuntivi:"
-            
-            # Chiamata all'API Anthropic
-            from home.anthropic_params import anthropic_model, thinking_params, response_text
-            model_name = anthropic_model()
-            response = client.messages.create(
-                model=model_name,
-                max_tokens=8192,  # thinking adattivo incluso nel budget
-                messages=[{
-                    "role": "user",
-                    "content": prompt_base
-                }],
-                **thinking_params('medium'),
-            )
-
-            contenuto_rigenerato = response_text(response).strip()
-
-            # Traccia utilizzo API
-            try:
-                from home.api_usage_tracker import APIUsageTracker
-                APIUsageTracker.track_anthropic(
-                    operation='rigenera_articolo',
-                    model=model_name,
-                    input_tokens=response.usage.input_tokens,
-                    output_tokens=response.usage.output_tokens,
-                    related_article=articolo,
-                    success=True
-                )
-            except Exception as e:
-                logger.warning(f"Errore nel tracciare utilizzo API: {e}")
-
-            if contenuto_rigenerato and contenuto_rigenerato != articolo.contenuto:
-                # Applica formattazione HTML e link interni con content_polisher
-                from home.content_polisher import content_polisher
-
-                contenuto_pulito = content_polisher.clean_content(contenuto_rigenerato)
-                contenuto_formattato = content_polisher.format_article_structure(contenuto_pulito)
-                contenuto_finale = content_polisher.add_internal_links(
-                    contenuto_formattato,
-                    article_title=articolo.titolo,
-                    current_article_slug=articolo.slug,
-                    current_article_date=articolo.data_pubblicazione
-                )
-
-                # Salva il contenuto formattato
-                articolo.contenuto = contenuto_finale
-                # Rigenera anche il sommario
-                articolo.sommario = ""  # Così verrà rigenerato automaticamente nel save()
-                # Imposta come non approvato per revisione
-                articolo.approvato = False
-                articolo.save()
-                logger.info(f"Articolo '{articolo.titolo}' rigenerato e salvato con successo")
-                print(f"Articolo '{articolo.titolo}' rigenerato con successo")
-            else:
-                logger.warning(f"Nessuna modifica generata per l'articolo '{articolo.titolo}'")
-                print(f"Nessuna modifica generata per l'articolo '{articolo.titolo}'")
-                
-        except Exception as e:
-            # Log dell'errore (il sistema di logging dovrebbe catturarlo)
-            logger.error(f"Errore nella rigenerazione background: {str(e)}")
-            print(f"Errore nella rigenerazione background: {str(e)}")
-            # Puoi aggiungere logging più sofisticato qui se necessario
+            messages.error(request, f'Errore durante la rielaborazione: {str(e)}')
+        return redirect(change_url)
 
 
 @admin.register(MonitorConfig)
@@ -628,7 +581,8 @@ class MonitorConfigAdmin(admin.ModelAdmin):
         }),
         ('Configurazione AI', {
             'fields': ('use_ai_generation', 'enable_web_search', 'ai_system_prompt'),
-            'classes': ('collapse',)
+            'description': 'Con "Usa generazione AI" spento il monitor non rielabora in automatico: salva la notizia grezza '
+                           '(non approvabile) e usa queste regole solo quando premi "Rielabora con AI" accanto ad Approvato.',
         }),
         ('Configurazioni Specifiche (JSON)', {
             'fields': ('config_help', 'config_data'),

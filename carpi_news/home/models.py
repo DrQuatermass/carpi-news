@@ -78,6 +78,20 @@ class Articolo(models.Model):
     fonti_web = models.JSONField(blank=True, null=True, help_text="Fonti web utilizzate durante la generazione AI con ricerca web")
     tfidf_terms = models.JSONField(blank=True, null=True, help_text="Vettore TF-IDF (termine->peso) per il gate di rilevanza del linking interno")
     ai_model_used = models.CharField(max_length=50, blank=True, null=True, help_text="Modello AI utilizzato per generare l'articolo (es. claude-3-7-sonnet, gpt-4-turbo)")
+    monitor_origine = models.ForeignKey(
+        'MonitorConfig',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='articoli',
+        help_text="Monitor che ha prodotto l'articolo: le sue regole AI si usano per la rielaborazione",
+    )
+    da_rielaborare = models.BooleanField(
+        "Da rielaborare",
+        default=False,
+        db_index=True,
+        help_text="Notizia grezza di un monitor con generazione AI spenta: va rielaborata con l'AI prima di poterla approvare",
+    )
     views = models.PositiveIntegerField(default=0, help_text="Numero di visualizzazioni dell'articolo")
     spotlight = models.BooleanField(default=False, db_index=True, help_text="Articolo in evidenza nella sezione spotlight (max 4)")
     data_creazione = models.DateTimeField(auto_now_add=True, db_index=True)
@@ -758,6 +772,7 @@ class MonitorConfig(models.Model):
             'enable_web_search': self.enable_web_search,
             'ai_system_prompt': self.ai_system_prompt,
             'ai_api_key': settings.ANTHROPIC_API_KEY if self.use_ai_generation else None,
+            'monitor_config_id': self.pk,
         })
 
         # Crea SiteConfig con parametri posizionali corretti

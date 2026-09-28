@@ -57,14 +57,28 @@ def send_article_approval_notification(articolo):
                         <td style="padding: 8px 0;">{model_display}</td>
                     </tr>'''
 
+        # Notizia grezza (monitor con rielaborazione su richiesta): va rielaborata, non approvata
+        grezza = getattr(articolo, 'da_rielaborare', False)
+        titolo_email = 'Nuova notizia da rielaborare' if grezza else 'Nuovo Articolo da Approvare'
+        testo_bottone = '🤖 Apri e rielabora con AI' if grezza else '✓ Approva Articolo'
+        colore_bottone = '#c9302c' if grezza else '#28a745'
+        nota_grezza = (
+            '<p style="color: #a94442; font-size: 14px; margin-bottom: 15px;">'
+            'Testo originale della fonte, non rielaborato: se ti interessa, apri la scheda e premi '
+            '"Rielabora con AI" accanto ad Approvato.</p>'
+        ) if grezza else ''
+
         # Oggetto email
-        subject = f'[Ombra del Portico] Nuovo articolo da approvare: {articolo.titolo[:50]}...'
+        subject = (
+            f'[Ombra del Portico] Da rielaborare: {articolo.titolo[:50]}...' if grezza
+            else f'[Ombra del Portico] Nuovo articolo da approvare: {articolo.titolo[:50]}...'
+        )
         
         # Contenuto email HTML
         html_message = f"""
         <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto;">
             <h2 style="color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 10px;">
-                Nuovo Articolo da Approvare
+                {titolo_email}
             </h2>
 
             <div style="background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 8px; padding: 20px; margin: 20px 0;">
@@ -103,9 +117,10 @@ def send_article_approval_notification(articolo):
             </div>
 
             <div style="text-align: center; margin: 30px 0;">
+                {nota_grezza}
                 <a href="{base_url}/admin/home/articolo/{articolo.id}/change/"
-                   style="display: inline-block; background: #28a745; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 16px;">
-                   ✓ Approva Articolo
+                   style="display: inline-block; background: {colore_bottone}; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 16px;">
+                   {testo_bottone}
                 </a>
                 <p style="margin-top: 10px; color: #6c757d; font-size: 14px;">
                     oppure apri: <a href="{base_url}/admin/home/articolo/{articolo.id}/change/" style="color: #007cba;">{base_url}/admin/home/articolo/{articolo.id}/change/</a>
