@@ -17,6 +17,25 @@ from .social_media_scraper import SocialMediaScraper
 logger = logging.getLogger(__name__)
 
 
+REGOLA_FEDELTA = """
+
+FEDELTA' AI FATTI (questa regola prevale su struttura, lunghezza e stile):
+L'articolo parla di un'azienda vera e verra' letto da chi la conosce: il cliente, i suoi dipendenti, i suoi clienti. Un dettaglio inventato, anche gradevole, e' un errore che loro riconoscono subito e che ricade sull'azienda. Il tono narrativo resta, ma si costruisce soltanto con il materiale delle quattro fonti.
+- Scene, orari, oggetti, colori, luoghi, gesti: descrivili solo se compaiono nell'intervista, nel sito o nelle ricerche. Se per l'apertura non hai una scena reale, apri con il fatto piu' concreto e umano che il cliente ha raccontato.
+- Persone: nomina solo quelle citate nelle fonti. Non creare clienti, dipendenti o familiari, nemmeno come esempio ("la signora del secondo piano").
+- Virgolettati: solo parole dette dall'intervistato nell'intervista, attribuite a lui. Puoi sistemare la grammatica, non il contenuto.
+- Numeri, date, durate, quantita', premi, certificazioni: solo quelli presenti nelle fonti. Non dedurre cio' che non e' stato detto (per esempio che dei lavori siano finiti, o da quanti anni qualcuno fa qualcosa).
+- Se una sezione della struttura non ha materiale, saltala. Se il materiale non basta per 500-700 parole, scrivi un articolo piu' breve: la lunghezza cede alla fedelta'.
+- Dalle ricerche di mercato usa i dati di settore come contesto, senza attribuirli all'azienda.
+"""
+
+REGOLA_FEDELTA_RIGENERAZIONE = """
+
+FEDELTA' AI FATTI (questa regola prevale sullo stile):
+L'articolo parla di un'azienda vera. Nella riscrittura mantieni i fatti dell'articolo corrente e aggiungi soltanto quelli che il cliente scrive nel feedback: e' lui la fonte. Non aggiungere di tuo scene, persone, virgolettati, numeri o date. Se il feedback chiede piu' colore o piu' dettagli senza fornirli, migliora il ritmo e la scrittura con il materiale che c'e'.
+"""
+
+
 def modello_pubbliredazionali():
     """Modello Claude dell'agente (settings.PUBBLIREDAZIONALI_ANTHROPIC_MODEL, default Opus 5)."""
     return anthropic_model(getattr(settings, 'PUBBLIREDAZIONALI_ANTHROPIC_MODEL', None))
@@ -1209,7 +1228,7 @@ STRUTTURA NARRATIVA:
    - Approccio, valori, passione che emergono
 
 5. **Connessione Umana e Territorio** (100-120 parole)
-   - Aneddoti, esempi, storie di clienti
+   - Aneddoti ed esempi raccontati dal cliente nell'intervista
    - Legame con Carpi/territorio
    - Momenti significativi
 
@@ -1253,6 +1272,7 @@ Restituisci un JSON con:
     "sommario": "Breve sommario narrativo (2-3 frasi) che invogli alla lettura (PLAIN TEXT)",
     "contenuto": "Contenuto HTML con <p>, <strong> per nomi/fatti importanti, <h2>/<h3> per sezioni"
 }"""
+        system_prompt += REGOLA_FEDELTA
 
         # Prepara contesto
         nome_azienda = self.pubbliredazionale.nome_azienda
@@ -1434,6 +1454,7 @@ FORMATTAZIONE RICHIESTA:
 - Usa <h3> per le sottosezioni (se necessario)
 - NON usare mai <h1> (riservato solo al titolo dell'articolo)
 - OBBLIGATORIO: Alla fine dell'articolo, aggiungi il link al sito aziendale con <a href="URL">testo</a>"""
+        system_prompt += REGOLA_FEDELTA_RIGENERAZIONE
 
         current_article = {
             'titolo': self.pubbliredazionale.titolo,

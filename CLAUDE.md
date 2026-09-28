@@ -366,6 +366,7 @@ Rollback: rimuovere/riportare a `anthropic` queste due variabili + restart gunic
 ### Rielaborazione su richiesta e fedeltà alla fonte
 - Il tasto "Rielabora con AI" (`home/rielaborazione_ai.py`) usa prompt e ricerca web del monitor d'origine ma provider e modello propri: `RIELABORA_AI_PROVIDER` / `RIELABORA_ANTHROPIC_MODEL` (default Claude Opus 5). Override per-monitor del modello Claude: `config_data "ai_anthropic_model"`.
 - `SOURCE_FIDELITY_GUARDRAILS` (`home/universal_news_monitor.py`) è aggiunto a ogni system prompt: nessun fatto, numero o virgolettato che non sia nella fonte o nelle ricerche; articolo più breve se la fonte è scarna; incongruenze della fonte segnalate al lettore.
+- Pubbliredazionali: `REGOLA_FEDELTA` e `REGOLA_FEDELTA_RIGENERAZIONE` in `home/publiredazionale_agent.py` sono aggiunte ai prompt di generazione e rigenerazione. Il tono narrativo resta, ma scene, persone, virgolettati e numeri vengono solo da intervista, sito e ricerche; nella rigenerazione la fonte dei fatti nuovi e il feedback del cliente. Se il materiale non basta, articolo piu breve.
 - Se Claude declina la richiesta (`stop_reason: refusal`) o risponde 529, la generazione passa al fallback OpenAI (`OPENAI_FALLBACK_MODEL`).
 
 ### Rubriche quotidiane (editoriale, Cosa fare oggi)
