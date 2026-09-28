@@ -366,6 +366,9 @@ RIELABORA_ANTHROPIC_MODEL = os.getenv('RIELABORA_ANTHROPIC_MODEL', 'claude-opus-
 RUBRICHE_ANTHROPIC_MODEL = os.getenv('RUBRICHE_ANTHROPIC_MODEL', 'claude-opus-5')
 RUBRICHE_MAX_RICERCHE = int(os.getenv('RUBRICHE_MAX_RICERCHE', '3'))
 
+# Pubbliredazionali (intervista, ricerche e articolo): home/publiredazionale_agent.py
+PUBBLIREDAZIONALI_ANTHROPIC_MODEL = os.getenv('PUBBLIREDAZIONALI_ANTHROPIC_MODEL', 'claude-opus-5')
+
 # OpenRouter (POC: attualmente usato solo dal chatbot)
 # API OpenAI-compatibile: https://openrouter.ai/api/v1
 OPENROUTER_API_KEY = os.getenv('OPENROUTER_API_KEY', '')

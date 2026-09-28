@@ -11,10 +11,15 @@ from bs4 import BeautifulSoup
 from django.conf import settings
 from django.utils import timezone
 from .api_usage_tracker import APIUsageTracker
-from .anthropic_params import anthropic_model, thinking_params, response_text
+from .anthropic_params import anthropic_model, thinking_params, response_text as testo_risposta
 from .social_media_scraper import SocialMediaScraper
 
 logger = logging.getLogger(__name__)
+
+
+def modello_pubbliredazionali():
+    """Modello Claude dell'agente (settings.PUBBLIREDAZIONALI_ANTHROPIC_MODEL, default Opus 5)."""
+    return anthropic_model(getattr(settings, 'PUBBLIREDAZIONALI_ANTHROPIC_MODEL', None))
 
 
 class PubbliredazioneAgent:
@@ -260,9 +265,9 @@ Rispondi SOLO con saluto + domanda."""
 
         try:
             message = self.client.messages.create(
-                model=anthropic_model(),
-                max_tokens=1024,
-                **thinking_params('off'),
+                model=modello_pubbliredazionali(),
+                max_tokens=4096,  # il thinking adattivo rientra nel limite
+                **thinking_params('low'),
                 system=system_prompt,
                 messages=[{
                     "role": "user",
@@ -274,7 +279,7 @@ Rispondi SOLO con saluto + domanda."""
             try:
                 APIUsageTracker.track_anthropic(
                     operation='publiredazionale_first_question',
-                    model=anthropic_model(),
+                    model=modello_pubbliredazionali(),
                     input_tokens=message.usage.input_tokens,
                     output_tokens=message.usage.output_tokens,
                     success=True,
@@ -283,7 +288,7 @@ Rispondi SOLO con saluto + domanda."""
             except Exception as track_error:
                 logger.warning(f"Errore tracciamento API (non bloccante): {track_error}")
 
-            return response_text(message).strip()
+            return testo_risposta(message).strip()
 
         except Exception as e:
             logger.error(f"Errore generazione prima domanda: {e}", exc_info=True)
@@ -483,9 +488,9 @@ IMPORTANTE: Rispondi SOLO con il JSON, nient'altro."""
 
         try:
             message = self.client.messages.create(
-                model=anthropic_model(),
-                max_tokens=1024,
-                **thinking_params('off'),
+                model=modello_pubbliredazionali(),
+                max_tokens=4096,  # il thinking adattivo rientra nel limite
+                **thinking_params('low'),
                 system=system_prompt,
                 messages=[{
                     "role": "user",
@@ -497,7 +502,7 @@ IMPORTANTE: Rispondi SOLO con il JSON, nient'altro."""
             try:
                 APIUsageTracker.track_anthropic(
                     operation='publiredazionale_next_question',
-                    model=anthropic_model(),
+                    model=modello_pubbliredazionali(),
                     input_tokens=message.usage.input_tokens,
                     output_tokens=message.usage.output_tokens,
                     success=True
@@ -505,7 +510,7 @@ IMPORTANTE: Rispondi SOLO con il JSON, nient'altro."""
             except Exception as track_error:
                 logger.warning(f"Errore tracciamento API (non bloccante): {track_error}")
 
-            response_text = response_text(message).strip()
+            response_text = testo_risposta(message).strip()
             logger.info(f"Risposta AI next_question (raw): {response_text[:500]}")
 
             # Rimuovi markdown code blocks se presenti
@@ -757,7 +762,7 @@ Contenuto del sito web:
 Genera un'analisi NARRATIVA che mi aiuti a scrivere una storia coinvolgente su questa azienda."""
 
             message = self.client.messages.create(
-                model=anthropic_model(),
+                model=modello_pubbliredazionali(),
                 max_tokens=4096,
                 **thinking_params('low'),
                 system=system_prompt,
@@ -770,13 +775,13 @@ Genera un'analisi NARRATIVA che mi aiuti a scrivere una storia coinvolgente su q
             # Traccia utilizzo
             APIUsageTracker.track_anthropic(
                 operation='publiredazionale_web_research',
-                model=anthropic_model(),
+                model=modello_pubbliredazionali(),
                 input_tokens=message.usage.input_tokens,
                 output_tokens=message.usage.output_tokens,
                 success=True
             )
 
-            research_text = response_text(message).strip()
+            research_text = testo_risposta(message).strip()
             logger.info(f"Ricerca web completata: {len(research_text)} caratteri di analisi generata")
 
             return {
@@ -852,7 +857,7 @@ Analizza l'intervista e genera una ricerca approfondita su:
 Scrivi in modo narrativo e giornalistico."""
 
             message = self.client.messages.create(
-                model=anthropic_model(),
+                model=modello_pubbliredazionali(),
                 max_tokens=6144,
                 **thinking_params('low'),
                 system=system_prompt,
@@ -865,13 +870,13 @@ Scrivi in modo narrativo e giornalistico."""
             # Traccia utilizzo
             APIUsageTracker.track_anthropic(
                 operation='publiredazionale_post_interview_research',
-                model=anthropic_model(),
+                model=modello_pubbliredazionali(),
                 input_tokens=message.usage.input_tokens,
                 output_tokens=message.usage.output_tokens,
                 success=True
             )
 
-            research_text = response_text(message).strip()
+            research_text = testo_risposta(message).strip()
             logger.info(f"Ricerca post-intervista completata: {len(research_text)} caratteri")
 
             return {
@@ -936,9 +941,9 @@ Rispondi in formato JSON:
 }}"""
 
             message = self.client.messages.create(
-                model=anthropic_model(),
-                max_tokens=1024,
-                **thinking_params('off'),
+                model=modello_pubbliredazionali(),
+                max_tokens=4096,  # il thinking adattivo rientra nel limite
+                **thinking_params('low'),
                 messages=[{
                     "role": "user",
                     "content": classification_prompt
@@ -949,7 +954,7 @@ Rispondi in formato JSON:
             try:
                 APIUsageTracker.track_anthropic(
                     operation='business_type_classification',
-                    model=anthropic_model(),
+                    model=modello_pubbliredazionali(),
                     input_tokens=message.usage.input_tokens,
                     output_tokens=message.usage.output_tokens,
                     success=True,
@@ -960,7 +965,7 @@ Rispondi in formato JSON:
 
             # Parse JSON response
             import json
-            response_text = response_text(message).strip()
+            response_text = testo_risposta(message).strip()
 
             # Rimuovi markdown code block se presente
             if response_text.startswith('```'):
@@ -1336,7 +1341,7 @@ Genera JSON."""
 
         try:
             message = self.client.messages.create(
-                model=anthropic_model(),
+                model=modello_pubbliredazionali(),
                 max_tokens=8192,
                 **thinking_params('medium'),
                 system=system_prompt,
@@ -1349,13 +1354,13 @@ Genera JSON."""
             # Traccia utilizzo
             APIUsageTracker.track_anthropic(
                 operation='publiredazionale_article_generation',
-                model=anthropic_model(),
+                model=modello_pubbliredazionali(),
                 input_tokens=message.usage.input_tokens,
                 output_tokens=message.usage.output_tokens,
                 success=True
             )
 
-            response_text = response_text(message).strip()
+            response_text = testo_risposta(message).strip()
 
             # Rimuovi markdown code blocks
             if response_text.startswith('```'):
@@ -1462,7 +1467,7 @@ Restituisci JSON con:
 
         try:
             message = self.client.messages.create(
-                model=anthropic_model(),
+                model=modello_pubbliredazionali(),
                 max_tokens=8192,
                 **thinking_params('medium'),
                 system=system_prompt,
@@ -1475,13 +1480,13 @@ Restituisci JSON con:
             # Traccia utilizzo
             APIUsageTracker.track_anthropic(
                 operation='publiredazionale_article_regeneration',
-                model=anthropic_model(),
+                model=modello_pubbliredazionali(),
                 input_tokens=message.usage.input_tokens,
                 output_tokens=message.usage.output_tokens,
                 success=True
             )
 
-            response_text = response_text(message).strip()
+            response_text = testo_risposta(message).strip()
 
             if response_text.startswith('```'):
                 import re

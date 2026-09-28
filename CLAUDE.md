@@ -308,7 +308,7 @@ The project uses environment variables defined in `.env` file (based on `.env.ex
 **Required Variables**:
 - `SECRET_KEY`: Django secret key (generate with `generate_secret_key.py`)
 - `ANTHROPIC_API_KEY`: Required for AI content processing
-- `ANTHROPIC_MODEL`: Modello Claude per articoli, rigenerazione admin, pubbliredazionali e "cosa fare oggi" (default `claude-sonnet-5`; rollback `claude-sonnet-4-6`). Parametri thinking/effort centralizzati in `home/anthropic_params.py`; il chatbot usa Haiku 4.5 (`chatbot_service.py`)
+- `ANTHROPIC_MODEL`: modello Claude del path Anthropic dei monitor automatici (default `claude-sonnet-5`; rollback `claude-sonnet-4-6`). Rielaborazione, rubriche e pubbliredazionali hanno ciascuno la propria variabile (sotto). Parametri thinking/effort centralizzati in `home/anthropic_params.py`; il fallback Anthropic del chatbot usa Haiku 4.5
 - `DEBUG`: Set to False for production
 - `ALLOWED_HOSTS`: Comma-separated list of allowed domains
 
@@ -327,6 +327,7 @@ The project uses environment variables defined in `.env` file (based on `.env.ex
 - `OPENROUTER_BASE_URL`: Endpoint OpenRouter (default `https://openrouter.ai/api/v1`)
 - `RIELABORA_AI_PROVIDER`: provider della rielaborazione su richiesta (tasto "Rielabora con AI") — `anthropic` (default) | `openrouter` | `monitor` (= provider del monitor d'origine). Vale solo per questo flusso
 - `RIELABORA_ANTHROPIC_MODEL`: modello Claude della rielaborazione su richiesta (default `claude-opus-5`, scelto per la qualità di scrittura; ~10 centesimi ad articolo)
+- `PUBBLIREDAZIONALI_ANTHROPIC_MODEL`: modello Claude dell'agente pubbliredazionali, intervista + ricerche + articolo (default `claude-opus-5`; ~9 centesimi a pubbliredazionale)
 - `RUBRICHE_ANTHROPIC_MODEL`: modello Claude delle rubriche quotidiane via cron, editoriale e "Cosa fare oggi" (default `claude-opus-5`)
 - `RUBRICHE_MAX_RICERCHE`: ricerche web massime per rubrica (default `3`; `0` spegne la ricerca)
 - `RIELABORA_EMAIL_CONFERMA`: tasto "Rielabora con AI" nelle email di notifica. `False` (default) = un clic, la pagina `/rielabora/<token>/` invia da sola la conferma via JavaScript; `True` = pagina di conferma con tasto e campo "richieste di modifica". In entrambi i casi il GET non avvia nulla (i controlli antispam della posta aprono i link da soli)
