@@ -320,8 +320,7 @@
     </footer>
 
     {% block cookie_banner %}
-    {# Nessun banner interno: la richiesta di consenso la fa la CMP certificata di Google
-       ("Privacy e messaggi" in AdSense), servita da adsbygoogle.js solo sulle pagine con uno slot AdSense. #}
+    {# Nessun banner interno: il consenso lo chiede la CMP di Google, servita da adsbygoogle.js solo con slot AdSense #}
     {% endblock %}
 
     {% block javascript %}
