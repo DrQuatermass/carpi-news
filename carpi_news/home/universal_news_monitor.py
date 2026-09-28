@@ -3599,12 +3599,16 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
                     self.logger.error(f"[REVISIONE] Errore invio email revisione: {mail_err}")
                 return "Comunicato inviato per revisione manuale (AI ha rilevato contenuto sospetto)"
 
-            # Applica polishing finale
+            # Applica polishing finale (in riscrittura: l'articolo stesso non e' un bersaglio dei link interni)
+            current_slug = (
+                Articolo.objects.filter(pk=existing_articolo_id).values_list('slug', flat=True).first()
+                if existing_articolo_id else None
+            )
             polished_data = content_polisher.polish_article({
                 'titolo': titolo,
                 'contenuto': contenuto,
                 'sommario': sommario
-            })
+            }, current_article_slug=current_slug)
 
             # Salva nel database con protezione race condition
             self.logger.warning("[DEBUG] Inizio salvataggio DB...")

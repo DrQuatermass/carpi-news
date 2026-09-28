@@ -701,13 +701,15 @@ class ContentPolisher:
             logger.error(f"Errore add_internal_links: {e}")
             return content
 
-    def polish_article(self, article_data: Dict[str, Any]) -> Dict[str, Any]:
+    def polish_article(self, article_data: Dict[str, Any], current_article_slug: str = None) -> Dict[str, Any]:
         """
         Applica polishing completo a un articolo
-        
+
         Args:
             article_data: Dizionario con titolo, contenuto, etc.
-        
+            current_article_slug: slug dell'articolo che si sta riscrivendo, escluso dai
+                bersagli dei link interni (evita che linki se stesso)
+
         Returns:
             Dizionario con contenuto pulito e formattato
         """
@@ -738,6 +740,7 @@ class ContentPolisher:
             polished['content'] = self.add_internal_links(
                 formatted,
                 article_title=polished.get('title', polished.get('titolo', '')),
+                current_article_slug=current_article_slug,
                 source_tfidf=source_tfidf
             )
 
@@ -748,6 +751,7 @@ class ContentPolisher:
             polished['contenuto'] = self.add_internal_links(
                 formatted,
                 article_title=polished.get('titolo', polished.get('title', '')),
+                current_article_slug=current_article_slug,
                 source_tfidf=source_tfidf
             )
 
@@ -829,9 +833,9 @@ def clean_content(content: str) -> str:
     return content_polisher.clean_content(content)
 
 
-def polish_article(article_data: Dict[str, Any]) -> Dict[str, Any]:
+def polish_article(article_data: Dict[str, Any], current_article_slug: str = None) -> Dict[str, Any]:
     """Applica polishing completo a un articolo"""
-    return content_polisher.polish_article(article_data)
+    return content_polisher.polish_article(article_data, current_article_slug=current_article_slug)
 
 
 # Test del modulo
