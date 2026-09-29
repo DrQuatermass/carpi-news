@@ -461,9 +461,19 @@
         });
       };
 
-      document.addEventListener('DOMContentLoaded', function() {
-        if (document.querySelector('ins.adsbygoogle')) window.ensureAdSense();
-      });
+      // AdSense parte al primo gesto dell'utente (scroll, tocco, clic, tasto), non al caricamento:
+      // il suo JavaScript bloccava il thread principale (PageSpeed mobile: TBT ~1,3 s).
+      (function() {
+        var eventi = ['scroll', 'touchstart', 'pointerdown', 'keydown', 'wheel'];
+        function avvia() {
+          eventi.forEach(function(ev) { window.removeEventListener(ev, avvia, {passive: true}); });
+          if (document.querySelector('ins.adsbygoogle')) window.ensureAdSense();
+        }
+        document.addEventListener('DOMContentLoaded', function() {
+          if (!document.querySelector('ins.adsbygoogle')) return;
+          eventi.forEach(function(ev) { window.addEventListener(ev, avvia, {passive: true, once: true}); });
+        });
+      })();
 
       // Pulizia delle chiavi del vecchio banner cookie interno
       try { localStorage.removeItem('cookie-consent'); localStorage.removeItem('cookie-date'); } catch (e) {}
