@@ -94,9 +94,14 @@
         aspect-ratio: auto !important; min-height: 0 !important; height: auto !important; align-self: start;
       }
       .has-adsense ins.adsbygoogle[data-ad-status="filled"] { min-height: 0 !important; }
-      /* Nessun annuncio (niente consenso o niente inventario): lo slot si chiude */
-      .has-adsense:has(ins.adsbygoogle[data-ad-status="unfilled"]),
+      /* Nessun annuncio (niente consenso o niente inventario): le fasce orizzontali si chiudono */
+      .has-adsense:not(.banner-card-slot):has(ins.adsbygoogle[data-ad-status="unfilled"]),
       .banner-horizontal-section:has(ins.adsbygoogle[data-ad-status="unfilled"]):not(:has(.advertisement-banner)) { display: none !important; }
+      /* ...gli spazi in griglia invece restano con l'invito ad acquistare: chiusi facevano scalare
+         le card e l'ultima riga restava incompleta. Alti come le card della riga, non 300x600 */
+      .banner-card-slot.has-adsense:has(ins.adsbygoogle[data-ad-status="unfilled"]) {
+        aspect-ratio: auto !important; min-height: 300px !important; height: auto !important;
+      }
     </style>
 
     <!-- Chatbot CSS - caricato in modo non bloccante -->
