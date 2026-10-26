@@ -116,9 +116,9 @@
         align-items: center;
         margin-bottom: 20px;
         padding: 15px;
-        background: white;
+        background: #fffefa;
         border-radius: 8px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        border: 1px solid #d9d8cc;
     }
 
     .calendar-navigation h2 {
@@ -146,16 +146,16 @@
     }
 
     .calendar-container {
-        background: white;
+        background: #fffefa;
         border-radius: 8px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        border: 1px solid #d9d8cc;
         overflow: hidden;
     }
 
     .calendar-weekdays {
         display: grid;
-        grid-template-columns: repeat(7, 1fr);
-        background: #f8f9fa;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        background: #ecece2;
         border-bottom: 2px solid #752d35;
     }
 
@@ -173,8 +173,8 @@
 
     .calendar-week {
         display: grid;
-        grid-template-columns: repeat(7, 1fr);
-        border-bottom: 1px solid #e0e0e0;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        border-bottom: 1px solid #d9d8cc;
     }
 
     .calendar-week:last-child {
@@ -184,7 +184,7 @@
     .calendar-day {
         min-height: 120px;
         padding: 10px;
-        border-right: 1px solid #e0e0e0;
+        border-right: 1px solid #d9d8cc;
         position: relative;
         transition: background 0.2s;
     }
@@ -194,15 +194,15 @@
     }
 
     .calendar-day.empty {
-        background: #f8f9fa;
+        background: #ecece2;
     }
 
     .calendar-day.today {
-        background: #fff8f0;
+        background: #f4eee8;
     }
 
     .calendar-day:hover:not(.empty) {
-        background: #f5f5f5;
+        background: #f7f5ef;
     }
 
     .day-number {
@@ -217,8 +217,8 @@
     }
 
     .event-item {
-        background: white;
-        border: 1px solid #e0e0e0;
+        background: #fffefa;
+        border: 1px solid #d9d8cc;
         border-left: 3px solid #752d35;
         margin: 3px 0;
         border-radius: 4px;
@@ -228,14 +228,13 @@
     }
 
     .event-item:hover {
-        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
         border-left-color: #59242b;
-        transform: translateX(2px);
     }
 
     .event-item a {
         color: #282a28;
         text-decoration: none;
+        min-width: 0;
         display: flex;
         align-items: center;
         gap: 6px;
@@ -252,6 +251,8 @@
 
     .event-title {
         flex: 1;
+        min-width: 0;
+        overflow-wrap: anywhere;
         font-size: 0.75rem;
         line-height: 1.2;
         overflow: hidden;
@@ -300,65 +301,15 @@
             font-size: 0.85rem;
         }
 
-        .calendar-container {
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-        }
-
-        .calendar-weekdays {
-            grid-template-columns: repeat(7, minmax(100px, 1fr));
-        }
-
-        .calendar-weekdays div {
-            padding: 6px 4px;
-            font-size: 0.7rem;
-        }
-
-        .calendar-week {
-            grid-template-columns: repeat(7, minmax(100px, 1fr));
-        }
-
-        .calendar-day {
-            min-height: 70px;
-            min-width: 100px;
-            padding: 4px;
-            font-size: 0.75rem;
-        }
-
-        .day-number {
-            font-size: 0.85rem;
-            margin-bottom: 3px;
-        }
-
-        .event-item {
-            margin: 2px 0;
-        }
-
-        .event-item a {
-            padding: 3px;
-            gap: 4px;
-        }
-
-        .event-thumbnail {
-            width: 30px;
-            height: 30px;
-        }
-
-        .event-title {
-            font-size: 0.6rem;
-            line-height: 1.1;
-            -webkit-line-clamp: 2;
-        }
-
         .event-count {
             font-size: 0.85rem;
             padding: 0 10px;
         }
     }
 
-    /* Telefono: la griglia a 7 colonne non entra, diventa un elenco dei giorni
-       con eventi da oggi in avanti (i giorni passati restano a desktop) */
-    @media (max-width: 640px) {
+    /* Telefono e tablet in verticale: la griglia a 7 colonne non entra, diventa un elenco
+       dei giorni con eventi da oggi in avanti (i giorni passati restano a desktop) */
+    @media (max-width: 900px) {
         .calendar-container {
             overflow: visible;
         }
@@ -517,18 +468,3 @@
 </div>
 {% endblock %}
 
-{% block javascript %}
-{{ block.super }}
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Tra 641 e 768px la griglia scorre in orizzontale: centra oggi.
-        // Sotto i 640px e' un elenco che parte gia' da oggi.
-        if (window.innerWidth <= 768 && window.innerWidth > 640) {
-            var todayCell = document.querySelector('.calendar-day.today');
-            if (todayCell) {
-                todayCell.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
-            }
-        }
-    });
-</script>
-{% endblock %}

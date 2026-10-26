@@ -94,12 +94,14 @@ nav {
 .nav-links {
     display: flex;
     list-style: none;
-    gap: 2rem;
+    gap: clamp(1rem, 1.6vw, 2rem);
 }
 
 .nav-links a {
     text-decoration: none;
     color: #282a28;
+    font-size: 0.9375rem;
+    white-space: nowrap;
     font-weight: 500;
     transition: all 0.3s ease;
     position: relative;
@@ -246,8 +248,8 @@ nav {
     color: #752d35;
 }
 
-/* Subheader bar: visibile solo su mobile */
-@media (min-width: 769px) {
+/* Subheader bar (Calendario, Cinema): visibile finche' c'e' il burger, cioe' sotto i 1100px */
+@media (min-width: 1100px) {
     .subheader-bar { display: none; }
 }
 
@@ -890,6 +892,23 @@ footer .footer-section.footer-links-section .footer-useful-links a:hover {
 .mobile-menu-container {
     display: none;
     position: relative;
+}
+
+/* Tablet e desktop stretti: le 9 voci del menu in Arial non entrano accanto al logo
+   (uscivano dallo schermo fino a ~1150px), quindi fino a 1099px si usa il burger */
+@media (min-width: 769px) and (max-width: 1099px) {
+    .desktop-nav {
+        display: none;
+    }
+
+    .mobile-menu-container {
+        display: block;
+    }
+
+    /* la barra Calendario/Cinema aggiunge altezza all'header */
+    main {
+        margin-top: 90px;
+    }
 }
 
 .mobile-menu-btn {
