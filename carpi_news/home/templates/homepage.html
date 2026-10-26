@@ -99,7 +99,7 @@
         margin: 0;
         list-style: none;
         font-size: 0.9rem;
-        color: #6c757d;
+        color: #5c605a;
     }
 
     .breadcrumb-list li {
@@ -110,23 +110,23 @@
     .breadcrumb-list li + li::before {
         content: "›";
         padding: 0 8px;
-        color: #966C42;
+        color: #752d35;
         font-weight: bold;
     }
 
     .breadcrumb-list a {
-        color: #966C42;
+        color: #752d35;
         text-decoration: none;
         transition: color 0.2s ease;
     }
 
     .breadcrumb-list a:hover {
-        color: #B8956A;
+        color: #59242b;
         text-decoration: underline;
     }
 
     .breadcrumb-list .active {
-        color: #495057;
+        color: #5c605a;
         font-weight: 500;
     }
 
@@ -146,21 +146,21 @@
         align-items: center;
         justify-content: center;
         padding: 25px;
-        background: linear-gradient(135deg, rgba(150, 108, 66, 0.03) 0%, rgba(184, 149, 106, 0.05) 100%);
+        background: rgba(117, 45, 53, 0.03);
         border-radius: 12px;
         min-height: 200px;
         position: relative;
         overflow: hidden;
-        border: 1px solid rgba(150, 108, 66, 0.15);
+        border: 1px solid rgba(117, 45, 53, 0.15);
         transition: all 0.3s ease;
         cursor: pointer;
         text-decoration: none;
     }
 
     .banner-card-slot:hover {
-        border-color: rgba(150, 108, 66, 0.3);
-        box-shadow: 0 4px 20px rgba(150, 108, 66, 0.08);
-        background: linear-gradient(135deg, rgba(150, 108, 66, 0.05) 0%, rgba(184, 149, 106, 0.08) 100%);
+        border-color: rgba(117, 45, 53, 0.3);
+        box-shadow: 0 4px 20px rgba(117, 45, 53, 0.08);
+        background: rgba(117, 45, 53, 0.05);
     }
 
     /* Testo placeholder (solo quando NON ha classe .has-active-banner) */
@@ -172,12 +172,12 @@
         transform: translate(-50%, -50%);
         font-size: 0.95rem;
         font-weight: 600;
-        color: rgba(150, 108, 66, 0.6);
+        color: rgba(117, 45, 53, 0.6);
         text-align: center;
         width: 100%;
         letter-spacing: 2px;
         z-index: 2;
-        font-family: 'Georgia', serif;
+        font-family: Arial, Helvetica, sans-serif;
     }
 
     .banner-card-slot::after {
@@ -187,7 +187,7 @@
         left: 50%;
         transform: translateX(-50%);
         font-size: 0.85rem;
-        color: rgba(150, 108, 66, 0.7);
+        color: rgba(117, 45, 53, 0.7);
         text-align: center;
         width: 90%;
         z-index: 2;
@@ -267,9 +267,9 @@
 
     .banner-header-slot:hover,
     .banner-footer-slot:hover {
-        border-color: rgba(150, 108, 66, 0.3);
-        box-shadow: 0 4px 20px rgba(150, 108, 66, 0.08);
-        background: linear-gradient(135deg, rgba(150, 108, 66, 0.05) 0%, rgba(184, 149, 106, 0.08) 100%);
+        border-color: rgba(117, 45, 53, 0.3);
+        box-shadow: 0 4px 20px rgba(117, 45, 53, 0.08);
+        background: rgba(117, 45, 53, 0.05);
     }
 
     /* Contenuto placeholder header - SOLO se vuoto */
@@ -281,12 +281,12 @@
         transform: translate(-50%, -50%);
         font-size: 1rem;
         font-weight: 600;
-        color: rgba(150, 108, 66, 0.6);
+        color: rgba(117, 45, 53, 0.6);
         text-align: center;
         width: 100%;
         letter-spacing: 3px;
         z-index: 1;
-        font-family: 'Georgia', serif;
+        font-family: Arial, Helvetica, sans-serif;
         pointer-events: none;
     }
 
@@ -297,7 +297,7 @@
         left: 50%;
         transform: translateX(-50%);
         font-size: 0.85rem;
-        color: rgba(150, 108, 66, 0.7);
+        color: rgba(117, 45, 53, 0.7);
         text-align: center;
         letter-spacing: 1px;
         z-index: 1;
@@ -321,12 +321,12 @@
         transform: translate(-50%, -50%);
         font-size: 1.2rem;
         font-weight: 600;
-        color: rgba(150, 108, 66, 0.75);
+        color: rgba(117, 45, 53, 0.75);
         text-align: center;
         width: 100%;
         letter-spacing: 4px;
         z-index: 1;
-        font-family: 'Georgia', serif;
+        font-family: Arial, Helvetica, sans-serif;
         pointer-events: none;
     }
 
@@ -337,7 +337,7 @@
         left: 50%;
         transform: translateX(-50%);
         font-size: 0.85rem;
-        color: rgba(150, 108, 66, 0.7);
+        color: rgba(117, 45, 53, 0.7);
         text-align: center;
         letter-spacing: 1px;
         z-index: 1;
@@ -439,16 +439,6 @@
 {% block content %}
     <div class="container">
             <h1 class="sr-only">Ombra del Portico — Notizie di Carpi</h1>
-
-            <!-- Hero Section -->
-            <section class="hero">
-                <div class="hero-content">
-                    <div class="hero-logo">
-                        <img src="{% static 'home/images/portico_logo.svg' %}" alt="Ombra del Portico" class="hero-logo-img" width="804" height="84" fetchpriority="high">
-                    </div>
-
-                </div>
-            </section>
 
             <!-- Breadcrumb per categorie -->
             {% if categoria_attiva and categoria_attiva != 'tutti' %}
@@ -555,7 +545,7 @@
                                             <a href="{% url 'admin_panel:banner_click' item.banner.id %}" target="_blank" rel="noopener noreferrer nofollow sponsored" style="display: block; width: 100%;">
                                                 <img src="{{ item.banner.image_vertical.url }}" alt="{{ item.banner.alt_text }}" width="{{ item.banner.image_vertical_width }}" height="{{ item.banner.image_vertical_height }}" loading="{% if forloop.counter0 <= 2 %}eager{% else %}lazy{% endif %}" {% if forloop.counter0 <= 2 %}fetchpriority="high"{% endif %} style="width: 100%; height: auto; border-radius: 10px; display: block; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);">
                                             </a>
-                                            <div style="font-size: 10px; color: #999; text-align: center; margin-top: 5px;">Pubblicità</div>
+                                            <div style="font-size: 12px; color: #5c605a; text-align: center; margin-top: 5px;">Pubblicità</div>
                                         </div>
                                     </div>
                                 {% else %}
@@ -569,14 +559,14 @@
                                              data-ad-slot-desktop="7169190997"
                                              data-ad-slot-mobile="8673844354"
                                              data-ad-client="ca-pub-3345905614586761"></ins>
-                                        <div style="font-size: 10px; color: #999; text-align: center; margin-top: 5px;">Pubblicità</div>
+                                        <div style="font-size: 12px; color: #5c605a; text-align: center; margin-top: 5px;">Pubblicità</div>
                                         <a href="{% url 'pubblicita' %}" class="ad-slot-promo" aria-label="Acquista questo spazio pubblicitario"><span class="ad-slot-promo-title">SPAZIO PUBBLICITARIO</span><span class="ad-slot-promo-cta">Clicca qui per acquistare</span></a>
                                     </div>
                                 {% endif %}
                             {% elif item.type == 'article' %}
                                 {# Articolo - prima immagine con fetchpriority high #}
                                 <a href="{% url 'dettaglio_articolo' item.data.slug %}" class="news-card-link">
-                                    <article class="news-card loading">
+                                    <article class="news-card">
                                         <div class="news-image">
                                             {% if item.is_first_article %}
                                                 {# PRIMA card articolo: eager loading senza WebP per massima velocità LCP #}
@@ -644,7 +634,7 @@
 <div id="page-data" data-current-page="{{ current_page|default:1 }}" data-total-pages="{{ total_pages|default:1 }}" style="display:none"></div>
 
 <!-- Homepage JavaScript differito -->
-<script src="{% static 'home/js/homepage.js' %}?v=2026092801" defer></script>
+<script src="{% static 'home/js/homepage.js' %}?v=2026102603" defer></script>
 
 {% if request.GET.preview_mode %}
 <script>

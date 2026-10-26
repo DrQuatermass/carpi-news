@@ -3,119 +3,102 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#0f1420">
+    <meta name="theme-color" content="#f7f5ef">
     <meta name="robots" content="noindex,follow">
     <title>Ombra del Portico — Articoli su Instagram</title>
 
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 
     <style>
+        /* Stessa identita' del sito: fondo carta, inchiostro scuro, accento marrone del portico */
         * { box-sizing: border-box; margin: 0; padding: 0; }
         html, body {
-            background: #0f1420;
-            color: #f5f0e1;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f7f5ef;
+            color: #282a28;
+            font-family: Arial, Helvetica, sans-serif;
             min-height: 100vh;
             -webkit-font-smoothing: antialiased;
         }
         body {
-            padding: 28px 18px 40px;
+            padding: 28px 16px 40px;
         }
         .container { max-width: 480px; margin: 0 auto; }
 
         /* HEADER: logo + claim */
         .brand {
             text-align: center;
-            padding: 8px 0 28px;
+            padding: 8px 0 24px;
         }
         .brand-mark {
             width: 64px;
             height: auto;
-            opacity: 0.95;
-            margin-bottom: 14px;
+            margin-bottom: 10px;
             display: block;
             margin-left: auto;
             margin-right: auto;
         }
         .brand-name {
-            font-family: 'Playfair Display', Georgia, serif;
-            font-weight: 800;
-            font-size: 22px;
-            letter-spacing: 1.5px;
-            color: #d4af37;
-            text-transform: uppercase;
+            font-family: Georgia, 'Times New Roman', serif;
+            font-weight: 700;
+            font-size: 26px;
+            color: #752d35;
         }
         .brand-tagline {
-            font-size: 11px;
-            letter-spacing: 2.5px;
-            color: #f5f0e1;
-            opacity: 0.7;
-            margin-top: 4px;
-            text-transform: uppercase;
-        }
-        .brand-divider {
-            width: 60px;
-            height: 1px;
-            background: #d4af37;
-            margin: 18px auto 0;
-            opacity: 0.7;
+            font-size: 15px;
+            color: #5c605a;
+            margin-top: 2px;
         }
 
         /* INTRO */
         .intro {
-            text-align: center;
-            margin-bottom: 22px;
-            padding: 0 8px;
+            margin-bottom: 18px;
         }
         .intro h1 {
-            font-family: 'Playfair Display', Georgia, serif;
-            font-weight: 700;
-            font-size: 19px;
-            line-height: 1.3;
-            color: #f5f0e1;
-            margin-bottom: 6px;
+            font-family: Georgia, 'Times New Roman', serif;
+            font-weight: 400;
+            font-size: 22px;
+            line-height: 1.25;
+            color: #282a28;
+            margin-bottom: 4px;
         }
         .intro p {
-            font-size: 13px;
-            color: #f5f0e1;
-            opacity: 0.65;
+            font-size: 16px;
+            color: #5c605a;
             line-height: 1.5;
         }
         .search-form {
-            margin: 0 0 18px;
+            margin: 0 0 20px;
             display: flex;
             gap: 8px;
         }
         .search-input {
             width: 100%;
-            border: 1px solid rgba(212, 175, 55, 0.28);
-            background: rgba(255, 255, 255, 0.06);
-            color: #f5f0e1;
+            border: 1px solid #d9d8cc;
+            background: #fff;
+            color: #282a28;
             border-radius: 8px;
-            padding: 13px 14px;
+            padding: 12px 14px;
             font: inherit;
+            font-size: 16px;
             outline: none;
         }
-        .search-input:focus { border-color: rgba(212, 175, 55, 0.75); }
-        .search-input::placeholder { color: rgba(245, 240, 225, 0.5); }
+        .search-input:focus { border-color: #752d35; }
+        .search-input::placeholder { color: #5c605a; }
         .search-button {
             border: 0;
             border-radius: 8px;
-            padding: 0 16px;
-            background: #d4af37;
-            color: #0f1420;
-            font-weight: 700;
+            padding: 0 18px;
+            background: #752d35;
+            color: #fff;
+            font: inherit;
+            font-weight: 600;
             cursor: pointer;
         }
         .story-section-title {
-            margin: 4px 0 12px;
-            font-size: 13px;
-            color: #d4af37;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+            margin: 4px 0 10px;
+            font-family: Georgia, 'Times New Roman', serif;
+            font-size: 18px;
+            color: #282a28;
+            font-weight: 400;
         }
 
         /* CARD LISTA */
@@ -123,25 +106,19 @@
         .article-card {
             display: flex;
             flex-direction: column;
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid rgba(212, 175, 55, 0.25);
-            border-radius: 18px;
+            background: #fff;
+            border-radius: 8px;
             overflow: hidden;
             text-decoration: none;
             color: inherit;
-            transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
             -webkit-tap-highlight-color: transparent;
         }
-        .article-card:active {
-            transform: scale(0.98);
-            border-color: rgba(212, 175, 55, 0.6);
-            background: rgba(255, 255, 255, 0.07);
-        }
+        .article-card:active { background: #ecece2; }
         .article-thumb {
             position: relative;
             width: 100%;
             aspect-ratio: 1.91 / 1;
-            background: #1a2030;
+            background: #ecece2;
             overflow: hidden;
         }
         .article-thumb img {
@@ -151,78 +128,42 @@
             display: block;
         }
         .article-body {
-            padding: 16px 18px 18px;
+            padding: 14px 16px 16px;
         }
         .article-meta {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin-bottom: 10px;
-            flex-wrap: wrap;
+            font-size: 14px;
+            color: #5c605a;
+            margin-bottom: 6px;
         }
+        .article-story,
         .article-cat {
-            display: inline-block;
-            font-size: 10px;
+            color: #752d35;
             font-weight: 600;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            color: #0f1420;
-            background: #d4af37;
-            padding: 4px 10px;
-            border-radius: 10px;
-        }
-        .article-story {
-            display: inline-block;
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: 0.7px;
-            text-transform: uppercase;
-            color: #f5f0e1;
-            border: 1px solid rgba(245, 240, 225, 0.35);
-            padding: 4px 10px;
-            border-radius: 8px;
-        }
-        .article-date {
-            font-size: 11px;
-            color: #f5f0e1;
-            opacity: 0.55;
         }
         .article-title {
-            font-family: 'Playfair Display', Georgia, serif;
-            font-weight: 700;
-            font-size: 18px;
+            font-family: Georgia, 'Times New Roman', serif;
+            font-weight: 400;
+            font-size: 19px;
             line-height: 1.3;
-            color: #f5f0e1;
-            margin-bottom: 12px;
+            color: #282a28;
+            margin-bottom: 10px;
         }
         .article-cta {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 13px;
+            font-size: 15px;
             font-weight: 600;
-            color: #d4af37;
-        }
-        .article-cta::after {
-            content: "→";
-            font-size: 16px;
-            transition: transform 0.2s ease;
-        }
-        .article-card:active .article-cta::after {
-            transform: translateX(3px);
+            color: #752d35;
         }
 
         /* FOOTER */
         .footer {
             text-align: center;
-            margin-top: 36px;
+            margin-top: 32px;
             padding: 20px 0;
-            font-size: 11px;
-            color: #f5f0e1;
-            opacity: 0.45;
+            font-size: 14px;
+            color: #5c605a;
         }
         .footer a {
-            color: #d4af37;
+            color: #752d35;
             text-decoration: none;
             font-weight: 600;
         }
@@ -231,40 +172,22 @@
         .empty {
             text-align: center;
             padding: 60px 20px;
-            color: #f5f0e1;
-            opacity: 0.6;
+            color: #5c605a;
         }
-        .empty p { margin-top: 12px; font-size: 14px; }
+        .empty p { margin-top: 12px; font-size: 16px; }
 
         @media (min-width: 481px) {
             body { padding-top: 48px; }
-            .brand-name { font-size: 26px; }
         }
 
         /* INFINITE SCROLL: loader e end-of-list */
         #sentinel { height: 1px; }
-        .loader {
-            display: flex; justify-content: center; gap: 8px;
-            padding: 28px 0 12px;
-        }
-        .loader-dot {
-            width: 8px; height: 8px; border-radius: 50%;
-            background: #d4af37; opacity: 0.4;
-            animation: loader-bounce 1.2s infinite ease-in-out both;
-        }
-        .loader-dot:nth-child(1) { animation-delay: -0.32s; }
-        .loader-dot:nth-child(2) { animation-delay: -0.16s; }
-        @keyframes loader-bounce {
-            0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
-            40% { transform: scale(1); opacity: 1; }
-        }
+        .loader,
         .end-of-list {
             text-align: center;
-            padding: 28px 12px 4px;
-            font-size: 12px;
-            color: #f5f0e1;
-            opacity: 0.4;
-            letter-spacing: 0.5px;
+            padding: 24px 12px 4px;
+            font-size: 14px;
+            color: #5c605a;
         }
     </style>
 </head>
@@ -275,7 +198,6 @@
                  alt="" class="brand-mark" width="120" height="65">
             <div class="brand-name">Ombra del Portico</div>
             <div class="brand-tagline">Notizie di Carpi</div>
-            <div class="brand-divider"></div>
         </div>
 
         <div class="intro">
@@ -290,7 +212,7 @@
 
         {% if articoli %}
         {% if has_recent_story %}
-        <div class="story-section-title">🔥 Appena pubblicato su Story</div>
+        <div class="story-section-title">Appena pubblicato su Story</div>
         {% endif %}
         <div class="articles" id="articles">
             {% include 'link_in_bio_cards.html' %}
@@ -302,23 +224,19 @@
             <noscript>
                 <div style="text-align:center;margin-top:24px">
                     <a href="?page={{ articoli.next_page_number }}"
-                       style="display:inline-block;padding:14px 28px;background:#d4af37;color:#0f1420;font-weight:600;border-radius:24px;text-decoration:none">
+                       style="display:inline-block;padding:14px 28px;background:#752d35;color:#fff;font-weight:600;border-radius:8px;text-decoration:none">
                         Carica altri articoli
                     </a>
                 </div>
             </noscript>
-            <div id="loader" class="loader" hidden>
-                <div class="loader-dot"></div>
-                <div class="loader-dot"></div>
-                <div class="loader-dot"></div>
-            </div>
+            <div id="loader" class="loader" hidden>Carico altri articoli…</div>
         {% else %}
             <div class="end-of-list">Hai visto tutti gli articoli</div>
         {% endif %}
         {% else %}
         <div class="empty">
             <p>Nessun articolo ancora condiviso su Instagram.</p>
-            <p style="margin-top:18px"><a href="/" style="color:#d4af37;text-decoration:none;font-weight:600">Vai al sito &rarr;</a></p>
+            <p style="margin-top:18px"><a href="/" style="color:#752d35;text-decoration:none;font-weight:600">Vai al sito &rarr;</a></p>
         </div>
         {% endif %}
 

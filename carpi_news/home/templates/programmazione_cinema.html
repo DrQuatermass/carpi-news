@@ -26,22 +26,22 @@
         align-items: center;
         justify-content: center;
         padding: 20px;
-        background: linear-gradient(135deg, rgba(150, 108, 66, 0.03) 0%, rgba(184, 149, 106, 0.05) 100%);
+        background: rgba(117, 45, 53, 0.03);
         border-radius: 12px;
         min-height: 120px;
         position: relative;
         overflow: hidden;
         margin: 15px 0;
-        border: 1px solid rgba(150, 108, 66, 0.15);
+        border: 1px solid rgba(117, 45, 53, 0.15);
         transition: all 0.3s ease;
         cursor: pointer;
     }
 
     .banner-header-slot:hover,
     .banner-footer-slot:hover {
-        border-color: rgba(150, 108, 66, 0.3);
-        box-shadow: 0 4px 20px rgba(150, 108, 66, 0.08);
-        background: linear-gradient(135deg, rgba(150, 108, 66, 0.05) 0%, rgba(184, 149, 106, 0.08) 100%);
+        border-color: rgba(117, 45, 53, 0.3);
+        box-shadow: 0 4px 20px rgba(117, 45, 53, 0.08);
+        background: rgba(117, 45, 53, 0.05);
     }
 
     .banner-header-slot::before {
@@ -52,12 +52,12 @@
         transform: translate(-50%, -50%);
         font-size: 1rem;
         font-weight: 600;
-        color: rgba(150, 108, 66, 0.6);
+        color: rgba(117, 45, 53, 0.6);
         text-align: center;
         width: 100%;
         letter-spacing: 3px;
         z-index: 1;
-        font-family: 'Georgia', serif;
+        font-family: Arial, Helvetica, sans-serif;
         pointer-events: none;
     }
 
@@ -68,7 +68,7 @@
         left: 50%;
         transform: translateX(-50%);
         font-size: 0.85rem;
-        color: rgba(150, 108, 66, 0.7);
+        color: rgba(117, 45, 53, 0.7);
         text-align: center;
         letter-spacing: 1px;
         z-index: 1;
@@ -103,24 +103,23 @@
 
     /* Stili Cinema */
     .cinema-header {
-        background: linear-gradient(135deg, #966C42 0%, #B8956A 100%);
-        color: white;
-        padding: 40px 20px;
-        text-align: center;
-        margin-bottom: 30px;
-        border-radius: 8px;
+        background: none;
+        color: #282a28;
+        padding: 0;
+        text-align: left;
+        margin-bottom: 28px;
     }
 
     .cinema-header h1 {
         margin: 0;
         font-size: 2.5rem;
-        font-weight: bold;
+        font-weight: 400;
     }
 
     .cinema-header p {
-        margin: 10px 0 0 0;
+        margin: 6px 0 0 0;
         font-size: 1.1rem;
-        opacity: 0.9;
+        color: #5c605a;
     }
 
     .cinema-section {
@@ -134,23 +133,23 @@
     .cinema-title {
         background: #f8f9fa;
         padding: 20px;
-        border-bottom: 3px solid #966C42;
+        border-bottom: 3px solid #752d35;
     }
 
     .cinema-title h2 {
         margin: 0 0 5px 0;
-        color: #966C42;
+        color: #752d35;
         font-size: 1.8rem;
     }
 
     .cinema-info {
         font-size: 0.9rem;
-        color: #666;
+        color: #5c605a;
         margin: 5px 0;
     }
 
     .cinema-info a {
-        color: #966C42;
+        color: #752d35;
         text-decoration: none;
     }
 
@@ -190,26 +189,26 @@
 
     .film-title {
         font-size: 1.2rem;
-        font-weight: bold;
-        color: #333;
+        font-weight: 400;
+        color: #282a28;
         margin: 0 0 10px 0;
     }
 
     .film-details {
         font-size: 0.9rem;
-        color: #666;
+        color: #5c605a;
         line-height: 1.5;
     }
 
     .no-films {
         padding: 40px 20px;
         text-align: center;
-        color: #999;
+        color: #5c605a;
     }
 
     .update-info {
         text-align: center;
-        color: #999;
+        color: #5c605a;
         font-size: 0.85rem;
         padding: 20px;
         background: #f8f9fa;
@@ -254,7 +253,7 @@
                     {% if film.image %}
                     <img src="{{ film.image }}" alt="{{ film.title }}" class="film-image" loading="lazy">
                     {% else %}
-                    <div class="film-image" style="display: flex; align-items: center; justify-content: center; background: #e0e0e0; color: #999;">
+                    <div class="film-image" style="display: flex; align-items: center; justify-content: center; background: #e0e0e0; color: #5c605a;">
                         <span style="font-size: 1.2rem;">Immagine non disponibile</span>
                     </div>
                     {% endif %}

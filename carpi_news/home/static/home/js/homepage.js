@@ -3,7 +3,6 @@
 let currentPage = 1;
 let totalPages = 1;
 let isTransitioning = false;
-let parallaxHandler = null;
 let keyboardHandler = null;
 let isInitialized = false;
 
@@ -16,13 +15,6 @@ function initPageValues() {
     }
 }
 
-// Helper function per calcolo parallasse
-function updateParallax(hero) {
-    if (!hero || isTransitioning) return;
-    const scrolled = window.scrollY;
-    hero.style.transform = `translateY(${scrolled * -0.5}px)`;
-}
-
 // Inizializzazione specifica della homepage
 function initPageSpecific() {
     // Evita inizializzazioni multiple
@@ -31,19 +23,6 @@ function initPageSpecific() {
 
     // Carica valori di pagina
     initPageValues();
-
-    // Animazione al caricamento
-    const loadingElements = document.querySelectorAll('.loading');
-    loadingElements.forEach((element, index) => {
-        setTimeout(() => {
-            element.style.animationDelay = (index * 0.1) + 's';
-        }, index * 100);
-    });
-
-    // Animazione parallasse per hero
-    const hero = document.querySelector('.hero');
-    parallaxHandler = () => updateParallax(hero);
-    window.addEventListener('scroll', parallaxHandler, { passive: true });
 
     // Event listeners per i pulsanti di navigazione
     const prevBtn = document.getElementById('prev-btn');
@@ -99,10 +78,6 @@ function changePage(direction) {
 
         // Applica minHeight salvato
         newsNav.style.minHeight = currentHeight + 'px';
-
-        // Blocca temporaneamente l'effetto parallasse
-        const hero = document.querySelector('.hero');
-        if (hero) hero.style.transform = 'translateY(0px)';
 
         // Mostra loading spinner
         const loadingSpinner = document.getElementById('loading-spinner');
@@ -193,7 +168,7 @@ function updatePageContent(data) {
                              style="display:block; width:100%; max-width:100%; min-height:100%"
                              data-ad-format="fluid"
                              data-ad-client="ca-pub-3345905614586761"></ins>
-                        <div style="font-size: 10px; color: #999; text-align: center; margin-top: 5px;">Pubblicità</div>
+                        <div style="font-size: 12px; color: #5c605a; text-align: center; margin-top: 5px;">Pubblicità</div>
                         <a href="/pubblicita/" class="ad-slot-promo" aria-label="Acquista questo spazio pubblicitario"><span class="ad-slot-promo-title">SPAZIO PUBBLICITARIO</span><span class="ad-slot-promo-cta">Clicca qui per acquistare</span></a>
                     `;
                     const ins = bannerElement.querySelector('ins');
@@ -277,7 +252,7 @@ function createActiveBanner(banner) {
             <a href="/admin-panel/banner/${banner.id}/click/" target="_blank" rel="noopener noreferrer nofollow sponsored" style="display: block; width: 100%;">
                 <img src="${banner.image_url}"${bannerSrcsetAttr} alt="${banner.alt_text}" width="${banner.image_width}" height="${banner.image_height}" loading="lazy" style="width: 100%; height: auto; border-radius: 10px; display: block; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);">
             </a>
-            <div style="font-size: 10px; color: #999; text-align: center; margin-top: 5px;">Pubblicità</div>
+            <div style="font-size: 12px; color: #5c605a; text-align: center; margin-top: 5px;">Pubblicità</div>
         </div>
     `;
 

@@ -34,26 +34,38 @@
 <meta name="news_keywords" content="{{ articolo.meta_keywords }}">
 <style>
 .article-meta {
-  color: #7A5734;
+  color: #59242b;
   font-size: 0.85rem;
   font-style: italic;
 }
-.article-meta .updated { color: #888; }
+.article-meta .updated { color: #5c605a; }
+/* Sommario in apertura: stesso carattere del testo, in grassetto */
+.article-lead {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 1.125rem;
+  line-height: 1.6;
+  font-weight: 700;
+  color: #282a28;
+  margin: 0 0 1.25rem 0;
+}
+@media (max-width: 768px) {
+  .article-lead { font-size: 1.0625rem; }
+}
 .article-byline {
-  color: #666;
+  color: #5c605a;
   font-size: 0.9rem;
   margin: 0 0 1.5rem 0;
   font-style: italic;
-  border-left: 3px solid #b32b1a;
+  border-left: 3px solid #752d35;
   padding-left: 12px;
 }
 .article-byline strong {
-  color: #222;
+  color: #282a28;
   font-weight: 600;
   font-style: normal;
 }
 .article-byline .updated {
-  color: #888;
+  color: #5c605a;
 }
 /* Barra strumenti sotto la firma: lettura vocale + badge fonti, toni caldi del sito */
 .article-tools {
@@ -63,8 +75,8 @@
   gap: 10px 14px;
   margin: 0.2rem 0 1.6rem 0;
   padding: 10px 0 12px 0;
-  border-top: 1px solid rgba(150, 108, 66, 0.18);
-  border-bottom: 1px solid rgba(150, 108, 66, 0.18);
+  border-top: 1px solid rgba(117, 45, 53, 0.18);
+  border-bottom: 1px solid rgba(117, 45, 53, 0.18);
 }
 .tts-player {
   display: flex;
@@ -89,28 +101,28 @@
 /* Il CSS del sito forza display su alcuni elementi: l'attributo hidden va ribadito */
 .article-tools[hidden], .tts-player[hidden], .tts-btn[hidden], .tts-btn svg.tts-hide { display: none !important; }
 .tts-main {
-  background: linear-gradient(135deg, #966C42 0%, #7A5734 100%);
+  background: #752d35;
   color: #fff;
-  box-shadow: 0 4px 15px rgba(150, 108, 66, 0.3);
+  box-shadow: 0 4px 15px rgba(117, 45, 53, 0.3);
 }
 .tts-main:hover, .tts-main:focus-visible {
-  background: linear-gradient(135deg, #7A5734 0%, #5E3E21 100%);
+  background: #59242b;
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(150, 108, 66, 0.4);
+  box-shadow: 0 6px 20px rgba(117, 45, 53, 0.4);
 }
 .tts-main:active { transform: translateY(0); }
 .tts-sec {
   background: transparent;
-  color: #7A5734;
-  border: 1px solid rgba(150, 108, 66, 0.45);
+  color: #59242b;
+  border: 1px solid rgba(117, 45, 53, 0.45);
   padding: 9px 12px;
 }
 .tts-sec:hover, .tts-sec:focus-visible {
-  background: rgba(150, 108, 66, 0.1);
-  border-color: #966C42;
+  background: rgba(117, 45, 53, 0.1);
+  border-color: #752d35;
 }
 .tts-rate { min-width: 48px; justify-content: center; font-variant-numeric: tabular-nums; font-weight: 700; font-size: 0.82rem; }
-.tts-status { color: #5A5A5A; font-size: 0.85rem; font-style: italic; }
+.tts-status { color: #5c605a; font-size: 0.85rem; font-style: italic; }
 .article-trust {
   display: flex;
   align-items: center;
@@ -118,7 +130,7 @@
   gap: 4px 0;
   margin-left: auto;
   font-size: 0.82rem;
-  color: #7A5734;
+  color: #59242b;
 }
 .trust-item {
   display: inline-flex;
@@ -130,18 +142,18 @@
   line-height: 1.3;
   white-space: nowrap;
 }
-.trust-item svg { color: #966C42; flex-shrink: 0; }
+.trust-item svg { color: #752d35; flex-shrink: 0; }
 .trust-item + .trust-item::before {
   content: "\00b7";
   margin: 0 8px;
-  color: rgba(150, 108, 66, 0.6);
+  color: rgba(117, 45, 53, 0.6);
   font-weight: 400;
 }
-.trust-link { border-bottom: 1px solid rgba(150, 108, 66, 0.35); transition: all 0.2s ease; }
-.trust-link:hover, .trust-link:focus-visible { color: #5E3E21; border-bottom-color: #5E3E21; }
+.trust-link { border-bottom: 1px solid rgba(117, 45, 53, 0.35); transition: all 0.2s ease; }
+.trust-link:hover, .trust-link:focus-visible { color: #59242b; border-bottom-color: #59242b; }
 .tts-reading {
-  background: rgba(196, 150, 90, 0.16);
-  box-shadow: 0 0 0 8px rgba(196, 150, 90, 0.16);
+  background: rgba(117, 45, 53, 0.16);
+  box-shadow: 0 0 0 8px rgba(117, 45, 53, 0.16);
   border-radius: 4px;
   transition: background 0.3s;
 }
@@ -308,7 +320,7 @@
         margin: 0;
         list-style: none;
         font-size: 0.9rem;
-        color: #6c757d;
+        color: #5c605a;
     }
 
     .breadcrumb-list li {
@@ -319,24 +331,24 @@
     .breadcrumb-list li + li::before {
         content: "›";
         padding: 0 8px;
-        color: #966C42;
+        color: #752d35;
         font-weight: bold;
     }
 
     .breadcrumb-list a {
-        color: #966C42;
+        color: #752d35;
         text-decoration: none;
         transition: color 0.2s ease;
     }
 
     .breadcrumb-list a:hover {
-        color: #B8956A;
+        color: #59242b;
         text-decoration: underline;
     }
 
+    /* Il titolo e' gia' nell'H1 subito sotto: nel percorso restano Home e categoria */
     .breadcrumb-list .active {
-        color: #495057;
-        font-weight: 500;
+        display: none;
     }
 
     @media (max-width: 768px) {
@@ -355,21 +367,21 @@
         align-items: center;
         justify-content: center;
         padding: 25px;
-        background: linear-gradient(135deg, rgba(150, 108, 66, 0.03) 0%, rgba(184, 149, 106, 0.05) 100%);
+        background: rgba(117, 45, 53, 0.03);
         border-radius: 12px;
         min-height: 120px;
         position: relative;
         overflow: hidden;
-        border: 1px solid rgba(150, 108, 66, 0.15);
+        border: 1px solid rgba(117, 45, 53, 0.15);
         transition: all 0.3s ease;
         cursor: pointer;
         margin: 20px 0;
     }
 
     .banner-header-slot:hover {
-        border-color: rgba(150, 108, 66, 0.3);
-        box-shadow: 0 4px 20px rgba(150, 108, 66, 0.08);
-        background: linear-gradient(135deg, rgba(150, 108, 66, 0.05) 0%, rgba(184, 149, 106, 0.08) 100%);
+        border-color: rgba(117, 45, 53, 0.3);
+        box-shadow: 0 4px 20px rgba(117, 45, 53, 0.08);
+        background: rgba(117, 45, 53, 0.05);
     }
 
     .banner-header-slot::before {
@@ -380,12 +392,12 @@
         transform: translate(-50%, -50%);
         font-size: 0.95rem;
         font-weight: 600;
-        color: rgba(150, 108, 66, 0.6);
+        color: rgba(117, 45, 53, 0.6);
         text-align: center;
         width: 100%;
         letter-spacing: 2px;
         z-index: 2;
-        font-family: 'Georgia', serif;
+        font-family: Arial, Helvetica, sans-serif;
     }
 
     .banner-header-slot::after {
@@ -395,7 +407,7 @@
         left: 50%;
         transform: translateX(-50%);
         font-size: 0.85rem;
-        color: rgba(150, 108, 66, 0.7);
+        color: rgba(117, 45, 53, 0.7);
         text-align: center;
         width: 90%;
         z-index: 2;
@@ -458,15 +470,15 @@
     .related-articles {
         margin-top: 50px;
         padding-top: 30px;
-        border-top: 1px solid rgba(150, 108, 66, 0.2);
+        border-top: 1px solid rgba(117, 45, 53, 0.2);
     }
 
     .related-title {
-        font-family: 'Playfair Display', serif;
+        font-family: Georgia, 'Times New Roman', serif;
         font-size: 1.5rem;
-        color: #2C2C2C;
+        color: #282a28;
         margin-bottom: 25px;
-        font-weight: 600;
+        font-weight: 400;
     }
 
     .related-grid {
@@ -512,16 +524,16 @@
 
     .related-content time {
         font-size: 0.75rem;
-        color: #966C42;
+        color: #752d35;
         display: block;
         margin-bottom: 8px;
     }
 
     .related-content h4 {
-        font-family: 'Playfair Display', serif;
+        font-family: Georgia, 'Times New Roman', serif;
         font-size: 0.95rem;
         font-weight: 600;
-        color: #2C2C2C;
+        color: #282a28;
         line-height: 1.4;
         margin: 0;
     }
@@ -557,9 +569,9 @@
 .nl-cta-box {
   margin: 2rem 0;
   padding: 1.4rem 1.6rem;
-  background: linear-gradient(135deg, rgba(150,108,66,0.07) 0%, rgba(184,149,106,0.07) 100%);
-  border: 1px solid rgba(150,108,66,0.25);
-  border-left: 4px solid #966C42;
+  background: rgba(117,45,53,0.07);
+  border: 1px solid rgba(117,45,53,0.25);
+  border-left: 4px solid #752d35;
   border-radius: 10px;
   display: flex;
   flex-wrap: wrap;
@@ -567,13 +579,13 @@
   gap: 1rem;
 }
 .nl-cta-box.nl-success {
-  background: linear-gradient(135deg, rgba(150,108,66,0.12) 0%, rgba(184,149,106,0.08) 100%);
-  border-color: #966C42;
+  background: rgba(117,45,53,0.12);
+  border-color: #752d35;
   justify-content: center;
   text-align: center;
 }
 .nl-cta-icon {
-  color: #966C42;
+  color: #752d35;
   flex-shrink: 0;
 }
 .nl-cta-text {
@@ -583,12 +595,12 @@
   flex-direction: column;
   gap: 0.2rem;
   font-size: 0.9rem;
-  color: #555;
+  color: #5c605a;
 }
 .nl-cta-text strong {
-  color: #2C2C2C;
+  color: #282a28;
   font-size: 0.95rem;
-  font-family: 'Playfair Display', serif;
+  font-family: Georgia, 'Times New Roman', serif;
 }
 .nl-cta-form {
   display: flex;
@@ -597,22 +609,22 @@
 }
 .nl-cta-form input[type="email"] {
   padding: 0.55rem 0.9rem;
-  border: 1px solid rgba(150,108,66,0.35);
+  border: 1px solid rgba(117,45,53,0.35);
   border-radius: 20px;
   font-size: 0.88rem;
-  color: #2C2C2C;
+  color: #282a28;
   background: #fff;
   width: 200px;
   outline: none;
   transition: border-color 0.2s;
 }
 .nl-cta-form input[type="email"]:focus {
-  border-color: #966C42;
-  box-shadow: 0 0 0 2px rgba(150,108,66,0.12);
+  border-color: #752d35;
+  box-shadow: 0 0 0 2px rgba(117,45,53,0.12);
 }
 .nl-cta-form button {
   padding: 0.55rem 1.2rem;
-  background: linear-gradient(135deg, #966C42, #B8956A);
+  background: #752d35;
   color: white;
   border: none;
   border-radius: 20px;
@@ -624,7 +636,7 @@
 }
 .nl-cta-form button:hover {
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(150,108,66,0.35);
+  box-shadow: 0 4px 12px rgba(117,45,53,0.35);
 }
 .nl-cta-note {
   width: 100%;
@@ -634,14 +646,14 @@
   padding: 0;
 }
 .nl-success-msg {
-  font-family: 'Playfair Display', serif;
-  color: #966C42;
+  font-family: Georgia, 'Times New Roman', serif;
+  color: #752d35;
   font-size: 1rem;
   font-weight: 600;
 }
 .nl-success-sub {
   font-size: 0.88rem;
-  color: #666;
+  color: #5c605a;
   margin-top: 0.3rem;
 }
 @media (max-width: 600px) {
@@ -678,6 +690,10 @@
             </div>
             <br>
             <h1 class="article-title">{{ articolo.editorial_headline }}</h1>
+            {# Sommario in apertura, prima di firma, strumenti e banner: dice subito di cosa parla il pezzo #}
+            {% with lead=articolo.sommario_apertura %}{% if lead %}
+            <p class="article-lead">{{ lead }}</p>
+            {% endif %}{% endwith %}
             {# Chi risponde dell'articolo: revisione umana e responsabilita' editoriale (eccezione art. 50(4) AI Act). #}
             <p class="article-byline">
               Revisione editoriale di <strong><a href="{% url 'autore-sven' %}">Sven Rinaldi</a></strong>
@@ -942,8 +958,8 @@
 
             <!-- Dicitura contenuto sponsorizzato per pubbliredazionali -->
             {% if articolo.is_pubbliredazionale %}
-            <div style="margin: 30px 0; padding: 15px; background: #f8f9fa; border-left: 4px solid #966C42; border-radius: 8px;">
-                <p style="margin: 0; color: #6c757d; font-size: 0.9rem; font-style: italic;">
+            <div style="margin: 30px 0; padding: 15px; background: #f8f9fa; border-left: 4px solid #752d35; border-radius: 8px;">
+                <p style="margin: 0; color: #5c605a; font-size: 0.9rem; font-style: italic;">
                     📢 <strong>Contenuto sponsorizzato</strong>
                 </p>
             </div>
@@ -1126,7 +1142,7 @@
             position: fixed;
             top: 20px;
             right: 20px;
-            background: #5A5A5A;
+            background: #5c605a;
             color: white;
             padding: 12px 20px;
             border-radius: 8px;
@@ -1224,7 +1240,7 @@
         }
 
         .social-share-buttons .social-btn.x-twitter:hover {
-            background: #333333 !important;
+            background: #282a28 !important;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
         }
 
@@ -1274,14 +1290,14 @@
             padding: 15px;
             background: #f8f9fa;
             border-radius: 8px;
-            border-left: 4px solid #6c757d;
+            border-left: 4px solid #5c605a;
         }
 
         .web-sources-title {
             margin: 0 0 15px 0;
             font-size: 16px;
             font-weight: 600;
-            color: #495057;
+            color: #5c605a;
         }
 
         .web-sources-list {

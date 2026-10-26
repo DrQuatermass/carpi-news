@@ -331,6 +331,29 @@ class Articolo(models.Model):
         return re.sub(r'\s+', ' ', text).strip()
 
     @property
+    def sommario_apertura(self):
+        """Sommario da mostrare in grassetto sotto il titolo, oppure ''.
+        Vuoto quando il sommario e' quello automatico di save() (inizio del testo
+        troncato a 200 caratteri): ripeterebbe il primo paragrafo.
+        Vuoto anche per "Cosa fare oggi", il cui sommario e' una frase fissa per i motori di ricerca."""
+        if self.categoria == 'Cosa fare oggi':
+            return ''
+        sommario = html.unescape(strip_tags(self.sommario or '')).strip()
+        # Graffe = CSS finito nel sommario automatico da un <style> nel testo
+        if not sommario or '{' in sommario:
+            return ''
+        # Confronto senza spazi: save() toglie i tag senza lasciare spazi, il testo li sostituisce con spazi
+        inizio = re.sub(r'\s+', '', sommario.rstrip('.… '))
+        testi = (
+            self.article_plain_text,
+            # come save(): solo tag tolti, compreso il testo di eventuali <style>
+            html.unescape(re.sub(r'<[^>]+>', '', self.contenuto or '')),
+        )
+        if inizio and any(re.sub(r'\s+', '', t).startswith(inizio) for t in testi):
+            return ''
+        return sommario
+
+    @property
     def article_word_count(self):
         return len(re.findall(r'\b[\wÀ-ÿ]+\b', self.article_plain_text))
 

@@ -17,22 +17,22 @@
         align-items: center;
         justify-content: center;
         padding: 20px;
-        background: linear-gradient(135deg, rgba(150, 108, 66, 0.03) 0%, rgba(184, 149, 106, 0.05) 100%);
+        background: rgba(117, 45, 53, 0.03);
         border-radius: 12px;
         min-height: 120px;
         position: relative;
         overflow: hidden;
         margin: 15px 0;
-        border: 1px solid rgba(150, 108, 66, 0.15);
+        border: 1px solid rgba(117, 45, 53, 0.15);
         transition: all 0.3s ease;
         cursor: pointer;
     }
 
     .banner-header-slot:hover,
     .banner-footer-slot:hover {
-        border-color: rgba(150, 108, 66, 0.3);
-        box-shadow: 0 4px 20px rgba(150, 108, 66, 0.08);
-        background: linear-gradient(135deg, rgba(150, 108, 66, 0.05) 0%, rgba(184, 149, 106, 0.08) 100%);
+        border-color: rgba(117, 45, 53, 0.3);
+        box-shadow: 0 4px 20px rgba(117, 45, 53, 0.08);
+        background: rgba(117, 45, 53, 0.05);
     }
 
     .banner-header-slot::before {
@@ -43,12 +43,12 @@
         transform: translate(-50%, -50%);
         font-size: 1rem;
         font-weight: 600;
-        color: rgba(150, 108, 66, 0.6);
+        color: rgba(117, 45, 53, 0.6);
         text-align: center;
         width: 100%;
         letter-spacing: 3px;
         z-index: 1;
-        font-family: 'Georgia', serif;
+        font-family: Arial, Helvetica, sans-serif;
         pointer-events: none;
     }
 
@@ -59,7 +59,7 @@
         left: 50%;
         transform: translateX(-50%);
         font-size: 0.85rem;
-        color: rgba(150, 108, 66, 0.7);
+        color: rgba(117, 45, 53, 0.7);
         text-align: center;
         letter-spacing: 1px;
         z-index: 1;
@@ -94,24 +94,20 @@
 
     /* Stili Eventi */
     .eventi-header {
-        background: linear-gradient(135deg, #966C42 0%, #B8956A 100%);
-        color: white;
-        padding: 40px 20px;
-        text-align: center;
-        margin-bottom: 30px;
-        border-radius: 8px;
+        margin-bottom: 24px;
     }
 
     .eventi-header h1 {
         margin: 0;
         font-size: 2.5rem;
-        font-weight: bold;
+        font-weight: 400;
+        color: #282a28;
     }
 
     .eventi-header p {
-        margin: 10px 0 0 0;
+        margin: 6px 0 0 0;
         font-size: 1.1rem;
-        opacity: 0.9;
+        color: #5c605a;
     }
 
     .calendar-navigation {
@@ -127,7 +123,7 @@
 
     .calendar-navigation h2 {
         margin: 0;
-        color: #966C42;
+        color: #752d35;
         font-size: 1.8rem;
     }
 
@@ -138,7 +134,7 @@
 
     .nav-btn {
         padding: 8px 16px;
-        background: #966C42;
+        background: #752d35;
         color: white;
         text-decoration: none;
         border-radius: 5px;
@@ -146,7 +142,7 @@
     }
 
     .nav-btn:hover {
-        background: #B8956A;
+        background: #59242b;
     }
 
     .calendar-container {
@@ -160,14 +156,14 @@
         display: grid;
         grid-template-columns: repeat(7, 1fr);
         background: #f8f9fa;
-        border-bottom: 2px solid #966C42;
+        border-bottom: 2px solid #752d35;
     }
 
     .calendar-weekdays div {
         padding: 15px;
         text-align: center;
         font-weight: bold;
-        color: #966C42;
+        color: #752d35;
     }
 
     .calendar-weeks {
@@ -211,19 +207,19 @@
 
     .day-number {
         font-weight: bold;
-        color: #333;
+        color: #282a28;
         margin-bottom: 5px;
     }
 
     .calendar-day.today .day-number {
-        color: #966C42;
+        color: #752d35;
         font-size: 1.2rem;
     }
 
     .event-item {
         background: white;
         border: 1px solid #e0e0e0;
-        border-left: 3px solid #966C42;
+        border-left: 3px solid #752d35;
         margin: 3px 0;
         border-radius: 4px;
         cursor: pointer;
@@ -233,12 +229,12 @@
 
     .event-item:hover {
         box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-        border-left-color: #B8956A;
+        border-left-color: #59242b;
         transform: translateX(2px);
     }
 
     .event-item a {
-        color: #333;
+        color: #282a28;
         text-decoration: none;
         display: flex;
         align-items: center;
@@ -268,7 +264,7 @@
     .no-eventi {
         padding: 40px 20px;
         text-align: center;
-        color: #999;
+        color: #5c605a;
         background: white;
         border-radius: 8px;
         margin-top: 20px;
@@ -276,7 +272,7 @@
 
     .event-count {
         text-align: center;
-        color: #666;
+        color: #5c605a;
         margin-top: 20px;
         font-size: 0.9rem;
     }
@@ -291,19 +287,12 @@
         }
 
         .calendar-navigation {
-            flex-direction: column;
-            gap: 10px;
+            gap: 8px;
             padding: 10px;
         }
 
         .calendar-navigation h2 {
-            font-size: 1.2rem;
-        }
-
-        .nav-buttons {
-            flex-direction: row;
-            width: 100%;
-            justify-content: space-between;
+            font-size: 1.15rem;
         }
 
         .nav-btn {
@@ -366,6 +355,91 @@
             padding: 0 10px;
         }
     }
+
+    /* Telefono: la griglia a 7 colonne non entra, diventa un elenco dei giorni
+       con eventi da oggi in avanti (i giorni passati restano a desktop) */
+    @media (max-width: 640px) {
+        .calendar-container {
+            overflow: visible;
+        }
+
+        .calendar-weekdays {
+            display: none;
+        }
+
+        .calendar-weeks,
+        .calendar-week {
+            display: block;
+            border: none;
+        }
+
+        .calendar-day {
+            min-height: 0;
+            min-width: 0;
+            padding: 14px 16px;
+            border-right: none;
+            border-bottom: 1px solid #eee;
+            font-size: 1rem;
+        }
+
+        .calendar-day.empty,
+        .calendar-day.is-past,
+        .calendar-day.no-events:not(.today) {
+            display: none;
+        }
+
+        .day-number {
+            font-size: 1rem;
+            margin-bottom: 8px;
+        }
+
+        .calendar-day.today .day-number {
+            font-size: 1rem;
+        }
+
+        .calendar-week .calendar-day:nth-child(1) .day-number::before { content: 'Lunedì '; }
+        .calendar-week .calendar-day:nth-child(2) .day-number::before { content: 'Martedì '; }
+        .calendar-week .calendar-day:nth-child(3) .day-number::before { content: 'Mercoledì '; }
+        .calendar-week .calendar-day:nth-child(4) .day-number::before { content: 'Giovedì '; }
+        .calendar-week .calendar-day:nth-child(5) .day-number::before { content: 'Venerdì '; }
+        .calendar-week .calendar-day:nth-child(6) .day-number::before { content: 'Sabato '; }
+        .calendar-week .calendar-day:nth-child(7) .day-number::before { content: 'Domenica '; }
+        .calendar-day.today .day-number::after { content: ' · oggi'; font-weight: normal; }
+
+        .calendar-day.no-events.today::after {
+            content: 'Nessun evento oggi';
+            color: #5c605a;
+            font-size: 0.95rem;
+        }
+
+        .event-item {
+            margin: 0 0 8px;
+            border: none;
+            border-radius: 0;
+        }
+
+        .event-item:hover {
+            box-shadow: none;
+            transform: none;
+        }
+
+        .event-item a {
+            padding: 0;
+            gap: 12px;
+        }
+
+        .event-thumbnail {
+            width: 64px;
+            height: 64px;
+            border-radius: 4px;
+        }
+
+        .event-title {
+            font-size: 1rem;
+            line-height: 1.35;
+            -webkit-line-clamp: 3;
+        }
+    }
 </style>
 {% endblock %}
 
@@ -405,7 +479,7 @@
             <div class="calendar-week">
                 {% for day_data in week %}
                     {% if day_data.day %}
-                    <div class="calendar-day {% if day_data.is_today %}today{% endif %}">
+                    <div class="calendar-day{% if day_data.is_today %} today{% endif %}{% if day_data.is_past %} is-past{% endif %}{% if not day_data.events %} no-events{% endif %}">
                         <div class="day-number">{{ day_data.day }}</div>
                         {% for evento in day_data.events %}
                         <div class="event-item" title="{{ evento.titolo }}">
@@ -447,7 +521,9 @@
 {{ block.super }}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        if (window.innerWidth <= 768) {
+        // Tra 641 e 768px la griglia scorre in orizzontale: centra oggi.
+        // Sotto i 640px e' un elenco che parte gia' da oggi.
+        if (window.innerWidth <= 768 && window.innerWidth > 640) {
             var todayCell = document.querySelector('.calendar-day.today');
             if (todayCell) {
                 todayCell.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });

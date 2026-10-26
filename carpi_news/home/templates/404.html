@@ -2,7 +2,7 @@
 
 {% block title %}Pagina non trovata - Ombra del Portico{% endblock %}
 {% block robots_meta %}<meta name="robots" content="noindex">{% endblock %}
-{% block meta_description %}La pagina richiesta non esiste o non e' piu' disponibile su Ombra del Portico.{% endblock %}
+{% block meta_description %}La pagina richiesta non esiste o non è più disponibile su Ombra del Portico.{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -16,25 +16,15 @@
         text-align: center;
     }
 
-    .error-code {
-        display: block;
-        color: #966C42;
-        font-size: 0.95rem;
-        font-weight: 700;
-        letter-spacing: 0.14em;
-        text-transform: uppercase;
-        margin-bottom: 0.75rem;
-    }
-
     .error-panel h1 {
-        color: #2C2C2C;
+        color: #282a28;
         font-size: clamp(2.2rem, 5vw, 4rem);
         line-height: 1.1;
         margin-bottom: 1rem;
     }
 
     .error-panel p {
-        color: #5A5A5A;
+        color: #5c605a;
         font-size: 1.1rem;
         margin: 0 auto 1.8rem;
         max-width: 620px;
@@ -47,7 +37,7 @@
         min-height: 44px;
         padding: 0.75rem 1.2rem;
         border-radius: 6px;
-        background: linear-gradient(45deg, #966C42, #B8956A);
+        background: #752d35;
         color: #fff;
         font-weight: 700;
         text-decoration: none;
@@ -65,7 +55,7 @@
     }
 
     .recent-error-news h2 {
-        color: #2C2C2C;
+        color: #282a28;
         font-size: 1.5rem;
         margin-bottom: 1rem;
         text-align: left;
@@ -84,10 +74,10 @@
         display: block;
         height: 100%;
         padding: 1rem;
-        border: 1px solid rgba(150, 108, 66, 0.16);
+        border: 1px solid rgba(117, 45, 53, 0.16);
         border-radius: 8px;
-        background: rgba(250, 247, 240, 0.72);
-        color: #2C2C2C;
+        background: rgba(247, 245, 239, 0.72);
+        color: #282a28;
         text-decoration: none;
         font-weight: 700;
         line-height: 1.35;
@@ -95,9 +85,9 @@
     }
 
     .recent-error-list a:hover {
-        border-color: rgba(150, 108, 66, 0.36);
-        box-shadow: 0 8px 20px rgba(44, 44, 44, 0.08);
-        color: #966C42;
+        border-color: rgba(117, 45, 53, 0.36);
+        box-shadow: 0 8px 20px rgba(40, 42, 40, 0.08);
+        color: #752d35;
     }
 
     @media (max-width: 768px) {
@@ -116,9 +106,8 @@
 <section class="error-page">
     <div class="container">
         <div class="error-panel">
-            <span class="error-code">Errore 404</span>
             <h1>Pagina non trovata</h1>
-            <p>Il link potrebbe essere cambiato o la pagina non essere piu' disponibile. Puoi tornare alla home o leggere le notizie piu' recenti.</p>
+            <p>Il link potrebbe essere cambiato o la pagina non essere più disponibile. Puoi tornare alla home o leggere le notizie più recenti.</p>
             <a class="error-home-link" href="{% url 'home' %}">Torna alla homepage</a>
         </div>
 

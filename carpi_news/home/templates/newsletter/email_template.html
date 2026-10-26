@@ -5,13 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Newsletter Ombra del Portico</title>
 <style>
-  body { margin: 0; padding: 0; background: #F4F0E8; font-family: Georgia, 'Times New Roman', serif; }
-  a { color: #966C42; text-decoration: none; }
+  body { margin: 0; padding: 0; background: #ecece2; font-family: Georgia, 'Times New Roman', serif; }
+  a { color: #752d35; text-decoration: none; }
   a:hover { text-decoration: underline; }
   img { border: 0; display: block; max-width: 100%; }
   .categoria-badge {
     display: inline-block;
-    background: #966C42;
+    background: #752d35;
     color: white;
     font-size: 11px;
     font-weight: 700;
@@ -25,14 +25,14 @@
 </style>
 </head>
 <body>
-<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#F4F0E8">
+<table width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="#ecece2">
 <tr><td align="center" style="padding: 20px 10px;">
 
   <table width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px; width:100%;">
 
     <!-- HEADER con logo -->
     <tr>
-      <td style="background: linear-gradient(135deg, #966C42 0%, #B8956A 100%); padding: 28px 32px 22px; border-radius: 10px 10px 0 0; text-align: center;">
+      <td style="background: #752d35; padding: 28px 32px 22px; border-radius: 10px 10px 0 0; text-align: center;">
         <img src="https://ombradelportico.it/static/home/images/portico_logo_email.png"
              alt="Ombra del Portico"
              width="400" height="42"
@@ -64,8 +64,8 @@
         <!-- SEZIONE: OGGI -->
         <table width="100%" cellpadding="0" cellspacing="0" border="0">
           <tr>
-            <td style="padding-bottom: 6px; border-bottom: 2px solid #966C42; margin-bottom: 20px;">
-              <span style="font-family: Arial, sans-serif; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #966C42;">Le notizie di oggi</span>
+            <td style="padding-bottom: 6px; border-bottom: 2px solid #752d35; margin-bottom: 20px;">
+              <span style="font-family: Arial, sans-serif; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #752d35;">Le notizie di oggi</span>
             </td>
           </tr>
         </table>
@@ -89,15 +89,15 @@
               {% endif %}
               <td valign="top">
                 <a href="{{ site_url }}{% url 'dettaglio_articolo' articolo.slug %}?utm_source=newsletter&utm_medium=email&utm_campaign=giornaliera"
-                   style="font-family: Georgia, serif; font-size: 16px; font-weight: bold; color: #2C2C2C; line-height: 1.4; display: block; margin-bottom: 6px;">
+                   style="font-family: Georgia, serif; font-size: 16px; font-weight: bold; color: #282a28; line-height: 1.4; display: block; margin-bottom: 6px;">
                   {{ articolo.titolo }}
                 </a>
-                <span style="font-family: Arial, sans-serif; font-size: 13px; color: #555; line-height: 1.5;">
+                <span style="font-family: Arial, sans-serif; font-size: 13px; color: #5c605a; line-height: 1.5;">
                   {{ articolo.sommario|truncatechars:150 }}
                 </span>
                 <div style="margin-top: 8px;">
                   <a href="{{ site_url }}{% url 'dettaglio_articolo' articolo.slug %}?utm_source=newsletter&utm_medium=email&utm_campaign=giornaliera"
-                     style="font-family: Arial, sans-serif; font-size: 12px; color: #966C42; font-weight: 700;">
+                     style="font-family: Arial, sans-serif; font-size: 12px; color: #752d35; font-weight: 700;">
                     Leggi &rarr;
                   </a>
                 </div>
@@ -125,8 +125,8 @@
         <!-- SEZIONE: IERI -->
         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top: 8px;">
           <tr>
-            <td style="padding-bottom: 6px; border-bottom: 2px solid #D4C4A0;">
-              <span style="font-family: Arial, sans-serif; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #8B6A45;">Le notizie di ieri</span>
+            <td style="padding-bottom: 6px; border-bottom: 2px solid #d9d8cc;">
+              <span style="font-family: Arial, sans-serif; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #59242b;">Le notizie di ieri</span>
             </td>
           </tr>
         </table>
@@ -134,7 +134,7 @@
 
         {% for categoria, articoli in articoli_ieri.items %}
           <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 6px;">
-            <tr><td><span class="categoria-badge" style="background:#B8956A;">{{ categoria }}</span></td></tr>
+            <tr><td><span class="categoria-badge" style="background:#59242b;">{{ categoria }}</span></td></tr>
           </table>
           {% for articolo in articoli %}
           <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-bottom: 22px;">
@@ -150,15 +150,15 @@
               {% endif %}
               <td valign="top">
                 <a href="{{ site_url }}{% url 'dettaglio_articolo' articolo.slug %}?utm_source=newsletter&utm_medium=email&utm_campaign=giornaliera"
-                   style="font-family: Georgia, serif; font-size: 16px; font-weight: bold; color: #2C2C2C; line-height: 1.4; display: block; margin-bottom: 6px;">
+                   style="font-family: Georgia, serif; font-size: 16px; font-weight: bold; color: #282a28; line-height: 1.4; display: block; margin-bottom: 6px;">
                   {{ articolo.titolo }}
                 </a>
-                <span style="font-family: Arial, sans-serif; font-size: 13px; color: #555; line-height: 1.5;">
+                <span style="font-family: Arial, sans-serif; font-size: 13px; color: #5c605a; line-height: 1.5;">
                   {{ articolo.sommario|truncatechars:150 }}
                 </span>
                 <div style="margin-top: 8px;">
                   <a href="{{ site_url }}{% url 'dettaglio_articolo' articolo.slug %}?utm_source=newsletter&utm_medium=email&utm_campaign=giornaliera"
-                     style="font-family: Arial, sans-serif; font-size: 12px; color: #966C42; font-weight: 700;">
+                     style="font-family: Arial, sans-serif; font-size: 12px; color: #752d35; font-weight: 700;">
                     Leggi &rarr;
                   </a>
                 </div>
@@ -186,8 +186,8 @@
         <!-- SEZIONE: EVENTI DI DOMANI -->
         <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top: 8px;">
           <tr>
-            <td style="padding-bottom: 6px; border-bottom: 2px solid #966C42;">
-              <span style="font-family: Arial, sans-serif; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #966C42;">
+            <td style="padding-bottom: 6px; border-bottom: 2px solid #752d35;">
+              <span style="font-family: Arial, sans-serif; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: #752d35;">
                 Cosa fare domani — {{ data_domani|date:"d F" }}
               </span>
             </td>
@@ -209,20 +209,20 @@
             {% endif %}
             <td valign="top">
               <a href="{{ site_url }}{% url 'dettaglio_articolo' articolo.slug %}?utm_source=newsletter&utm_medium=email&utm_campaign=giornaliera"
-                 style="font-family: Georgia, serif; font-size: 16px; font-weight: bold; color: #2C2C2C; line-height: 1.4; display: block; margin-bottom: 6px;">
+                 style="font-family: Georgia, serif; font-size: 16px; font-weight: bold; color: #282a28; line-height: 1.4; display: block; margin-bottom: 6px;">
                 {{ articolo.titolo }}
               </a>
               {% if articolo.data_evento %}
-              <div style="font-family: Arial, sans-serif; font-size: 12px; color: #966C42; font-weight: 700; margin-bottom: 5px;">
+              <div style="font-family: Arial, sans-serif; font-size: 12px; color: #752d35; font-weight: 700; margin-bottom: 5px;">
                 {{ articolo.data_evento|date:"d F Y" }}
               </div>
               {% endif %}
-              <span style="font-family: Arial, sans-serif; font-size: 13px; color: #555; line-height: 1.5;">
+              <span style="font-family: Arial, sans-serif; font-size: 13px; color: #5c605a; line-height: 1.5;">
                 {{ articolo.sommario|truncatechars:150 }}
               </span>
               <div style="margin-top: 8px;">
                 <a href="{{ site_url }}{% url 'dettaglio_articolo' articolo.slug %}?utm_source=newsletter&utm_medium=email&utm_campaign=giornaliera"
-                   style="font-family: Arial, sans-serif; font-size: 12px; color: #966C42; font-weight: 700;">
+                   style="font-family: Arial, sans-serif; font-size: 12px; color: #752d35; font-weight: 700;">
                   Scopri &rarr;
                 </a>
               </div>
@@ -250,15 +250,15 @@
 
     <!-- FOOTER -->
     <tr>
-      <td bgcolor="#FAF7F0" style="padding: 20px 32px; border-radius: 0 0 10px 10px; text-align: center; border-top: 2px solid #D4C4A0;">
-        <p style="font-family: Arial, sans-serif; font-size: 12px; color: #888; margin: 0 0 8px; line-height: 1.6;">
+      <td bgcolor="#f7f5ef" style="padding: 20px 32px; border-radius: 0 0 10px 10px; text-align: center; border-top: 2px solid #d9d8cc;">
+        <p style="font-family: Arial, sans-serif; font-size: 12px; color: #5c605a; margin: 0 0 8px; line-height: 1.6;">
           Stai ricevendo questa email perché sei iscritto alla newsletter di
-          <a href="{{ site_url }}" style="color: #966C42; font-weight: 600;">Ombra del Portico</a>.
+          <a href="{{ site_url }}" style="color: #752d35; font-weight: 600;">Ombra del Portico</a>.
         </p>
         {% if subscriber %}
         <p style="font-family: Arial, sans-serif; font-size: 11px; color: #aaa; margin: 0;">
           <a href="{{ site_url }}{% url 'newsletter_unsubscribe' subscriber.token_disiscrizione %}"
-             style="color: #B8956A; text-decoration: underline;">Disiscrivi</a>
+             style="color: #59242b; text-decoration: underline;">Disiscrivi</a>
         </p>
         {% endif %}
       </td>

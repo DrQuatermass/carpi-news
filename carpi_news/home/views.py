@@ -1033,7 +1033,10 @@ def calendario_eventi(request):
                 week_data.append({
                     'day': day,
                     'events': eventi_per_giorno.get(day, []),
-                    'is_today': (day == now.day and month == now.month and year == now.year)
+                    'is_today': (day == now.day and month == now.month and year == now.year),
+                    # Su mobile il calendario del mese corrente diventa un elenco
+                    # che parte da oggi; i mesi passati restano interi
+                    'is_past': (year == now.year and month == now.month and day < now.day),
                 })
         calendario_struttura.append(week_data)
 

@@ -17,16 +17,10 @@
 
     <div class="article-body">
         <div class="article-meta">
-            {% if articolo.is_recent_story %}
-                <span class="article-story">Appena su Story</span>
-            {% endif %}
-            <span class="article-cat">{{ articolo.categoria|default:"Notizie" }}</span>
-            {% if articolo.data_pubblicazione %}
-                <span class="article-date">{{ articolo.data_pubblicazione|date:"j M Y" }}</span>
-            {% endif %}
+            {% if articolo.is_recent_story %}<span class="article-story">Appena su Story</span> · {% endif %}<span class="article-cat">{{ articolo.categoria|default:"Notizie" }}</span>{% if articolo.data_pubblicazione %} · <span class="article-date">{{ articolo.data_pubblicazione|date:"j M Y" }}</span>{% endif %}
         </div>
         <div class="article-title">{{ articolo.titolo }}</div>
-        <span class="article-cta">Leggi l'articolo</span>
+        <span class="article-cta">Leggi l'articolo →</span>
     </div>
 </a>
 {% endfor %}

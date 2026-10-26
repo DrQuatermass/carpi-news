@@ -12,11 +12,11 @@
     <meta name="keywords" content="{% block meta_keywords %}Carpi, notizie Carpi, cronaca Carpi, eventi Carpi, giornale Carpi, Ombra del Portico{% endblock %}">
     <meta name="author" content="{% block meta_author %}Sven Rinaldi{% endblock %}">
     {% block robots_meta %}<meta name="robots" content="index, follow, max-image-preview:large">{% endblock %}
-    <meta name="theme-color" content="#966C42">
+    <meta name="theme-color" content="#752d35">
     <style>
       /* Colore link coerente col sito per byline e pagine editoriali (evita il blu di default) */
-      .about-content a, .article-byline a { color: #8B4513; text-decoration: none; font-weight: 600; }
-      .about-content a:hover, .article-byline a:hover { color: #A0522D; text-decoration: underline; }
+      .about-content a, .article-byline a { color: #59242b; text-decoration: none; font-weight: 600; }
+      .about-content a:hover, .article-byline a:hover { color: #59242b; text-decoration: underline; }
     </style>
 
     <!-- Google Search Console Verification -->
@@ -53,22 +53,15 @@
     <meta name="twitter:creator" content="{% block twitter_creator %}{{ TWITTER_SITE }}{% endblock %}">
 
     <!-- Preload risorse critiche per LCP -->
-    <link rel="preload" href="{% static 'home/css/style.min.css'%}?v=15" as="style">
+    <link rel="preload" href="{% static 'home/css/style.min.css'%}?v=26" as="style">
     <link rel="preload" href="{% static 'home/images/portico_logo.svg' %}" as="image" type="image/svg+xml" fetchpriority="high">
 
     <!-- Preconnect per performance -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="dns-prefetch" href="https://pagead2.googlesyndication.com">
     <link rel="dns-prefetch" href="https://fundingchoicesmessages.google.com">
 
-    <!-- Fonts caricati in modo asincrono per non bloccare il rendering -->
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap&display=optional" media="print" onload="this.media='all'">
-    <noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&display=optional"></noscript>
-
     <!-- CSS principale -->
-    <link rel="stylesheet" href="{% static 'home/css/style.min.css'%}?v=15">
+    <link rel="stylesheet" href="{% static 'home/css/style.min.css'%}?v=26">
     <style>
       /* Slot AdSense: finche' Google non riempie lo slot (sito non pronto, niente consenso,
          nessun annuncio disponibile) mostra l'invito ad acquistare lo spazio.
@@ -78,29 +71,38 @@
         position: absolute; inset: 0; z-index: 3;
         display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1.2rem;
         min-height: 150px; padding: 1rem; box-sizing: border-box;
-        border: 1px solid rgba(150, 108, 66, 0.15); border-radius: 12px;
-        background: linear-gradient(135deg, rgba(150, 108, 66, 0.03) 0%, rgba(184, 149, 106, 0.06) 100%);
-        text-decoration: none; text-align: center; font-family: 'Georgia', serif; cursor: pointer;
+        border: 1px solid rgba(117, 45, 53, 0.15); border-radius: 12px;
+        background: rgba(117, 45, 53, 0.03);
+        text-decoration: none; text-align: center; font-family: Arial, Helvetica, sans-serif; cursor: pointer;
         transition: border-color 0.3s ease, box-shadow 0.3s ease;
       }
       .has-adsense .ad-slot-promo:hover {
-        border-color: rgba(150, 108, 66, 0.3);
-        box-shadow: 0 4px 20px rgba(150, 108, 66, 0.08);
+        border-color: rgba(117, 45, 53, 0.3);
+        box-shadow: 0 4px 20px rgba(117, 45, 53, 0.08);
       }
-      .ad-slot-promo-title { font-size: 0.95rem; font-weight: 600; letter-spacing: 2px; color: rgba(150, 108, 66, 0.6); }
-      .ad-slot-promo-cta { font-size: 0.85rem; font-weight: 600; text-decoration: underline; color: rgba(150, 108, 66, 0.7); }
+      .ad-slot-promo-title { font-size: 0.95rem; font-weight: 400; letter-spacing: 2px; color: rgba(117, 45, 53, 0.6); }
+      .ad-slot-promo-cta { font-size: 0.85rem; font-weight: 600; text-decoration: underline; color: rgba(117, 45, 53, 0.7); }
       .has-adsense:has(ins.adsbygoogle[data-ad-status="filled"]) .ad-slot-promo { display: none; }
-      /* Slot in griglia: senza annuncio ha l'altezza di una card, non collassa */
-      .banner-card-slot.has-adsense:not(:has(ins.adsbygoogle[data-ad-status="filled"])) { min-height: 300px !important; }
+      /* Slot in griglia: finche' Google non risponde ha l'altezza di una card */
+      .banner-card-slot.has-adsense:not(:has(ins.adsbygoogle[data-ad-status])) { min-height: 300px !important; }
+      /* Annuncio servito: lo slot prende l'altezza dell'annuncio invece dello spazio riservato
+         (300x600 e 728x270), cosi' non restano buchi sotto annunci nativi bassi */
+      .has-adsense:has(ins.adsbygoogle[data-ad-status="filled"]) {
+        aspect-ratio: auto !important; min-height: 0 !important; height: auto !important; align-self: start;
+      }
+      .has-adsense ins.adsbygoogle[data-ad-status="filled"] { min-height: 0 !important; }
+      /* Nessun annuncio (niente consenso o niente inventario): lo slot si chiude */
+      .has-adsense:has(ins.adsbygoogle[data-ad-status="unfilled"]),
+      .banner-horizontal-section:has(ins.adsbygoogle[data-ad-status="unfilled"]):not(:has(.advertisement-banner)) { display: none !important; }
     </style>
 
     <!-- Chatbot CSS - caricato in modo non bloccante -->
     <link rel="stylesheet"
-          href="{% static 'home/css/chatbot.css' %}?v=1"
+          href="{% static 'home/css/chatbot.css' %}?v=3"
           media="print" onload="this.media='all'">
     <noscript>
       <link rel="stylesheet"
-            href="{% static 'home/css/chatbot.css' %}?v=1">
+            href="{% static 'home/css/chatbot.css' %}?v=3">
     </noscript>
 
     <!-- Favicon -->
@@ -337,17 +339,6 @@
                 window.showAdConsentPreferences();
             });
 
-            // Scroll effect per header
-            window.addEventListener('scroll', function() {
-                const header = document.querySelector('header');
-                if (window.scrollY > 100) {
-                    header.style.background = 'rgba(255, 255, 255, 0.98)';
-                    header.style.boxShadow = '0 2px 20px rgba(0,0,0,0.1)';
-                } else {
-                    header.style.background = 'rgba(255, 255, 255, 0.95)';
-                    header.style.boxShadow = 'none';
-                }
-            });
 
             // Smooth scroll per i link
             document.querySelectorAll('a[href^="#"]').forEach(anchor => {

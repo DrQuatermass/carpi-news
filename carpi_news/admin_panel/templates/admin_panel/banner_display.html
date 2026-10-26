@@ -15,7 +15,7 @@
                          style="width: 100%; height: auto; display: block; border-radius: 6px;"
                          fetchpriority="high">
                 </a>
-                <div style="font-size: 10px; color: #999; text-align: center; margin-top: 5px;">Pubblicità</div>
+                <div style="font-size: 12px; color: #5c605a; text-align: center; margin-top: 5px;">Pubblicità</div>
             </div>
         </div>
     {% else %}
@@ -33,7 +33,7 @@
                      height="{% if banner.image_vertical %}{{ banner.image_vertical_height }}{% else %}{{ banner.image_height }}{% endif %}"
                      style="width: 100%; height: auto; border-radius: 10px; display: block; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);">
             </a>
-            <div style="font-size: 10px; color: #999; text-align: center; margin-top: 5px;">Pubblicità</div>
+            <div style="font-size: 12px; color: #5c605a; text-align: center; margin-top: 5px;">Pubblicità</div>
         </div>
         {% endwith %}
     {% endif %}
@@ -49,7 +49,7 @@
                  data-ad-slot-desktop="7169190997"
                  data-ad-slot-mobile="8673844354"
                  data-ad-client="ca-pub-3345905614586761"></ins>
-            <div style="font-size: 10px; color: #999; text-align: center; margin-top: 4px;">Pubblicità</div>
+            <div style="font-size: 12px; color: #5c605a; text-align: center; margin-top: 4px;">Pubblicità</div>
             <a href="{% url 'pubblicita' %}" class="ad-slot-promo" aria-label="Acquista questo spazio pubblicitario"><span class="ad-slot-promo-title">SPAZIO PUBBLICITARIO</span><span class="ad-slot-promo-cta">Clicca qui per acquistare</span></a>
         </div>
     {% elif position == 'between_articles' %}
@@ -62,7 +62,7 @@
                  data-ad-slot-desktop="7169190997"
                  data-ad-slot-mobile="8673844354"
                  data-ad-client="ca-pub-3345905614586761"></ins>
-            <div style="font-size: 10px; color: #999; text-align: center; margin-top: 4px;">Pubblicità</div>
+            <div style="font-size: 12px; color: #5c605a; text-align: center; margin-top: 4px;">Pubblicità</div>
             <a href="{% url 'pubblicita' %}" class="ad-slot-promo" aria-label="Acquista questo spazio pubblicitario"><span class="ad-slot-promo-title">SPAZIO PUBBLICITARIO</span><span class="ad-slot-promo-cta">Clicca qui per acquistare</span></a>
         </div>
     {% endif %}
