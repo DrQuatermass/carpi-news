@@ -313,7 +313,9 @@ def home(request):
     first_article_added = False
 
     for i in range(12):  # 12 posizioni totali (0-11)
-        if i in banner_positions:
+        # Uno spazio pubblicitario solo se dopo c'e' ancora almeno un articolo: nelle ultime
+        # pagine (pochi articoli) gli spazi restavano in coda, uno dopo l'altro
+        if i in banner_positions and article_index < len(page_obj):
             # Slot banner: mostra banner attivo o placeholder
             banner_data = active_banners[banner_index] if banner_index < len(active_banners) else None
             grid_items.append({

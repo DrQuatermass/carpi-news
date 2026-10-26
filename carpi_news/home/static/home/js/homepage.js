@@ -151,7 +151,9 @@ function updatePageContent(data) {
 
         // Inserisci elementi (articoli + banner)
         for (let position = 0; position < totalSlots; position++) {
-            if (bannerPositions.includes(position)) {
+            // Come la vista Django: uno spazio pubblicitario solo se dopo c'e' ancora un articolo,
+            // altrimenti nelle ultime pagine gli spazi restano in coda uno dopo l'altro
+            if (bannerPositions.includes(position) && articleIndex < data.articoli.length) {
                 // Trova il banner attivo per questo slot (se esiste)
                 const activeBanner = activeBanners.find(b => b.position_index === bannerSlotIndex);
 
