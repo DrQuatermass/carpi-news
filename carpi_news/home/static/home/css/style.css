@@ -93,6 +93,8 @@ nav {
 
 .nav-links {
     display: flex;
+    /* tutte le voci sulla stessa linea di base, anche "Rubriche" che ha la freccina */
+    align-items: baseline;
     list-style: none;
     gap: clamp(1rem, 1.6vw, 2rem);
 }
@@ -145,8 +147,8 @@ nav {
 
 .dropdown-toggle {
     cursor: pointer;
-    display: flex;
-    align-items: center;
+    display: inline-flex;
+    align-items: baseline;
     gap: 0.5rem;
 }
 
