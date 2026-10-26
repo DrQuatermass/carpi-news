@@ -34,20 +34,99 @@
   }
 }
 </script>
+<style>
+    /* Stessa colonna di lettura degli articoli: le classi di about.html qui non hanno stile */
+    .author-page {
+        max-width: 700px;
+        margin: 0 auto;
+        padding: 1rem 0 3rem;
+        font-size: 1.125rem;
+        line-height: 1.65;
+        color: #282a28;
+    }
+    .author-page .breadcrumb {
+        /* la regola generale "nav" del menu (flex, space-between, padding) qui non serve */
+        display: block;
+        padding: 0;
+        font-size: 0.85rem;
+        color: #5c605a;
+        margin-bottom: 1.5rem;
+    }
+    .author-page .breadcrumb a {
+        color: #752d35;
+        text-decoration: none;
+    }
+    .author-page h1 {
+        font-size: 2.5rem;
+        line-height: 1.15;
+        margin-bottom: 0.4rem;
+    }
+    .author-page .subtitle {
+        color: #5c605a;
+        font-size: 1.05rem;
+        margin-bottom: 2rem;
+    }
+    .author-page .intro {
+        font-size: 1.2rem;
+        line-height: 1.55;
+    }
+    .author-page h2 {
+        font-size: 1.6rem;
+        line-height: 1.25;
+        margin: 2.5rem 0 0.8rem;
+    }
+    .author-page p,
+    .author-page ol,
+    .author-page ul {
+        margin-bottom: 1.1em;
+    }
+    .author-page ol {
+        padding-left: 1.4em;
+    }
+    .author-page li {
+        margin-bottom: 0.6em;
+    }
+    .author-page a {
+        color: #752d35;
+        text-decoration: underline;
+        text-underline-offset: 0.15em;
+    }
+    .author-page a:hover {
+        color: #59242b;
+    }
+    .author-page .contact {
+        list-style: none;
+        padding: 1rem 1.25rem;
+        background: #fffefa;
+        border: 1px solid #d9d8cc;
+        border-radius: 8px;
+    }
+    .author-page .contact li:last-child {
+        margin-bottom: 0;
+    }
+    @media (max-width: 768px) {
+        .author-page h1 {
+            font-size: 2rem;
+        }
+        .author-page .intro {
+            font-size: 1.1rem;
+        }
+    }
+</style>
 {% endblock %}
 
 {% block content %}
 <div class="container">
-    <div class="about-content">
-        <nav class="breadcrumb" aria-label="Percorso" style="font-size:.85rem;margin-bottom:12px">
+    <article class="author-page">
+        <nav class="breadcrumb" aria-label="Percorso">
             <a href="{% url 'home' %}">Home</a> · <span>Autore</span>
         </nav>
 
         <h1>Sven Rinaldi</h1>
         <p class="subtitle">Sviluppatore · Direttore editoriale di Ombra del Portico · Carpi</p>
 
-        <section class="intro-section">
-            <p>Sono Sven Rinaldi, sviluppatore. Non sono un giornalista: <strong>costruisco software per il giornalismo</strong>. Ombra del Portico è il progetto con cui sviluppo questo strumento e, allo stesso tempo, un vero servizio di informazione locale per Carpi di cui rivedo personalmente ogni articolo prima della pubblicazione.</p>
+        <section>
+            <p class="intro">Sono Sven Rinaldi, sviluppatore. Non sono un giornalista: <strong>costruisco software per il giornalismo</strong>. Ombra del Portico è il progetto con cui sviluppo questo strumento e, allo stesso tempo, un vero servizio di informazione locale per Carpi di cui rivedo personalmente ogni articolo prima della pubblicazione.</p>
         </section>
 
         <section>
@@ -73,17 +152,15 @@
             <p>La tecnologia fa il lavoro di raccolta e verifica; la responsabilità di quello che leggi resta di una persona — io.</p>
         </section>
 
-        <section class="team-section">
+        <section>
             <h2>Scrivimi</h2>
-            <div class="team-card">
-                <p>Per segnalazioni, correzioni o per dirmi la tua:</p>
-                <ul class="contact-inline">
-                    <li><strong>Email:</strong> <a href="mailto:redazione@ombradelportico.it">redazione@ombradelportico.it</a></li>
-                    <li><strong>LinkedIn:</strong> <a href="https://www.linkedin.com/in/svenrinaldi/" rel="me noopener" target="_blank">linkedin.com/in/svenrinaldi</a></li>
-                </ul>
-            </div>
-            <p style="margin-top:14px"><a href="{% url 'about' %}">Scopri di più su Ombra del Portico →</a></p>
+            <p>Per segnalazioni, correzioni o per dirmi la tua:</p>
+            <ul class="contact">
+                <li><strong>Email:</strong> <a href="mailto:redazione@ombradelportico.it">redazione@ombradelportico.it</a></li>
+                <li><strong>LinkedIn:</strong> <a href="https://www.linkedin.com/in/svenrinaldi/" rel="me noopener" target="_blank">linkedin.com/in/svenrinaldi</a></li>
+            </ul>
+            <p><a href="{% url 'about' %}">Scopri di più su Ombra del Portico →</a></p>
         </section>
-    </div>
+    </article>
 </div>
 {% endblock %}
