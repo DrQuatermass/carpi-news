@@ -89,6 +89,43 @@ nav {
     .logo-text {
         font-size: clamp(1.4rem, 3vw, 1.4rem);
     }
+
+    /* Smartphone: logo e nome al centro, burger fisso a destra. Lo stesso spazio del
+       burger e' riservato anche a sinistra, cosi' il logo resta centrato e non lo tocca */
+    nav.container {
+        justify-content: center;
+        position: relative;
+        padding-left: 56px;
+        padding-right: 56px;
+    }
+
+    nav.container .mobile-menu-container {
+        position: absolute;
+        right: 8px;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+}
+
+@media (max-width: 360px) {
+    .logo-text {
+        font-size: 1.2rem;
+    }
+
+    .logo-img {
+        height: 30px;
+    }
+}
+
+/* Telefoni da 320px: ancora un po' piu' piccolo, altrimenti il nome tocca il burger */
+@media (max-width: 340px) {
+    .logo-text {
+        font-size: 1.05rem;
+    }
+
+    .logo-img {
+        height: 26px;
+    }
 }
 
 .nav-links {
