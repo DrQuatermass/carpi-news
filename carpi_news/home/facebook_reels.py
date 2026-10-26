@@ -37,7 +37,7 @@ from typing import Optional, Tuple
 import numpy as np
 import requests
 from django.conf import settings
-from PIL import Image, ImageDraw, ImageFilter, ImageFont
+from PIL import Image, ImageDraw, ImageFont
 
 logger = logging.getLogger(__name__)
 
@@ -48,10 +48,11 @@ logger = logging.getLogger(__name__)
 WIDTH, HEIGHT = 1080, 1920
 DEFAULT_FPS = 24
 
-BRAND_GOLD = (212, 175, 55)
-DARK_BG = (15, 20, 30)
+CARTA = (247, 245, 239)        # fondo
+INCHIOSTRO = (40, 42, 40)      # titolo e logo
+VINO = (117, 45, 53)           # amaranto: etichetta categoria e pulsante
+MUTED = (92, 96, 90)           # testo secondario
 WHITE = (255, 255, 255)
-CREAM = (245, 240, 225)
 
 
 # -----------------------------------------------------------------------------
@@ -63,8 +64,8 @@ def _project_base_dir() -> Path:
 
 
 def _font_path() -> Path:
-    """Path del font Playfair Display Bold dentro la struttura statica."""
-    return _project_base_dir() / "home" / "static" / "home" / "fonts" / "PlayfairDisplay-Bold.ttf"
+    """Gelasio: libero (OFL), stesse misure di Georgia, il serif dei titoli del sito."""
+    return _project_base_dir() / "home" / "static" / "home" / "fonts" / "Gelasio-Variable.ttf"
 
 
 def _emoji_font_path() -> Optional[Path]:
@@ -291,10 +292,8 @@ class FacebookReelGenerator:
             new_h = int(iw / target_ratio)
             top = (ih - new_h) // 2
             img = img.crop((0, top, iw, top + new_h))
-        img = img.resize((WIDTH, HEIGHT), Image.LANCZOS)
-        img = img.filter(ImageFilter.GaussianBlur(radius=22))
-        dark = Image.new("RGB", img.size, DARK_BG)
-        return Image.blend(img, dark, alpha=0.6)
+        # Fondo pieno color carta, come il sito (prima: foto sfocata e scurita)
+        return Image.new("RGB", (WIDTH, HEIGHT), CARTA)
 
     def _make_card(self, image_path: Path, card_w: int = 900, card_h: int = 900) -> Image.Image:
         img = Image.open(image_path).convert("RGB")
@@ -305,27 +304,20 @@ class FacebookReelGenerator:
         img = img.crop((left, top, left + side, top + side))
         img = img.resize((card_w, card_h), Image.LANCZOS)
 
-        radius = 32
+        radius = 8
         mask = Image.new("L", (card_w, card_h), 0)
         ImageDraw.Draw(mask).rounded_rectangle(
             [(0, 0), (card_w, card_h)], radius=radius, fill=255
         )
         out = Image.new("RGBA", (card_w, card_h), (0, 0, 0, 0))
         out.paste(img, (0, 0), mask)
-        draw = ImageDraw.Draw(out)
-        draw.rounded_rectangle(
-            [(1, 1), (card_w - 2, card_h - 2)],
-            radius=radius,
-            outline=BRAND_GOLD + (255,),
-            width=4,
-        )
         return out
 
     def _make_logo(self, target_height: int = 240) -> Image.Image:
-        """Carica il logo PNG (nero su trasparente) e lo ricolora cream per il fondo scuro."""
+        """Carica il logo PNG (nero su trasparente) e lo ricolora inchiostro per il fondo carta."""
         logo = Image.open(_logo_path()).convert("RGBA")
         _, _, _, alpha = logo.split()
-        recolored = Image.new("RGBA", logo.size, CREAM + (0,))
+        recolored = Image.new("RGBA", logo.size, INCHIOSTRO + (0,))
         recolored.putalpha(alpha)
         w, h = recolored.size
         new_w = int(w * target_height / h)
@@ -342,20 +334,20 @@ class FacebookReelGenerator:
 
         # Badge categoria
         cat_text = category.upper()
-        cat_font = self._load_font(32)
+        cat_font = self._load_cta_font(30)
         bbox = draw.textbbox((0, 0), cat_text, font=cat_font)
         cat_w = bbox[2] - bbox[0]
         cat_h = bbox[3] - bbox[1]
         pad = 24
         bw = cat_w + pad * 2
         bh = cat_h + 24
-        by = 1230
+        by = 1262
         bx = (WIDTH - bw) // 2
         draw.rounded_rectangle(
             [(bx, by), (bx + bw, by + bh)],
-            radius=bh // 2, fill=BRAND_GOLD + (255,)
+            radius=bh // 2, fill=VINO + (255,)
         )
-        draw.text((bx + pad, by + 6), cat_text, font=cat_font, fill=DARK_BG + (255,))
+        draw.text((bx + pad, by + 8), cat_text, font=cat_font, fill=WHITE + (255,))
 
         # Titolo
         title_font = self._load_font(68)
@@ -363,19 +355,17 @@ class FacebookReelGenerator:
         if len(lines) > 3:
             lines = lines[:3]
             lines[2] = lines[2].rstrip(".,;:") + "..."
-        y = 1340
+        y = 1372
         line_height = 86
         for line in lines:
             bbox = draw.textbbox((0, 0), line, font=title_font)
             lw_t = bbox[2] - bbox[0]
             x = (WIDTH - lw_t) // 2
-            for ox, oy in [(2, 2), (-2, 2), (2, -2), (-2, -2)]:
-                draw.text((x + ox, y + oy), line, font=title_font, fill=(0, 0, 0, 220))
-            draw.text((x, y), line, font=title_font, fill=WHITE + (255,))
+            draw.text((x, y), line, font=title_font, fill=INCHIOSTRO + (255,))
             y += line_height
 
-        # CTA in basso in pill bianca, leggibile su qualunque foto.
-        cta_font = self._load_font(44)
+        # CTA: pulsante amaranto pieno, angoli quasi squadrati, senza ombra (come il sito)
+        cta_font = self._load_cta_font(42)
         cta_lines = [line.strip() for line in self.config.cta_text.splitlines() if line.strip()]
         line_h = 54
         emoji_font = self._load_emoji_font(44)
@@ -387,38 +377,28 @@ class FacebookReelGenerator:
             pill_w = min(WIDTH - 160, max_line_w + pad_x * 2)
             pill_h = len(cta_lines) * line_h + pad_y * 2
             pill_x = (WIDTH - pill_w) // 2
-            pill_y = HEIGHT - 285
-            radius = pill_h // 2
-            draw.rounded_rectangle(
-                [(pill_x + 3, pill_y + 5), (pill_x + pill_w + 3, pill_y + pill_h + 5)],
-                radius=radius,
-                fill=(0, 0, 0, 70),
-            )
+            pill_y = HEIGHT - 255
             draw.rounded_rectangle(
                 [(pill_x, pill_y), (pill_x + pill_w, pill_y + pill_h)],
-                radius=radius,
-                fill=(255, 255, 255, 246),
-                outline=(255, 255, 255, 255),
+                radius=8,
+                fill=VINO + (255,),
             )
 
             for idx, line in enumerate(cta_lines):
                 line_w, _ = self._mixed_text_size(draw, line, cta_font, emoji_font)
                 x = (WIDTH - line_w) // 2
                 y = pill_y + pad_y + idx * line_h
-                self._draw_mixed_text(layer, draw, (x, y), line, cta_font, emoji_font, DARK_BG + (255,))
+                self._draw_mixed_text(layer, draw, (x, y), line, cta_font, emoji_font, WHITE + (255,))
 
         # Hint sotto la pillola (es. "Tocca il link in bio per leggere")
         if self.config.cta_hint:
-            hint_font = self._load_font(30)
+            hint_font = self._load_hint_font(30)
             hint = self.config.cta_hint
             hbb = draw.textbbox((0, 0), hint, font=hint_font)
             hw = hbb[2] - hbb[0]
             hx = (WIDTH - hw) // 2
             hy = (pill_y + pill_h + 26) if cta_lines else HEIGHT - 145
-            # Ombra per leggibilita'
-            for ox, oy in [(1, 1), (-1, 1), (1, -1), (-1, -1)]:
-                draw.text((hx + ox, hy + oy), hint, font=hint_font, fill=(0, 0, 0, 200))
-            draw.text((hx, hy), hint, font=hint_font, fill=CREAM + (220,))
+            draw.text((hx, hy), hint, font=hint_font, fill=MUTED + (255,))
 
         return layer
 
@@ -426,20 +406,32 @@ class FacebookReelGenerator:
         try:
             return ImageFont.truetype(str(_font_path()), size)
         except Exception:
-            logger.warning("Reel: Playfair non disponibile, fallback DejaVu Serif Bold")
+            logger.warning("Reel: Gelasio non disponibile, fallback DejaVu Serif")
             try:
                 return ImageFont.truetype(
-                    "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf", size
+                    "/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf", size
                 )
             except Exception:
                 return ImageFont.load_default()
 
     def _load_cta_font(self, size: int) -> ImageFont.ImageFont:
-        candidates = [
-            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        """Senza grazie in grassetto (Liberation Sans ha le misure di Arial)."""
+        return self._load_sans(size, [
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
             "C:/Windows/Fonts/arialbd.ttf",
             "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
-        ]
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+        ])
+
+    def _load_hint_font(self, size: int) -> ImageFont.ImageFont:
+        return self._load_sans(size, [
+            "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+            "C:/Windows/Fonts/arial.ttf",
+            "/System/Library/Fonts/Supplemental/Arial.ttf",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        ])
+
+    def _load_sans(self, size: int, candidates: list) -> ImageFont.ImageFont:
         for path in candidates:
             try:
                 if Path(path).exists():

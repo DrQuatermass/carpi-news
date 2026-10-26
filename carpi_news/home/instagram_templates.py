@@ -21,19 +21,20 @@ from pathlib import Path
 from typing import Optional
 
 from django.conf import settings
-from PIL import Image, ImageDraw, ImageFilter, ImageFont
+from PIL import Image, ImageDraw, ImageFont
 
 logger = logging.getLogger(__name__)
 
 
 # -----------------------------------------------------------------------------
-# COSTANTI DI DESIGN (coerenti col modulo facebook_reels)
+# COSTANTI DI DESIGN (palette del sito, come il modulo facebook_reels)
 # -----------------------------------------------------------------------------
 SIZE = 1080          # post quadrato 1:1
-BRAND_GOLD = (212, 175, 55)
-DARK_BG = (15, 20, 30)
+CARTA = (247, 245, 239)        # fondo
+INCHIOSTRO = (40, 42, 40)      # titolo e logo
+VINO = (117, 45, 53)           # amaranto: etichetta categoria e pulsante
+MUTED = (92, 96, 90)           # testo secondario
 WHITE = (255, 255, 255)
-CREAM = (245, 240, 225)
 
 # Layout: y assoluti dentro 1080x1080
 LAYOUT = {
@@ -42,9 +43,9 @@ LAYOUT = {
     "card_side": 580,
     "card_y": 160,
     "badge_y": 760,
-    "title_size": 40,
+    "title_size": 42,
     "title_y_start": 822,
-    "title_y_end": 900,
+    "title_y_end": 922,
     "cta_y": 985,
 }
 
@@ -54,7 +55,8 @@ def _project_base_dir() -> Path:
 
 
 def _font_path() -> Path:
-    return _project_base_dir() / "home" / "static" / "home" / "fonts" / "PlayfairDisplay-Bold.ttf"
+    # Gelasio: libero (OFL), stesse misure di Georgia, il serif dei titoli del sito
+    return _project_base_dir() / "home" / "static" / "home" / "fonts" / "Gelasio-Variable.ttf"
 
 
 def _emoji_font_path() -> Optional[Path]:
@@ -91,19 +93,15 @@ def _load_font(size: int) -> ImageFont.FreeTypeFont:
     try:
         return ImageFont.truetype(str(_font_path()), size)
     except Exception:
-        logger.warning("IG template: Playfair non disponibile, fallback DejaVu Serif Bold")
+        logger.warning("IG template: Gelasio non disponibile, fallback DejaVu Serif")
         try:
-            return ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf", size)
+            return ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf", size)
         except Exception:
             return ImageFont.load_default()
 
 
-def _load_cta_font(size: int) -> ImageFont.ImageFont:
-    candidates = [
-        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
-        "C:/Windows/Fonts/arialbd.ttf",
-        "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
-    ]
+def _load_sans(size: int, candidates: list[str]) -> ImageFont.ImageFont:
+    """Primo carattere senza grazie disponibile (Liberation Sans ha le misure di Arial)."""
     for path in candidates:
         try:
             if Path(path).exists():
@@ -111,6 +109,15 @@ def _load_cta_font(size: int) -> ImageFont.ImageFont:
         except Exception:
             continue
     return _load_font(size)
+
+
+def _load_cta_font(size: int) -> ImageFont.ImageFont:
+    return _load_sans(size, [
+        "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
+        "C:/Windows/Fonts/arialbd.ttf",
+        "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+    ])
 
 
 def _load_emoji_font(size: int) -> ImageFont.ImageFont:
@@ -213,23 +220,12 @@ def _load_heart_icon(size: int, fill) -> Image.Image:
 
 
 def _make_background(image: Image.Image) -> Image.Image:
-    """Versione blurred + scurita dell'immagine articolo, ritagliata a quadrato 1080x1080."""
-    img = image.convert("RGB")
-    iw, ih = img.size
-    # Ritaglio quadrato centrato
-    side = min(iw, ih)
-    img = img.crop((
-        (iw - side) // 2, (ih - side) // 2,
-        (iw - side) // 2 + side, (ih - side) // 2 + side,
-    ))
-    img = img.resize((SIZE, SIZE), Image.LANCZOS)
-    img = img.filter(ImageFilter.GaussianBlur(radius=22))
-    dark = Image.new("RGB", img.size, DARK_BG)
-    return Image.blend(img, dark, alpha=0.6)
+    """Fondo pieno color carta, come il sito (prima: foto sfocata e scurita)."""
+    return Image.new("RGB", (SIZE, SIZE), CARTA)
 
 
 def _make_card(image: Image.Image, side: int) -> Image.Image:
-    """Card quadrata con foto articolo, bordo oro arrotondato."""
+    """Card quadrata con foto articolo, angoli appena arrotondati, senza bordo."""
     img = image.convert("RGB")
     iw, ih = img.size
     s = min(iw, ih)
@@ -238,28 +234,23 @@ def _make_card(image: Image.Image, side: int) -> Image.Image:
         (iw - s) // 2 + s, (ih - s) // 2 + s,
     ))
     img = img.resize((side, side), Image.LANCZOS)
-    radius = 32
+    radius = 8
     mask = Image.new("L", (side, side), 0)
     ImageDraw.Draw(mask).rounded_rectangle([(0, 0), (side, side)], radius=radius, fill=255)
     out = Image.new("RGBA", (side, side), (0, 0, 0, 0))
     out.paste(img, (0, 0), mask)
-    draw = ImageDraw.Draw(out)
-    draw.rounded_rectangle(
-        [(1, 1), (side - 2, side - 2)],
-        radius=radius, outline=BRAND_GOLD + (255,), width=4,
-    )
     return out
 
 
 def _make_logo(target_height: int) -> Optional[Image.Image]:
-    """Logo PNG nero su trasparente ricolorato cream."""
+    """Logo PNG nero su trasparente ricolorato inchiostro."""
     try:
         logo = Image.open(_logo_path()).convert("RGBA")
     except Exception as e:
         logger.warning(f"IG template: logo non caricabile {_logo_path()}: {e}")
         return None
     _, _, _, alpha = logo.split()
-    new = Image.new("RGBA", logo.size, CREAM + (0,))
+    new = Image.new("RGBA", logo.size, INCHIOSTRO + (0,))
     new.putalpha(alpha)
     w, h = new.size
     return new.resize((int(w * target_height / h), target_height), Image.LANCZOS)
@@ -327,8 +318,8 @@ def render_instagram_post(
         overlay = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
         draw = ImageDraw.Draw(overlay)
 
-        # Badge categoria
-        cat_font = _load_font(28)
+        # Badge categoria: amaranto con testo bianco, come le etichette del sito
+        cat_font = _load_cta_font(26)
         cat_text = (category or "Notizie").upper()
         bbox = draw.textbbox((0, 0), cat_text, font=cat_font)
         cw = bbox[2] - bbox[0]
@@ -340,9 +331,9 @@ def render_instagram_post(
         by = LAYOUT["badge_y"]
         draw.rounded_rectangle(
             [(bx, by), (bx + bw, by + bh)],
-            radius=bh // 2, fill=BRAND_GOLD + (255,),
+            radius=bh // 2, fill=VINO + (255,),
         )
-        draw.text((bx + pad, by + 6), cat_text, font=cat_font, fill=DARK_BG + (255,))
+        draw.text((bx + pad, by + 8), cat_text, font=cat_font, fill=WHITE + (255,))
 
         # Titolo (max 2 righe, centrato nel band)
         title_font = _load_font(LAYOUT["title_size"])
@@ -356,13 +347,11 @@ def render_instagram_post(
             bbox = draw.textbbox((0, 0), line, font=title_font)
             lw = bbox[2] - bbox[0]
             x = (SIZE - lw) // 2
-            for ox, oy in [(2, 2), (-2, 2), (2, -2), (-2, -2)]:
-                draw.text((x + ox, y + oy), line, font=title_font, fill=(0, 0, 0, 220))
-            draw.text((x, y), line, font=title_font, fill=WHITE + (255,))
+            draw.text((x, y), line, font=title_font, fill=INCHIOSTRO + (255,))
             y += line_h
 
-        # CTA centrata in pill bianca e leggibile su foto.
-        cta_font = _load_font(34)
+        # CTA: pulsante amaranto pieno, angoli quasi squadrati, senza ombra (come il sito)
+        cta_font = _load_cta_font(32)
         emoji_font = _load_emoji_font(34)
         cta_lines = [line.strip() for line in [cta_line_1, cta_line_2] if line.strip()]
         line_h = 42
@@ -374,18 +363,11 @@ def render_instagram_post(
             pill_w = min(SIZE - 150, max_line_w + pad_x * 2)
             pill_h = len(cta_lines) * line_h + pad_y * 2
             pill_x = (SIZE - pill_w) // 2
-            pill_y = 916
-            radius = pill_h // 2
-            draw.rounded_rectangle(
-                [(pill_x + 3, pill_y + 5), (pill_x + pill_w + 3, pill_y + pill_h + 5)],
-                radius=radius,
-                fill=(0, 0, 0, 70),
-            )
+            pill_y = 948
             draw.rounded_rectangle(
                 [(pill_x, pill_y), (pill_x + pill_w, pill_y + pill_h)],
-                radius=radius,
-                fill=(255, 255, 255, 246),
-                outline=(255, 255, 255, 255),
+                radius=6,
+                fill=VINO + (255,),
             )
 
             for idx, line in enumerate(cta_lines):
@@ -399,7 +381,7 @@ def render_instagram_post(
                     line,
                     cta_font,
                     emoji_font,
-                    DARK_BG + (255,),
+                    WHITE + (255,),
                 )
 
         final = Image.alpha_composite(bg, overlay).convert("RGB")
