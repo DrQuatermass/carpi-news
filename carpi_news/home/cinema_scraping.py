@@ -106,6 +106,13 @@ def _film_entry(date_ctx, title, image, showtimes):
     }
 
 
+TMB_NEXT_DAY_PATTERN = (
+    r'\b(?:lunedi|martedi|mercoledi|giovedi|venerdi|sabato|domenica|'
+    r'gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|'
+    r'settembre|ottobre|novembre|dicembre)\b'
+)
+
+
 def _scrape_tmb_cinema(name, address, website, placeholder_default=False):
     date_ctx = cinema_date_context()
     films = []
@@ -130,8 +137,14 @@ def _scrape_tmb_cinema(name, address, website, placeholder_default=False):
             for pattern in date_ctx['today_patterns']:
                 match = re.search(pattern, info_text, re.IGNORECASE)
                 if match:
-                    times = re.findall(r'\b(\d{1,2}[:.]\d{2})\b', info_text[match.end():match.end() + 100])
-                    today_showtimes.extend(times[:3])
+                    # Gli orari di oggi finiscono dove inizia il giorno (o il mese)
+                    # successivo: "martedi 27 18:45 giovedi 29 21:00" -> solo 18:45.
+                    text_after_today = info_text[match.end():match.end() + 100]
+                    text_after_today = re.sub(rf"^\s*{date_ctx['today_month_it']}\b", '', text_after_today)
+                    next_day_match = re.search(TMB_NEXT_DAY_PATTERN, text_after_today)
+                    if next_day_match:
+                        text_after_today = text_after_today[:next_day_match.start()]
+                    today_showtimes.extend(re.findall(r'\b(\d{1,2}[:.]\d{2})\b', text_after_today))
                     break
             else:
                 continue
