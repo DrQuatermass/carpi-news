@@ -32,9 +32,11 @@ h1, h2, h3,
 }
 
 /* Header */
+/* Sticky e non fixed: l'header occupa il suo spazio nella pagina, cosi' il contenuto parte
+   subito sotto qualunque sia la sua altezza (cambia con larghezza, barra Calendario/Cinema, ecc.) */
 header {
     background: #f7f5ef;
-    position: fixed;
+    position: sticky;
     width: 100%;
     top: 0;
     z-index: 1000;
@@ -99,11 +101,15 @@ nav {
         padding-right: 56px;
     }
 
+    /* Centrato in verticale con flex e non con transform: un transform farebbe da riferimento
+       al menu a tendina (position: fixed) e lo aggancerebbe al bottone invece che all'header */
     nav.container .mobile-menu-container {
         position: absolute;
         right: 8px;
-        top: 50%;
-        transform: translateY(-50%);
+        top: 0;
+        bottom: 0;
+        display: flex;
+        align-items: center;
     }
 }
 
@@ -320,14 +326,11 @@ nav {
 
 /* Main Content */
 main {
-    margin-top: 65px;
     padding: 2rem 0;
 }
 
-/* Responsive main content - mobile: subheader bar aggiunge altezza */
 @media (max-width: 768px) {
     main {
-        margin-top: 90px;
         padding: 1rem 0;
     }
 }
@@ -943,11 +946,6 @@ footer .footer-section.footer-links-section .footer-useful-links a:hover {
     .mobile-menu-container {
         display: block;
     }
-
-    /* la barra Calendario/Cinema aggiunge altezza all'header */
-    main {
-        margin-top: 90px;
-    }
 }
 
 /* Desktop con menu completo: solo il simbolo del portico a sinistra, categorie al centro
@@ -1075,10 +1073,12 @@ footer .footer-section.footer-links-section .footer-useful-links a:hover {
     transform: rotate(-45deg) translate(6px, -6px);
 }
 
+/* Si apre sotto tutto l'header (barra Calendario/Cinema compresa): top viene aggiornato
+   dallo script del burger con il bordo inferiore dell'header */
 .mobile-dropdown {
-    position: absolute;
-    top: 100%;
-    right: 0;
+    position: fixed;
+    top: 76px;
+    right: 8px;
     background: rgba(247, 245, 239, 0.98);
     border-radius: 10px;
     box-shadow: 0 8px 25px rgba(40, 42, 40, 0.15);
@@ -3075,6 +3075,18 @@ footer .footer-section.footer-links-section .footer-useful-links a:hover {
 .banner-horizontal-section {
     margin: 30px 0;
     width: 100%;
+}
+
+/* Telefono: il banner in cima alla home parte a 1rem dall'header come il resto delle pagine */
+@media (max-width: 768px) {
+    .banner-horizontal-section {
+        margin: 0 0 24px;
+    }
+
+    /* il riquadro del banner ha margin 20px 0 in linea (banner_display.html) */
+    .banner-horizontal-section .banner-horizontal-reserved {
+        margin: 0 !important;
+    }
 }
 
 .banner-horizontal-section img,

@@ -53,14 +53,14 @@
     <meta name="twitter:creator" content="{% block twitter_creator %}{{ TWITTER_SITE }}{% endblock %}">
 
     <!-- Preload risorse critiche per LCP -->
-    <link rel="preload" href="{% static 'home/css/style.min.css'%}?v=39" as="style">
+    <link rel="preload" href="{% static 'home/css/style.min.css'%}?v=41" as="style">
 
     <!-- Preconnect per performance -->
     <link rel="dns-prefetch" href="https://pagead2.googlesyndication.com">
     <link rel="dns-prefetch" href="https://fundingchoicesmessages.google.com">
 
     <!-- CSS principale -->
-    <link rel="stylesheet" href="{% static 'home/css/style.min.css'%}?v=39">
+    <link rel="stylesheet" href="{% static 'home/css/style.min.css'%}?v=41">
     <style>
       /* Slot AdSense: finche' Google non riempie lo slot (sito non pronto, niente consenso,
          nessun annuncio disponibile) mostra l'invito ad acquistare lo spazio.
@@ -390,6 +390,11 @@
                 mobileMenuBtn.addEventListener('click', function(e) {
                     e.preventDefault();
                     e.stopPropagation();
+
+                    // Il menu si apre appena sotto l'header, la cui altezza cambia con la larghezza
+                    const fondoHeader = document.querySelector('header').getBoundingClientRect().bottom;
+                    mobileDropdown.style.top = (fondoHeader + 6) + 'px';
+                    mobileDropdown.style.maxHeight = 'calc(100vh - ' + (fondoHeader + 16) + 'px)';
 
                     // Toggle active state
                     mobileMenuBtn.classList.toggle('active');
