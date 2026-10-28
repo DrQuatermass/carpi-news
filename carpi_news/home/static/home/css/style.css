@@ -2879,6 +2879,13 @@ footer .footer-section.footer-links-section .footer-useful-links a:hover {
     width: 100%;
 }
 
+/* Telefono: in cima alla home parte a 1rem dall'header, come il banner */
+@media (max-width: 768px) {
+    .spotlight-section {
+        margin-top: 0;
+    }
+}
+
 .spotlight-grid {
     display: flex;
     flex-direction: column;
