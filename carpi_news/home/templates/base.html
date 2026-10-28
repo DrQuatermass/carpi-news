@@ -33,8 +33,8 @@
     <meta property="og:url" content="{% block og_url %}https://ombradelportico.it{{ request.path }}{% endblock %}">
     <meta property="og:title" content="{% block og_title %}{% block title_for_og %}Ombra del Portico — Notizie di Carpi, Eventi e Attualità{% endblock %}{% endblock %}">
     <meta property="og:description" content="{% block og_description %}{% block meta_description_for_og %}Notizie di Carpi in tempo reale: cronaca, eventi, sport e cultura carpigiana. Il portale di informazione locale aggiornato ogni giorno.{% endblock %}{% endblock %}">
-    <meta property="og:image" content="{% block og_image %}https://ombradelportico.it{% static 'home/images/portico_logo_nopayoff.png' %}{% endblock %}">
-    <meta property="og:image:secure_url" content="{% block og_image_secure_url %}https://ombradelportico.it{% static 'home/images/portico_logo_nopayoff.png' %}{% endblock %}">
+    <meta property="og:image" content="{% block og_image %}https://ombradelportico.it{% static 'home/images/og_ombradelportico.png' %}{% endblock %}">
+    <meta property="og:image:secure_url" content="{% block og_image_secure_url %}https://ombradelportico.it{% static 'home/images/og_ombradelportico.png' %}{% endblock %}">
     <meta property="og:image:alt" content="{% block og_image_alt %}Ombra del Portico{% endblock %}">
     <meta property="og:image:type" content="{% block og_image_type %}image/png{% endblock %}">
     <meta property="og:image:width" content="1200">
@@ -48,20 +48,19 @@
     <meta name="twitter:url" content="{% block twitter_url %}https://ombradelportico.it{{ request.path }}{% endblock %}">
     <meta name="twitter:title" content="{% block twitter_title %}{% block title_for_twitter %}Ombra del Portico — Notizie di Carpi, Eventi e Attualità{% endblock %}{% endblock %}">
     <meta name="twitter:description" content="{% block twitter_description %}{% block meta_description_for_twitter %}Notizie di Carpi in tempo reale: cronaca, eventi, sport e cultura carpigiana. Il portale di informazione locale aggiornato ogni giorno.{% endblock %}{% endblock %}">
-    <meta name="twitter:image" content="{% block twitter_image %}https://ombradelportico.it{% static 'home/images/portico_logo_nopayoff.png' %}{% endblock %}">
+    <meta name="twitter:image" content="{% block twitter_image %}https://ombradelportico.it{% static 'home/images/og_ombradelportico.png' %}{% endblock %}">
     <meta name="twitter:site" content="{{ TWITTER_SITE }}">
     <meta name="twitter:creator" content="{% block twitter_creator %}{{ TWITTER_SITE }}{% endblock %}">
 
     <!-- Preload risorse critiche per LCP -->
-    <link rel="preload" href="{% static 'home/css/style.min.css'%}?v=38" as="style">
-    <link rel="preload" href="{% static 'home/images/portico_logo.svg' %}" as="image" type="image/svg+xml" fetchpriority="high">
+    <link rel="preload" href="{% static 'home/css/style.min.css'%}?v=39" as="style">
 
     <!-- Preconnect per performance -->
     <link rel="dns-prefetch" href="https://pagead2.googlesyndication.com">
     <link rel="dns-prefetch" href="https://fundingchoicesmessages.google.com">
 
     <!-- CSS principale -->
-    <link rel="stylesheet" href="{% static 'home/css/style.min.css'%}?v=38">
+    <link rel="stylesheet" href="{% static 'home/css/style.min.css'%}?v=39">
     <style>
       /* Slot AdSense: finche' Google non riempie lo slot (sito non pronto, niente consenso,
          nessun annuncio disponibile) mostra l'invito ad acquistare lo spazio.
@@ -114,10 +113,11 @@
     </noscript>
 
     <!-- Favicon -->
-    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'home/images/portico_logo_nopayoff.png' %}">
-    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'home/images/portico_logo_nopayoff.png' %}">
-    <link rel="apple-touch-icon" href="{% static 'home/images/portico_logo_nopayoff.png' %}">
-    <link rel="shortcut icon" href="{% static 'home/images/favicon.ico' %}" type="image/x-icon">
+    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'home/images/icona-32.png' %}">
+    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'home/images/icona-16.png' %}">
+    <link rel="icon" type="image/png" sizes="192x192" href="{% static 'home/images/icona-192.png' %}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{% static 'home/images/icona-180.png' %}">
+    <link rel="shortcut icon" href="{% static 'home/images/favicon.ico' %}?v=2" type="image/x-icon">
     
     {% block extra_css %}{% endblock %}
 </head>
