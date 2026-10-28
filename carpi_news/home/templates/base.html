@@ -53,7 +53,7 @@
     <meta name="twitter:creator" content="{% block twitter_creator %}{{ TWITTER_SITE }}{% endblock %}">
 
     <!-- Preload risorse critiche per LCP -->
-    <link rel="preload" href="{% static 'home/css/style.min.css'%}?v=31" as="style">
+    <link rel="preload" href="{% static 'home/css/style.min.css'%}?v=38" as="style">
     <link rel="preload" href="{% static 'home/images/portico_logo.svg' %}" as="image" type="image/svg+xml" fetchpriority="high">
 
     <!-- Preconnect per performance -->
@@ -61,7 +61,7 @@
     <link rel="dns-prefetch" href="https://fundingchoicesmessages.google.com">
 
     <!-- CSS principale -->
-    <link rel="stylesheet" href="{% static 'home/css/style.min.css'%}?v=31">
+    <link rel="stylesheet" href="{% static 'home/css/style.min.css'%}?v=38">
     <style>
       /* Slot AdSense: finche' Google non riempie lo slot (sito non pronto, niente consenso,
          nessun annuncio disponibile) mostra l'invito ad acquistare lo spazio.
@@ -125,7 +125,7 @@
     <header>
         <nav class="container">
             <a href="{% url 'home' %}" class="logo" aria-label="Ombra del Portico, vai alla homepage">
-                <img src="{% static 'home/images/portico_logo_nopayoff.svg' %}" alt="Ombra del Portico" class="logo-img" width="35" height="35">
+                <img src="{% static 'home/images/portico_logo_nopayoff.svg' %}?v=4" alt="Ombra del Portico" class="logo-img" width="35" height="35">
                 <span class="logo-text">Ombra del Portico</span>
             </a>
             

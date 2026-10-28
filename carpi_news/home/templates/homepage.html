@@ -440,6 +440,16 @@
     <div class="container">
             <h1 class="sr-only">Ombra del Portico — Notizie di Carpi</h1>
 
+            {# Testata da giornale, solo desktop (l'header da 1100px in su mostra solo il simbolo). #}
+            {# aria-hidden: il nome della testata per i lettori di schermo e' gia' nell'h1 qui sopra #}
+            <div class="testata" aria-hidden="true">
+                <div class="testata-marchio">
+                    <img src="{% static 'home/images/portico_logo_nopayoff.svg' %}?v=4" alt="" class="testata-logo" width="120" height="65">
+                    <span class="testata-nome">Ombra del Portico</span>
+                </div>
+                {% now "l j F Y" as oggi %}<div class="testata-riga">Notizie di Carpi · {{ oggi|lower }}</div>
+            </div>
+
             <!-- Breadcrumb per categorie -->
             {% if categoria_attiva and categoria_attiva != 'tutti' %}
             <nav aria-label="breadcrumb" itemscope itemtype="https://schema.org/BreadcrumbList" style="margin: 20px 0;">
