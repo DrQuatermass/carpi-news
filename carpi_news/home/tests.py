@@ -30,7 +30,8 @@ from home.models import Articolo, InstagramOptOut, ShortLink, SocialPublicationL
 from home.seo_locations import detect_municipality
 from home.share_links import build_share_url, build_short_share_url
 from home.social_sharing import SocialMediaManager
-from home.universal_news_monitor import SiteConfig, YouTubeAPIScraper, parse_ai_article_json
+from home.rielaborazione_ai import rielabora_articolo
+from home.universal_news_monitor import SiteConfig, UniversalNewsMonitor, YouTubeAPIScraper, parse_ai_article_json
 from home.web_search_tool import WebSearchTool
 from home.views import custom_404
 
@@ -49,6 +50,64 @@ class YouTubeScraperExclusionTests(SimpleTestCase):
         articles = scraper._scrape_from_fallback_ids()
 
         self.assertEqual([article["video_id"] for article in articles], ["keepme"])
+
+
+class TrascrizioniLungheTests(TestCase):
+    URL_VIDEO = "https://www.youtube.com/watch?v=abc-123"
+
+    def _genera(self, url, contenuto):
+        """Genera con Claude finto e ritorna i parametri della chiamata."""
+        config = SiteConfig(name="Test", base_url="https://www.youtube.com/", scraper_type="html",
+                            ai_api_key="x", ai_provider="anthropic", enable_web_search=False)
+        risposta = Mock(stop_reason="end_turn", usage=Mock(input_tokens=1, output_tokens=1))
+        risposta.content = [Mock(type="text", text=json.dumps({
+            "titolo": "Titolo", "titolo_seo": "", "sommario": "S", "contenuto": "<p>Testo</p>",
+            "tags": ["Carpi"], "spunto_social": "",
+        }))]
+        with patch("anthropic.Anthropic") as anthropic:
+            anthropic.return_value.messages.create.return_value = risposta
+            UniversalNewsMonitor(config).generate_ai_article({
+                "title": "Seduta", "url": url, "full_content": contenuto,
+            })
+        return anthropic.return_value.messages.create.call_args.kwargs
+
+    def test_video_arriva_intero_con_le_regole_di_copertura(self):
+        parametri = self._genera(self.URL_VIDEO, "x" * 250000 + "FINE SEDUTA")
+
+        self.assertIn("FINE SEDUTA", parametri["messages"][0]["content"])
+        self.assertIn("COPERTURA DELLA TRASCRIZIONE", parametri["system"])
+        self.assertEqual(parametri["max_tokens"], 16000)
+
+    def test_altre_fonti_restano_al_limite_normale(self):
+        parametri = self._genera("https://example.com/notizia", "x" * 25000 + "FINE")
+
+        self.assertNotIn("FINE", parametri["messages"][0]["content"])
+        self.assertNotIn("COPERTURA DELLA TRASCRIZIONE", parametri["system"])
+        self.assertEqual(parametri["max_tokens"], 8192)
+
+    def _rielabora(self, trascrizione, fonte=URL_VIDEO):
+        articolo = Articolo.objects.create(titolo="Seduta", contenuto="<p>Articolo gia' scritto</p>", fonte=fonte)
+        with patch.object(YouTubeAPIScraper, "get_video_transcript", return_value=trascrizione) as scarica, \
+                patch.object(UniversalNewsMonitor, "generate_ai_article", return_value="ok") as genera:
+            rielabora_articolo(articolo.id)
+        return scarica, genera.call_args.args[0]["full_content"]
+
+    def test_rielaborazione_di_un_video_riparte_dalla_trascrizione(self):
+        scarica, testo = self._rielabora("trascrizione completa")
+
+        scarica.assert_called_once_with("abc-123")
+        self.assertEqual(testo, "trascrizione completa")
+
+    def test_senza_trascrizione_usa_il_testo_salvato(self):
+        _, testo = self._rielabora(None)
+
+        self.assertIn("Articolo gia' scritto", testo)
+
+    def test_altre_fonti_non_scaricano_nulla(self):
+        scarica, testo = self._rielabora("mai", fonte="https://example.com/notizia")
+
+        scarica.assert_not_called()
+        self.assertIn("Articolo gia' scritto", testo)
 
 
 class WebSearchToolPdfTests(SimpleTestCase):

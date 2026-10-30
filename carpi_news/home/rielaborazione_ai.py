@@ -89,6 +89,20 @@ def _site_config(articolo, monitor):
     )
 
 
+def _trascrizione_video(articolo):
+    """La trascrizione completa se la fonte e' un video YouTube: il contenuto salvato, dopo
+    la prima rielaborazione, e' gia' l'articolo e non contiene piu' la seduta. None se non
+    e' un video o se YouTube non la restituisce."""
+    from home.universal_news_monitor import SiteConfig, YouTubeAPIScraper, youtube_video_id
+
+    video_id = youtube_video_id(articolo.fonte)
+    if not video_id:
+        return None
+    config = SiteConfig(name='Rielaborazione trascrizione', base_url='https://www.youtube.com/',
+                        scraper_type='youtube_api', fallback_video_ids=[video_id])
+    return YouTubeAPIScraper(config, {}).get_video_transcript(video_id)
+
+
 def rielabora_articolo(articolo_id, richieste_modifica=None):
     """Rielabora in modo sincrono (1-3 minuti). Ritorna il messaggio della pipeline."""
     from home.models import Articolo
@@ -101,6 +115,12 @@ def rielabora_articolo(articolo_id, richieste_modifica=None):
     testo = re.sub(r'<[^>]+>', ' ', articolo.contenuto or '')
     testo = re.sub(r'[ \t]+', ' ', testo)
     testo = re.sub(r'\n\s*\n+', '\n\n', testo).strip()
+
+    trascrizione = _trascrizione_video(articolo)
+    if trascrizione:
+        testo = trascrizione
+    elif articolo.fonte and 'youtu' in articolo.fonte:
+        logger.warning(f"Articolo {articolo.id}: trascrizione non disponibile, rielaboro il testo salvato")
 
     article_data = {
         'title': articolo.titolo,

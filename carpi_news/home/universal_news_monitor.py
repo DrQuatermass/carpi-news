@@ -46,6 +46,21 @@ Esempio: ["Carpi calcio", "Serie D", "stadio Cabassi"]
 
 
 MAX_SOURCE_CHARS = 20000  # ~6.500 token - margine extra
+# Le sedute di consiglio arrivano a 270.000 caratteri: con il limite normale l'AI si fermava
+# ai primi 30 minuti, prima del dibattito
+MAX_TRANSCRIPT_CHARS = 300000
+MAX_OUTPUT_TOKENS = 8192
+MAX_TRANSCRIPT_OUTPUT_TOKENS = 16000
+
+
+TRANSCRIPT_COVERAGE_RULES = """
+
+COPERTURA DELLA TRASCRIZIONE (la fonte e' la trascrizione automatica di un video, spesso una seduta intera):
+- Leggila fino in fondo e racconta tutta la seduta, non solo la prima parte: illustrazione delle pratiche, interventi dei consiglieri, repliche, dichiarazioni di voto ed esiti delle votazioni.
+- Dai spazio alle posizioni di maggioranza e opposizione e ai punti di contrasto. Se un argomento e' stato discusso a lungo, deve pesare nell'articolo.
+- Dai per approvata una pratica solo se la trascrizione riporta il voto.
+- La trascrizione non indica chi parla e puo' storpiare i nomi: attribuisci un intervento a una persona solo se viene nominata in modo chiaro (per esempio quando le viene data la parola). Altrimenti scrivi "un consigliere" o "una consigliera".
+"""
 
 
 # Guardrail anti-invenzione per fonti brevissime (tweet della Polizia Locale, ecc.).
@@ -102,13 +117,28 @@ REGOLE DI OUTPUT OBBLIGATORIE:
 """
 
 
-def truncate_ai_source_text(content: str, logger, label: str = "Contenuto sorgente") -> str:
-    if isinstance(content, str) and len(content) > MAX_SOURCE_CHARS:
+def youtube_video_id(url: str) -> Optional[str]:
+    """Id del video se l'URL e' un video YouTube, altrimenti None."""
+    match = re.search(r'(?:youtube\.com/watch\?(?:.*&)?v=|youtu\.be/)([\w-]+)', url or '')
+    return match.group(1) if match else None
+
+
+def source_char_limit(article_data: Dict[str, Any]) -> int:
+    return MAX_TRANSCRIPT_CHARS if youtube_video_id(article_data.get('url')) else MAX_SOURCE_CHARS
+
+
+def output_token_limit(article_data: Dict[str, Any]) -> int:
+    return MAX_TRANSCRIPT_OUTPUT_TOKENS if youtube_video_id(article_data.get('url')) else MAX_OUTPUT_TOKENS
+
+
+def truncate_ai_source_text(content: str, logger, label: str = "Contenuto sorgente",
+                            max_chars: int = MAX_SOURCE_CHARS) -> str:
+    if isinstance(content, str) and len(content) > max_chars:
         logger.warning(
             f"{label} troncato: {len(content):,} -> "
-            f"{MAX_SOURCE_CHARS:,} chars per ottimizzazione costi"
+            f"{max_chars:,} chars per ottimizzazione costi"
         )
-        return content[:MAX_SOURCE_CHARS]
+        return content[:max_chars]
     return content
 
 
@@ -126,26 +156,26 @@ def get_message_content_length(content) -> int:
     return 0
 
 
-def limit_conversation_messages(messages: list, logger) -> None:
+def limit_conversation_messages(messages: list, logger, max_chars: int = MAX_SOURCE_CHARS) -> None:
     total_input = sum(get_message_content_length(m.get('content', '')) for m in messages if isinstance(m, dict))
-    if total_input <= MAX_SOURCE_CHARS * 3:
+    if total_input <= max_chars * 3:
         return
 
     logger.warning(
         f"Contesto conversazionale troncato: {total_input:,} -> "
-        f"{MAX_SOURCE_CHARS * 3:,} chars massimo stimato"
+        f"{max_chars * 3:,} chars massimo stimato"
     )
 
     for msg in messages:
         if not isinstance(msg, dict):
             continue
         content = msg.get('content')
-        if isinstance(content, str) and len(content) > MAX_SOURCE_CHARS:
-            msg['content'] = content[:MAX_SOURCE_CHARS]
+        if isinstance(content, str) and len(content) > max_chars:
+            msg['content'] = content[:max_chars]
             break
 
     total_input = sum(get_message_content_length(m.get('content', '')) for m in messages if isinstance(m, dict))
-    if total_input <= MAX_SOURCE_CHARS * 3:
+    if total_input <= max_chars * 3:
         return
 
     for msg in reversed(messages):
@@ -153,8 +183,8 @@ def limit_conversation_messages(messages: list, logger) -> None:
         if not isinstance(content, list):
             continue
         for block in content:
-            if isinstance(block, dict) and isinstance(block.get('content'), str) and len(block['content']) > MAX_SOURCE_CHARS:
-                block['content'] = block['content'][:MAX_SOURCE_CHARS]
+            if isinstance(block, dict) and isinstance(block.get('content'), str) and len(block['content']) > max_chars:
+                block['content'] = block['content'][:max_chars]
                 return
 
 
@@ -3392,6 +3422,9 @@ class UniversalNewsMonitor:
                     """Sei un giornalista esperto. Rielabora questa notizia per il giornale locale.""")
                 system_prompt = base_prompt + date_context + SOURCE_FIDELITY_GUARDRAILS + ARTICLE_OUTPUT_GUARDRAILS + TAGS_INSTRUCTION
 
+            if youtube_video_id(article_data.get('url')):
+                system_prompt += TRANSCRIPT_COVERAGE_RULES
+
             # Costruisci contenuto con eventuali link (MANTENIAMO)
             links_section = ""
             if article_data.get('links_content'):
@@ -3448,7 +3481,7 @@ class UniversalNewsMonitor:
                 }
 
             content = article_data.get('full_content') or article_data.get('content', '')
-            content = truncate_ai_source_text(content, self.logger)
+            content = truncate_ai_source_text(content, self.logger, max_chars=source_char_limit(article_data))
 
             richieste_section = ""
             if (article_data.get('richieste_modifica') or '').strip():
@@ -3468,7 +3501,11 @@ Contenuto principale da rielaborare:
 Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
 {f"OBBLIGATORIO: Devi SEMPRE usare web_search almeno una volta per verificare fatti e approfondire l'articolo. Usa query BREVI (2-4 parole chiave: nomi propri, luogo, tema), non frasi lunghe e senza attaccare l'anno ai nomi. Dopo aver fatto le ricerche, decidi autonomamente se i risultati sono abbastanza rilevanti e specifici da includere come fonti, oppure se è meglio non includere fonti generiche o poco pertinenti." if enable_web_search else "Lavora solo con il contenuto fornito."}"""
 
-            user_content = truncate_ai_source_text(user_content, self.logger, label="Messaggio user generate_article")
+            user_content = truncate_ai_source_text(
+                user_content, self.logger, label="Messaggio user generate_article",
+                # Margine per istruzioni e richieste della redazione in coda al messaggio
+                max_chars=source_char_limit(article_data) + 5000,
+            )
 
             # Tools da includere
             tools = [web_search_tool_def] if web_search_tool_def else []
@@ -3506,7 +3543,7 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
                 # Se tools è vuoto, non passarlo all'API
                 api_params = {
                     "system": system_prompt,
-                    "max_tokens": 8192,  # thinking adattivo incluso nel budget
+                    "max_tokens": output_token_limit(article_data),  # thinking adattivo incluso nel budget
                     "messages": [{"role": "user", "content": user_content}],
                     "model": anthropic_model(self.config.config.get('ai_anthropic_model')),
                     **thinking_params('medium'),
@@ -3898,7 +3935,7 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
                     # Nuova chiamata ad Anthropic
                     api_params_iter = {
                         "system": system_prompt,
-                        "max_tokens": 8192,  # thinking adattivo incluso nel budget
+                        "max_tokens": output_token_limit(article_data),  # thinking adattivo incluso nel budget
                         "messages": conversation,
                         "model": anthropic_model(self.config.config.get('ai_anthropic_model')),
                         **thinking_params('medium'),
@@ -3906,7 +3943,7 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
                     if tools:
                         api_params_iter["tools"] = tools
 
-                    limit_conversation_messages(api_params_iter["messages"], self.logger)
+                    limit_conversation_messages(api_params_iter["messages"], self.logger, source_char_limit(article_data))
                     current_message = client.messages.create(**api_params_iter)
 
                     # Traccia utilizzo API (chiamate successive conversazionali)
@@ -3941,12 +3978,12 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
                 })
                 final_params = {
                     "system": system_prompt,
-                    "max_tokens": 8192,  # thinking adattivo incluso nel budget
+                    "max_tokens": output_token_limit(article_data),  # thinking adattivo incluso nel budget
                     "messages": conversation,
                     "model": anthropic_model(self.config.config.get('ai_anthropic_model')),
                     **thinking_params('medium'),
                 }
-                limit_conversation_messages(final_params["messages"], self.logger)
+                limit_conversation_messages(final_params["messages"], self.logger, source_char_limit(article_data))
                 final_message = client.messages.create(**final_params)
 
                 try:
@@ -4109,11 +4146,11 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
         for iteration in range(max_iterations):
             # max_tokens generoso: DeepSeek V4 è reasoning, serve spazio per ragionamento +
             # stesura articolo, altrimenti l'articolo esce vuoto o troncato
-            params = {"model": model, "max_tokens": 8192, "messages": conversation}
+            params = {"model": model, "max_tokens": output_token_limit(article_data), "messages": conversation}
             if tools:
                 params["tools"] = tools
                 params["tool_choice"] = "auto"
-            limit_conversation_messages(params["messages"], self.logger)
+            limit_conversation_messages(params["messages"], self.logger, source_char_limit(article_data))
             resp = client.chat.completions.create(**params)
             self._track_openrouter_usage('generate_article_openrouter', model, resp)
 
@@ -4164,13 +4201,13 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
             # attivo (migliore sintesi delle fonti).
             params = {
                 "model": model,
-                "max_tokens": 8192,
+                "max_tokens": output_token_limit(article_data),
                 "messages": conversation,
             }
             if tools:
                 params["tools"] = tools
                 params["tool_choice"] = "none"
-            limit_conversation_messages(params["messages"], self.logger)
+            limit_conversation_messages(params["messages"], self.logger, source_char_limit(article_data))
             resp = client.chat.completions.create(**params)
             self._track_openrouter_usage('generate_article_openrouter_final', model, resp)
             text = resp.choices[0].message.content or ''
@@ -4211,7 +4248,7 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
                 links_section += f"Contenuto: {link_content}\n"
 
         content = article_data.get('full_content', '')
-        content = truncate_ai_source_text(content, self.logger)
+        content = truncate_ai_source_text(content, self.logger, max_chars=source_char_limit(article_data))
 
         user_prompt = f"""Titolo originale: {article_data['title']}
 
@@ -4224,14 +4261,17 @@ Rielabora questa notizia seguendo le istruzioni del sistema. Rispondi SOLO con J
         # Chiamata a OpenAI (senza tool use per semplicità).
         # I modelli GPT-5.x accettano solo max_completion_tokens (niente max_tokens/temperature).
         openai_model = getattr(settings, 'OPENAI_FALLBACK_MODEL', 'gpt-5.6-sol')
-        user_prompt = truncate_ai_source_text(user_prompt, self.logger, label="Messaggio user openai_fallback")
+        user_prompt = truncate_ai_source_text(
+            user_prompt, self.logger, label="Messaggio user openai_fallback",
+            max_chars=source_char_limit(article_data) + 5000,
+        )
         response = client.chat.completions.create(
             model=openai_model,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
             ],
-            max_completion_tokens=8192,
+            max_completion_tokens=output_token_limit(article_data),
         )
 
         content = response.choices[0].message.content
