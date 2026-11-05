@@ -4,9 +4,9 @@
 {% load webp_images %}
 {% load banner_tags %}
 
-{% block title %}Ombra del Portico — Notizie di Carpi, Eventi e Attualità{% endblock %}
+{% block title %}{% if comune_attivo %}Notizie da {{ comune_attivo }} — Ombra del Portico{% else %}Ombra del Portico — Notizie di Carpi, Eventi e Attualità{% endif %}{% endblock %}
 
-{% block meta_description %}{% if categoria_attiva == 'Attualità' %}Le ultime notizie di Carpi e dintorni. Cronaca, fatti del giorno e aggiornamenti in tempo reale.{% elif categoria_attiva == 'Cronaca' %}Cronaca locale di Carpi: fatti, incidenti, interventi delle forze dell'ordine e notizie dal territorio.{% elif categoria_attiva == 'Sport' %}Sport a Carpi: risultati, classifiche e notizie su calcio, atletica, karate, rugby, nuoto e tutte le discipline locali.{% elif categoria_attiva == 'Cultura & Eventi' %}Cultura ed eventi a Carpi: mostre, concerti, teatro, sagre e tutto quello che succede in città.{% elif categoria_attiva == 'Politica' %}Politica a Carpi: Comune, Giunta, Consiglio Comunale e decisioni che riguardano i cittadini.{% elif categoria_attiva == 'Rubriche' %}Le rubriche di Ombra del Portico: approfondimenti, opinioni e punti di vista sulla vita di Carpi.{% else %}Notizie di Carpi in tempo reale: cronaca, eventi, sport e cultura carpigiana. Il portale di informazione locale aggiornato ogni giorno con le ultime notizie da Carpi e dintorni.{% endif %}{% endblock %}
+{% block meta_description %}{% if comune_attivo %}Le notizie da {{ comune_attivo }}: cronaca, eventi, sport e politica raccontati da Ombra del Portico, il giornale online di Carpi e dintorni.{% elif categoria_attiva == 'Attualità' %}Le ultime notizie di Carpi e dintorni. Cronaca, fatti del giorno e aggiornamenti in tempo reale.{% elif categoria_attiva == 'Cronaca' %}Cronaca locale di Carpi: fatti, incidenti, interventi delle forze dell'ordine e notizie dal territorio.{% elif categoria_attiva == 'Sport' %}Sport a Carpi: risultati, classifiche e notizie su calcio, atletica, karate, rugby, nuoto e tutte le discipline locali.{% elif categoria_attiva == 'Cultura & Eventi' %}Cultura ed eventi a Carpi: mostre, concerti, teatro, sagre e tutto quello che succede in città.{% elif categoria_attiva == 'Politica' %}Politica a Carpi: Comune, Giunta, Consiglio Comunale e decisioni che riguardano i cittadini.{% elif categoria_attiva == 'Rubriche' %}Le rubriche di Ombra del Portico: approfondimenti, opinioni e punti di vista sulla vita di Carpi.{% else %}Notizie di Carpi in tempo reale: cronaca, eventi, sport e cultura carpigiana. Il portale di informazione locale aggiornato ogni giorno con le ultime notizie da Carpi e dintorni.{% endif %}{% endblock %}
 
 {% comment %}noindex sui filtri categoria via query string (versione non canonica della
    pagina) e sull'hub "Cosa fare oggi", i cui articoli sono tutti in noindex.{% endcomment %}
@@ -453,7 +453,24 @@
             </div>
 
             <!-- Breadcrumb per categorie -->
-            {% if categoria_attiva and categoria_attiva != 'tutti' %}
+            {% if comune_attivo %}
+            <nav aria-label="breadcrumb" itemscope itemtype="https://schema.org/BreadcrumbList" style="margin: 20px 0;">
+                <ol class="breadcrumb-list">
+                    <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+                        <a itemprop="item" href="{% url 'home' %}"><span itemprop="name">Home</span></a>
+                        <meta itemprop="position" content="1" />
+                    </li>
+                    <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">
+                        <a itemprop="item" href="{% url 'mappa' %}"><span itemprop="name">Mappa</span></a>
+                        <meta itemprop="position" content="2" />
+                    </li>
+                    <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem" class="active">
+                        <span itemprop="name">{{ comune_attivo }}</span>
+                        <meta itemprop="position" content="3" />
+                    </li>
+                </ol>
+            </nav>
+            {% elif categoria_attiva and categoria_attiva != 'tutti' %}
             <nav aria-label="breadcrumb" itemscope itemtype="https://schema.org/BreadcrumbList" style="margin: 20px 0;">
                 <ol class="breadcrumb-list">
                     <li itemprop="itemListElement" itemscope itemtype="https://schema.org/ListItem">

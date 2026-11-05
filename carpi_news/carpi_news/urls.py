@@ -21,6 +21,9 @@ urlpatterns = [
     path('caplet/', views.caplet, name='caplet'),
     path('cinema/', views.programmazione_cinema, name='programmazione_cinema'),
     path('eventi/', views.calendario_eventi, name='calendario_eventi'),
+    path('mappa/', views.mappa, name='mappa'),
+    path('mappa/dati/', views.mappa_dati, name='mappa_dati'),
+    path('comune/<slug:comune_slug>/', views.comune_articoli, name='comune_articoli'),
 
     # Link in bio Instagram: lista mobile-first degli articoli condivisi su IG
     path('instagram/', views.link_in_bio, name='link_in_bio'),

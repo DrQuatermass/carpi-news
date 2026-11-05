@@ -450,6 +450,29 @@ def article_created_notification(sender, instance, created, **kwargs):
             logger.error(f"Errore nell'invio notifica per articolo ID {instance.id}: {e}")
 
 
+def _localizza_background(instance):
+    """Localizza l'articolo in un thread: AI e Nominatim chiedono qualche secondo e
+    l'approvazione dall'admin non deve aspettarli. Un luogo inserito a mano non si tocca."""
+    if instance.luogo_origine == 'manuale':
+        return
+    import threading
+
+    def esegui(pk=instance.pk):
+        from django.db import connection
+        try:
+            from .localizzazione import localizza
+            articolo = Articolo.objects.filter(pk=pk).first()
+            if articolo:
+                origine = localizza(articolo)
+                logger.info("Articolo %s localizzato (%s): %s %s", pk, origine, articolo.comune, articolo.luogo_nome)
+        except Exception as e:
+            logger.error("Localizzazione articolo %s fallita: %s", pk, e)
+        finally:
+            connection.close()
+
+    threading.Thread(target=esegui, name=f"Localizza-{instance.pk}", daemon=True).start()
+
+
 @receiver(post_save, sender=Articolo)
 def handle_article_approval(sender, instance, created, **kwargs):
     """
@@ -481,6 +504,9 @@ def handle_article_approval(sender, instance, created, **kwargs):
     # 2. L'articolo è nuovo e già approvato (auto-approvazione)
     # 3. Per pubbliredazionali: condividi SOLO se anche pagato (payment_status='completed')
     if (not was_approved and is_approved) or (created and is_approved):
+        # Luogo (comune, posto, coordinate) appena approvato, anche se programmato per il futuro
+        _localizza_background(instance)
+
         if instance.data_pubblicazione and instance.data_pubblicazione > timezone.now():
             logger.info(
                 "Articolo '%s' approvato ma programmato per il futuro. Pubblicazione rimandata.",

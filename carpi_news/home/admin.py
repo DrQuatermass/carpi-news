@@ -11,6 +11,7 @@ from .models import (
     APIUsage,
     Articolo,
     ChatbotConversation,
+    GeocodeCache,
     InstagramAutoDMLog,
     InstagramOptOut,
     MonitorConfig,
@@ -306,7 +307,36 @@ class ArticoloAdmin(admin.ModelAdmin):
                 ('Rigenerazione AI', {
                     'fields': ('richieste_modifica', 'fonti_web_display', 'rigenera_button')
                 }),
+                ('Luogo', {
+                    'fields': ('comune', 'luogo_nome', 'luogo_indirizzo', ('lat', 'lng'), 'luogo_preciso',
+                               'luogo_origine', 'luogo_aggiornato'),
+                    'description': "Compilato in automatico qualche secondo dopo l'approvazione (comune, "
+                                   "posto e coordinate). Puoi correggerlo: l'origine diventa 'Inserito a mano' "
+                                   "e l'automatismo non lo tocca più. Senza un posto preciso lascia 'Luogo "
+                                   "preciso' spento: l'articolo non va sulla mappa ma resta nella pagina del "
+                                   "comune. Le coordinate si leggono su openstreetmap.org (tasto destro, "
+                                   "'Mostra indirizzo').",
+                }),
             )
+
+    LUOGO_CAMPI = ('comune', 'luogo_nome', 'luogo_indirizzo', 'lat', 'lng', 'luogo_preciso')
+
+    def save_model(self, request, obj, form, change):
+        # Una correzione a mano del luogo non deve essere sovrascritta dalla localizzazione automatica
+        if change and any(c in form.changed_data for c in self.LUOGO_CAMPI) and 'luogo_origine' not in form.changed_data:
+            obj.luogo_origine = 'manuale'
+            obj.luogo_aggiornato = timezone.now()
+            # Cambiati comune, luogo o indirizzo ma non le coordinate: si cercano su OpenStreetMap
+            testo = {'comune', 'luogo_nome', 'luogo_indirizzo'} & set(form.changed_data)
+            if testo and not {'lat', 'lng'} & set(form.changed_data):
+                from .localizzazione import coordinate_da_campi
+                try:
+                    if not coordinate_da_campi(obj):
+                        self.message_user(request, "Luogo: posto non trovato su OpenStreetMap, uso il centro del "
+                                                   "comune. Puoi inserire le coordinate a mano.", level=messages.WARNING)
+                except Exception as e:
+                    self.message_user(request, f"Luogo: coordinate non aggiornate ({e})", level=messages.WARNING)
+        super().save_model(request, obj, form, change)
 
     def get_readonly_fields(self, request, obj=None):
         """Readonly fields dinamici"""
@@ -1519,3 +1549,9 @@ class NewsletterLogAdmin(admin.ModelAdmin):
 
     def has_change_permission(self, request, obj=None):
         return False 
+
+
+@admin.register(GeocodeCache)
+class GeocodeCacheAdmin(admin.ModelAdmin):
+    list_display = ('query', 'lat', 'lng', 'display_name', 'creato')
+    search_fields = ('query', 'display_name')

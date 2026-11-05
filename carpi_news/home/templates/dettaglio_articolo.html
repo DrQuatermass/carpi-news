@@ -39,6 +39,7 @@
   font-style: italic;
 }
 .article-meta .updated { color: #5c605a; }
+.article-meta .article-luogo { color: inherit; text-decoration: underline dotted; text-underline-offset: 3px; }
 /* Sommario in apertura: stesso carattere del testo, in grassetto */
 .article-lead {
   font-family: Arial, Helvetica, sans-serif;
@@ -686,6 +687,9 @@
                 <time datetime="{{ articolo.data_pubblicazione|date:'c' }}">{{ articolo.data_pubblicazione|italian_date }}</time>
                 {% if articolo.data_modifica > articolo.data_pubblicazione %}
                 · <span class="updated">aggiornato <time datetime="{{ articolo.data_modifica|date:'c' }}">{{ articolo.data_modifica|italian_date }}</time></span>
+                {% endif %}
+                {% if articolo.comune %}
+                · <a class="article-luogo" href="{% url 'comune_articoli' articolo.comune|slugify %}" title="Altre notizie da {{ articolo.comune }}">{% if articolo.luogo_nome and articolo.luogo_nome != articolo.comune %}{{ articolo.luogo_nome }}, {% endif %}{{ articolo.comune }}</a>
                 {% endif %}
             </div>
             <br>

@@ -10,12 +10,13 @@ from django.http import Http404, JsonResponse, HttpResponse, HttpResponsePermane
 from django.template import loader
 from django.conf import settings
 from django.utils import timezone
+from django.utils.text import slugify
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.cache import cache_page
 from django.views.decorators.vary import vary_on_headers
 from django.views.decorators.http import require_http_methods, require_POST
 from django.db import models
-from django.db.models import F, FloatField, ExpressionWrapper, Max
+from django.db.models import Count, F, FloatField, ExpressionWrapper, Max
 from datetime import datetime, timedelta
 from .models import Articolo, ArticoloRedirect, ChatbotConversation, NewsletterSubscriber, NewsletterLog
 from .chatbot_service import ChatbotService
@@ -197,6 +198,8 @@ def home(request):
     # Filtro per categoria (opzionale)
     categoria = getattr(request, '_categoria_nome', None) or request.GET.get('categoria', None)
     categoria_slug = getattr(request, '_categoria_slug', None)
+    # Pagina /comune/<slug>/ (comune_articoli): articoli localizzati in quel comune
+    comune = getattr(request, '_comune', None)
 
     # Query base: solo articoli pubblicabili (approvati e, se pubbliredazionali, pagati) e pubblicati (non futuri)
     articoli_query = get_published_articles_query().filter(
@@ -212,9 +215,11 @@ def home(request):
             articoli_query = articoli_query.filter(categoria__in=['Editoriale', "L'Eco del Consiglio"])
         else:
             articoli_query = articoli_query.filter(categoria__iexact=categoria)
+    if comune:
+        articoli_query = articoli_query.filter(comune=comune)
 
     # ARTICOLI SPOTLIGHT: massimo 4 articoli in evidenza (SOLO in homepage senza filtri)
-    if not categoria or categoria == 'tutti':
+    if (not categoria or categoria == 'tutti') and not comune:
         articoli_spotlight = articoli_query.filter(spotlight=True).order_by('-data_pubblicazione')[:4]
         # ARTICOLI NORMALI: escludi i 4 spotlight mostrati, includi eventuali spotlight in eccesso
         spotlight_ids = [a.id for a in articoli_spotlight]
@@ -237,6 +242,8 @@ def home(request):
             None,
         )
     canonical_path = f"/categoria/{categoria_slug}/" if categoria_slug else "/"
+    if comune:
+        canonical_path = f"/comune/{slugify(comune)}/"
     if page_obj.number > 1:
         canonical_url = f"{site_url}{canonical_path}?page={page_obj.number}"
     else:
@@ -377,6 +384,7 @@ def home(request):
         'has_prev': page_obj.has_previous(),
         'has_next': page_obj.has_next(),
         'categoria_attiva': categoria,
+        'comune_attivo': comune,
         'current_year': timezone.now().year,
         'canonical_url': canonical_url,
         'banner_positions': banner_positions,
@@ -450,6 +458,82 @@ def categoria_articoli(request, categoria_slug):
     request._categoria_slug = categoria_slug
     request._categoria_nome = categoria
     return home(request)
+
+
+def _comuni_con_articoli():
+    """{slug: nome} dei comuni che hanno almeno un articolo pubblicato, in cache 1 ora."""
+    comuni = cache.get('comuni_con_articoli')
+    if comuni is None:
+        nomi = get_published_articles_query().exclude(comune='').values_list('comune', flat=True).distinct()
+        comuni = {slugify(n): n for n in nomi}
+        cache.set('comuni_con_articoli', comuni, 3600)
+    return comuni
+
+
+@cache_page(300)
+@vary_on_headers('X-Requested-With')
+def comune_articoli(request, comune_slug):
+    comune = _comuni_con_articoli().get(comune_slug)
+    if not comune:
+        # Comune appena comparso (articolo localizzato dopo l'ultima cache): si ricontrolla
+        cache.delete('comuni_con_articoli')
+        comune = _comuni_con_articoli().get(comune_slug)
+    if not comune:
+        raise Http404("Comune non trovato")
+    request._comune = comune
+    return home(request)
+
+
+# Rubriche senza un luogo proprio: sulla mappa sarebbero tutte puntine sul centro di Carpi
+MAPPA_ESCLUSE = ('Cosa fare oggi', 'Editoriale')
+
+
+def mappa(request):
+    comuni = sorted(_comuni_con_articoli().items(), key=lambda x: (x[1] != 'Carpi', x[1]))
+    return render(request, 'mappa.html', {
+        'categorie': [c for c, _ in Articolo.CATEGORIA_CHOICES if c not in MAPPA_ESCLUSE],
+        'comuni': comuni,
+        'canonical_url': getattr(settings, 'SITE_URL', 'https://ombradelportico.it').rstrip('/') + '/mappa/',
+    })
+
+
+@cache_page(600)
+def mappa_dati(request):
+    """Articoli localizzati degli ultimi N giorni per la mappa (max 365, max 1500 punti).
+
+    Sulla mappa solo quelli con un posto preciso; gli altri starebbero tutti ammucchiati sul
+    centro del comune, quindi si contano per comune e la pagina linka /comune/<slug>/."""
+    try:
+        giorni = max(1, min(int(request.GET.get('giorni', 30)), 365))
+    except ValueError:
+        giorni = 30
+    qs = get_published_articles_query().filter(
+        data_pubblicazione__lte=timezone.now(),
+        data_pubblicazione__gte=timezone.now() - timedelta(days=giorni),
+        lat__isnull=False, lng__isnull=False,
+    ).exclude(categoria__in=MAPPA_ESCLUSE)
+    categoria = request.GET.get('categoria')
+    if categoria:
+        qs = qs.filter(categoria=categoria)
+    senza_luogo = [
+        {'co': r['comune'], 'u': f"/comune/{slugify(r['comune'])}/", 'n': r['n']}
+        for r in qs.filter(luogo_preciso=False).exclude(comune='').values('comune')
+        .annotate(n=Count('id')).order_by('-n', 'comune')
+    ]
+    qs = qs.filter(luogo_preciso=True)
+    punti = [{
+        't': a['titolo'],
+        's': a['slug'],
+        'c': a['categoria'],
+        'd': timezone.localtime(a['data_pubblicazione']).strftime('%d/%m/%Y'),
+        'la': round(a['lat'], 5),
+        'ln': round(a['lng'], 5),
+        'p': a['luogo_preciso'],
+        'l': a['luogo_nome'] or a['comune'],
+        'co': a['comune'],
+    } for a in qs.order_by('-data_pubblicazione').values(
+        'titolo', 'slug', 'categoria', 'data_pubblicazione', 'lat', 'lng', 'luogo_preciso', 'luogo_nome', 'comune')[:1500]]
+    return JsonResponse({'punti': punti, 'senza_luogo': senza_luogo})
 
 @vary_on_headers('Accept-Encoding')
 def dettaglio_articolo(request, slug):

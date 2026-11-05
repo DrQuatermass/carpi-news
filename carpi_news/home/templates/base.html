@@ -141,6 +141,7 @@
 
                 <li><a href="{% url 'calendario_eventi' %}" {% if request.resolver_match.url_name == 'calendario_eventi' %}class="active"{% endif %}>Calendario</a></li>
                 <li><a href="{% url 'programmazione_cinema' %}" {% if request.resolver_match.url_name == 'programmazione_cinema' %}class="active"{% endif %}>Cinema</a></li>
+                <li><a href="{% url 'mappa' %}" {% if request.resolver_match.url_name == 'mappa' %}class="active"{% endif %}>Mappa</a></li>
                 <!-- Dropdown Rubriche -->
                 <li class="dropdown">
                     <a href="#" class="dropdown-toggle" aria-expanded="false" aria-haspopup="true">Rubriche</a>
@@ -176,6 +177,7 @@
                         <li><a href="{% url 'categoria_articoli' 'eco-del-consiglio' %}">L'Eco del consiglio</a></li>
                         <li><a href="{% url 'categoria_articoli' 'editoriale' %}">Editoriale</a></li>
                         <li><a href="/caplet/">Caplet</a></li>
+                        <li><a href="{% url 'mappa' %}">Mappa</a></li>
                         {# Alla homepage si torna col logo: al posto di "Home", in fondo, "Chi siamo" #}
                         <li><a href="{% url 'about' %}" {% if request.resolver_match.url_name == 'about' %}class="active"{% endif %}>Chi siamo</a></li>
                     </ul>
@@ -190,6 +192,9 @@
                 </a>
                 <a href="{% url 'programmazione_cinema' %}" class="subheader-link {% if request.resolver_match.url_name == 'programmazione_cinema' %}active{% endif %}">
                     Cinema
+                </a>
+                <a href="{% url 'mappa' %}" class="subheader-link {% if request.resolver_match.url_name == 'mappa' %}active{% endif %}">
+                    Mappa
                 </a>
             </div>
         </div>

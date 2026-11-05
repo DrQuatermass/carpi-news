@@ -452,6 +452,14 @@ Additional guides available:
 - `YOUTUBE_SETUP_GUIDE.md`: YouTube integration setup
 - `POLISHING_SYSTEM_GUIDE.md`: Content polishing system documentation
 
+## Localizzazione articoli e mappa
+
+- Campi `Articolo`: `comune`, `luogo_nome`, `luogo_indirizzo`, `lat`, `lng`, `luogo_preciso`, `luogo_origine` (`testo` | `ai` | `manuale`), `luogo_aggiornato`. Cache delle coordinate in `GeocodeCache`.
+- `home/localizzazione.py`: Haiku 4.5 legge l'articolo (comune, frazione, posto, indirizzo), coordinate da Nominatim/OpenStreetMap (max 1 richiesta/s, cache); il comune deve comparire nell'indirizzo trovato, altrimenti centro del comune. Fallback senza AI: parole chiave di `seo_locations.py`. Costi in `APIUsage` operation `localizzazione` (~0,2 centesimi ad articolo).
+- Si localizza in un thread all'approvazione (`home/signals.py` → `_localizza_background`). Correzioni a mano nella sezione "Luogo" dell'admin: l'origine diventa `manuale` e l'automatismo non la tocca più; se cambi solo luogo/indirizzo le coordinate si ricercano da sole.
+- Arretrato/recupero: `python manage.py localizza_articoli [--tutti] [--solo-testo] [--rifai] [--limit N] [--dry-run]`.
+- Pagine: `/comune/<slug>/` (riusa `views.home`), `/mappa/` + `/mappa/dati/` (JSON, cache 10 min; sulla mappa solo `luogo_preciso`, gli altri contati per comune). Leaflet 1.9.4 e markercluster 1.5.3 sono in `home/static/home/vendor/` perché la CSP non ammette script esterni.
+
 ## Social sharing & link tracking
 
 Nuovi modelli:

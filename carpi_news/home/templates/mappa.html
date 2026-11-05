@@ -1,0 +1,152 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Mappa delle notizie di Carpi e dintorni — Ombra del Portico{% endblock %}
+{% block meta_description %}Le notizie di Ombra del Portico sulla mappa: cronaca, eventi, sport e politica di Carpi, Soliera, Novi, Campogalliano e dintorni, luogo per luogo.{% endblock %}
+
+{% block extra_css %}
+<link rel="canonical" href="{{ canonical_url }}">
+<link rel="stylesheet" href="{% static 'home/vendor/leaflet/leaflet.css' %}">
+<link rel="stylesheet" href="{% static 'home/vendor/markercluster/MarkerCluster.css' %}">
+<link rel="stylesheet" href="{% static 'home/vendor/markercluster/MarkerCluster.Default.css' %}">
+<style>
+.mappa-pagina { max-width: 1200px; margin: 0 auto; padding: 20px 16px 40px; }
+.mappa-pagina h1 { font-size: 1.8rem; margin: 0 0 6px; }
+.mappa-intro { color: #5c605a; margin: 0 0 16px; }
+.mappa-filtri { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 12px; }
+.mappa-filtri select { font: inherit; padding: 6px 10px; border: 1px solid #cfc8bf; border-radius: 6px; background: #fff; }
+.mappa-conteggio { color: #5c605a; font-size: .9rem; }
+#mappa { height: 68vh; min-height: 420px; border-radius: 8px; border: 1px solid #e4dfd8; z-index: 0; }
+.mappa-legenda { display: flex; flex-wrap: wrap; gap: 14px; margin: 10px 0 0; font-size: .85rem; color: #5c605a; padding: 0; list-style: none; }
+.mappa-legenda span { display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
+.mappa-senza-luogo { margin: 14px 0 0; color: #5c605a; font-size: .95rem; line-height: 1.8; }
+.mappa-senza-luogo a { color: #59242b; }
+.mappa-popup a { color: #59242b; font-weight: 600; text-decoration: none; }
+.mappa-popup .meta { color: #6b6560; font-size: .8rem; margin-top: 4px; }
+.mappa-comuni { margin-top: 28px; }
+.mappa-comuni h2 { font-size: 1.2rem; }
+.mappa-comuni ul { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; padding: 0; }
+.mappa-comuni a { display: inline-block; padding: 5px 12px; border: 1px solid #e4dfd8; border-radius: 16px; color: #59242b; text-decoration: none; }
+.mappa-comuni a:hover { background: #f4efe9; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="mappa-pagina">
+    <h1>La mappa delle notizie</h1>
+    <p class="mappa-intro">Dove succedono i fatti che raccontiamo. I punti raggruppati si aprono avvicinandosi; le notizie che non hanno un luogo preciso sono elencate sotto la mappa, comune per comune.</p>
+
+    <div class="mappa-filtri">
+        <label>Periodo
+            <select id="filtro-giorni">
+                <option value="7">ultima settimana</option>
+                <option value="30" selected>ultimo mese</option>
+                <option value="90">ultimi tre mesi</option>
+                <option value="365">ultimo anno</option>
+            </select>
+        </label>
+        <label>Sezione
+            <select id="filtro-categoria">
+                <option value="">tutte</option>
+                {% for c in categorie %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+            </select>
+        </label>
+        <span class="mappa-conteggio" id="mappa-conteggio" aria-live="polite"></span>
+    </div>
+
+    <div id="mappa" role="region" aria-label="Mappa delle notizie"></div>
+    <ul class="mappa-legenda" id="mappa-legenda"></ul>
+    <p class="mappa-senza-luogo" id="mappa-senza-luogo" hidden></p>
+
+    {% if comuni %}
+    <section class="mappa-comuni">
+        <h2>Notizie per comune</h2>
+        <ul>{% for slug, nome in comuni %}<li><a href="{% url 'comune_articoli' slug %}">{{ nome }}</a></li>{% endfor %}</ul>
+    </section>
+    {% endif %}
+</div>
+
+<script src="{% static 'home/vendor/leaflet/leaflet.js' %}"></script>
+<script src="{% static 'home/vendor/markercluster/leaflet.markercluster.js' %}"></script>
+<script>
+(function () {
+    var COLORI = {
+        'Attualità': '#59242b', 'Cronaca': '#c0392b', 'Cultura & Eventi': '#2e7d6b',
+        'Politica': '#3b5ba5', 'Sport': '#d68910', "L'Eco del Consiglio": '#7d5ba6'
+    };
+    var mappa = L.map('mappa', { scrollWheelZoom: false }).setView([44.7829, 10.8857], 11);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }).addTo(mappa);
+    mappa.on('focus', function () { mappa.scrollWheelZoom.enable(); });
+    // Il riquadro puo' cambiare misura dopo l'avvio (stili e font caricati dopo, rotazione del
+    // telefono): senza ricalcolo Leaflet carica le tile solo per la misura iniziale
+    if (window.ResizeObserver) {
+        new ResizeObserver(function () { mappa.invalidateSize(); }).observe(document.getElementById('mappa'));
+    }
+    window.addEventListener('load', function () { mappa.invalidateSize(); });
+
+    var gruppo = L.markerClusterGroup({ showCoverageOnHover: false, maxClusterRadius: 45 });
+    mappa.addLayer(gruppo);
+
+    var legenda = document.getElementById('mappa-legenda');
+    Object.keys(COLORI).forEach(function (c) {
+        var li = document.createElement('li');
+        var pallino = document.createElement('span');
+        pallino.style.background = COLORI[c];
+        li.appendChild(pallino);
+        li.appendChild(document.createTextNode(c));
+        legenda.appendChild(li);
+    });
+
+    function esc(t) {
+        var d = document.createElement('div');
+        d.textContent = t || '';
+        return d.innerHTML;
+    }
+
+    var conteggio = document.getElementById('mappa-conteggio');
+    var richiesta = 0;
+
+    function carica() {
+        var giorni = document.getElementById('filtro-giorni').value;
+        var categoria = document.getElementById('filtro-categoria').value;
+        var mia = ++richiesta;
+        conteggio.textContent = 'Carico…';
+        fetch('/mappa/dati/?giorni=' + giorni + (categoria ? '&categoria=' + encodeURIComponent(categoria) : ''))
+            .then(function (r) { return r.json(); })
+            .then(function (dati) {
+                if (mia !== richiesta) return;
+                gruppo.clearLayers();
+                var marker = dati.punti.map(function (p) {
+                    var m = L.circleMarker([p.la, p.ln], {
+                        radius: 8, weight: 2, color: '#fff', fillOpacity: .9,
+                        fillColor: COLORI[p.c] || '#59242b'
+                    });
+                    var dove = p.l && p.l !== p.co ? esc(p.l) + ', ' + esc(p.co) : esc(p.co);
+                    m.bindPopup('<div class="mappa-popup"><a href="/articolo/' + encodeURIComponent(p.s) + '/">' +
+                        esc(p.t) + '</a><div class="meta">' + esc(p.d) + ' · ' + esc(p.c) + ' · ' + dove +
+                        '</div></div>');
+                    return m;
+                });
+                gruppo.addLayers(marker);
+                conteggio.textContent = (marker.length === 1 ? '1 notizia' : marker.length + ' notizie') + ' sulla mappa';
+
+                // Notizie senza un posto preciso: link alla pagina del comune
+                var box = document.getElementById('mappa-senza-luogo');
+                var righe = (dati.senza_luogo || []).map(function (r) {
+                    return '<a href="' + encodeURI(r.u) + '">' + esc(r.co) + '</a> (' + r.n + ')';
+                });
+                box.hidden = !righe.length;
+                box.innerHTML = righe.length ? '<strong>Senza un luogo preciso:</strong> ' + righe.join(' · ') : '';
+            })
+            .catch(function () { if (mia === richiesta) conteggio.textContent = 'Mappa non disponibile, riprova più tardi.'; });
+    }
+
+    document.getElementById('filtro-giorni').addEventListener('change', carica);
+    document.getElementById('filtro-categoria').addEventListener('change', carica);
+    carica();
+})();
+</script>
+{% endblock %}

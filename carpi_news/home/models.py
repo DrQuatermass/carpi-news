@@ -101,6 +101,22 @@ class Articolo(models.Model):
     telegram_notified = models.BooleanField(default=False, db_index=True, help_text="Indica se l'articolo è stato notificato su Telegram")
     escludi_newsletter = models.BooleanField(default=False, help_text="Se selezionato, questo articolo non verrà incluso nella newsletter")
 
+    # LUOGO (home/localizzazione.py): comune per il filtro, luogo e coordinate per la mappa
+    LUOGO_ORIGINE_CHOICES = [
+        ('testo', 'Parole chiave (solo comune)'),
+        ('ai', 'Estratto con AI'),
+        ('manuale', 'Inserito a mano'),
+    ]
+    comune = models.CharField(max_length=60, blank=True, db_index=True, help_text="Comune in cui avviene il fatto (es. Carpi, Soliera)")
+    luogo_nome = models.CharField("Luogo", max_length=200, blank=True, help_text="Posto preciso, se c'è (es. Teatro Comunale, frazione di Fossoli)")
+    luogo_indirizzo = models.CharField("Indirizzo", max_length=250, blank=True)
+    lat = models.FloatField(blank=True, null=True)
+    lng = models.FloatField(blank=True, null=True)
+    luogo_preciso = models.BooleanField(default=False, help_text="Coordinate del posto preciso; se falso sono quelle del comune")
+    luogo_origine = models.CharField(max_length=10, choices=LUOGO_ORIGINE_CHOICES, blank=True,
+                                     help_text="Con 'Inserito a mano' la localizzazione automatica non lo tocca più")
+    luogo_aggiornato = models.DateTimeField(blank=True, null=True, db_index=True)
+
     # CAMPI PUBBLIREDAZIONALE
     is_pubbliredazionale = models.BooleanField(default=False, help_text="È un articolo pubbliredazionale", db_index=True)
 
@@ -423,6 +439,17 @@ class Articolo(models.Model):
         from .seo_locations import detect_municipality
 
         location = detect_municipality(self).copy()
+        # Luogo salvato (localizza_articoli o inserito a mano): ha la precedenza sulle parole chiave
+        if self.comune and self.lat is not None and self.lng is not None:
+            from .localizzazione import comune_noto
+            noto = comune_noto(self.comune) or {}
+            location = {
+                "name": self.luogo_nome or self.comune,
+                "addressLocality": self.comune,
+                "cap": noto.get("cap", ""),
+                "lat": f"{self.lat:.4f}",
+                "lng": f"{self.lng:.4f}",
+            }
         location["region"] = "Emilia-Romagna"
         location["country"] = "IT"
         location["geo_position"] = f"{location['lat']};{location['lng']}"
@@ -943,3 +970,20 @@ class NewsletterLog(models.Model):
         ordering = ['-data_invio']
 
 # Create your models here.
+
+
+class GeocodeCache(models.Model):
+    """Risposte di Nominatim (OpenStreetMap) gia' ottenute: i luoghi si ripetono molto
+    (Teatro Comunale, Palazzo dei Pio...) e il servizio chiede al massimo una richiesta al secondo."""
+    query = models.CharField(max_length=255, unique=True)
+    lat = models.FloatField(blank=True, null=True)
+    lng = models.FloatField(blank=True, null=True)
+    display_name = models.CharField(max_length=500, blank=True)
+    creato = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Coordinate in cache'
+        verbose_name_plural = 'Coordinate in cache'
+
+    def __str__(self):
+        return self.query
