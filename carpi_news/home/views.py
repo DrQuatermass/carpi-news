@@ -521,12 +521,15 @@ def mappa_dati(request):
     categoria = request.GET.get('categoria')
     if categoria:
         qs = qs.filter(categoria=categoria)
-    senza_luogo = [
-        {'co': r['comune'], 'u': f"/comune/{slugify(r['comune'])}/", 'n': r['n'],
-         'la': round(r['la'], 5), 'ln': round(r['ln'], 5)}
-        for r in qs.filter(luogo_preciso=False).exclude(comune='').values('comune')
-        .annotate(n=Count('id'), la=Max('lat'), ln=Max('lng')).order_by('-n', 'comune')
-    ]
+    from home.localizzazione import comune_noto
+    senza_luogo = []
+    for r in (qs.filter(luogo_preciso=False).exclude(comune='').values('comune')
+              .annotate(n=Count('id'), la=Max('lat'), ln=Max('lng')).order_by('-n', 'comune')):
+        # Centro del comune: fra i non precisi ci sono anche frazioni (Fossoli...), il Max cadrebbe li'
+        noto = comune_noto(r['comune'])
+        la, ln = (float(noto['lat']), float(noto['lng'])) if noto else (r['la'], r['ln'])
+        senza_luogo.append({'co': r['comune'], 'u': f"/comune/{slugify(r['comune'])}/", 'n': r['n'],
+                            'la': round(la, 5), 'ln': round(ln, 5)})
     qs = qs.filter(luogo_preciso=True)
     punti = [{
         't': a['titolo'],
