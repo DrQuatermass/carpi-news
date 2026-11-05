@@ -17,7 +17,8 @@ logger = logging.getLogger(__name__)
 
 # Immagini che non si possono scaricare o non sono foto della notizia
 DOMINI_ESCLUSI = ('fbsbx.com', 'lookaside', 'instagram.', 'tiktok', 'gstatic.com', 'googleusercontent',
-                  'shutterstock', 'gettyimages', 'istockphoto', 'alamy', 'depositphotos', 'dreamstime', 'adobestock')
+                  'shutterstock', 'gettyimages', 'istockphoto', 'alamy', 'depositphotos', 'dreamstime', 'adobestock',
+                  'vecteezy', 'freepik', '123rf', 'pixabay', 'pexels', 'unsplash')
 LARGHEZZA_MIN = 600
 
 
@@ -35,6 +36,66 @@ def query_per_titolo(titolo):
     if 'carpi' not in q.lower():
         q += ' Carpi'
     return q
+
+
+MODELLO_QUERY = 'claude-haiku-4-5-20251001'
+
+PROMPT_QUERY = """Devo cercare su Google Immagini una foto per questo articolo di un giornale locale di Carpi (Modena).
+
+TITOLO: {titolo}
+TESTO: {testo}
+
+Scrivi due ricerche brevi (2-5 parole ciascuna) che descrivono COSA si vede nella foto giusta:
+1. il soggetto preciso con il luogo, se conta (es. "parrocchetti monaco Carpi", "Teatro Comunale Carpi", "ospedale Ramazzini Carpi");
+2. il soggetto generico, senza luogo (es. "parrocchetto monaco", "sipario teatro", "pronto soccorso ospedale").
+Usa i nomi delle cose, dei posti e degli eventi, non le parole del titolo come "cinque", "tra", "difendere".
+Per un comunicato politico su un tema, cerca il tema (es. "sanità pubblica ospedale"), non il partito.
+Rispondi solo con un array JSON di due stringhe, senza altro testo."""
+
+
+def query_con_ai(titolo, testo='', articolo=None):
+    """Due ricerche brevi scelte da un modello piccolo; [] se la chiamata non va (~0,1 centesimi)."""
+    import json
+    from django.conf import settings
+    if not getattr(settings, 'ANTHROPIC_API_KEY', ''):
+        return []
+    try:
+        import anthropic
+        testo = re.sub(r'\s+', ' ', strip_tags(testo or '')).strip()[:2000]
+        client = anthropic.Anthropic(api_key=settings.ANTHROPIC_API_KEY)
+        r = client.messages.create(model=MODELLO_QUERY, max_tokens=100, messages=[
+            {'role': 'user', 'content': PROMPT_QUERY.format(titolo=strip_tags(titolo or ''), testo=testo)}])
+        try:
+            from home.api_usage_tracker import APIUsageTracker
+            APIUsageTracker.track_anthropic('query_immagine', MODELLO_QUERY, r.usage.input_tokens,
+                                            r.usage.output_tokens, related_article=articolo)
+        except Exception:
+            pass
+        m = re.search(r'\[.*\]', ''.join(getattr(b, 'text', '') for b in r.content), re.DOTALL)
+        query = json.loads(m.group(0)) if m else []
+        return [q.strip() for q in query if isinstance(q, str) and q.strip()][:2]
+    except Exception as e:
+        logger.warning("Query immagine con AI fallita: %s", e)
+        return []
+
+
+def cerca_per_articolo(titolo, testo='', max_risultati=8, articolo=None, operation='cerca_immagine'):
+    """(query usate, candidati): prima le ricerche scelte dall'AI, poi il titolo ripulito come ripiego.
+
+    Con il titolo intero Google Immagini cerca le singole parole ("Cinque pappagalli verdi tra gli
+    alberi della Sanmarinese" dava libri e cataloghi); con il soggetto in poche parole i risultati
+    sono pertinenti."""
+    query = query_con_ai(titolo, testo, articolo) or [query_per_titolo(titolo)]
+    usate, candidati, visti = [], [], set()
+    for q in query:
+        usate.append(q)
+        for c in _cerca(q, max_risultati, articolo, operation):
+            if c['url'] not in visti:
+                visti.add(c['url'])
+                candidati.append(c)
+        if len(candidati) >= max_risultati:
+            break
+    return usate, candidati[:max_risultati]
 
 
 def cerca_immagini(query, max_risultati=8, articolo=None, operation='cerca_immagine'):
@@ -105,9 +166,9 @@ def immagine_raggiungibile(url):
         return False
 
 
-def prima_immagine(query, articolo=None, operation='immagine_email'):
-    """URL della prima immagine utilizzabile, o None."""
-    for c in cerca_immagini(query, articolo=articolo, operation=operation):
+def prima_immagine(titolo, testo='', articolo=None, operation='immagine_email'):
+    """URL della prima immagine utilizzabile per l'articolo, o None."""
+    for c in cerca_per_articolo(titolo, testo, articolo=articolo, operation=operation)[1]:
         if immagine_raggiungibile(c['url']):
             return c['url']
     return None

@@ -549,19 +549,23 @@ class ArticoloAdmin(admin.ModelAdmin):
             '<button type="button" class="button" style="background:#417690;color:#fff;padding:8px 14px;border:none;'
             'border-radius:4px;font-weight:bold;cursor:pointer;" onclick="cercaImmagini{pk}(this)">'
             '🔎 Cerca immagine online</button>'
+            '<input type="text" class="vTextField termini" placeholder="termini scelti in automatico" '
+            'style="margin-left:8px;width:260px;" onkeydown="if(event.keyCode==13){{event.preventDefault();'
+            'cercaImmagini{pk}(this.previousElementSibling);}}">'
             '<span class="esito" style="margin-left:10px;font-size:12px;color:#666;"></span>'
             '<div class="candidati" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;"></div>'
-            '<p style="margin:6px 0 0;font-size:12px;color:#666;">Cerca su Google Immagini col titolo: clicca '
+            '<p style="margin:6px 0 0;font-size:12px;color:#666;">Cerca su Google Immagini con termini scelti '
+            "dall'AI (o scritti nel campo, poi Invio): clicca "
             'una foto per sostituire quella attuale (salvata subito, il resto del form no). Sono foto trovate '
             'in rete: preferisci quelle di siti ufficiali.</p></div>'
             '<script>'
             'function cercaImmagini{pk}(btn){{'
             ' var box=document.getElementById("cerca-img-{pk}"), esito=box.querySelector(".esito"), griglia=box.querySelector(".candidati");'
-            ' var titolo=(document.getElementById("id_titolo")||{{}}).value||"";'
+            ' var termini=box.querySelector(".termini").value.trim();'
             ' esito.textContent="Ricerca in corso..."; griglia.innerHTML=""; btn.disabled=true;'
-            ' fetch("/admin/home/articolo/{pk}/cerca_immagini/?q="+encodeURIComponent(titolo),{{credentials:"same-origin"}})'
+            ' fetch("/admin/home/articolo/{pk}/cerca_immagini/?q="+encodeURIComponent(termini),{{credentials:"same-origin"}})'
             '  .then(function(r){{return r.json();}}).then(function(d){{'
-            '   btn.disabled=false; var c=d.candidati||[];'
+            '   btn.disabled=false; var c=d.candidati||[]; if(d.query_campo) box.querySelector(".termini").value=d.query_campo;'
             '   esito.textContent=c.length? c.length+" immagini trovate per: "+d.query : (d.errore||"Nessuna immagine trovata per: "+d.query);'
             '   c.forEach(function(x){{'
             '    var a=document.createElement("div"); a.style.cssText="width:180px;cursor:pointer;border:2px solid #ddd;border-radius:4px;padding:4px;font-size:11px;";'
@@ -592,13 +596,21 @@ class ArticoloAdmin(admin.ModelAdmin):
 
     def cerca_immagini(self, request, articolo_id):
         """JSON con le immagini trovate su Google per il titolo (o la query ?q=)."""
-        from home.immagini_online import cerca_immagini, query_per_titolo
+        from home.immagini_online import cerca_immagini, cerca_per_articolo
         articolo = Articolo.objects.filter(pk=articolo_id).first()
         if not articolo:
             return JsonResponse({'candidati': [], 'errore': 'Articolo non trovato'}, status=404)
-        query = query_per_titolo(request.GET.get('q') or articolo.titolo)
-        candidati = cerca_immagini(query, max_risultati=8, articolo=articolo, operation='cerca_immagine_admin')
-        return JsonResponse({'query': query, 'candidati': candidati,
+        manuale = (request.GET.get('q') or '').strip()
+        if manuale:
+            # Termini scritti a mano nel campo accanto al tasto: si cercano cosi' come sono
+            usate = [manuale]
+            candidati = cerca_immagini(manuale, max_risultati=8, articolo=articolo, operation='cerca_immagine_admin')
+        else:
+            # Termini scelti dall'AI dal titolo e dal testo (il titolo intero da' risultati a caso)
+            usate, candidati = cerca_per_articolo(articolo.titolo, articolo.sommario + ' ' + articolo.contenuto,
+                                                  articolo=articolo, operation='cerca_immagine_admin')
+        query = ' / '.join(usate)
+        return JsonResponse({'query': query, 'query_campo': usate[0] if usate else '', 'candidati': candidati,
                              'errore': '' if candidati else 'Nessuna immagine utilizzabile trovata'})
 
     def usa_immagine(self, request, articolo_id):

@@ -2407,8 +2407,8 @@ class EmailScraper(BaseScraper):
             if (not attached_image and (content_type != 'twitter' or not image_url)
                     and self.config.config.get('cerca_immagine_online', True)):
                 try:
-                    from home.immagini_online import prima_immagine, query_per_titolo
-                    trovata = prima_immagine(query_per_titolo(subject))
+                    from home.immagini_online import prima_immagine
+                    trovata = prima_immagine(subject, content)
                     if trovata:
                         image_url = trovata
                         self.logger.info(f"Immagine trovata in rete per l'email: {trovata}")
