@@ -24,6 +24,7 @@ from PIL import Image
 
 from home.models import Articolo, MonitorConfig
 from home.anthropic_params import anthropic_model, thinking_params
+from home.prompt_redazione import NOTE_FONTE, PROMPT_BASE
 
 # Import platform-specific locking
 if platform.system() == 'Windows':
@@ -3412,15 +3413,15 @@ class UniversalNewsMonitor:
             )
             self.logger.warning(f"[DEBUG] date_context creato: {today_date}")
 
+            # Prompt comune della redazione + nota del monitor sulla sua fonte (home/prompt_redazione.py)
             if content_type == 'twitter':
-                base_prompt = self.config.config.get('ai_twitter_prompt',
-                    self.config.config.get('ai_system_prompt',
-                    """Sei un giornalista esperto. Rielabora questa notizia per il giornale locale."""))
-                system_prompt = base_prompt + date_context + TWITTER_FIDELITY_GUARDRAILS + SOURCE_FIDELITY_GUARDRAILS + ARTICLE_OUTPUT_GUARDRAILS + TAGS_INSTRUCTION
+                base_prompt = (self.config.config.get('ai_twitter_prompt')
+                               or self.config.config.get('ai_system_prompt')
+                               or NOTE_FONTE['comunicato'])
+                system_prompt = PROMPT_BASE + "\n" + base_prompt + date_context + TWITTER_FIDELITY_GUARDRAILS + SOURCE_FIDELITY_GUARDRAILS + ARTICLE_OUTPUT_GUARDRAILS + TAGS_INSTRUCTION
             else:
-                base_prompt = self.config.config.get('ai_system_prompt',
-                    """Sei un giornalista esperto. Rielabora questa notizia per il giornale locale.""")
-                system_prompt = base_prompt + date_context + SOURCE_FIDELITY_GUARDRAILS + ARTICLE_OUTPUT_GUARDRAILS + TAGS_INSTRUCTION
+                base_prompt = self.config.config.get('ai_system_prompt') or NOTE_FONTE['testata']
+                system_prompt = PROMPT_BASE + "\n" + base_prompt + date_context + SOURCE_FIDELITY_GUARDRAILS + ARTICLE_OUTPUT_GUARDRAILS + TAGS_INSTRUCTION
 
             if youtube_video_id(article_data.get('url')):
                 system_prompt += TRANSCRIPT_COVERAGE_RULES

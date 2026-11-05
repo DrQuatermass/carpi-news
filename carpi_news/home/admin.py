@@ -582,7 +582,11 @@ class MonitorConfigAdmin(admin.ModelAdmin):
         ('Configurazione AI', {
             'fields': ('use_ai_generation', 'enable_web_search', 'ai_system_prompt'),
             'description': 'Con "Usa generazione AI" spento il monitor non rielabora in automatico: salva la notizia grezza '
-                           '(non approvabile) e usa queste regole solo quando premi "Rielabora con AI" accanto ad Approvato.',
+                           '(non approvabile) e usa queste regole solo quando premi "Rielabora con AI" accanto ad Approvato. '
+                           'Il prompt comune della redazione (lettore, stile, lunghezza, chiusura) e\' nel codice, in '
+                           'home/prompt_redazione.py, e viene messo prima di questo campo: qui basta una nota breve sulla '
+                           'fonte (che tipo di materiale e\' e cosa conta). Niente istruzioni di formato: le regole di '
+                           'output le aggiunge il codice.',
         }),
         ('Configurazioni Specifiche (JSON)', {
             'fields': ('config_help', 'config_data'),

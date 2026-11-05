@@ -103,7 +103,7 @@ Scrivi un editoriale di circa 500-800 parole che:
 - Offra una riflessione intelligente e molto ironica sui fatti
 - Colleghi gli eventi in una narrazione coerente
 - Evidenzi l'impatto sulla comunità carpigiana
-- Concluda con una considerazione sulla della città
+- Chiuda su un fatto o un'immagine concreta delle notizie di ieri, non su una morale generale sulla città
 
 IMPORTANTE: Concentrati sui {conteggio_totale} articoli forniti, che sono già quelli con più interesse da parte dei lettori.
 
@@ -129,7 +129,7 @@ IMPORTANTE:
 ESEMPIO DI FORMATO RICHIESTO CON LINK:
 <p><strong>Solidarietà cittadina:</strong> Il <a href="/articolo/titolo-solidarieta-del-sindaco-righi-a-estefani-yan-dopo-gli-insulti-razzisti/">gesto del sindaco verso Estefani Yan</a> dimostra i valori della nostra comunità.</p>
 <p>Mentre si discute di <a href="/articolo/zanzara-tigre-nuovo-intervento-di-disinfestazione-nel-centro-sud-della-citta/">emergenza zanzare</a>, la città guarda anche al mondo con la <a href="/articolo/carpi-si-unisce-alla-flotilla-della-pace-giovedi-il-presidio-per-gaza/">partecipazione alla Flotilla per Gaza</a>.</p>
-<p><strong>Conclusione:</strong> Riflessioni finali sulla città.</p>"""
+(Nell'esempio le etichette in grassetto sono facoltative e servono solo a mostrare il markup: non scrivere mai etichette come "Conclusione:", "Introduzione:" o "In sintesi:" nel testo, e chiudi con una frase che nasce dai fatti di ieri, non con una morale generica.)"""
 
     logging.info(f"Lunghezza prompt completo: {len(prompt_editoriale)} caratteri")
     

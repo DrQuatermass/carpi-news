@@ -21,10 +21,11 @@ from django.db import close_old_connections
 
 logger = logging.getLogger(__name__)
 
-PROMPT_DEFAULT = (
-    "Sei un giornalista esperto di Ombra del Portico, testata locale di Carpi. "
-    "Rielabora questa notizia per il giornale locale: mantieni tutti i fatti, non inventare nulla."
-)
+# Nota sulla fonte quando non c'e' un monitor d'origine (il prompt comune lo aggiunge
+# generate_ai_article, vedi home/prompt_redazione.py)
+from home.prompt_redazione import NOTE_FONTE  # noqa: E402
+
+PROMPT_DEFAULT = NOTE_FONTE['testata']
 
 CACHE_KEY = 'rielaborazione_in_corso_{}'
 

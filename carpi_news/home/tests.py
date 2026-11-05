@@ -85,6 +85,19 @@ class TrascrizioniLungheTests(TestCase):
         self.assertNotIn("COPERTURA DELLA TRASCRIZIONE", parametri["system"])
         self.assertEqual(parametri["max_tokens"], 8192)
 
+    def test_prompt_comune_prima_della_nota_del_monitor(self):
+        from home.prompt_redazione import NOTE_FONTE, PROMPT_BASE
+
+        parametri = self._genera("https://example.com/notizia", "testo")
+        system = parametri["system"]
+
+        # Senza ai_system_prompt: prompt comune + nota "altra testata" + regole del codice
+        self.assertTrue(system.startswith(PROMPT_BASE))
+        self.assertIn(NOTE_FONTE['testata'].strip(), system)
+        self.assertLess(system.index(PROMPT_BASE), system.index("FEDELTA' ALLA FONTE"))
+        self.assertIn("REGOLE DI OUTPUT OBBLIGATORIE", system)
+        self.assertNotIn("giudizio pragmatico", system)
+
     def _rielabora(self, trascrizione, fonte=URL_VIDEO):
         articolo = Articolo.objects.create(titolo="Seduta", contenuto="<p>Articolo gia' scritto</p>", fonte=fonte)
         with patch.object(YouTubeAPIScraper, "get_video_transcript", return_value=trascrizione) as scarica, \
