@@ -29,120 +29,114 @@ def setup_logging():
     """Configura il logging per l'editoriale"""
     return setup_centralized_logger('editoriale_quotidiano', 'INFO')
 
+MESI = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto',
+        'settembre', 'ottobre', 'novembre', 'dicembre']
+GIORNI = ['lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato', 'domenica']
+
+# Selezione delle fonti: finestra di 48 ore (dal 28/9/2026 si approvano pochi pezzi al giorno e
+# con la sola giornata di ieri spesso c'erano 1-2 articoli e nessuna scelta), punteggio per
+# visite all'ora (un pezzo uscito alle 18 non parte svantaggiato), esclusi gli articoli gia'
+# commentati negli editoriali pubblicati degli ultimi 7 giorni. Con meno di MIN_CANDIDATI
+# articoli l'editoriale salta il giorno invece di gonfiare una sola notizia.
+FINESTRA_ORE = 48
+MAX_CANDIDATI = 6
+MIN_CANDIDATI = 2
+CATEGORIE_ESCLUSE = ['Editoriale', 'Cosa fare oggi', 'Cultura & Eventi']
+
+
+def data_italiana(d):
+    return f"{GIORNI[d.weekday()]} {d.day} {MESI[d.month - 1]} {d.year}"
+
+
+def _slug_gia_commentati(giorni=7):
+    import re
+    slug = set()
+    for testo in Articolo.objects.filter(
+            categoria='Editoriale', approvato=True,
+            data_pubblicazione__gte=timezone.now() - timedelta(days=giorni)).values_list('contenuto', flat=True):
+        slug.update(re.findall(r'href="/articolo/([^/"]+)/', testo or ''))
+    return slug
+
+
 def raccoglie_articoli_ieri():
-    """Raccoglie i 4 articoli più visti del giorno precedente, escludendo Cultura & Eventi, Editoriali e Pubbliredazionali"""
-    ieri = timezone.now().date() - timedelta(days=1)
-    inizio_ieri = timezone.make_aware(datetime.combine(ieri, datetime.min.time()))
-    fine_ieri = timezone.make_aware(datetime.combine(ieri, datetime.max.time()))
+    """Fino a MAX_CANDIDATI articoli delle ultime FINESTRA_ORE ore, ordinati per visite all'ora.
 
-    articoli = Articolo.objects.filter(
+    Esclusi rubriche, eventi, pubbliredazionali e articoli gia' commentati di recente.
+    Ritorna una lista, vuota se il materiale non basta per un editoriale."""
+    adesso = timezone.now()
+    qs = Articolo.objects.filter(
         approvato=True,
-        data_pubblicazione__range=(inizio_ieri, fine_ieri),
-        is_pubbliredazionale=False  # Esclude i pubbliredazionali
-    ).exclude(
-        categoria__in=['Editoriale', 'Cultura & Eventi']  # Esclude editoriali precedenti ed eventi
-    ).order_by('-views')[:4]  # Ordina per visualizzazioni decrescenti e prende i primi 4
+        is_pubbliredazionale=False,
+        data_pubblicazione__range=(adesso - timedelta(hours=FINESTRA_ORE), adesso),
+    ).exclude(categoria__in=CATEGORIE_ESCLUSE)
+    gia_visti = _slug_gia_commentati()
+    candidati = [a for a in qs if a.slug not in gia_visti]
 
-    return articoli
+    def visite_all_ora(a):
+        ore = max((adesso - a.data_pubblicazione).total_seconds() / 3600, 6)
+        return a.views / ore
+
+    candidati.sort(key=visite_all_ora, reverse=True)
+    return candidati[:MAX_CANDIDATI] if len(candidati) >= MIN_CANDIDATI else []
+
 
 def raggruppa_per_categoria(articoli):
     """Raggruppa gli articoli per categoria"""
     categorie = {}
     for articolo in articoli:
-        categoria = articolo.categoria or 'Generale'
-        if categoria not in categorie:
-            categorie[categoria] = []
-        categorie[categoria].append(articolo)
-    
+        categorie.setdefault(articolo.categoria or 'Generale', []).append(articolo)
     return categorie
 
+
 def genera_editoriale_ai(categorie, data_ieri):
-    """Genera l'editoriale usando Claude AI"""
-    
-    print("DEBUG: Inizio generazione editoriale AI")
+    """Genera l'editoriale con Claude. Ritorna (titolo, contenuto, sommario) o (None, None, None)."""
+    import re
+    from home.universal_news_monitor import parse_ai_article_json
+
     logging.info("Inizio generazione editoriale AI")
-    
-    # Prepara il contenuto per l'AI
-    contenuto_articoli = []
-    conteggio_totale = 0
-    
-    for categoria, articoli in categorie.items():
-        # Fix encoding issues
-        categoria_clean = categoria.replace('�', 'à').replace('�', 'è').replace('�', 'ì').replace('�', 'ò').replace('�', 'ù')
-        
-        # Ordina gli articoli per numero di views (decrescente) per dare peso agli articoli più visti
-        articoli_ordinati = sorted(articoli, key=lambda x: x.views, reverse=True)
-        
-        contenuto_articoli.append(f"\n## {categoria_clean.upper()} ({len(articoli_ordinati)} articoli)")
-        for articolo in articoli_ordinati:
-            titolo_clean = articolo.titolo.replace('�', 'à').replace('�', 'è').replace('�', 'ì').replace('�', 'ò').replace('�', 'ù')
-            sommario_clean = articolo.contenuto.replace('�', 'à').replace('�', 'è').replace('�', 'ì').replace('�', 'ò').replace('�', 'ù')
-            # Aggiungi URL dell'articolo per permettere i link
-            article_url = f"/articolo/{articolo.slug}/"
-            # Includi il numero di views nel prompt per dare peso agli articoli
-            views_info = f" ({articolo.views} visualizzazioni)"
-            contenuto_articoli.append(f"- **{titolo_clean}**{views_info} (URL: {article_url})")
-            contenuto_articoli.append(f"  {sommario_clean}...\n")
-            conteggio_totale += 1
-    
-    if conteggio_totale == 0:
-        return None, None
-    
-    # Prompt per l'AI
-    logging.info(f"Lunghezza contenuto articoli: {len(''.join(contenuto_articoli))} caratteri")
-    prompt_editoriale = f"""Sei Umberto Eco che scrive l'editoriale quotidiano per "Ombra del Portico".
+    articoli = [a for lista in categorie.values() for a in lista]
+    if not articoli:
+        return None, None, None
 
-Oggi è {timezone.now().strftime('%d %B %Y')} e devi scrivere l'editoriale che riassume e commenti le notizie di ieri ({data_ieri.strftime('%d %B %Y')}) a Carpi.
+    blocchi = []
+    for a in articoli:
+        testo = re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', ' ', a.contenuto or '')).strip()
+        blocchi.append(f"- {a.titolo} [{a.categoria}, {a.views} visualizzazioni] (URL: /articolo/{a.slug}/)\n  {testo}\n")
 
-ARTICOLI PIÙ VISTI DI IERI (massimo 4 articoli selezionati per numero di visualizzazioni, esclusi Cultura & Eventi):
-{"".join(contenuto_articoli)}
+    prompt_editoriale = f"""Scrivi l'editoriale quotidiano di "Ombra del Portico", giornale online di Carpi. Lo firma la redazione: una voce colta, ironica quando serve, che conosce la città e chi la abita. Non imitare nessuno scrittore o giornalista famoso.
 
+Oggi è {data_italiana(timezone.localdate())}. Commenti le notizie delle ultime ore a Carpi.
+
+ARTICOLI PIÙ LETTI (ultimi due giorni, dal più letto; esclusi eventi e rubriche):
+{"".join(blocchi)}
 COMPITO:
-Scrivi un editoriale di circa 500-800 parole che:
-- Identifichi i temi principali emersi ieri a Carpi
-- Offra una riflessione intelligente e molto ironica sui fatti
-- Colleghi gli eventi in una narrazione coerente
-- Evidenzi l'impatto sulla comunità carpigiana
-- Chiuda su un fatto o un'immagine concreta delle notizie di ieri, non su una morale generale sulla città
+Scrivi un commento di 400-700 parole.
+- Non è un riassunto. Scegli una notizia, al massimo due se hanno un legame reale, che ha davvero qualcosa da dire, e costruisci il pezzo intorno a quella. Le altre restano fuori.
+- Parti da un fatto concreto, non da una riflessione generale.
+- L'opinione deve poggiare su fatti presenti negli articoli. Puoi dire che qualcosa non torna, ma spiega perché. Niente rilievi formali sui comunicati (nomi, firme, cariche, refusi) se non cambiano la sostanza.
+- Ironia sul potere, sulla burocrazia e sulle contraddizioni; mai su vittime, malati o persone in difficoltà.
+- Chiudi su un fatto, una domanda aperta o un'immagine concreta, non su una morale generale sulla città.
 
-IMPORTANTE: Concentrati sui {conteggio_totale} articoli forniti, che sono già quelli con più interesse da parte dei lettori.
+EVITA (sono già comparse troppe volte negli editoriali precedenti):
+- aperture come "Ci sono giornate in cui...", "Esiste una semiotica...", "Ieri Carpi ci ha raccontato...", "Se un marziano..."
+- raccordi come "quattro storie", "un'unica grammatica", "stessa grammatica", "una sola morale", "il filo rosso", "il tema del giorno"
+- riferimenti a semiotica e semiologi
+- etichette nel testo come "Conclusione:", "La morale" o "In sintesi:"
 
-STILE:
+STILE: linguaggio colto ma comprensibile, frasi di lunghezza varia, niente aggettivi enfatici. Grassetto (<strong>) con parsimonia.
 
-- Uso dell'ironia sottile quando appropriato  
-- Linguaggio colto ma comprensibile
-- Prospettiva da osservatore attento della città
+COLLEGAMENTI: quando citi un fatto di uno degli articoli, metti un link <a href="URL">testo</a> sulle parole giuste, usando gli URL forniti. Non inventare fatti che non sono negli articoli.
 
-FORMATO:
-- Un titolo accattivante (max 80 caratteri)
-- Testo dell'editoriale ben strutturato in HTML
-- Usa **grassetto** per concetti chiave (che diventeranno <strong>)
-- Paragrafi racchiusi in tag <p>
-- Separa i paragrafi normalmente (non doppia riga)
-- COLLEGAMENTI: Quando citi un avvenimento descritto negli articoli, crea un link usando <a href="URL">testo</a> nella parte di testo corretta
+RISPOSTA: solo un oggetto JSON valido, senza testo fuori e senza blocchi ```, con questi campi:
+- "titolo": titolo dell'editoriale, testo semplice, massimo 80 caratteri, in italiano corretto;
+- "sommario": una o due frasi (massimo 250 caratteri), testo semplice, che dicono di cosa parla e qual è la tesi: finisce nei post social sotto il titolo;
+- "contenuto": il testo in HTML, paragrafi in <p>, senza titolo e senza <h1>."""
 
-IMPORTANTE: 
-- Non inventare fatti non presenti negli articoli forniti
-- Usa gli URL forniti per creare collegamenti ipertestuali agli articoli citati
-- I link devono essere pertinenti e arricchire la lettura
-
-ESEMPIO DI FORMATO RICHIESTO CON LINK:
-<p><strong>Solidarietà cittadina:</strong> Il <a href="/articolo/titolo-solidarieta-del-sindaco-righi-a-estefani-yan-dopo-gli-insulti-razzisti/">gesto del sindaco verso Estefani Yan</a> dimostra i valori della nostra comunità.</p>
-<p>Mentre si discute di <a href="/articolo/zanzara-tigre-nuovo-intervento-di-disinfestazione-nel-centro-sud-della-citta/">emergenza zanzare</a>, la città guarda anche al mondo con la <a href="/articolo/carpi-si-unisce-alla-flotilla-della-pace-giovedi-il-presidio-per-gaza/">partecipazione alla Flotilla per Gaza</a>.</p>
-(Nell'esempio le etichette in grassetto sono facoltative e servono solo a mostrare il markup: non scrivere mai etichette come "Conclusione:", "Introduzione:" o "In sintesi:" nel testo, e chiudi con una frase che nasce dai fatti di ieri, non con una morale generica.)"""
-
-    logging.info(f"Lunghezza prompt completo: {len(prompt_editoriale)} caratteri")
-    
-    # Debug: save prompt to file for inspection
-    with open('debug_prompt.txt', 'w', encoding='utf-8') as f:
-        f.write(prompt_editoriale)
-    logging.info("Prompt salvato in debug_prompt.txt")
-    
     try:
         from django.conf import settings
         if not settings.ANTHROPIC_API_KEY:
             logging.error("ANTHROPIC_API_KEY non configurata!")
-            return None, None
+            return None, None, None
 
         # Modello, ricerca web e tracking costi: home/rubriche_ai.py
         esito = genera_con_ricerca(prompt_editoriale, operation='editoriale_quotidiano')
@@ -150,43 +144,35 @@ ESEMPIO DI FORMATO RICHIESTO CON LINK:
         ULTIMA_GENERAZIONE['modello'] = esito['modello']
         logging.info("Editoriale generato con %s, %d ricerche web" % (esito['modello'], esito['ricerche']))
 
-        contenuto_completo = esito['testo']
-        
-        # Estrai titolo e contenuto
-        linee = contenuto_completo.split('\n')
-        titolo = linee[0].replace('#', '').replace('*', '').strip()
-        contenuto = '\n'.join(linee[1:]).strip()
-        
-        # Applica content polisher per uniformare il layout
         polisher = ContentPolisher()
-        
-        # Pulisci il titolo (senza HTML)
-        titolo = polisher.clean_title_plain(titolo)
-        
-        # Converti il contenuto in formato uniforme (markdown -> HTML)
-        contenuto_pulito = polisher.clean_content(contenuto)
-        
-        # Limita titolo
+        parsed = parse_ai_article_json(esito['testo'])
+        if parsed:
+            titolo = parsed.get('titolo', '')
+            contenuto = parsed.get('contenuto', '')
+            sommario = polisher.clean_content_plain(parsed.get('sommario', ''))[:300]
+        else:
+            # Risposta non JSON: titolo sulla prima riga, come in passato
+            linee = esito['testo'].split('\n')
+            titolo = linee[0].replace('#', '').replace('*', '')
+            contenuto = '\n'.join(linee[1:])
+            sommario = ''
+
+        titolo = polisher.clean_title_plain(titolo.strip())
         if len(titolo) > 200:
             titolo = titolo[:197] + "..."
-            
-        return titolo, contenuto_pulito
-        
-    except Exception as e:
-        print(f"DEBUG: Errore nella generazione AI dell'editoriale: {e}")
-        print(f"DEBUG: Tipo errore: {type(e).__name__}")
-        import traceback
-        print(f"DEBUG: Traceback completo: {traceback.format_exc()}")
-        logging.error(f"Errore nella generazione AI dell'editoriale: {e}")
-        logging.error(f"Tipo errore: {type(e).__name__}")
-        logging.error(f"Traceback completo: {traceback.format_exc()}")
-        return None, None
+        return titolo, polisher.clean_content(contenuto.strip()), sommario
 
-def salva_editoriale(titolo, contenuto, data_ieri, numero_articoli):
-    """Salva l'editoriale nel database"""
-    
-    # Crea sommario
-    
+    except Exception as e:
+        import traceback
+        logging.error(f"Errore nella generazione AI dell'editoriale: {e}")
+        logging.error(f"Traceback completo: {traceback.format_exc()}")
+        return None, None, None
+
+
+def salva_editoriale(titolo, contenuto, data_ieri, numero_articoli, sommario=''):
+    """Salva l'editoriale nel database (da approvare). Il sommario viene dall'AI; se manca,
+    l'inizio del testo."""
+
     # Crea slug unico
     data_str = timezone.now().strftime('%Y-%m-%d')
     slug_base = f"editoriale-{data_str}"
@@ -197,11 +183,11 @@ def salva_editoriale(titolo, contenuto, data_ieri, numero_articoli):
         slug = f"{slug_base}-{counter}"
         counter += 1
     
-    # Crea sommario pulito senza tag HTML
-    import re
-    sommario_clean = re.sub(r'<[^>]+>', '', contenuto)  # Rimuovi tag HTML
-    sommario_clean = re.sub(r'\s+', ' ', sommario_clean)  # Normalizza spazi
-    sommario = sommario_clean[:200].strip() + '...' if len(sommario_clean) > 200 else sommario_clean.strip()
+    if not sommario:
+        import re
+        sommario_clean = re.sub(r'<[^>]+>', '', contenuto)  # Rimuovi tag HTML
+        sommario_clean = re.sub(r'\s+', ' ', sommario_clean)  # Normalizza spazi
+        sommario = sommario_clean[:200].strip() + '...' if len(sommario_clean) > 200 else sommario_clean.strip()
     
     # Salva l'editoriale
     editoriale = Articolo.objects.create(
@@ -267,14 +253,14 @@ def main():
             logger.info("  Skip generazione per evitare duplicati")
             return 0
 
-        # 1. Raccogli articoli di ieri
+        # 1. Raccogli gli articoli candidati (ultime 48 ore, vedi raccoglie_articoli_ieri)
         articoli = raccoglie_articoli_ieri()
-        if not articoli.exists():
-            logger.info("Nessun articolo trovato per ieri, skip editoriale")
+        if not articoli:
+            logger.info(f"Meno di {MIN_CANDIDATI} articoli nuovi nelle ultime {FINESTRA_ORE} ore, skip editoriale")
             return
 
         data_ieri = (timezone.now().date() - timedelta(days=1))
-        logger.info(f"Trovati {articoli.count()} articoli del {data_ieri.strftime('%d/%m/%Y')}")
+        logger.info(f"Candidati: {len(articoli)} articoli - " + "; ".join(a.titolo[:50] for a in articoli))
         
         # 2. Raggruppa per categoria
         categorie = raggruppa_per_categoria(articoli)
@@ -282,7 +268,7 @@ def main():
         
         # 3. Genera editoriale
         logger.info("Generazione editoriale con AI...")
-        titolo, contenuto = genera_editoriale_ai(categorie, data_ieri)
+        titolo, contenuto, sommario = genera_editoriale_ai(categorie, data_ieri)
         
         if not titolo or not contenuto:
             logger.error("Impossibile generare editoriale")
@@ -291,7 +277,7 @@ def main():
         logger.info(f"Editoriale generato: '{titolo}' ({len(contenuto)} caratteri)")
         
         # 4. Salva nel database
-        editoriale = salva_editoriale(titolo, contenuto, data_ieri, articoli.count())
+        editoriale = salva_editoriale(titolo, contenuto, data_ieri, len(articoli), sommario)
         logger.info(f"Editoriale salvato con ID {editoriale.id} e slug '{editoriale.slug}'")
         
         # 5. Report finale
@@ -299,11 +285,11 @@ def main():
         print("EDITORIALE QUOTIDIANO GENERATO")
         print("="*60)
         print(f"Data: {timezone.now().strftime('%d %B %Y alle %H:%M')}")
-        print(f"Articoli analizzati: {articoli.count()}")
+        print(f"Articoli candidati: {len(articoli)}")
         print(f"Categorie: {', '.join(categorie.keys())}")
         print(f"Titolo: {titolo}")
         print(f"Slug: {editoriale.slug}")
-        print(f"Status: Pubblicato e approvato")
+        print("Status: salvato, in attesa di approvazione")
         print("="*60)
         
     except Exception as e:

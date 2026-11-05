@@ -15,9 +15,12 @@ import re
 
 logger = logging.getLogger(__name__)
 
+RIGA_FINALE = ('\n<p><em>"Cosa fare oggi" esce ogni mattina alle 8:05 con gli appuntamenti della giornata '
+               'a Carpi e dintorni.</em></p>')
+
 
 class Command(BaseCommand):
-    help = 'Genera l\'articolo giornaliero "Cosa fare oggi?" con gli eventi del giorno nello stile di Umberto Eco. Usa ironia.'
+    help = 'Genera l\'articolo giornaliero "Cosa fare oggi" con gli eventi del giorno e le mostre ancora aperte.'
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -60,6 +63,10 @@ class Command(BaseCommand):
         ).order_by('titolo')
 
         eventi = list(eventi_query)
+        # Mostre e rassegne iniziate nei giorni scorsi e ancora aperte (data_evento e' solo
+        # l'inizio: senza questo comparivano solo il primo giorno)
+        for evento in self.eventi_in_corso(target_date, escludi={e.id for e in eventi}):
+            eventi.append(evento)
 
         if not eventi:
             self.stdout.write(self.style.WARNING(f'[X] Nessun evento trovato per il {target_date.strftime("%d/%m/%Y")}'))
@@ -131,6 +138,57 @@ class Command(BaseCommand):
         self.stdout.write(f'  Eventi inclusi: {len(eventi)}')
         self.stdout.write('='*70)
 
+    MESI = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 'agosto',
+            'settembre', 'ottobre', 'novembre', 'dicembre']
+    # "fino al 15 novembre", "fino a domenica 15 novembre 2026", "dal 3 al 15 novembre"
+    RE_FINE = re.compile(
+        r"\b(?:fino\s+a(?:l|ll')?|dal\s+\d{1,2}(?:\s+[a-z]+)?\s+al)\s+"
+        r"(?:(?:luned|marted|mercoled|gioved|venerd)[iì]\s+|sabato\s+|domenica\s+)?"
+        r"(\d{1,2})\s+(gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)"
+        r"(?:\s+(\d{4}))?", re.IGNORECASE)
+    MAX_IN_CORSO = 3
+
+    def fine_evento(self, testo, inizio):
+        """Ultima data di chiusura esplicita nel testo ("fino al ..."), o None."""
+        fine = None
+        for giorno, mese, anno_testo in self.RE_FINE.findall(testo or ''):
+            anno = int(anno_testo) if anno_testo else inizio.year
+            try:
+                d = date(anno, self.MESI.index(mese.lower()) + 1, int(giorno))
+                if not anno_testo and d < inizio:
+                    # "fino al 10 gennaio" detto a dicembre: e' l'anno dopo
+                    d = date(anno + 1, d.month, d.day)
+            except ValueError:
+                continue
+            if d >= inizio and (fine is None or d > fine):
+                fine = d
+        return fine
+
+    def eventi_in_corso(self, target_date, escludi=()):
+        """Eventi iniziati negli ultimi 120 giorni che nel testo dichiarano una chiusura >= oggi.
+        Massimo MAX_IN_CORSO, i piu' vicini alla chiusura prima."""
+        from datetime import timedelta
+        candidati = Articolo.objects.filter(
+            approvato=True,
+            data_evento__lt=target_date,
+            data_evento__gte=target_date - timedelta(days=120),
+        ).filter(
+            models.Q(categoria__icontains='Cultura') | models.Q(categoria__icontains='Eventi')
+        ).exclude(id__in=list(escludi))
+        trovati = []
+        for e in candidati:
+            testo = re.sub(r'<[^>]+>', ' ', e.contenuto or '')
+            # Solo cose visitabili ogni giorno (mostre): rassegne e festival hanno date sparse e
+            # finivano in pagina anche nei giorni senza appuntamenti; "iscrizioni fino al..." non conta
+            if not re.search(r'\b(mostra|esposizion|visitabil|installazion)', testo, re.IGNORECASE):
+                continue
+            fine = self.fine_evento(testo, e.data_evento)
+            if fine and fine >= target_date:
+                e.in_corso_fino = fine
+                trovati.append(e)
+        trovati.sort(key=lambda e: e.in_corso_fino)
+        return trovati[:self.MAX_IN_CORSO]
+
     def genera_titolo(self, data):
         """Genera il titolo dell'articolo"""
         giorni_settimana = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica']
@@ -172,13 +230,17 @@ class Command(BaseCommand):
         # Prepara dati eventi per AI
         eventi_info = []
         for i, evento in enumerate(eventi, 1):
+            fino = getattr(evento, 'in_corso_fino', None)
             eventi_info.append({
                 'numero': i,
                 'titolo': evento.titolo,
                 'sommario': evento.sommario,
-                'testo': re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', ' ', evento.contenuto or '')).strip()[:1500],
+                # Testo intero (fino a 6000 caratteri): orari, prezzi e prenotazioni stanno in
+                # fondo alle schede e con il vecchio taglio a 1500 caratteri si perdevano
+                'testo': re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', ' ', evento.contenuto or '')).strip()[:6000],
                 'slug': evento.slug,
-                'categoria': evento.categoria
+                'categoria': evento.categoria,
+                'quando': (f"in corso, aperto fino al {fino.day} {self.MESI[fino.month - 1]}" if fino else "oggi"),
             })
 
         # Genera contenuto con AI
@@ -188,7 +250,9 @@ class Command(BaseCommand):
             # Inserisci i link agli eventi nel testo generato
             contenuto_finale = self._inserisci_link_eventi(contenuto_ai, eventi)
 
-            return contenuto_finale
+            # Riga fissa della rubrica: la scrive il codice, non il modello (prima la chiedeva il
+            # prompt e ogni giorno usciva una variante di "tre proposte, scegliete la vostra")
+            return contenuto_finale + RIGA_FINALE
 
         except Exception as e:
             logger.error(f"Errore generazione AI: {e}")
@@ -199,32 +263,32 @@ class Command(BaseCommand):
         """Usa Claude per generare un articolo narrativo"""
         # Prepara lista eventi per il prompt
         lista_eventi = "\n".join([
-            f"{e['numero']}. {e['titolo']}\n   Categoria: {e['categoria']}\n   Sommario: {e['sommario']}\n   Testo della notizia: {e['testo']}"
+            f"{e['numero']}. {e['titolo']}\n   Quando: {e['quando']}\n   Categoria: {e['categoria']}\n   Testo della scheda: {e['testo']}"
             for e in eventi_info
         ])
+        oggi = [e for e in eventi_info if e['quando'] == 'oggi']
+        parole = max(150, min(650, 60 + 110 * len(oggi) + 50 * (len(eventi_info) - len(oggi))))
 
-        prompt = f"""Scrivi un articolo coinvolgente per la rubrica "Cosa fare oggi" del giornale locale di Carpi.
+        prompt = f"""Scrivi la rubrica "Cosa fare oggi" di Ombra del Portico, giornale online di Carpi. Chi la legge al mattino, dal telefono, vuole decidere in fretta se e dove uscire oggi.
 
 DATA: {giorno_settimana} {giorno} {mese}
-EVENTI DEL GIORNO ({len(eventi_info)} eventi):
+EVENTI ({len(eventi_info)}):
 
 {lista_eventi}
 
-ISTRUZIONI:
-- Scrivi un articolo narrativo e coinvolgente (NON un semplice elenco)
-- Inizia con un'introduzione accattivante che presenta la giornata
-- Presenta gli eventi in modo fluido e narrativo, evidenziando varietà e ricchezza dell'offerta culturale
-- Per ogni evento usa il formato: <h3>TITOLO_EVENTO</h3> seguito da un paragrafo descrittivo
-- Usa un tono caldo, locale, che parla ai lettori di Carpi
-- Concludi invitando a partecipare e menziona che la rubrica si aggiorna quotidianamente alle 8:05
-- Usa tag HTML: <p>, <h3>, <strong>, <em>
-- NON inserire link (verranno aggiunti automaticamente)
-- Lunghezza: circa 400-600 parole
+COME SCRIVERLA:
+- Una o due frasi di apertura che dicono che giornata è (quanti appuntamenti, di che tipo, dove), partendo dai fatti. Niente formule come "è una di quelle giornate", "c'è un filo che tiene insieme".
+- Poi un blocco per evento: <h3>TITOLO</h3>, dove TITOLO è il titolo dell'evento copiato esattamente come lo trovi sopra (serve per il link), seguito da uno o due paragrafi.
+- In ogni blocco, prima cos'è e per chi è, poi in una frase finale le informazioni pratiche presenti nella scheda: orario, luogo con indirizzo, costo o ingresso libero, come prenotare. Se un dato manca nella scheda, non scriverlo e non stimarlo.
+- Metti prima gli eventi di oggi in ordine di orario; quelli "in corso" (mostre, rassegne) vanno in fondo, presentati come ancora aperti, con la data di chiusura.
+- Chiudi con l'ultimo evento: niente frase finale di riepilogo, niente "scegliete il vostro", niente promemoria sulla rubrica (lo aggiunge il sistema).
+- Tono caldo e locale, ironia leggera solo dove l'evento la regge. Niente aggettivi promozionali ("imperdibile", "da non perdere", "straordinario").
+- Tag HTML ammessi: <p>, <h3>, <strong>, <em>. Niente link (li aggiunge il sistema).
+- Lunghezza: circa {parole} parole in tutto."""
 
-STILE: Giornalistico locale, caldo, coinvolgente, che valorizza il territorio."""
-
-        # Modello, ricerca web e tracking costi: home/rubriche_ai.py
-        esito = genera_con_ricerca(prompt, operation='cosa_fare_oggi')
+        # Modello e tracking costi: home/rubriche_ai.py. Una ricerca al massimo: le schede bastano,
+        # serve solo se un dato pratico manca o va verificato
+        esito = genera_con_ricerca(prompt, operation='cosa_fare_oggi', max_ricerche=1)
         self._fonti_web = esito['fonti_web']
         self._modello = esito['modello']
         logger.info("Cosa fare oggi generato con %s, %d ricerche web" % (esito['modello'], esito['ricerche']))
