@@ -486,10 +486,15 @@ def comune_articoli(request, comune_slug):
 
 # Rubriche senza un luogo proprio: sulla mappa sarebbero tutte puntine sul centro di Carpi
 MAPPA_ESCLUSE = ('Cosa fare oggi', 'Editoriale')
+MAPPA_MAX_PUNTI = 4000  # un anno intero sono ~2.500 notizie con luogo preciso
 
 
 def mappa(request):
-    comuni = sorted(_comuni_con_articoli().items(), key=lambda x: (x[1] != 'Carpi', x[1]))
+    # Solo i comuni della zona (seo_locations): le pagine degli altri esistono ma qui sarebbero rumore
+    from home.seo_locations import MUNICIPALITIES
+    della_zona = {m['addressLocality'] for m in MUNICIPALITIES.values()}
+    comuni = sorted(((sl, n) for sl, n in _comuni_con_articoli().items() if n in della_zona),
+                    key=lambda x: (x[1] != 'Carpi', x[1]))
     return render(request, 'mappa.html', {
         'categorie': [c for c, _ in Articolo.CATEGORIA_CHOICES if c not in MAPPA_ESCLUSE],
         'comuni': comuni,
@@ -499,10 +504,11 @@ def mappa(request):
 
 @cache_page(600)
 def mappa_dati(request):
-    """Articoli localizzati degli ultimi N giorni per la mappa (max 365, max 1500 punti).
+    """Articoli localizzati degli ultimi N giorni per la mappa (max 365, max MAPPA_MAX_PUNTI).
 
-    Sulla mappa solo quelli con un posto preciso; gli altri starebbero tutti ammucchiati sul
-    centro del comune, quindi si contano per comune e la pagina linka /comune/<slug>/."""
+    Puntini solo per quelli con un posto preciso; gli altri starebbero tutti ammucchiati sul
+    centro del comune, quindi diventano un solo segnaposto per comune col conteggio e il link
+    a /comune/<slug>/."""
     try:
         giorni = max(1, min(int(request.GET.get('giorni', 30)), 365))
     except ValueError:
@@ -516,9 +522,10 @@ def mappa_dati(request):
     if categoria:
         qs = qs.filter(categoria=categoria)
     senza_luogo = [
-        {'co': r['comune'], 'u': f"/comune/{slugify(r['comune'])}/", 'n': r['n']}
+        {'co': r['comune'], 'u': f"/comune/{slugify(r['comune'])}/", 'n': r['n'],
+         'la': round(r['la'], 5), 'ln': round(r['ln'], 5)}
         for r in qs.filter(luogo_preciso=False).exclude(comune='').values('comune')
-        .annotate(n=Count('id')).order_by('-n', 'comune')
+        .annotate(n=Count('id'), la=Max('lat'), ln=Max('lng')).order_by('-n', 'comune')
     ]
     qs = qs.filter(luogo_preciso=True)
     punti = [{
@@ -532,7 +539,7 @@ def mappa_dati(request):
         'l': a['luogo_nome'] or a['comune'],
         'co': a['comune'],
     } for a in qs.order_by('-data_pubblicazione').values(
-        'titolo', 'slug', 'categoria', 'data_pubblicazione', 'lat', 'lng', 'luogo_preciso', 'luogo_nome', 'comune')[:1500]]
+        'titolo', 'slug', 'categoria', 'data_pubblicazione', 'lat', 'lng', 'luogo_preciso', 'luogo_nome', 'comune')[:MAPPA_MAX_PUNTI]]
     return JsonResponse({'punti': punti, 'senza_luogo': senza_luogo})
 
 @vary_on_headers('Accept-Encoding')
