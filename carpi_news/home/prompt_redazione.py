@@ -54,10 +54,11 @@ def nota_per_monitor(nome):
         return NOTE_FONTE['consiglio']
     if 'questura' in n or 'ansa' in n or 'gazzetta' in n:
         return NOTE_FONTE['cronaca']
-    if 'calcio' in n or 'sport' in n or 'sanmarinese news' in n:
-        return NOTE_FONTE['sport']
+    # Eventi prima dello sport: "Polisportiva ... Eventi" contiene "sport"
     if 'eventi' in n or 'tenda' in n or 'terminal' in n or 'cultura' in n:
         return NOTE_FONTE['evento']
+    if 'calcio' in n or 'sport' in n:
+        return NOTE_FONTE['sport']
     if 'comune' in n or "terre d'argine" in n:
         return NOTE_FONTE['comune']
     if 'email' in n or 'aimag' in n or 'diocesi' in n or 'fanti' in n or 'meucci' in n:
