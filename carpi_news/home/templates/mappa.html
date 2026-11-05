@@ -19,11 +19,6 @@
 #mappa { height: 68vh; min-height: 420px; border-radius: 8px; border: 1px solid #e4dfd8; z-index: 0; }
 .mappa-legenda { display: flex; flex-wrap: wrap; gap: 14px; margin: 10px 0 0; font-size: .85rem; color: #5c605a; padding: 0; list-style: none; }
 .mappa-legenda span { display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
-.mappa-etichetta { background: #fff; border: 1px solid #59242b; border-radius: 12px; padding: 2px 9px;
-  font: 600 12px/1.4 system-ui, sans-serif; color: #59242b; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,.2);
-  display: inline-block; transform: translate(-50%, -190%); }
-.mappa-etichetta span { font-weight: 400; color: #6b6560; }
-.leaflet-marker-icon.mappa-etichetta-box { background: none; border: 0; width: auto !important; height: auto !important; }
 .mappa-popup a { color: #59242b; font-weight: 600; text-decoration: none; }
 .mappa-popup .meta { color: #6b6560; font-size: .8rem; margin-top: 4px; }
 .mappa-comuni { margin-top: 28px; }
@@ -32,13 +27,15 @@
 .mappa-comuni li { margin: 0; height: auto; }
 .mappa-comuni a { display: inline-block; padding: 5px 12px; border: 1px solid #e4dfd8; border-radius: 16px; color: #59242b; text-decoration: none; }
 .mappa-comuni a:hover { background: #f4efe9; }
+.mappa-comuni .n { color: #6b6560; font-size: .85em; margin-left: 4px; }
+.mappa-comuni p { color: #5c605a; margin: 0 0 10px; font-size: .95rem; }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="mappa-pagina">
     <h1>La mappa delle notizie</h1>
-    <p class="mappa-intro">Dove succedono i fatti che raccontiamo. Ogni puntino è una notizia, i gruppi si aprono avvicinandosi; l'etichetta col nome del comune porta a tutte le sue notizie.</p>
+    <p class="mappa-intro">Dove succedono i fatti che raccontiamo. Ogni puntino è una notizia, i gruppi si aprono avvicinandosi. Sotto la mappa trovi tutte le notizie comune per comune.</p>
 
     <div class="mappa-filtri">
         <label>Periodo
@@ -63,8 +60,9 @@
 
     {% if comuni %}
     <section class="mappa-comuni">
-        <h2>Le notizie dei comuni della zona</h2>
-        <ul>{% for slug, nome in comuni %}<li><a href="{% url 'comune_articoli' slug %}">{{ nome }}</a></li>{% endfor %}</ul>
+        <h2>Le notizie comune per comune</h2>
+        <p id="mappa-comuni-nota">Il numero accanto al nome conta le notizie del periodo e della sezione scelti sopra.</p>
+        <ul>{% for slug, nome in comuni %}<li><a href="{% url 'comune_articoli' slug %}">{{ nome }}<span class="n" data-comune="{{ nome }}"></span></a></li>{% endfor %}</ul>
     </section>
     {% endif %}
 </div>
@@ -92,8 +90,6 @@
 
     var gruppo = L.markerClusterGroup({ showCoverageOnHover: false, maxClusterRadius: 45 });
     mappa.addLayer(gruppo);
-    // Un'etichetta per comune con tutte le sue notizie del periodo (fuori dai cluster)
-    var etichette = L.layerGroup().addTo(mappa);
 
     var legenda = document.getElementById('mappa-legenda');
     Object.keys(COLORI).forEach(function (c) {
@@ -138,20 +134,12 @@
                 gruppo.addLayers(marker);
                 conteggio.textContent = (marker.length === 1 ? '1 notizia' : marker.length + ' notizie') + ' sulla mappa';
 
-                etichette.clearLayers();
-                (dati.comuni || []).forEach(function (r) {
-                    var n = r.n.toLocaleString('it-IT');
-                    var m = L.marker([r.la, r.ln], {
-                        icon: L.divIcon({
-                            className: 'mappa-etichetta-box',
-                            html: '<div class="mappa-etichetta">' + esc(r.co) + ' <span>' + n + '</span></div>'
-                        }),
-                        zIndexOffset: 1000,
-                        title: r.co + ': ' + (r.n === 1 ? 'una notizia' : n + ' notizie')
-                    });
-                    m.bindPopup('<div class="mappa-popup"><a href="' + encodeURI(r.u) + '">Le notizie da ' +
-                        esc(r.co) + '</a><div class="meta">' + (r.n === 1 ? 'una' : n) + ' nel periodo scelto</div></div>');
-                    etichette.addLayer(m);
+                // Conteggi per comune nell'elenco sotto la mappa (tutte le notizie, con o senza indirizzo)
+                var perComune = {};
+                (dati.comuni || []).forEach(function (r) { perComune[r.co] = r.n; });
+                document.querySelectorAll('.mappa-comuni .n').forEach(function (el) {
+                    var n = perComune[el.getAttribute('data-comune')] || 0;
+                    el.textContent = n.toLocaleString('it-IT');
                 });
             })
             .catch(function () { if (mia === richiesta) conteggio.textContent = 'Mappa non disponibile, riprova più tardi.'; });

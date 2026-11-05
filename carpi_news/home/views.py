@@ -507,8 +507,8 @@ def mappa_dati(request):
     """Articoli localizzati degli ultimi N giorni per la mappa (max 365, max MAPPA_MAX_PUNTI).
 
     Puntini solo per quelli con un posto preciso (gli altri starebbero tutti ammucchiati sul
-    centro del comune); in piu' un'etichetta per comune con tutte le sue notizie del periodo e il
-    link a /comune/<slug>/. Al lettore interessa il comune, non se c'e' l'indirizzo."""
+    centro del comune); in 'comuni' il conteggio di tutte le notizie per comune, che la pagina
+    mostra nell'elenco sotto la mappa (link a /comune/<slug>/)."""
     try:
         giorni = max(1, min(int(request.GET.get('giorni', 30)), 365))
     except ValueError:
