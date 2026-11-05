@@ -750,7 +750,11 @@
                 {{ articolo.contenuto|safe }}
             </div>
 
-            <!-- Banner dopo ogni H2 (inseriti via JS a partire dal 2° H2) -->
+            <!-- Banner nel corpo: inseriti via JS in base alle parole lette, non ai sottotitoli.
+                 Il primo dopo ~100 parole (mai dopo il primo blocco), poi uno ogni ~170
+                 (negli articoli lunghi l'intervallo si allarga per distribuirli su tutto il testo),
+                 sempre dopo un paragrafo/elenco e mai dopo l'ultimo blocco. Massimo 5.
+                 Gli id restano "article-h2-banner-*": la lettura vocale li esclude con quel prefisso. -->
             <div id="article-h2-banner-0" style="display: none;">{% show_banner 'article_middle' %}</div>
             <div id="article-h2-banner-1" style="display: none;">{% show_banner 'article_middle' %}</div>
             <div id="article-h2-banner-2" style="display: none;">{% show_banner 'article_middle' %}</div>
@@ -760,14 +764,25 @@
             (function() {
                 const articleContent = document.getElementById('article-content');
                 if (!articleContent) return;
-                const headings = articleContent.querySelectorAll('h2');
-                const maxBanners = 5;
-                let bannerIndex = 0;
-                for (let i = 1; i < headings.length && bannerIndex < maxBanners; i++) {
-                    const banner = document.getElementById('article-h2-banner-' + bannerIndex);
-                    if (!banner) break;
-                    const h2 = headings[i];
-                    h2.parentNode.insertBefore(banner, h2);
+                const PRIMO = 100, MAX = 5;
+                const CONTENITORI = 'p, ul, ol, blockquote, table';
+                // Blocchi di primo livello del testo (un <p> dentro un <li> non conta da solo)
+                const blocchi = Array.from(articleContent.querySelectorAll(CONTENITORI + ', h2, h3, h4'))
+                    .filter(function(el) { return !el.parentElement.closest(CONTENITORI); });
+                const parole = function(el) {
+                    const t = (el.textContent || '').trim();
+                    return t ? t.split(/\s+/).length : 0;
+                };
+                const totale = blocchi.reduce(function(s, el) { return s + parole(el); }, 0);
+                const POI = Math.max(170, Math.round((totale - PRIMO) / MAX));
+                let accumulate = 0, soglia = PRIMO, inseriti = 0;
+                for (let i = 0; i < blocchi.length - 1 && inseriti < MAX; i++) {
+                    const el = blocchi[i];
+                    accumulate += parole(el);
+                    if (i < 1 || accumulate < soglia || /^H\d$/.test(el.tagName)) continue;
+                    const banner = document.getElementById('article-h2-banner-' + inseriti);
+                    if (!banner || !el.parentNode) break;
+                    el.parentNode.insertBefore(banner, el.nextSibling);
                     banner.style.display = '';
                     banner.style.margin = '30px 0';
                     banner.querySelectorAll('ins.adsbygoogle').forEach(function(ins) {
@@ -775,25 +790,9 @@
                             (window.adsbygoogle = window.adsbygoogle || []).push({});
                         }
                     });
-                    bannerIndex++;
-                }
-                if (bannerIndex === 0) {
-                    const banner = document.getElementById('article-h2-banner-0');
-                    if (!banner) return;
-                    const paragraphs = articleContent.querySelectorAll('p');
-                    if (paragraphs.length > 3) {
-                        const middleParagraph = paragraphs[Math.floor(paragraphs.length / 2)];
-                        if (middleParagraph && middleParagraph.parentNode) {
-                            middleParagraph.parentNode.insertBefore(banner, middleParagraph.nextSibling);
-                            banner.style.display = '';
-                            banner.style.margin = '30px 0';
-                            banner.querySelectorAll('ins.adsbygoogle').forEach(function(ins) {
-                                if (!ins.getAttribute('data-adsbygoogle-status')) {
-                                    (window.adsbygoogle = window.adsbygoogle || []).push({});
-                                }
-                            });
-                        }
-                    }
+                    inseriti++;
+                    accumulate = 0;
+                    soglia = POI;
                 }
             })();
             </script>
