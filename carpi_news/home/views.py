@@ -506,9 +506,9 @@ def mappa(request):
 def mappa_dati(request):
     """Articoli localizzati degli ultimi N giorni per la mappa (max 365, max MAPPA_MAX_PUNTI).
 
-    Puntini solo per quelli con un posto preciso; gli altri starebbero tutti ammucchiati sul
-    centro del comune, quindi diventano un solo segnaposto per comune col conteggio e il link
-    a /comune/<slug>/."""
+    Puntini solo per quelli con un posto preciso (gli altri starebbero tutti ammucchiati sul
+    centro del comune); in piu' un'etichetta per comune con tutte le sue notizie del periodo e il
+    link a /comune/<slug>/. Al lettore interessa il comune, non se c'e' l'indirizzo."""
     try:
         giorni = max(1, min(int(request.GET.get('giorni', 30)), 365))
     except ValueError:
@@ -522,14 +522,16 @@ def mappa_dati(request):
     if categoria:
         qs = qs.filter(categoria=categoria)
     from home.localizzazione import comune_noto
-    senza_luogo = []
-    for r in (qs.filter(luogo_preciso=False).exclude(comune='').values('comune')
-              .annotate(n=Count('id'), la=Max('lat'), ln=Max('lng')).order_by('-n', 'comune')):
-        # Centro del comune: fra i non precisi ci sono anche frazioni (Fossoli...), il Max cadrebbe li'
+    # Coordinate dell'etichetta: centro del comune noto, altrimenti quelle di un articolo
+    # senza posto preciso (che stanno sul centro trovato da Nominatim)
+    centri = dict((r['comune'], (r['la'], r['ln'])) for r in qs.filter(luogo_preciso=False)
+                  .exclude(comune='').values('comune').annotate(la=Max('lat'), ln=Max('lng')))
+    comuni = []
+    for r in qs.exclude(comune='').values('comune').annotate(n=Count('id'), la=Max('lat'), ln=Max('lng')).order_by('-n', 'comune'):
         noto = comune_noto(r['comune'])
-        la, ln = (float(noto['lat']), float(noto['lng'])) if noto else (r['la'], r['ln'])
-        senza_luogo.append({'co': r['comune'], 'u': f"/comune/{slugify(r['comune'])}/", 'n': r['n'],
-                            'la': round(la, 5), 'ln': round(ln, 5)})
+        la, ln = (float(noto['lat']), float(noto['lng'])) if noto else centri.get(r['comune'], (r['la'], r['ln']))
+        comuni.append({'co': r['comune'], 'u': f"/comune/{slugify(r['comune'])}/", 'n': r['n'],
+                       'la': round(la, 5), 'ln': round(ln, 5)})
     qs = qs.filter(luogo_preciso=True)
     punti = [{
         't': a['titolo'],
@@ -543,7 +545,7 @@ def mappa_dati(request):
         'co': a['comune'],
     } for a in qs.order_by('-data_pubblicazione').values(
         'titolo', 'slug', 'categoria', 'data_pubblicazione', 'lat', 'lng', 'luogo_preciso', 'luogo_nome', 'comune')[:MAPPA_MAX_PUNTI]]
-    return JsonResponse({'punti': punti, 'senza_luogo': senza_luogo})
+    return JsonResponse({'punti': punti, 'comuni': comuni})
 
 @vary_on_headers('Accept-Encoding')
 def dettaglio_articolo(request, slug):
