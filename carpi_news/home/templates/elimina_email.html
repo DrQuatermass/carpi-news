@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Elimina notizia - Ombra del Portico</title>
+    <style>
+        body { margin: 0; padding: 24px 16px; background: #f5efe6; font-family: Arial, sans-serif; color: #282a28; }
+        .box { max-width: 640px; margin: 0 auto; background: #fff; border: 1px solid #d9d8cc; border-radius: 10px; padding: 24px; }
+        h1 { font-size: 1.2rem; margin: 0 0 16px; color: #59242b; }
+        h2 { font-size: 1.05rem; margin: 0 0 8px; }
+        .meta { font-size: 0.9rem; color: #5c605a; margin: 4px 0; word-break: break-all; }
+        button { width: 100%; padding: 14px; font-size: 1rem; font-weight: bold; color: #fff; background: #6c757d; border: 0; border-radius: 6px; cursor: pointer; margin-top: 12px; }
+        .ok { background: #eaf6ea; border: 1px solid #b7dcb7; padding: 12px; border-radius: 6px; }
+        .warn { background: #fff4e0; border: 1px solid #f0c98a; padding: 12px; border-radius: 6px; }
+        a { color: #59242b; }
+    </style>
+</head>
+<body>
+<div class="box">
+    <h1>🗑 Elimina notizia</h1>
+    {% if stato == 'link_non_valido' %}
+        <p class="warn">Link non valido o scaduto (i link nelle email valgono 14 giorni). Puoi eliminare la notizia dall'admin.</p>
+    {% elif stato == 'gia_eliminato' %}
+        <p class="ok">Notizia già eliminata{% if registro %} il {{ registro.data_eliminazione|date:"d/m/Y H:i" }}{% endif %}.</p>
+    {% elif stato == 'eliminato' %}
+        <h2>{{ titolo }}</h2>
+        <p class="ok">Eliminata. Il monitor non la importerà di nuovo.</p>
+    {% elif stato == 'protetto' %}
+        <h2>{{ articolo.titolo }}</h2>
+        <p class="warn">Questo articolo è {% if articolo.is_pubbliredazionale %}un pubbliredazionale{% else %}già approvato e pubblicato{% endif %}: dalla mail non si elimina. Se serve, fallo dall'admin.</p>
+        <p class="meta"><a href="/admin/home/articolo/{{ articolo.pk }}/change/">Apri la scheda nell'admin</a></p>
+    {% else %}
+        <h2>{{ articolo.titolo }}</h2>
+        {% if articolo.fonte %}<p class="meta">Fonte: {{ articolo.fonte|truncatechars:80 }}</p>{% endif %}
+        <p class="meta">Creata il {{ articolo.data_creazione|date:"d/m/Y H:i" }} · {{ articolo.categoria }}</p>
+        <form method="post">
+            {% csrf_token %}
+            <button type="submit">Elimina definitivamente</button>
+        </form>
+        <p class="meta" style="margin-top:16px;"><a href="/admin/home/articolo/{{ articolo.pk }}/change/">Apri la scheda nell'admin</a></p>
+    {% endif %}
+</div>
+</body>
+</html>

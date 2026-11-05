@@ -3252,6 +3252,10 @@ class UniversalNewsMonitor:
                         # Dedup solo sull'URL della fonte: se due testate danno la
                         # stessa notizia con lo stesso titolo, entrambe devono passare
                         existing_by_url = Articolo.objects.filter(fonte=article_data['url']).exists()
+                        if not existing_by_url:
+                            # Notizia gia' cancellata (registro ArticoloEliminato): non va reimportata
+                            from home.eliminazione import fonte_eliminata
+                            existing_by_url = fonte_eliminata(article_data['url'])
 
                         if not existing_by_url:
                             success = self.process_new_article(article_data)

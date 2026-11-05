@@ -10,6 +10,7 @@ from django import forms
 from .models import (
     APIUsage,
     Articolo,
+    ArticoloEliminato,
     ChatbotConversation,
     GeocodeCache,
     InstagramAutoDMLog,
@@ -1567,3 +1568,29 @@ class NewsletterLogAdmin(admin.ModelAdmin):
 class GeocodeCacheAdmin(admin.ModelAdmin):
     list_display = ('query', 'lat', 'lng', 'display_name', 'creato')
     search_fields = ('query', 'display_name')
+
+
+@admin.register(ArticoloEliminato)
+class ArticoloEliminatoAdmin(admin.ModelAdmin):
+    """Registro delle cancellazioni: il totale per mese, monitor o motivo si legge dai filtri."""
+    list_display = ('titolo', 'monitor', 'categoria', 'motivo', 'data_creazione', 'data_eliminazione')
+    list_filter = ('motivo', 'monitor', 'categoria')
+    date_hierarchy = 'data_eliminazione'
+    search_fields = ('titolo', 'fonte')
+    readonly_fields = [f.name for f in ArticoloEliminato._meta.fields]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def changelist_view(self, request, extra_context=None):
+        from django.db.models import Count
+        from django.db.models.functions import TruncMonth
+        per_mese = (ArticoloEliminato.objects.annotate(mese=TruncMonth('data_eliminazione'))
+                    .values('mese').annotate(n=Count('id')).order_by('-mese')[:6])
+        riepilogo = ' · '.join(f"{r['mese']:%m/%Y}: {r['n']}" for r in per_mese if r['mese'])
+        if riepilogo:
+            messages.info(request, f"Totale eliminati: {ArticoloEliminato.objects.count()} — per mese: {riepilogo}")
+        return super().changelist_view(request, extra_context)

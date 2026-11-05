@@ -987,3 +987,32 @@ class GeocodeCache(models.Model):
 
     def __str__(self):
         return self.query
+
+
+class ArticoloEliminato(models.Model):
+    """Registro degli articoli cancellati (home/eliminazione.py).
+
+    Serve a due cose: i monitor non reimportano una notizia la cui fonte e' qui (prima
+    il controllo dei doppioni guardava solo gli articoli esistenti), e resta il conto
+    di quanto si e' scartato, per mese e per monitor."""
+    MOTIVO_CHOICES = [
+        ('pulizia', 'Pulizia non approvati'),
+        ('email', 'Tasto Elimina nella mail'),
+        ('admin', 'Cancellato dall\'admin'),
+    ]
+    articolo_id = models.PositiveIntegerField(db_index=True)
+    fonte = models.CharField(max_length=500, blank=True, db_index=True)
+    titolo = models.CharField(max_length=200, blank=True)
+    categoria = models.CharField(max_length=100, blank=True)
+    monitor = models.CharField(max_length=100, blank=True, db_index=True)
+    data_creazione = models.DateTimeField(blank=True, null=True)
+    data_eliminazione = models.DateTimeField(auto_now_add=True, db_index=True)
+    motivo = models.CharField(max_length=10, choices=MOTIVO_CHOICES, default='admin', db_index=True)
+
+    class Meta:
+        verbose_name = 'Articolo eliminato'
+        verbose_name_plural = 'Articoli eliminati'
+        ordering = ['-data_eliminazione']
+
+    def __str__(self):
+        return self.titolo or self.fonte

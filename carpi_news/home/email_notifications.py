@@ -63,6 +63,14 @@ def send_article_approval_notification(articolo):
         admin_url = f"{base_url}/admin/home/articolo/{articolo.id}/change/"
         # Apre una pagina di conferma: la rielaborazione parte solo premendo "Rielabora" li'
         rielabora_url = f"{base_url}/rielabora/{token_email(articolo.id)}/"
+        # Tasto Elimina (solo non approvati): pagina di conferma, la cancellazione parte col POST
+        from home.views_elimina import token_elimina
+        elimina_url = f"{base_url}/elimina/{token_elimina(articolo.id)}/"
+        bottone_elimina = '' if (articolo.approvato or articolo.is_pubbliredazionale) else (
+            f'<a href="{elimina_url}" style="display: inline-block; background: #6c757d; color: white; '
+            'padding: 12px 22px; text-decoration: none; border-radius: 5px; font-weight: bold; '
+            'font-size: 16px; margin-left: 8px;">🗑 Elimina</a>'
+        )
         titolo_email = 'Nuova notizia da rielaborare' if grezza else 'Nuovo Articolo da Approvare'
         testo_bottone = '🤖 Rielabora con AI' if grezza else '✓ Approva Articolo'
         url_bottone = rielabora_url if grezza else admin_url
@@ -133,6 +141,7 @@ def send_article_approval_notification(articolo):
                    style="display: inline-block; background: {colore_bottone}; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 16px;">
                    {testo_bottone}
                 </a>
+                {bottone_elimina}
                 <p style="margin-top: 10px; color: #6c757d; font-size: 14px;">
                     {link_secondario}
                 </p>
@@ -166,6 +175,7 @@ Contenuto completo:
 {"RIELABORA CON AI:" if grezza else "APPROVA ARTICOLO:"}
 {url_bottone}
 {"Scheda: " + admin_url if grezza else "Rielabora di nuovo con AI: " + rielabora_url}
+{"" if not bottone_elimina else "Elimina: " + elimina_url}
 ========================================
 
 ---

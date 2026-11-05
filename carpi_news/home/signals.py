@@ -1,6 +1,6 @@
 import logging
 import threading
-from django.db.models.signals import post_delete, post_save, pre_save
+from django.db.models.signals import post_delete, post_save, pre_delete, pre_save
 from django.dispatch import receiver
 from django.core.cache import cache
 from django.core.cache.utils import make_template_fragment_key
@@ -33,6 +33,13 @@ def invalidate_categorie_menu_cache():
 @receiver(post_delete, sender=Articolo)
 def invalidate_categorie_menu_on_article_change(sender, instance, **kwargs):
     invalidate_categorie_menu_cache()
+
+
+@receiver(pre_delete, sender=Articolo)
+def registra_articolo_eliminato(sender, instance, **kwargs):
+    # Registro delle cancellazioni: i monitor non reimportano la fonte (home/eliminazione.py)
+    from home.eliminazione import registra_da_segnale
+    registra_da_segnale(sender, instance, **kwargs)
 
 
 def generate_responsive_versions(image_path, widths=[400, 600, 800], quality=65):
