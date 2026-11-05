@@ -226,6 +226,18 @@ class MonitorConfigForm(forms.ModelForm):
 
 class ArticoloAdminForm(forms.ModelForm):
     """Form personalizzato per Articolo con CKEditor"""
+    # Le notizie arrivate per email senza link hanno fonte "email://<uid IMAP>" (serve al monitor
+    # per non importarle due volte). Con il campo URL del modello il form le rifiutava come
+    # "URL non valido" e l'articolo non si poteva salvare ne' approvare.
+    fonte = forms.CharField(required=False, max_length=500, label='Fonte',
+                            widget=forms.TextInput(attrs={'class': 'vURLField'}))
+
+    def _get_validation_exclusions(self):
+        # Niente URLValidator del modello sulla fonte (vedi sopra)
+        esclusi = super()._get_validation_exclusions()
+        esclusi.add('fonte')
+        return esclusi
+
     class Meta:
         model = Articolo
         fields = '__all__'
@@ -261,7 +273,7 @@ class ArticoloAdmin(admin.ModelAdmin):
         if obj and obj.is_pubbliredazionale:
             return (
                 ('Informazioni Base', {
-                    'fields': ('titolo', 'titolo_seo', 'slug', 'contenuto', 'sommario', 'spunto_social', 'categoria', 'tags', 'foto', 'foto_upload', 'image_16x9', 'image_4x3', 'image_1x1')
+                    'fields': ('titolo', 'titolo_seo', 'slug', 'contenuto', 'sommario', 'spunto_social', 'categoria', 'tags', 'foto', 'cerca_immagine_button', 'foto_upload', 'image_16x9', 'image_4x3', 'image_1x1')
                 }),
                 ('Pubbliredazionale - Informazioni Azienda', {
                     'fields': ('nome_azienda', 'sito_web', 'pubbliredazionale_user')
@@ -286,7 +298,7 @@ class ArticoloAdmin(admin.ModelAdmin):
         else:
             return (
                 ('Informazioni Base', {
-                    'fields': ('titolo', 'titolo_seo', 'slug', 'contenuto', 'sommario', 'spunto_social', 'categoria', 'tags', 'data_evento', 'foto', 'foto_upload', 'image_16x9', 'image_4x3', 'image_1x1')
+                    'fields': ('titolo', 'titolo_seo', 'slug', 'contenuto', 'sommario', 'spunto_social', 'categoria', 'tags', 'data_evento', 'foto', 'cerca_immagine_button', 'foto_upload', 'image_16x9', 'image_4x3', 'image_1x1')
                 }),
                 ('Pubblicazione', {
                     'fields': (('approvato', 'rielabora_button'), 'spotlight', 'escludi_newsletter', 'fonte', 'data_pubblicazione', 'views')
@@ -298,7 +310,7 @@ class ArticoloAdmin(admin.ModelAdmin):
 
     def get_readonly_fields(self, request, obj=None):
         """Readonly fields dinamici"""
-        base_readonly = ['rigenera_button', 'rielabora_button', 'views', 'fonti_web_display', 'total_price']
+        base_readonly = ['rigenera_button', 'rielabora_button', 'cerca_immagine_button', 'views', 'fonti_web_display', 'total_price']
         if obj and obj.is_pubbliredazionale:
             return base_readonly + ['interview_data']
         return base_readonly
@@ -494,8 +506,85 @@ class ArticoloAdmin(admin.ModelAdmin):
             path('<int:articolo_id>/rielabora/', self.admin_site.admin_view(self.rielabora_articolo), name='rielabora_articolo'),
             path('<int:articolo_id>/rigenera/', self.admin_site.admin_view(self.rielabora_articolo), name='rigenera_articolo'),
             path('<int:articolo_id>/toggle_fonte/', self.admin_site.admin_view(self.toggle_fonte), name='toggle_fonte'),
+            path('<int:articolo_id>/cerca_immagini/', self.admin_site.admin_view(self.cerca_immagini), name='cerca_immagini'),
+            path('<int:articolo_id>/usa_immagine/', self.admin_site.admin_view(self.usa_immagine), name='usa_immagine'),
         ]
         return custom_urls + urls
+
+    def cerca_immagine_button(self, obj):
+        if not obj or not obj.pk:
+            return format_html('<p style="color:#666;">Salva l\'articolo per cercare un\'immagine online</p>')
+        return format_html(
+            '<div id="cerca-img-{pk}">'
+            '<button type="button" class="button" style="background:#417690;color:#fff;padding:8px 14px;border:none;'
+            'border-radius:4px;font-weight:bold;cursor:pointer;" onclick="cercaImmagini{pk}(this)">'
+            '🔎 Cerca immagine online</button>'
+            '<span class="esito" style="margin-left:10px;font-size:12px;color:#666;"></span>'
+            '<div class="candidati" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:10px;"></div>'
+            '<p style="margin:6px 0 0;font-size:12px;color:#666;">Cerca su Google Immagini col titolo: clicca '
+            'una foto per sostituire quella attuale (salvata subito, il resto del form no). Sono foto trovate '
+            'in rete: preferisci quelle di siti ufficiali.</p></div>'
+            '<script>'
+            'function cercaImmagini{pk}(btn){{'
+            ' var box=document.getElementById("cerca-img-{pk}"), esito=box.querySelector(".esito"), griglia=box.querySelector(".candidati");'
+            ' var titolo=(document.getElementById("id_titolo")||{{}}).value||"";'
+            ' esito.textContent="Ricerca in corso..."; griglia.innerHTML=""; btn.disabled=true;'
+            ' fetch("/admin/home/articolo/{pk}/cerca_immagini/?q="+encodeURIComponent(titolo),{{credentials:"same-origin"}})'
+            '  .then(function(r){{return r.json();}}).then(function(d){{'
+            '   btn.disabled=false; var c=d.candidati||[];'
+            '   esito.textContent=c.length? c.length+" immagini trovate per: "+d.query : (d.errore||"Nessuna immagine trovata per: "+d.query);'
+            '   c.forEach(function(x){{'
+            '    var a=document.createElement("div"); a.style.cssText="width:180px;cursor:pointer;border:2px solid #ddd;border-radius:4px;padding:4px;font-size:11px;";'
+            '    var im=document.createElement("img"); im.src=x.thumb; im.style.cssText="width:100%;height:110px;object-fit:cover;display:block;";'
+            '    var t=document.createElement("div"); t.textContent=(x.larghezza||"?")+"×"+(x.altezza||"?")+" · "+(x.pagina||"").replace(/^https?:\\/\\/(www\\.)?/,"").split("/")[0];'
+            '    t.style.cssText="color:#666;margin-top:3px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;";'
+            '    a.appendChild(im); a.appendChild(t); a.title=x.titolo+"\\n"+x.pagina;'
+            '    a.onclick=function(){{ usaImmagine{pk}(x.url, a, esito); }};'
+            '    griglia.appendChild(a);'
+            '   }});'
+            '  }}).catch(function(e){{btn.disabled=false; esito.textContent="Errore: "+e;}});'
+            '}}'
+            'function usaImmagine{pk}(url, card, esito){{'
+            ' esito.textContent="Scarico l\'immagine..."; card.style.borderColor="#f0ad4e";'
+            ' var fd=new FormData(); fd.append("url",url);'
+            ' fd.append("csrfmiddlewaretoken",(document.querySelector("[name=csrfmiddlewaretoken]")||{{}}).value||"");'
+            ' fetch("/admin/home/articolo/{pk}/usa_immagine/",{{method:"POST",body:fd,credentials:"same-origin"}})'
+            '  .then(function(r){{return r.json();}}).then(function(d){{'
+            '   if(!d.ok){{card.style.borderColor="#c9302c"; esito.textContent=d.errore||"Errore"; return;}}'
+            '   card.style.borderColor="#5cb85c"; esito.textContent="Foto sostituita e salvata: "+d.foto;'
+            '   var f=document.getElementById("id_foto"); if(f) f.value=d.foto;'
+            '  }}).catch(function(e){{card.style.borderColor="#c9302c"; esito.textContent="Errore: "+e;}});'
+            '}}'
+            '</script>',
+            pk=obj.pk,
+        )
+    cerca_immagine_button.short_description = 'Immagine dalla rete'
+
+    def cerca_immagini(self, request, articolo_id):
+        """JSON con le immagini trovate su Google per il titolo (o la query ?q=)."""
+        from home.immagini_online import cerca_immagini, query_per_titolo
+        articolo = Articolo.objects.filter(pk=articolo_id).first()
+        if not articolo:
+            return JsonResponse({'candidati': [], 'errore': 'Articolo non trovato'}, status=404)
+        query = query_per_titolo(request.GET.get('q') or articolo.titolo)
+        candidati = cerca_immagini(query, max_risultati=8, articolo=articolo, operation='cerca_immagine_admin')
+        return JsonResponse({'query': query, 'candidati': candidati,
+                             'errore': '' if candidati else 'Nessuna immagine utilizzabile trovata'})
+
+    def usa_immagine(self, request, articolo_id):
+        """Scarica l'immagine scelta e la mette come foto dell'articolo."""
+        if request.method != 'POST':
+            return JsonResponse({'ok': False, 'errore': 'Metodo non consentito'}, status=405)
+        from home.immagini_online import usa_immagine
+        articolo = Articolo.objects.filter(pk=articolo_id).first()
+        url = request.POST.get('url', '')
+        if not articolo or not url.startswith('http'):
+            return JsonResponse({'ok': False, 'errore': 'Dati non validi'}, status=400)
+        try:
+            foto = usa_immagine(articolo, url)
+        except Exception as e:
+            return JsonResponse({'ok': False, 'errore': str(e)})
+        return JsonResponse({'ok': True, 'foto': foto})
 
     def toggle_fonte(self, request, articolo_id):
         """Gestisce il toggle del campo hidden per le fonti web"""

@@ -2394,11 +2394,26 @@ class EmailScraper(BaseScraper):
 
             # I comunicati stampa allegano spesso la foto come file: ha priorità
             # sull'immagine estratta dall'HTML (che è tipicamente un logo/firma).
-            if content_type != 'twitter':
+            attached_image = None
+            if content_type != 'twitter' or not image_url:
                 attached_image = self._extract_attached_image(email_message, email_uid_str)
                 if attached_image:
                     image_url = attached_image
                     self.logger.info(f"Immagine allegata usata per l'articolo: {attached_image}")
+
+            # Comunicato senza foto allegata: si cerca in rete col titolo (Google immagini), prima
+            # dell'immagine nell'HTML che di solito e' il logo in firma (resta come ripiego).
+            # La foto si puo' cambiare dall'admin con "Cerca immagine online".
+            if (not attached_image and (content_type != 'twitter' or not image_url)
+                    and self.config.config.get('cerca_immagine_online', True)):
+                try:
+                    from home.immagini_online import prima_immagine, query_per_titolo
+                    trovata = prima_immagine(query_per_titolo(subject))
+                    if trovata:
+                        image_url = trovata
+                        self.logger.info(f"Immagine trovata in rete per l'email: {trovata}")
+                except Exception as e:
+                    self.logger.warning(f"Ricerca immagine in rete fallita: {e}")
 
             # Estrai e verifica link nel contenuto
             links_content = self._extract_and_fetch_links(content)
@@ -2456,12 +2471,6 @@ class EmailScraper(BaseScraper):
     def _detect_content_type(self, content: str, sender: str, subject: str, raw_html: str = "") -> tuple[str, str, Optional[str], Optional[str]]:
         """Rileva automaticamente il tipo di contenuto, estrae immagini e determina fonte"""
 
-        # Indicatori per contenuto Twitter/Social
-        twitter_indicators = [
-            'twitter.com', 'pic.twitter.com', '@', '#', 'twitter-tweet',
-            'action@ifttt.com', 'PMTerredargine', 'Polizia Locale'
-        ]
-
         # Indicatori per comunicati stampa formali
         comunicato_indicators = [
             'comunicato stampa', 'comunicato', 'ufficio stampa', 'press release',
@@ -2472,16 +2481,16 @@ class EmailScraper(BaseScraper):
         subject_lower = subject.lower()
         sender_lower = sender.lower()
 
-        # Controlla se è contenuto Twitter/Social
-        is_twitter = (
-            any(indicator in content_lower for indicator in twitter_indicators) or
-            any(indicator in sender_lower for indicator in twitter_indicators) or
-            'action@ifttt.com' in sender_lower
-        )
+        # Tweet inoltrati da IFTTT: mittente IFTTT o link diretto a un tweet. Prima bastava
+        # una "@" o un "#" nel testo (cioe' qualsiasi indirizzo email in firma): ogni
+        # comunicato veniva preso per un tweet e l'immagine allegata non veniva letta.
+        tweet_url = None
+        if 'ifttt' in sender_lower or re.search(r'(?:twitter|x)\.com/\w+/status/\d+', raw_html or content):
+            tweet_url = self._extract_tweet_url(raw_html or content)
+        is_twitter = 'ifttt' in sender_lower or bool(tweet_url)
 
         if is_twitter:
-            # Estrai prima il link al tweet, poi la sua immagine (via API)
-            tweet_url = self._extract_tweet_url(raw_html or content)
+            # Immagine del tweet (via API)
             twitter_image = self._extract_twitter_image(raw_html or content, tweet_url)
             return 'twitter', 'Cronaca Social', twitter_image, tweet_url
 
