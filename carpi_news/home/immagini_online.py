@@ -38,7 +38,20 @@ def query_per_titolo(titolo):
 
 
 def cerca_immagini(query, max_risultati=8, articolo=None, operation='cerca_immagine'):
-    """Lista di candidati {url, thumb, larghezza, altezza, pagina, titolo}; [] se la ricerca non va."""
+    """Lista di candidati {url, thumb, larghezza, altezza, pagina, titolo}; [] se la ricerca non va.
+
+    Con un titolo lungo Google spesso non trova nulla: secondo tentativo con le prime 6 parole."""
+    candidati = _cerca(query, max_risultati, articolo, operation)
+    parole = query.split()
+    if not candidati and len(parole) > 7:
+        corta = ' '.join(parole[:6])
+        if 'carpi' in query.lower() and 'carpi' not in corta.lower():
+            corta += ' Carpi'
+        candidati = _cerca(corta, max_risultati, articolo, operation)
+    return candidati
+
+
+def _cerca(query, max_risultati, articolo, operation):
     key = os.getenv('GOOGLE_SEARCH_API_KEY')
     cx = os.getenv('GOOGLE_CUSTOM_SEARCH_ID')
     if not key or not cx or not query:
