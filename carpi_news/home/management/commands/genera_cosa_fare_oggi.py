@@ -104,7 +104,7 @@ class Command(BaseCommand):
             titolo_base = self.genera_titolo(target_date)
             titolo = titolo_base
         contenuto = self.genera_contenuto(eventi, target_date)
-        sommario = self.genera_sommario(eventi, target_date)
+        sommario = self.sommario_da_contenuto(contenuto) or self.genera_sommario(eventi, target_date)
 
         if dry_run:
             self.stdout.write('\n' + '='*70)
@@ -147,6 +147,8 @@ class Command(BaseCommand):
         r"(\d{1,2})\s+(gennaio|febbraio|marzo|aprile|maggio|giugno|luglio|agosto|settembre|ottobre|novembre|dicembre)"
         r"(?:\s+(\d{4}))?", re.IGNORECASE)
     MAX_IN_CORSO = 3
+    RE_MOSTRA = re.compile(r'\b(mostra|mostre|esposizion|personale\b|collettiva\b|visitabil)', re.IGNORECASE)
+    RE_NON_MOSTRA = re.compile(r'\b(festival|rassegn|cartellone|stagione|concors|iscrizion)', re.IGNORECASE)
 
     def fine_evento(self, testo, inizio):
         """Ultima data di chiusura esplicita nel testo ("fino al ..."), o None."""
@@ -178,9 +180,11 @@ class Command(BaseCommand):
         trovati = []
         for e in candidati:
             testo = re.sub(r'<[^>]+>', ' ', e.contenuto or '')
-            # Solo cose visitabili ogni giorno (mostre): rassegne e festival hanno date sparse e
-            # finivano in pagina anche nei giorni senza appuntamenti; "iscrizioni fino al..." non conta
-            if not re.search(r'\b(mostra|esposizion|visitabil|installazion)', testo, re.IGNORECASE):
+            # Solo mostre: rassegne e festival hanno date sparse e finivano in pagina anche nei
+            # giorni senza appuntamenti. La parola va cercata in titolo e sommario: nel testo
+            # bastava "installazioni" in un festival (6/11: festival delle IntelligenzE)
+            intestazione = f"{e.titolo} {e.sommario or ''}"
+            if not self.RE_MOSTRA.search(intestazione) or self.RE_NON_MOSTRA.search(e.titolo or ''):
                 continue
             fine = self.fine_evento(testo, e.data_evento)
             if fine and fine >= target_date:
@@ -201,8 +205,23 @@ class Command(BaseCommand):
 
         return f"Cosa fare oggi: {giorno_settimana} {giorno} {mese}"
 
+    @staticmethod
+    def sommario_da_contenuto(contenuto):
+        """Il paragrafo d'apertura scritto dal modello (conta solo gli eventi davvero presentati).
+        Prima il sommario era un modello fisso: "Ecco N eventi da non perdere", con N che
+        contava anche mostre chiuse e festival scartati dal testo."""
+        m = re.search(r'<p>(.*?)</p>', contenuto or '', re.S)
+        if not m:
+            return ''
+        testo = re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', '', m.group(1))).strip()
+        if len(testo) < 60 or testo.startswith('Buongiorno!'):  # fallback senza AI
+            return ''
+        if len(testo) > 320:
+            testo = testo[:320].rsplit(' ', 1)[0].rstrip(',;:') + '…'
+        return testo
+
     def genera_sommario(self, eventi, data):
-        """Genera il sommario dell'articolo ottimizzato per SEO"""
+        """Sommario di riserva, se il testo AI non ha un paragrafo d'apertura usabile"""
         giorni_settimana = ['lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato', 'domenica']
         mesi = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno',
                 'luglio', 'agosto', 'settembre', 'ottobre', 'novembre', 'dicembre']
@@ -215,7 +234,7 @@ class Command(BaseCommand):
         if num_eventi == 1:
             return f"Eventi oggi {giorno} {mese} a Carpi e Modena: {eventi[0].titolo}. Scopri cosa fare oggi in provincia!"
         else:
-            return f"Cosa fare oggi {giorno_settimana} {giorno} {mese} a Carpi? Ecco {num_eventi} eventi da non perdere tra cultura, spettacoli e iniziative in città e provincia di Modena."
+            return f"Cosa fare oggi {giorno_settimana} {giorno} {mese} a Carpi e dintorni: gli appuntamenti della giornata tra cultura, spettacoli e iniziative."
 
     def genera_contenuto(self, eventi, data):
         """Genera il contenuto HTML dell'articolo usando AI per creare un testo narrativo"""
@@ -280,7 +299,9 @@ COME SCRIVERLA:
 - Una o due frasi di apertura che dicono che giornata è (quanti appuntamenti, di che tipo, dove), partendo dai fatti. Niente formule come "è una di quelle giornate", "c'è un filo che tiene insieme".
 - Poi un blocco per evento: <h3>TITOLO</h3>, dove TITOLO è il titolo dell'evento copiato esattamente come lo trovi sopra (serve per il link), seguito da uno o due paragrafi.
 - In ogni blocco, prima cos'è e per chi è, poi in una frase finale le informazioni pratiche presenti nella scheda: orario, luogo con indirizzo, costo o ingresso libero, come prenotare. Se un dato manca nella scheda, non scriverlo e non stimarlo.
-- Metti prima gli eventi di oggi in ordine di orario; quelli "in corso" (mostre, rassegne) vanno in fondo, presentati come ancora aperti, con la data di chiusura.
+- Metti prima gli eventi di oggi in ordine di orario; quelli "in corso" (mostre) vanno in fondo, presentati come ancora aperti, con la data di chiusura e l'orario di oggi.
+- Una mostra "in corso" che secondo la scheda oggi ({giorno_settimana}) è chiusa (per esempio apre solo nel fine settimana) va tolta del tutto: niente blocco, niente accenno.
+- Il primo paragrafo deve contare solo gli appuntamenti che poi presenti.
 - Chiudi con l'ultimo evento: niente frase finale di riepilogo, niente "scegliete il vostro", niente promemoria sulla rubrica (lo aggiunge il sistema).
 - Tono caldo e locale, ironia leggera solo dove l'evento la regge. Niente aggettivi promozionali ("imperdibile", "da non perdere", "straordinario").
 - Tag HTML ammessi: <p>, <h3>, <strong>, <em>. Niente link (li aggiunge il sistema).
