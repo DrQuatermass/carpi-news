@@ -2758,7 +2758,9 @@ class EmailScraper(BaseScraper):
                         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
                     }
 
-                    response = requests.get(url, headers=headers, timeout=self.timeout, allow_redirects=True)
+                    # Link trovati nella fonte: niente indirizzi interni del server
+                    from home.url_sicuri import get_pubblico
+                    response = get_pubblico(url, headers=headers, timeout=self.timeout)
                     response.raise_for_status()
 
                     # Parse HTML e estrai contenuto testuale

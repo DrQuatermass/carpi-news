@@ -244,6 +244,7 @@
                 id="chatbot-input"
                 placeholder="Scrivi un messaggio..."
                 autocomplete="off"
+                maxlength="1000"
                 aria-label="Scrivi messaggio"
             >
             <button id="chatbot-send" class="chatbot-send" aria-label="Invia messaggio">
@@ -441,7 +442,7 @@
     </script>
 
     <!-- Chatbot JavaScript - caricamento differito (non critico per LCP) -->
-    <script src="{% static 'home/js/chatbot.js' %}?v=2026010804" defer></script>
+    <script src="{% static 'home/js/chatbot.js' %}?v=2026110601" defer></script>
 
     <!-- AdSense: caricato SOLO se la pagina contiene almeno uno slot AdSense, cioe' quando
          uno slot non ha un banner diretto (ramo else di banner_display.html / homepage.html,

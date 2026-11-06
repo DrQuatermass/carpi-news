@@ -135,6 +135,14 @@ class OmbraChatbot {
             });
 
             if (!response.ok) {
+                // Limite di domande o messaggio troppo lungo: il server manda il testo da mostrare
+                let errore = null;
+                try { errore = await response.json(); } catch (e) { /* risposta non JSON */ }
+                if (errore && errore.response) {
+                    this.hideTyping();
+                    this.addBotMessage(errore.response);
+                    return;
+                }
                 throw new Error('Errore nella richiesta');
             }
 

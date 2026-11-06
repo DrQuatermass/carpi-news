@@ -927,6 +927,36 @@ def pubblicita(request):
     return render(request, "pubblicita.html", context)
 
 
+CHATBOT_MAX_CARATTERI = 1000
+CHATBOT_MAX_STORICO = 10
+CHATBOT_RICHIESTE_ORA = 20
+CHATBOT_RICHIESTE_GIORNO_TOTALI = 2000
+
+
+def _ip_reale(request):
+    """IP del visitatore dietro Apache: l'ultimo valore di X-Forwarded-For e' quello aggiunto
+    da Apache; i precedenti li puo' scrivere chiunque."""
+    xff = request.META.get('HTTP_X_FORWARDED_FOR', '')
+    if xff:
+        return xff.split(',')[-1].strip()
+    return request.META.get('REMOTE_ADDR', '') or ''
+
+
+def _chatbot_oltre_limite(ip):
+    """True se l'IP ha superato le domande orarie o il sito il tetto giornaliero (ogni domanda
+    costa: senza limiti uno script puo' consumare il credito API)."""
+    chiave_ip = f"chatbot_rl:{ip}:{timezone.now():%Y%m%d%H}"
+    chiave_giorno = f"chatbot_rl_tot:{timezone.now():%Y%m%d}"
+    cache.add(chiave_ip, 0, 3700)
+    cache.add(chiave_giorno, 0, 90000)
+    try:
+        n_ip = cache.incr(chiave_ip)
+        n_tot = cache.incr(chiave_giorno)
+    except Exception:  # Redis giu': meglio un chatbot senza limite che un errore 500
+        return False
+    return (n_ip or 0) > CHATBOT_RICHIESTE_ORA or (n_tot or 0) > CHATBOT_RICHIESTE_GIORNO_TOTALI
+
+
 @require_http_methods(["POST"])
 @csrf_exempt
 def chatbot_api(request):
@@ -937,14 +967,29 @@ def chatbot_api(request):
     try:
         # Parse JSON body
         data = json.loads(request.body)
-        user_message = data.get('message', '').strip()
-        conversation_history = data.get('conversation_history', [])
-        session_id = data.get('session_id', str(uuid.uuid4()))
+        if not isinstance(data, dict):
+            return JsonResponse({'error': 'JSON non valido'}, status=400)
+        user_message = str(data.get('message') or '').strip()
+        conversation_history = data.get('conversation_history') or []
+        if not isinstance(conversation_history, list):
+            conversation_history = []
+        conversation_history = conversation_history[-CHATBOT_MAX_STORICO:]  # il client ne manda 10
+        session_id = str(data.get('session_id') or uuid.uuid4())[:100]
 
         if not user_message:
             return JsonResponse({
                 'error': 'Messaggio vuoto'
             }, status=400)
+        if len(user_message) > CHATBOT_MAX_CARATTERI:
+            return JsonResponse({
+                'error': 'Messaggio troppo lungo',
+                'response': f'Il messaggio è troppo lungo: scrivi al massimo {CHATBOT_MAX_CARATTERI} caratteri.',
+            }, status=400)
+        if _chatbot_oltre_limite(_ip_reale(request)):
+            return JsonResponse({
+                'error': 'Troppe richieste',
+                'response': 'Hai fatto molte domande in poco tempo. Riprova tra un po\'.',
+            }, status=429)
 
         # Traccia tempo di risposta
         start_time = time.time()
@@ -957,9 +1002,7 @@ def chatbot_api(request):
         response_time_ms = int((time.time() - start_time) * 1000)
 
         # Estrai metadata
-        user_ip = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR'))
-        if user_ip:
-            user_ip = user_ip.split(',')[0].strip()
+        user_ip = _ip_reale(request) or None
         user_agent = request.META.get('HTTP_USER_AGENT', '')
 
         # Salva conversazione nel database

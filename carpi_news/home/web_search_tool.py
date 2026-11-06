@@ -397,7 +397,9 @@ class WebSearchTool:
             if current_time - self.last_request < self.min_delay:
                 time.sleep(self.min_delay - (current_time - self.last_request))
 
-            response = requests.get(url, headers=self.scraping_headers, timeout=15, allow_redirects=True)
+            # URL scelto dal modello: niente indirizzi interni del server (anche dopo i redirect)
+            from home.url_sicuri import get_pubblico
+            response = get_pubblico(url, headers=self.scraping_headers, timeout=15, max_bytes=20 * 1024 * 1024)
             self.last_request = time.time()
 
             if response.status_code != 200:
