@@ -33,12 +33,15 @@ MESI = ['gennaio', 'febbraio', 'marzo', 'aprile', 'maggio', 'giugno', 'luglio', 
         'settembre', 'ottobre', 'novembre', 'dicembre']
 GIORNI = ['lunedì', 'martedì', 'mercoledì', 'giovedì', 'venerdì', 'sabato', 'domenica']
 
-# Selezione delle fonti: finestra di 48 ore (dal 28/9/2026 si approvano pochi pezzi al giorno e
-# con la sola giornata di ieri spesso c'erano 1-2 articoli e nessuna scelta), punteggio per
-# visite all'ora (un pezzo uscito alle 18 non parte svantaggiato), esclusi gli articoli gia'
-# commentati negli editoriali pubblicati degli ultimi 7 giorni. Con meno di MIN_CANDIDATI
-# articoli l'editoriale salta il giorno invece di gonfiare una sola notizia.
-FINESTRA_ORE = 48
+# Selezione delle fonti: gli articoli delle ultime 24 ore; solo se sono meno di MIN_CANDIDATI
+# si allarga a 48 (dal 28/9/2026 si approvano pochi pezzi al giorno). Con 48 ore fisse vinceva
+# il pezzo di due giorni prima, che aveva piu' visite. Punteggio per visite all'ora (un pezzo
+# uscito alle 18 non parte svantaggiato). Esclusi gli articoli gia' citati negli editoriali
+# degli ultimi 7 giorni, approvati o no: gli editoriali non si approvano quasi mai e col solo
+# filtro sugli approvati il 6/11 e' uscito lo stesso tema del 5/11.
+# Con meno di MIN_CANDIDATI articoli l'editoriale salta il giorno.
+FINESTRE_ORE = (24, 48)
+FINESTRA_ORE = FINESTRE_ORE[-1]
 MAX_CANDIDATI = 6
 MIN_CANDIDATI = 2
 CATEGORIE_ESCLUSE = ['Editoriale', 'Cosa fare oggi', 'Cultura & Eventi']
@@ -52,32 +55,36 @@ def _slug_gia_commentati(giorni=7):
     import re
     slug = set()
     for testo in Articolo.objects.filter(
-            categoria='Editoriale', approvato=True,
-            data_pubblicazione__gte=timezone.now() - timedelta(days=giorni)).values_list('contenuto', flat=True):
+            categoria='Editoriale',
+            data_creazione__gte=timezone.now() - timedelta(days=giorni)).values_list('contenuto', flat=True):
         slug.update(re.findall(r'href="/articolo/([^/"]+)/', testo or ''))
     return slug
 
 
 def raccoglie_articoli_ieri():
-    """Fino a MAX_CANDIDATI articoli delle ultime FINESTRA_ORE ore, ordinati per visite all'ora.
+    """Fino a MAX_CANDIDATI articoli delle ultime 24 ore (48 se non bastano), per visite all'ora.
 
     Esclusi rubriche, eventi, pubbliredazionali e articoli gia' commentati di recente.
     Ritorna una lista, vuota se il materiale non basta per un editoriale."""
     adesso = timezone.now()
-    qs = Articolo.objects.filter(
-        approvato=True,
-        is_pubbliredazionale=False,
-        data_pubblicazione__range=(adesso - timedelta(hours=FINESTRA_ORE), adesso),
-    ).exclude(categoria__in=CATEGORIE_ESCLUSE)
     gia_visti = _slug_gia_commentati()
-    candidati = [a for a in qs if a.slug not in gia_visti]
 
     def visite_all_ora(a):
         ore = max((adesso - a.data_pubblicazione).total_seconds() / 3600, 6)
         return a.views / ore
 
-    candidati.sort(key=visite_all_ora, reverse=True)
-    return candidati[:MAX_CANDIDATI] if len(candidati) >= MIN_CANDIDATI else []
+    for ore in FINESTRE_ORE:
+        qs = Articolo.objects.filter(
+            approvato=True,
+            is_pubbliredazionale=False,
+            data_pubblicazione__range=(adesso - timedelta(hours=ore), adesso),
+        ).exclude(categoria__in=CATEGORIE_ESCLUSE)
+        candidati = [a for a in qs if a.slug not in gia_visti]
+        if len(candidati) >= MIN_CANDIDATI:
+            logging.info(f"Editoriale: {len(candidati)} articoli candidati nelle ultime {ore} ore")
+            candidati.sort(key=visite_all_ora, reverse=True)
+            return candidati[:MAX_CANDIDATI]
+    return []
 
 
 def raggruppa_per_categoria(articoli):
