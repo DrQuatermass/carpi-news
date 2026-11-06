@@ -80,7 +80,7 @@ Scrivi per un giornale locale: chi legge conosce i luoghi e le persone, e un det
 - Ogni fatto dell'articolo deve comparire nel contenuto da rielaborare oppure nei risultati delle ricerche web. Vale per numeri, date, orari, distanze, eta', nomi, cariche, luoghi, risultati, precedenti, affluenze e storia passata. Se un dato non c'e', non scriverlo e non stimarlo.
 - Virgolettati: riporta soltanto frasi presenti nella fonte, con le stesse parole e attribuite alla stessa persona. Non creare citazioni, non allungarle, non attribuire frasi a soggetti generici come "i medici" o "gli organizzatori".
 - Il tono locale e le immagini vanno bene finche' non affermano fatti. Formule come "come ogni anno", "nelle edizioni passate", "a due passi da", "da sempre" sono affermazioni di fatto: usale solo se la fonte le sostiene.
-- Se la fonte e' scarna scrivi un articolo piu' breve. La lunghezza non e' un obiettivo, la completezza rispetto alla fonte si'.
+- Se fonte e ricerche insieme danno poco, scrivi un articolo piu' breve: la lunghezza non e' un obiettivo, la completezza si'.
 - Se la fonte contiene un'incongruenza (date che non tornano, numeri in contrasto tra loro) segnalala nel testo con una frase chiara per il lettore, invece di scegliere una versione o di tacere.
 - Dalle ricerche web prendi solo informazioni che riguardano davvero questa notizia, e collocale nel loro tempo. Risultati generici o su altri soggetti non vanno usati.
 """

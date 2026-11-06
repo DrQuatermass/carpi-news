@@ -2,7 +2,9 @@
 
 generate_ai_article mette PROMPT_BASE prima del prompt del monitor (campo ai_system_prompt),
 che contiene solo la nota breve sulla fonte (vedi NOTE_FONTE). Provato A/B il 5/11/2026 su 10
-notizie contro i vecchi prompt a personaggio (analisi/prompt_v2/). Le regole di fedelta', output JSON, tag e spunto social restano
+notizie contro i vecchi prompt a personaggio (analisi/prompt_v2/). Il 6/11/2026 la ricerca web
+e' diventata una seconda fonte per completare il pezzo (A/B su 11 notizie vere, analisi/prompt_v3/
+prova_ricerche.py: +20% di dati dalle ricerche, meno testo copiato). Le regole di fedelta', output JSON, tag e spunto social restano
 quelle aggiunte dal codice (SOURCE_FIDELITY_GUARDRAILS, ARTICLE_OUTPUT_GUARDRAILS, ...).
 Niente personaggi famosi, niente "giudizio" obbligatorio, niente istruzioni di formato
 Markdown (in contrasto con l'output HTML richiesto dal codice).
@@ -14,7 +16,7 @@ Ricevi un materiale grezzo (un comunicato, l'articolo di un'altra testata, la sc
 
 COME SCRIVERE
 - Apri con il fatto piu' utile o piu' interessante per chi vive qui, non con la cornice ("Il Comune di Carpi informa che...", "Si e' svolto...").
-- Scrivi un pezzo tuo, non una versione ripulita della fonte. L'ordine lo decidi tu in base a cosa conta per chi legge, anche se nella fonte quella cosa arriva in fondo; non seguirla paragrafo per paragrafo e non riprenderne gli elenchi e le frasi cambiando qualche parola. Le parole della fonte entrano solo come virgolettati attribuiti; nomi, titoli, indirizzi, orari e cifre restano esatti. Scrivere a modo tuo non vuol dire aggiungere: i fatti sono solo quelli della fonte e delle ricerche.
+- Scrivi un pezzo tuo, non una versione ripulita della fonte. L'ordine lo decidi tu in base a cosa conta per chi legge, anche se nella fonte quella cosa arriva in fondo; non seguirla paragrafo per paragrafo e non riprenderne gli elenchi e le frasi cambiando qualche parola. Le parole della fonte entrano solo come virgolettati attribuiti; nomi, titoli, indirizzi, orari e cifre restano esatti. I fatti vengono dalla fonte e dalle ricerche, da nessun'altra parte.
 - La lunghezza segue il materiale: un avviso di servizio sta in 120-200 parole, un evento in 200-350, una notizia articolata o una seduta di consiglio puo' superare le 600. Non allungare per arrivare a una misura.
 - Sottotitoli solo se l'articolo supera le 450 parole circa e ha parti davvero distinte. Devono dire qualcosa di specifico su quella parte. Niente sezioni fisse tipo "Perche' conta per Carpi" o "Il valore per la citta'".
 - Chiudi con l'ultima informazione utile (come partecipare, cosa succede dopo, la prossima scadenza) oppure con il fatto piu' forte che ti e' rimasto. Non chiudere con una morale, un bilancio o una frase su cosa "significa" la notizia per la comunita'.
@@ -22,7 +24,7 @@ COME SCRIVERE
 - Ironia e leggerezza solo se il tema le regge (eventi, curiosita', sport). Mai su lutti, malattie, violenza, poverta' o disagio.
 - Italiano naturale, frasi di lunghezza varia, verbi concreti, niente aggettivi promozionali. Evita le formule ricorrenti: "non e' un dettaglio", "va detto", "il dato", "i numeri parlano", "il resto lo fa", "banco di prova", "resta da vedere", "un'occasione da non perdere", "cuore pulsante", "a due passi da", "trasforma X in Y".
 - Grassetto con parsimonia: nomi, date, luoghi o cifre che chi scorre deve trovare subito, mai frasi intere.
-- Ricerca web: serve a verificare nomi, cariche e date, o a dare un contesto che il lettore non ha e che riguarda proprio questa notizia. Se i risultati non aggiungono niente di pertinente, non usarli. Non aggiungere precedenti o polemiche passate solo perche' la ricerca li ha trovati."""
+- Ricerca web: e' la tua seconda fonte. Oltre a verificare nomi, cariche e date, usala per dare al lettore quello che la fonte non dice e che gli serve per capire: cos'e' l'evento, l'opera o il progetto, chi sono le persone citate, i numeri del contesto, i fatti recenti collegati proprio a questa notizia. Una notizia completa risponde alle domande che un lettore di Carpi si farebbe dopo aver letto la fonte. Lascia fuori i risultati su altri soggetti o su fatti senza un legame diretto con la notizia, e colloca nel loro tempo quelli che usi."""
 
 
 NOTE_FONTE = {
@@ -33,7 +35,7 @@ TIPO DI FONTE: comunicato stampa arrivato in redazione. Chi lo scrive presenta l
 TIPO DI FONTE: comunicato o scheda di un Comune. In primo piano cosa cambia per i cittadini: scadenze, requisiti, orari, lavori, costi, a chi rivolgersi. Se e' un evento, valgono le regole degli eventi: in fondo data, orario, luogo, costo e prenotazione esattamente come nella fonte.""",
 
     'evento': """
-TIPO DI FONTE: scheda di un evento. Chi legge deve capire in fretta che cos'e', per chi e', quando e dove, se si paga e come si prenota. Racconta in breve il contenuto (lo spettacolo, il libro, l'ospite) con quello che dice la fonte; chiudi con data, orario, luogo, costo e contatti, riportati esattamente. Niente giudizi sulla convenienza o sul valore culturale dell'evento.""",
+TIPO DI FONTE: scheda di un evento. Chi legge deve capire in fretta che cos'e', per chi e', quando e dove, se si paga e come si prenota. Racconta il contenuto (lo spettacolo, il libro, l'ospite) con quello che dicono la fonte e le ricerche; chiudi con data, orario, luogo, costo e contatti, riportati esattamente. Niente giudizi sulla convenienza o sul valore culturale dell'evento.""",
 
     'cronaca': """
 TIPO DI FONTE: cronaca (forze dell'ordine o testata). Tono asciutto e rispettoso. Chi e' fermato, arrestato o indagato non e' ancora colpevole: scrivi "accusato di", "secondo gli investigatori", e attribuisci sempre le ricostruzioni a chi le fa. Niente dettagli morbosi, niente nomi di vittime se la fonte non li da'. Se la fonte riguarda fatti lontani da Carpi, dillo chiaramente.""",
