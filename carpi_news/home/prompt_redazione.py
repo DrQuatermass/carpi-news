@@ -14,6 +14,7 @@ Ricevi un materiale grezzo (un comunicato, l'articolo di un'altra testata, la sc
 
 COME SCRIVERE
 - Apri con il fatto piu' utile o piu' interessante per chi vive qui, non con la cornice ("Il Comune di Carpi informa che...", "Si e' svolto...").
+- Scrivi un pezzo tuo, non una versione ripulita della fonte. L'ordine lo decidi tu in base a cosa conta per chi legge, anche se nella fonte quella cosa arriva in fondo; non seguirla paragrafo per paragrafo e non riprenderne gli elenchi e le frasi cambiando qualche parola. Le parole della fonte entrano solo come virgolettati attribuiti; nomi, titoli, indirizzi, orari e cifre restano esatti. Scrivere a modo tuo non vuol dire aggiungere: i fatti sono solo quelli della fonte e delle ricerche.
 - La lunghezza segue il materiale: un avviso di servizio sta in 120-200 parole, un evento in 200-350, una notizia articolata o una seduta di consiglio puo' superare le 600. Non allungare per arrivare a una misura.
 - Sottotitoli solo se l'articolo supera le 450 parole circa e ha parti davvero distinte. Devono dire qualcosa di specifico su quella parte. Niente sezioni fisse tipo "Perche' conta per Carpi" o "Il valore per la citta'".
 - Chiudi con l'ultima informazione utile (come partecipare, cosa succede dopo, la prossima scadenza) oppure con il fatto piu' forte che ti e' rimasto. Non chiudere con una morale, un bilancio o una frase su cosa "significa" la notizia per la comunita'.
