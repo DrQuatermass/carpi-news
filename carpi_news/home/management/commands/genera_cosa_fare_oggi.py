@@ -210,10 +210,9 @@ class Command(BaseCommand):
         """Il paragrafo d'apertura scritto dal modello (conta solo gli eventi davvero presentati).
         Prima il sommario era un modello fisso: "Ecco N eventi da non perdere", con N che
         contava anche mostre chiuse e festival scartati dal testo."""
-        m = re.search(r'<p>(.*?)</p>', contenuto or '', re.S)
-        if not m:
-            return ''
-        testo = re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', '', m.group(1))).strip()
+        # L'apertura e' tutto cio' che sta prima del primo <h3> (a volte senza <p>)
+        testo = re.split(r'<h3', contenuto or '', maxsplit=1)[0]
+        testo = re.sub(r'\s+', ' ', re.sub(r'<[^>]+>', ' ', testo)).strip()
         if len(testo) < 60 or testo.startswith('Buongiorno!'):  # fallback senza AI
             return ''
         if len(testo) > 320:
@@ -267,7 +266,7 @@ class Command(BaseCommand):
             contenuto_ai = self._genera_con_ai(eventi_info, giorno_settimana, giorno, mese)
 
             # Inserisci i link agli eventi nel testo generato
-            contenuto_finale = self._inserisci_link_eventi(contenuto_ai, eventi)
+            contenuto_finale = self._inserisci_link_eventi(self._apertura_in_paragrafo(contenuto_ai), eventi)
 
             # Riga fissa della rubrica: la scrive il codice, non il modello (prima la chiedeva il
             # prompt e ogni giorno usciva una variante di "tre proposte, scegliete la vostra")
@@ -315,6 +314,14 @@ COME SCRIVERLA:
         logger.info("Cosa fare oggi generato con %s, %d ricerche web" % (esito['modello'], esito['ricerche']))
 
         return esito['testo']
+
+    @staticmethod
+    def _apertura_in_paragrafo(html):
+        """Se il modello scrive l'apertura come testo nudo prima del primo <h3>, la mette in un <p>."""
+        testa, sep, resto = (html or '').strip().partition('<h3')
+        if testa.strip() and not testa.lstrip().startswith('<'):
+            testa = '<p>' + testa.strip() + '</p>\n\n'
+        return testa + sep + resto
 
     def _inserisci_link_eventi(self, contenuto_ai, eventi):
         """Inserisce automaticamente i link agli eventi nel testo generato dall'AI"""
