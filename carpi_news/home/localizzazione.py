@@ -193,7 +193,9 @@ def localizza_con_ai(articolo):
         if centro and _distanza_km(lat, lng, *centro) > DISTANZA_MAX_KM:
             continue
         articolo.lat, articolo.lng = lat, lng
-        articolo.luogo_preciso = bool(dati['indirizzo'] or dati['luogo'])
+        # Anche la sola frazione (Migliarina, Fossoli, Cortile) e' un posto distinto dal centro:
+        # va sulla mappa (dal 6/11/2026; prima contava solo nel totale del comune)
+        articolo.luogo_preciso = True
         break
     articolo.luogo_origine = 'ai'
     return True
