@@ -104,6 +104,28 @@ def _trascrizione_video(articolo):
     return YouTubeAPIScraper(config, {}).get_video_transcript(video_id)
 
 
+MAX_CARATTERI_PAGINA_COLLEGATA = 4000
+
+
+def pagine_linkate(articolo):
+    """Testo delle pagine esterne linkate nel contenuto (max 3), esclusi social, moduli e
+    il nostro sito. I siti che rifiutano (403) vengono saltati."""
+    if 'href=' not in (articolo.contenuto or '') and 'http' not in (articolo.contenuto or ''):
+        return []
+    sito = _dominio(getattr(settings, 'SITE_URL', 'https://ombradelportico.it'))
+    try:
+        from home.universal_news_monitor import scarica_pagine_linkate
+        pagine = scarica_pagine_linkate(articolo.contenuto, escludi_domini=(sito, 'ombradelportico.it'),
+                                        max_chars=MAX_CARATTERI_PAGINA_COLLEGATA)
+    except Exception as e:
+        logger.warning(f"Articolo {articolo.id}: pagine linkate non scaricate: {e}")
+        return []
+    if pagine:
+        logger.info(f"Articolo {articolo.id}: aggiunte {len(pagine)} pagine linkate dalla fonte: "
+                    f"{[p['url'] for p in pagine]}")
+    return pagine
+
+
 def rielabora_articolo(articolo_id, richieste_modifica=None):
     """Rielabora in modo sincrono (1-3 minuti). Ritorna il messaggio della pipeline."""
     from home.models import Articolo
@@ -112,6 +134,10 @@ def rielabora_articolo(articolo_id, richieste_modifica=None):
     articolo = Articolo.objects.select_related('monitor_origine').get(pk=articolo_id)
     monitor = trova_monitor(articolo)
     ai_monitor = UniversalNewsMonitor(_site_config(articolo, monitor))
+
+    # Pagine linkate nella fonte ("vai alla pagina dedicata" delle schede del Comune): prima
+    # il link spariva con i tag e il modello lavorava solo sulla scheda, spesso di 3 righe
+    pagine_collegate = pagine_linkate(articolo)
 
     testo = re.sub(r'<[^>]+>', ' ', articolo.contenuto or '')
     testo = re.sub(r'[ \t]+', ' ', testo)
@@ -133,6 +159,8 @@ def rielabora_articolo(articolo_id, richieste_modifica=None):
     }
     if articolo.data_evento:
         article_data['event_start'] = articolo.data_evento.isoformat()
+    if pagine_collegate:
+        article_data['links_content'] = pagine_collegate
 
     logger.info(
         f"Rielaborazione articolo {articolo.id} con le regole di "

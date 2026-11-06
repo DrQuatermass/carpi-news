@@ -2706,8 +2706,9 @@ class EmailScraper(BaseScraper):
                     return str(email_message.get_payload(decode=True), errors='replace')
         return ""
 
-    def _extract_and_fetch_links(self, content: str) -> List[Dict[str, str]]:
-        """Estrae link dal contenuto e ne scarica il contenuto"""
+    def _extract_and_fetch_links(self, content: str, escludi_domini=(), max_chars: int = 1000) -> List[Dict[str, str]]:
+        """Estrae link dal contenuto e ne scarica il contenuto (max 3 pagine, max_chars ciascuna).
+        escludi_domini: domini da saltare oltre ai social (il nostro sito, la fonte stessa)."""
         import re
         import requests
         from urllib.parse import urlparse
@@ -2745,11 +2746,13 @@ class EmailScraper(BaseScraper):
             excluded_domains = [
                 'twitter.com', 'x.com', 'pic.twitter.com', 'pbs.twimg.com',
                 't.co',  # URL shortener Twitter
-                'facebook.com', 'instagram.com', 'youtube.com'
-            ]
+                'facebook.com', 'instagram.com', 'youtube.com',
+                'forms.cloud.microsoft', 'forms.office.com', 'docs.google.com',
+            ] + [d for d in escludi_domini if d]
 
             relevant_urls = []
-            for url in found_urls:
+            for url in sorted(found_urls):
+                url = url.rstrip(').,;')
                 parsed = urlparse(url)
                 domain = parsed.netloc.lower()
 
@@ -2783,11 +2786,16 @@ class EmailScraper(BaseScraper):
                         title = soup.title.string.strip()
 
                     # Estrai contenuto principale
-                    content_tags = soup.find_all(['p', 'h1', 'h2', 'h3', 'article', 'main'])
-                    text_content = ' '.join(tag.get_text(strip=True) for tag in content_tags)
+                    # Prima article/main (prima il testo usciva doppio: paragrafi + contenitore)
+                    corpo = soup.find('article') or soup.find('main')
+                    if corpo:
+                        text_content = corpo.get_text(' ', strip=True)
+                    else:
+                        content_tags = soup.find_all(['h1', 'h2', 'h3', 'p'])
+                        text_content = ' '.join(tag.get_text(' ', strip=True) for tag in content_tags)
 
                     # Pulisci e limita il contenuto
-                    clean_content = ' '.join(text_content.split())[:1000]  # Max 1000 caratteri
+                    clean_content = ' '.join(text_content.split())[:max_chars]
 
                     if clean_content and len(clean_content) > 100:  # Solo se ha contenuto significativo
                         links_content.append({
@@ -4437,3 +4445,14 @@ Rielabora questa notizia seguendo le istruzioni del sistema. Rispondi SOLO con J
         finally:
             self.release_lock()
             self.logger.info("Monitor loop terminato")
+
+
+def scarica_pagine_linkate(content: str, escludi_domini=(), max_chars: int = 4000, timeout: int = 15) -> List[Dict[str, str]]:
+    """Pagine esterne linkate in un testo (max 3), come per le email: usata dalla rielaborazione
+    su richiesta per i link "vai alla pagina dedicata" delle schede."""
+    class _Contesto:
+        pass
+    ctx = _Contesto()
+    ctx.logger = logging.getLogger('carpi_news_monitors.pagine_linkate')
+    ctx.timeout = timeout
+    return EmailScraper._extract_and_fetch_links(ctx, content, escludi_domini=escludi_domini, max_chars=max_chars)

@@ -340,14 +340,11 @@ class WebSearchTool:
         query_lower = query.lower()
 
         import re
-        from urllib.parse import urlparse
 
-        # Escludi solo le homepage. Prima r'/$' scartava ogni URL con la barra finale, cioe'
-        # quasi tutte le pagine WordPress (6/11/2026: la pagina della Fondazione Fossoli sul
-        # documentario, i profili di un relatore...) e molte ricerche tornavano vuote
-        path = urlparse(url).path or '/'
-        if re.fullmatch(r'/(?:(?:home|index\.(?:html?|php)))?/?', path, re.IGNORECASE):
-            return False
+        # Niente filtro sulle homepage (6/11/2026): prima r'/$' scartava ogni URL con la barra
+        # finale, cioe' quasi tutte le pagine WordPress, e una homepage puo' essere proprio il
+        # sito del progetto cercato (proformamemoria.it per un documentario). Decide la
+        # pertinenza di titolo e snippet qui sotto.
 
         # Escludi URL troppo generici
         if any(p in url_lower for p in ['/chi-siamo', '/contatti', '/about', '/contact']):
