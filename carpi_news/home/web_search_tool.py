@@ -831,6 +831,7 @@ class WebSearchTool:
                         enhanced_result['full_content'] = result['snippet']
                         enhanced_result['page_title'] = result['title']
                         enhanced_result['content_length'] = len(result['snippet'])
+                        enhanced_result['solo_anteprima'] = True
 
                 except Exception as e:
                     # Errore durante il download - usa il fallback
@@ -838,6 +839,7 @@ class WebSearchTool:
                     enhanced_result['full_content'] = result['snippet']
                     enhanced_result['page_title'] = result['title']
                     enhanced_result['content_length'] = len(result['snippet'])
+                    enhanced_result['solo_anteprima'] = True
 
                 enhanced_results.append(enhanced_result)
 
@@ -854,28 +856,25 @@ class WebSearchTool:
         if not results:
             return "Nessun risultato di ricerca disponibile."
 
-        formatted = ("=== RISULTATI RICERCA WEB CON CONTENUTO COMPLETO ===\n"
-                     "ATTENZIONE ALLE DATE: puoi usare anche fonti datate (utili per contesto e "
-                     "retroscena), ma colloca ogni fatto nel suo tempo. Il rischio da evitare e' "
-                     "scambiare un fatto passato per attuale: cariche, ruoli e situazioni possono "
-                     "essere cambiati. Controlla la 'Data pubblicazione' e la coerenza con la data odierna.\n\n")
+        formatted = ("=== RISULTATI DELLA RICERCA ===\n"
+                     "Ogni risultato ha la sua data: colloca i fatti nel loro tempo.\n\n")
 
         for i, result in enumerate(results, 1):
-            formatted += f"**Risultato {i}:**\n"
+            formatted += f"Risultato {i}\n"
             formatted += f"Titolo: {result.get('page_title', result['title'])}\n"
             formatted += f"URL: {result['url']}\n"
             pub_date = result.get('published_date')
             formatted += f"Data pubblicazione: {pub_date if pub_date else 'non disponibile'}\n"
 
-            # Usa contenuto completo se disponibile, altrimenti snippet
             content = result.get('full_content', result.get('snippet', ''))
             if content:
-                # Limita lunghezza per non sovraccaricare il prompt
-                if len(content) > 2000:
-                    content = content[:2000] + "... [contenuto troncato]"
-                formatted += f"Contenuto completo:\n{content}\n"
-
-            formatted += f"Lunghezza: {result.get('content_length', 'N/A')} caratteri\n\n"
+                if len(content) > 4000:
+                    content = content[:4000] + "... [testo troncato]"
+                if result.get('solo_anteprima'):
+                    # Prima era etichettata "Contenuto completo" anche quando il sito rifiutava
+                    formatted += f"Solo anteprima di Google (la pagina non si e' lasciata scaricare):\n{content}\n\n"
+                else:
+                    formatted += f"Testo della pagina:\n{content}\n\n"
 
         formatted += "=== FINE RISULTATI ===\n"
         return formatted

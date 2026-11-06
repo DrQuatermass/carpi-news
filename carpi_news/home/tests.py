@@ -95,7 +95,7 @@ class TrascrizioniLungheTests(TestCase):
         self.assertTrue(system.startswith(PROMPT_BASE))
         self.assertIn(NOTE_FONTE['testata'].strip(), system)
         self.assertLess(system.index(PROMPT_BASE), system.index("FEDELTA' ALLA FONTE"))
-        self.assertIn("REGOLE DI OUTPUT OBBLIGATORIE", system)
+        self.assertIn("FORMATO DELLA RISPOSTA", system)
         self.assertNotIn("giudizio pragmatico", system)
 
     def _rielabora(self, trascrizione, fonte=URL_VIDEO):

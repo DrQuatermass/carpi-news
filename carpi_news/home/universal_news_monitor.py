@@ -40,9 +40,7 @@ from home.content_polisher import content_polisher
 
 
 TAGS_INSTRUCTION = """
-
-Nel campo JSON "tags", inserisci 3-5 tag pertinenti, specifici per l'argomento.
-Esempio: ["Carpi calcio", "Serie D", "stadio Cabassi"]
+I tag sono specifici dell'argomento, non generici: per esempio ["Carpi calcio", "Serie C", "stadio Cabassi"], non ["sport", "notizie"].
 """
 
 
@@ -70,13 +68,8 @@ COPERTURA DELLA TRASCRIZIONE (la fonte e' la trascrizione automatica di un video
 # imponiamo di restare aderente ai fatti dichiarati, anche a costo di un articolo corto.
 TWITTER_FIDELITY_GUARDRAILS = """
 
-FEDELTA' AI FATTI (OBBLIGATORIO - la fonte e' un tweet, quindi molto breve):
-- Riporta SOLO i fatti realmente presenti nel tweet o confermati dalla ricerca web. Non inventare nulla.
-- NON aggiungere dettagli non verificabili: reazioni della gente, code ai supermercati, disagi a bar/negozi, numeri di persone coinvolte, dichiarazioni, orari, cause del problema, tempi di ripristino, se non sono esplicitamente nel tweet o in una fonte verificata.
-- NON descrivere scene o conseguenze che non puoi verificare ("cittadini alle prese con...", "in tanti si sono riversati...").
-- Puoi aggiungere solo contesto FATTUALE e verificabile (es. chi e' il gestore del servizio, dove si trova un luogo), citandolo dalla ricerca web.
-- Se il tweet dice poco, l'articolo sara' breve: va bene. Meglio 4-5 frase corrette che un pezzo lungo pieno di dettagli inventati.
-- Nel dubbio su un dettaglio, omettilo.
+FONTE BREVISSIMA (un tweet o un avviso di poche righe):
+Con cosi' poco materiale il rischio e' riempire con dettagli plausibili. Scrivi solo quello che c'e' nel messaggio o che hai trovato nelle ricerche: niente reazioni della gente, code, disagi, numeri, cause o tempi di ripristino che nessuno ha scritto, e niente scene ("cittadini alle prese con..."). Il contesto utile e verificabile va bene (chi gestisce il servizio, dove si trova il luogo). Se il messaggio dice poco, quattro o cinque frasi corrette bastano.
 """
 
 
@@ -94,27 +87,22 @@ Scrivi per un giornale locale: chi legge conosce i luoghi e le persone, e un det
 
 ARTICLE_OUTPUT_GUARDRAILS = """
 
-REGOLE DI OUTPUT OBBLIGATORIE:
-- Non mostrare mai reasoning, analisi, note di lavoro, frasi come "ho trovato" o "posso costruire".
-- Non ripetere il titolo nel corpo dell'articolo.
-- Non iniziare il corpo con un elenco puntato o numerato.
-- Evita elenchi puntati salvo necessita' giornalistica reale.
-- Usa frasi fluide con virgole; evita trattini e incisi con "-".
-- Rispondi solo con JSON valido, senza markdown, senza blocchi ``` e senza testo fuori dal JSON.
-- Il JSON deve avere esattamente questi campi: "titolo", "titolo_seo", "sommario", "contenuto", "tags", "spunto_social".
-- "titolo": titolo editoriale narrativo e coinvolgente per il lettore.
-- "titolo_seo": title tag per Google, MAX 60 caratteri, struttura SOGGETTO + LUOGO + AZIONE, deve contenere le parole chiave esatte che qualcuno cercherebbe su Google per questa notizia. Includi sempre "Carpi" o il nome specifico della persona/luogo. STILE: cronaca giornalistica italiana naturale come voce.it, sulpanaro.net, modenatoday.it. VIETATI: titoli clickbait ("rivoluzione silenziosa", "non crederai", "svela il segreto"), frasi che iniziano con "Quando la/il", metafore astratte, "X rock" fuori contesto musica, parole inventate o storpiate. Esempio buono: "AIMAG Carpi: Morelli chiede trasparenza sulle nomine". Esempio CATTIVO: "Tortellini rock quando pasta diventa rivoluzione silenziosa". Se non riesci a creare un titolo_seo migliore del titolo, usa "".
-- "sommario" deve essere plain text, senza HTML.
-- "contenuto" deve contenere HTML con <p>, <strong>, <h2>/<h3> dove serve, mai <h1>.
-- "tags" deve essere un array di stringhe.
-- "spunto_social": UNA sola frase (60-140 caratteri) che verra' messa in fondo al post Facebook per invitare i lettori a commentare. Non riassume la notizia: apre una conversazione. In italiano, rivolta ai lettori ("voi/diteci/raccontateci"), senza hashtag, senza link, senza il nome della testata, al massimo 1 emoji. Scegli la LEVA giusta in base alla categoria:
+FORMATO DELLA RISPOSTA:
+Rispondi solo con un oggetto JSON valido, senza blocchi ``` e senza testo prima o dopo: viene letto da un programma. Niente note di lavoro o ragionamenti nel testo ("ho trovato", "posso costruire").
+Campi, tutti obbligatori: "titolo", "titolo_seo", "sommario", "contenuto", "tags", "spunto_social".
+- "titolo": il titolo dell'articolo sul sito. Dice il fatto in modo concreto e invoglia a leggere, senza giochi di parole forzati e senza promettere piu' di quello che c'e'.
+- "titolo_seo": il title per Google, al massimo 60 caratteri, con le parole che qualcuno cercherebbe per trovare questa notizia: soggetto, luogo (Carpi o il comune) e cosa succede, nello stile della cronaca locale (Voce di Carpi, SulPanaro, ModenaToday). Esempio: "AIMAG Carpi: Morelli chiede trasparenza sulle nomine". Niente frasi a effetto ("rivoluzione silenziosa", "Quando la..."), metafore o parole inventate. Se non riesci a fare meglio del titolo, metti "".
+- "sommario": una o due frasi di testo semplice, senza HTML, che dicono la notizia a chi legge solo quelle.
+- "contenuto": HTML con <p>, <strong> e, solo dove servono, <h2>/<h3>; mai <h1>. Non ripetere il titolo in apertura, non iniziare con un elenco e usa gli elenchi puntati solo se il contenuto e' davvero un elenco (orari, requisiti). Gli incisi si fanno con le virgole, non con i trattini.
+- "tags": array di 3-5 stringhe.
+- "spunto_social": una frase di 60-140 caratteri messa in fondo al post Facebook per invitare a commentare. Non riassume la notizia, apre una conversazione con i lettori ("diteci", "raccontateci"), senza hashtag, link o nome della testata, al massimo un'emoji. La leva dipende dalla categoria:
   * Attualita'/Politica/Economia -> OPINIONE: presenta due letture legittime e chiedi da che parte stanno, mai faziosa (es. "Investimento lungimirante o toppa prima di svendere? Diteci la vostra.").
   * Sanita'/Sociale/Scuola -> ESPERIENZA personale, tono rispettoso (es. "Chi ha vissuto il pronto soccorso: vi torna questa foto?").
   * Sport -> ORGOGLIO + TAG, o pronostico per il calcio (es. "Applausi ai ragazzi nei commenti, taggate chi gioca con voi!").
   * Cultura & Eventi -> PARTECIPAZIONE/TAG/RICORDO (es. "Chi si organizza? Taggate la compagnia." oppure "Quale brano vorreste sentire?").
   * Cronaca (fatti non luttuosi) -> CURIOSITA' o MEMORIA locale (es. "Chi se lo ricorda com'era prima?").
   * Cosa fare oggi -> SONDAGGIO leggero (es. "Si esce o divano e ventilatore? Dove andate?").
-  REGOLA DI SICUREZZA (prevale sulla categoria): se la notizia e' un LUTTO, un INCIDENTE GRAVE, una MALATTIA, una TRAGEDIA o cronaca nera con vittime, NIENTE domanda-opinione e niente morbosita': usa un invito alla vicinanza o al ricordo (es. "Lascia un pensiero per la famiglia.") e in quel caso puo' finire con "." invece che con "?". Mai toni allarmistici o clickbait.
+  Questo vale prima della categoria: se la notizia e' un lutto, un incidente grave, una malattia, una tragedia o cronaca nera con vittime, niente domande-opinione e niente curiosita' morbosa. Usa un invito alla vicinanza o al ricordo (es. "Lascia un pensiero per la famiglia."), che puo' finire con il punto. Mai toni allarmistici.
 """
 
 
@@ -3425,12 +3413,11 @@ class UniversalNewsMonitor:
             today_date = _now.strftime("%d/%m/%Y")
             today_weekday = _giorni_sett[_now.weekday()]
             date_context = (
-                f"\n\nIMPORTANTE: La data odierna è {today_weekday} {today_date}. "
-                "Usa questa data come riferimento per verificare fatti, nomi di cariche pubbliche e informazioni correnti "
-                "e dare un valore cronologico alle informazioni che trovi online. "
-                "NON calcolare a mente il giorno della settimana di una data: usa SOLO i giorni della settimana "
-                "già indicati esplicitamente nel contenuto o nelle fonti. Se un giorno della settimana non è fornito, "
-                "riporta solo la data numerica senza inventare il giorno."
+                f"\n\nDATA DI OGGI: {today_weekday} {today_date}. Ti serve per capire se un fatto, "
+                "una carica o un evento trovato online e' attuale o passato, e per scrivere \"domani\", "
+                "\"sabato scorso\" e simili nel modo giusto. Il giorno della settimana di un'altra data "
+                "scrivilo solo se e' indicato nella fonte o nelle ricerche: calcolato a mente sbaglia "
+                "spesso, quindi altrimenti metti solo giorno e mese."
             )
             self.logger.warning(f"[DEBUG] date_context creato: {today_date}")
 
@@ -3450,7 +3437,8 @@ class UniversalNewsMonitor:
             # Costruisci contenuto con eventuali link (MANTENIAMO)
             links_section = ""
             if article_data.get('links_content'):
-                links_section = "\n\nContenuto aggiuntivo dai link riferiti:\n"
+                links_section = ("\n\nPagine linkate dalla fonte (fanno parte del materiale, valgono "
+                                 "come la fonte):\n")
                 for i, link_data in enumerate(article_data['links_content'], 1):
                     link_content = truncate_ai_source_text(
                         link_data.get('content', ''),
@@ -3472,30 +3460,24 @@ class UniversalNewsMonitor:
             if enable_web_search:
                 web_search_tool_def = {
                     "name": "web_search",
-                    "description": """OBBLIGATORIO: usa la ricerca web per verificare fatti (nomi, date, luoghi, organizzazioni) e arricchire l'articolo con contesto e dettagli.
+                    "description": """Ricerca su Google: restituisce fino a 5 pagine con titolo, indirizzo, data di pubblicazione e testo (o la sola anteprima, se il sito non si lascia scaricare).
 
-                    COME SCRIVERE LA QUERY (decisivo per ottenere risultati):
-                    - BREVE: 2-4 parole chiave essenziali (nomi propri, luogo, tema). MAI una frase lunga.
-                    - NON attaccare l'anno o numeri ai nomi: scrivi "Manuela Ghizzoni Fondazione Fossoli", NON "Manuela Ghizzoni2026".
-                    - Parti generico: le query troppo specifiche restituiscono ZERO risultati. Meglio poche parole giuste.
-                    - Esempi:
-                        BUONA: "Yoga Radio Bruno Estate Carpi"  |  CATTIVA: "Yoga Radio Bruno Estate 2026 Carpi piazza Martiri luglio"
-                        BUONA: "Orchestra Tangenziale Villotti documentario"  |  CATTIVA: "Doc orchestra ritmica tangenziale raccordi Villotti Negroni anziani ottantenni"
+Serve a due cose: verificare nomi, cariche, date e luoghi citati nella fonte, e trovare quello che la fonte non dice ma che il lettore deve sapere per capire la notizia. Il secondo caso conta soprattutto quando la fonte e' una scheda di poche righe: cerca l'evento, il libro, il film o il progetto per titolo e i protagonisti per nome, per sapere di che cosa si tratta.
 
-                    ATTENZIONE ALLE DATE: ogni risultato riporta la "Data pubblicazione". Puoi usare anche fonti datate (per contesto e retroscena), ma colloca ogni fatto nel suo tempo: NON scambiare un fatto passato per attuale (cariche, ruoli e situazioni possono essere cambiati nel frattempo). Verifica la coerenza con la data odierna.
+Le query funzionano meglio corte, 2-5 parole: il titolo tra virgolette oppure nome e cognome piu' una parola che li identifica (ente, citta', mestiere). Non aggiungere anno, mese o luogo dell'evento ai nomi delle persone. Se una ricerca non trova niente, riprova una volta con parole diverse invece di ripetere la stessa.
 
-                    Fai almeno una ricerca per il fact-checking, poi decidi se i risultati sono abbastanza pertinenti da includerli come fonti (se non lo sono, non includerli).""",
+Ogni risultato ha la sua data: i fatti datati vanno collocati nel loro tempo, perche' cariche e situazioni possono essere cambiate. Usa solo le pagine che parlano davvero di questa notizia o di queste persone.""",
                     "input_schema": {
                         "type": "object",
                         "properties": {
                             "query": {
                                 "type": "string",
-                                "description": "Query BREVE: 2-4 parole chiave (nomi, luogo, tema). No frasi lunghe, no anno attaccato ai nomi."
+                                "description": "2-5 parole: titolo tra virgolette, oppure nome e cognome piu' ente o citta'."
                             },
                             "max_results": {
                                 "type": "integer",
-                                "default": 2,
-                                "description": "Numero massimo di risultati (1-5)"
+                                "default": 3,
+                                "description": "Numero di risultati da 1 a 5 (default 3)"
                             }
                         },
                         "required": ["query"]
@@ -3513,15 +3495,25 @@ class UniversalNewsMonitor:
                 )
 
             # Contenuto iniziale per Claude con ricerca forzata
+            if enable_web_search:
+                istruzioni_ricerca = (
+                    "Prima di scrivere fai almeno una ricerca con web_search, per verificare i nomi e le "
+                    "date principali. Se la fonte e' scarna (una scheda di poche righe, un rimando a "
+                    "\"la pagina dedicata\" o all'organizzatore), cerca anche cosa sono l'evento, l'opera "
+                    "o il progetto e chi sono le persone citate: e' quello che serve al lettore. Se le "
+                    "ricerche non aggiungono niente di pertinente, scrivi con il materiale che hai."
+                )
+            else:
+                istruzioni_ricerca = "Lavora solo con il materiale fornito."
             user_content = f"""Fonte: {article_data.get('url') or 'non indicata'}
 Titolo originale: {article_data['title']}
 
-Contenuto principale da rielaborare:
+Materiale da cui scrivere l'articolo:
 {content}
 {links_section}{richieste_section}
 
-Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
-{f"OBBLIGATORIO: Devi SEMPRE usare web_search almeno una volta per verificare fatti e approfondire l'articolo. Usa query BREVI (2-4 parole chiave: nomi propri, luogo, tema), non frasi lunghe e senza attaccare l'anno ai nomi. Dopo aver fatto le ricerche, decidi autonomamente se i risultati sono abbastanza rilevanti e specifici da includere come fonti, oppure se è meglio non includere fonti generiche o poco pertinenti." if enable_web_search else "Lavora solo con il contenuto fornito."}"""
+{istruzioni_ricerca}
+Poi scrivi l'articolo seguendo le istruzioni del sistema e rispondi con il JSON richiesto."""
 
             user_content = truncate_ai_source_text(
                 user_content, self.logger, label="Messaggio user generate_article",
@@ -3852,7 +3844,10 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
                 for tool_use in tool_uses:
                     if tool_use.name == "web_search":
                         query = tool_use.input.get("query", "")
-                        max_results = tool_use.input.get("max_results", 2)
+                        try:
+                            max_results = max(1, min(5, int(tool_use.input.get("max_results", 3))))
+                        except (TypeError, ValueError):
+                            max_results = 3
 
                         self.logger.info(f"Claude richiede ricerca web: '{query}'")
 
@@ -3931,8 +3926,12 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
 
                             self.logger.info(f"Forniti {len(search_results)} risultati con contenuto completo a Claude")
                         else:
-                            # Nessun risultato o errore - comunica a Claude di continuare senza
-                            error_msg = f"Ricerca web non disponibile al momento"
+                            # Nessun risultato o errore - comunica a Claude di continuare senza.
+                            # Prima diceva sempre "non disponibile" anche con zero risultati e il
+                            # modello smetteva di cercare
+                            error_msg = (f"Nessun risultato per \"{query}\". Puoi riprovare con parole "
+                                         "diverse (solo il titolo, o nome e cognome) oppure procedere "
+                                         "con il materiale che hai.")
                             if error_message:
                                 if "quota" in error_message.lower() or "429" in error_message:
                                     error_msg = "Quota API Google esaurita. Procedi con le informazioni disponibili."
@@ -3993,9 +3992,8 @@ Rielabora questa notizia creando un articolo coinvolgente e ben strutturato.
                 conversation.append({
                     "role": "user",
                     "content": (
-                        "Hai raggiunto il limite massimo di ricerche. Non usare altri strumenti. "
-                        "Genera ora l'articolo finale usando solo le informazioni disponibili e "
-                        "rispondi esclusivamente con il JSON richiesto dal system prompt."
+                        "Le ricerche disponibili sono finite. Scrivi ora l'articolo con il materiale "
+                        "e i risultati che hai e rispondi solo con il JSON richiesto."
                     )
                 })
                 final_params = {
