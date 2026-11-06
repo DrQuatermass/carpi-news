@@ -140,8 +140,12 @@ class Command(BaseCommand):
             .order_by("updated_at")
         )
         if newer_than_minutes > 0:
+            # La finestra parte dal primo tentativo (published_at, creazione del log), non
+            # dall'ultimo: ogni retry aggiorna updated_at e con quello un articolo che fallisce
+            # sempre restava "recente" all'infinito (art. 18994: 2.040 tentativi in un mese).
+            # La ripubblicazione degli eventi cancella e ricrea i log, quindi riparte da zero.
             floor = timezone.now() - timedelta(minutes=newer_than_minutes)
-            qs = qs.filter(updated_at__gte=floor)
+            qs = qs.filter(published_at__gte=floor)
         if opts["in_progress_only"]:
             qs = qs.filter(error_message="In progress...")
 

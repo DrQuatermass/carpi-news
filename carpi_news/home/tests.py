@@ -1505,6 +1505,30 @@ class RetryFailedSocialSharesCommandTests(TestCase):
         self.assertEqual(len(items), 1)
         self.assertEqual(items[0][0], self.articolo)
 
+    def test_retry_window_counts_from_first_attempt_not_last_retry(self):
+        # Primo tentativo 2 ore fa, ultimo retry 20 minuti fa: fuori dalla finestra di 60
+        log = SocialPublicationLog.objects.create(
+            articolo=self.articolo,
+            platform="instagram_story",
+            success=False,
+            error_message="Generazione video fallita",
+        )
+        SocialPublicationLog.objects.filter(pk=log.pk).update(
+            published_at=timezone.now() - timedelta(minutes=120),
+            updated_at=timezone.now() - timedelta(minutes=20),
+        )
+
+        items = RetryFailedSocialSharesCommand()._retry_items({
+            "platform": ["instagram_story"],
+            "older_than_minutes": 15,
+            "newer_than_minutes": 60,
+            "limit": 20,
+            "article_limit": 0,
+            "in_progress_only": False,
+        })
+
+        self.assertEqual(items, [])
+
     @patch("home.management.commands.retry_failed_social_shares.social_manager.retry_failed_platforms_only")
     def test_handle_rechecks_all_platforms_when_no_platform_filter(self, retry_mock):
         retry_mock.return_value = {"telegram": True, "facebook": True, "instagram_story": True}
@@ -2160,3 +2184,36 @@ class LinkInBioTests(TestCase):
         response = self.client.get(reverse("link_in_bio_search"), {"q": "Cultura"})
         self.assertContains(response, "Cultura in piazza")
         self.assertNotContains(response, "Cronaca locale")
+
+
+class NewsletterIndirizzoInesistenteTests(SimpleTestCase):
+    def test_dominio_inesistente_disattiva(self):
+        import smtplib
+        from home.management.commands.send_newsletter import indirizzo_inesistente
+        exc = smtplib.SMTPRecipientsRefused({'x@immenseignite.info': (556, b'5.1.10 abc dominio non valido')})
+        self.assertTrue(indirizzo_inesistente(exc))
+
+    def test_rifiuti_non_di_indirizzo_non_disattivano(self):
+        import smtplib
+        from home.management.commands.send_newsletter import indirizzo_inesistente
+        self.assertFalse(indirizzo_inesistente(smtplib.SMTPRecipientsRefused({'a@b.it': (550, b'5.7.1 rate limit')})))
+        self.assertFalse(indirizzo_inesistente(smtplib.SMTPRecipientsRefused({'a@b.it': (450, b'4.1.1 try later')})))
+        self.assertFalse(indirizzo_inesistente(smtplib.SMTPServerDisconnected('please run connect() first')))
+
+
+class ReelImmagineLocaleTests(TestCase):
+    def test_usa_versione_locale_se_la_foto_remota_non_risponde(self):
+        import tempfile
+        from pathlib import Path
+        from django.test import override_settings
+        from home.facebook_reels import FacebookReelGenerator
+
+        with tempfile.TemporaryDirectory() as media, override_settings(MEDIA_ROOT=media):
+            Path(media, 'images', 'articles').mkdir(parents=True)
+            Path(media, 'images', 'articles', 'x-16x9.webp').write_bytes(b'x')
+            articolo = Articolo(titolo='T', contenuto='c', foto='https://example.com/sparita.jpg',
+                                image_16x9='images/articles/x-16x9.webp')
+            generator = FacebookReelGenerator.__new__(FacebookReelGenerator)
+            with patch.object(FacebookReelGenerator, '_download_image', return_value=None):
+                path = generator._resolve_image_path(articolo)
+            self.assertEqual(path, Path(media, 'images', 'articles', 'x-16x9.webp'))

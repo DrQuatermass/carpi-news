@@ -214,9 +214,10 @@ class FacebookReelGenerator:
 
         foto = str(articolo.foto).strip()
 
-        # URL remoto: scarica
+        # URL remoto: scarica; se la fonte non la serve piu' (404 dopo settimane) usa le
+        # versioni ritagliate gia' salvate sul nostro server
         if foto.startswith("http://") or foto.startswith("https://"):
-            return self._download_image(foto)
+            return self._download_image(foto) or self._local_variant(articolo)
 
         # Path statico locale (es. articoli "Cosa fare oggi" -> /static/home/images/Oggi.webp)
         if foto.startswith("/static/"):
@@ -243,6 +244,21 @@ class FacebookReelGenerator:
         if p.is_absolute() and p.exists():
             return p
 
+        return None
+
+    @staticmethod
+    def _local_variant(articolo) -> Optional[Path]:
+        """Prima versione ritagliata (16x9, 4x3, 1x1) presente su disco, oppure None."""
+        for field in ("image_16x9", "image_4x3", "image_1x1"):
+            fieldfile = getattr(articolo, field, None)
+            try:
+                if fieldfile and fieldfile.name:
+                    local = Path(fieldfile.path)
+                    if local.exists():
+                        logger.info(f"Reel: immagine remota non disponibile, uso {field} locale")
+                        return local
+            except (ValueError, AttributeError):
+                continue
         return None
 
     def _download_image(self, url: str) -> Optional[Path]:

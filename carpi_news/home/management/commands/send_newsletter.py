@@ -1,10 +1,25 @@
 import logging
 import os
+import smtplib
 import time
 from django.core.management.base import BaseCommand
 from django.core.mail import EmailMultiAlternatives, get_connection
 from django.template.loader import render_to_string
 from django.conf import settings
+
+def indirizzo_inesistente(exc):
+    """True se il server ha rifiutato il destinatario in modo definitivo per un errore
+    d'indirizzo (codice 5xx con stato esteso 5.1.x: casella o dominio inesistente).
+    Esclusi i rifiuti per contenuto, limiti d'invio o problemi della connessione."""
+    if not isinstance(exc, smtplib.SMTPRecipientsRefused) or not exc.recipients:
+        return False
+    for code, message in exc.recipients.values():
+        if isinstance(message, bytes):
+            message = message.decode('utf-8', 'replace')
+        if not (500 <= code < 600 and str(message).lstrip().startswith('5.1.')):
+            return False
+    return True
+
 
 logger = logging.getLogger(__name__)
 
@@ -87,6 +102,9 @@ class Command(BaseCommand):
             try:
                 msg.send()
                 return
+            except smtplib.SMTPRecipientsRefused:
+                # Destinatario rifiutato: riaprire la connessione non serve
+                raise
             except Exception as e:
                 last_exc = e
                 # Ultimo tentativo: non riconnettere, propaga l'errore
@@ -237,6 +255,10 @@ class Command(BaseCommand):
                     errori += 1
                     logger.error(f"Errore invio newsletter a {subscriber.email}: {e}")
                     self.stdout.write(self.style.ERROR(f"  Errore per {subscriber.email}: {e}"))
+                    if indirizzo_inesistente(e) and not dry_run:
+                        NewsletterSubscriber.objects.filter(pk=subscriber.pk).update(attivo=False)
+                        logger.warning(f"Newsletter: {subscriber.email} disattivato (indirizzo inesistente)")
+                        self.stdout.write(f"  {subscriber.email} disattivato: indirizzo inesistente")
         finally:
             if connection:
                 connection.close()
