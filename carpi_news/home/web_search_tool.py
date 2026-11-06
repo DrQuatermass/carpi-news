@@ -339,32 +339,26 @@ class WebSearchTool:
         snippet_lower = snippet.lower()
         query_lower = query.lower()
 
-        # Escludi homepage generiche
-        generic_patterns = [
-            r'/$',  # Homepage principale
-            r'/home/?$',
-            r'/index\.(html|php)/?$',
-            r'^https?://[^/]+/?$'  # Solo dominio senza path
-        ]
-
         import re
-        for pattern in generic_patterns:
-            if re.search(pattern, url):
-                return False
+        from urllib.parse import urlparse
 
-        # Escludi URL troppo generici
-        if any(path in url_lower for path in ['/chi-siamo', '/contatti', '/about', '/contact']):
+        # Escludi solo le homepage. Prima r'/$' scartava ogni URL con la barra finale, cioe'
+        # quasi tutte le pagine WordPress (6/11/2026: la pagina della Fondazione Fossoli sul
+        # documentario, i profili di un relatore...) e molte ricerche tornavano vuote
+        path = urlparse(url).path or '/'
+        if re.fullmatch(r'/(?:(?:home|index\.(?:html?|php)))?/?', path, re.IGNORECASE):
             return False
 
-        # Verifica rilevanza del contenuto
-        query_words = query_lower.split()
+        # Escludi URL troppo generici
+        if any(p in url_lower for p in ['/chi-siamo', '/contatti', '/about', '/contact']):
+            return False
+
+        # Rilevanza: parole della query in titolo o snippet, senza articoli e preposizioni
+        # ("la", "di", "il": prima bastavano a superare la soglia o la falsavano)
+        query_words = [w for w in re.findall(r'\w+', query_lower) if len(w) >= 3]
         content_text = f"{title_lower} {snippet_lower}"
-
-        # Conta parole della query nel contenuto
         relevance_score = sum(1 for word in query_words if word in content_text)
-
-        # Richiedi almeno 2 parole della query nel contenuto
-        return relevance_score >= 2
+        return relevance_score >= min(2, len(query_words))
 
     def format_results_for_ai(self, results: List[Dict[str, Any]]) -> str:
         """Formatta i risultati per essere passati ad Anthropic"""
