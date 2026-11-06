@@ -54,6 +54,11 @@ Tutte le righe usano `/var/www/carpi-news/venv/bin/python` e `flock`.
 * * * * * [ "$(TZ=Europe/Rome date +\%H:\%M)" = "08:00" ] && <comando>
 ```
 
+**⚠ TRAPPOLA PERMESSI LOG**: i `logs/*_cron.log` devono appartenere a **www-data**, altrimenti la shell di cron fallisce in silenzio sull'append (niente mail, niente log). Mai lanciare i recuperi manuali con `sudo -u www-data comando >> log` dalla shell di root: la redirezione la fa root e il file nasce di root. Forma corretta:
+```
+sudo -u www-data sh -c 'cd /var/www/carpi-news/carpi_news && ../venv/bin/python manage.py <comando> >> logs/<file>.log 2>&1'
+```
+
 ## Unit rimosse (storia)
 
 - `carpi-editoriale.service` (creata ~maggio 2026, lanciava `editoriale_scheduler.py` h24): **rimossa il 2026-06-10**, sostituita dalla riga cron delle 8:00. Se ricompare un processo `editoriale_scheduler.py`, qualcuno l'ha ricreata — l'editoriale deve girare SOLO via cron, altrimenti esce doppio.
