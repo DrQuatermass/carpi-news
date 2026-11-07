@@ -46,6 +46,7 @@ a.button.cg-copia { background: #752d35; color: #fff; padding: 8px 14px; }
     <strong>Copia e apri il gruppo</strong> copia il testo con il link tracciato di quel gruppo e apre il gruppo;
     incolla, pubblica, poi torna qui e premi <strong>Fatto</strong>.
     Meglio 1-2 articoli al giorno per gruppo, e mai lo stesso link in tanti gruppi uno dopo l'altro.
+    <br>Dal profilo personale: il tag <strong>@Ombra del Portico</strong> incollato resta testo. Cancella l'ultima lettera di &laquo;Portico&raquo;, riscrivila e scegli la Pagina dal menu.
   </p>
   <p class="cg-filtro">Articoli degli ultimi:
     {% for g in scelte_giorni %}<a href="?giorni={{ g }}"{% if g == giorni %} class="attivo"{% endif %}>{{ g }} giorn{{ g|pluralize:"o,i" }}</a>{% endfor %}

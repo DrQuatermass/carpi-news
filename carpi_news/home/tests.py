@@ -2466,8 +2466,8 @@ class GruppiFacebookTests(TestCase):
 
     def test_dal_profilo_riga_di_presentazione(self):
         from home.gruppi_facebook import testo_condivisione
-        self.assertTrue(testo_condivisione(self.articolo, self.carpi, 'L').startswith('Dal giornale online'))
-        self.assertFalse(testo_condivisione(self.articolo, self.fossoli, 'L').startswith('Dal giornale online'))
+        self.assertTrue(testo_condivisione(self.articolo, self.carpi, 'L').startswith('Dal sito di notizie locali che curo, @Ombra del Portico'))
+        self.assertFalse(testo_condivisione(self.articolo, self.fossoli, 'L').startswith('Dal sito di notizie locali che curo, @Ombra del Portico'))
 
     def test_pagina_admin_e_segna_fatto(self):
         from home.models import CondivisioneGruppo

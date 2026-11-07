@@ -69,7 +69,8 @@ def testo_condivisione(articolo, gruppo, link=None):
     """Testo pronto da incollare nel gruppo. Dal profilo personale una riga di presentazione."""
     parti = []
     if not gruppo.come_pagina:
-        parti.append("Dal giornale online di Carpi che curo, Ombra del Portico:")
+        # Il tag non si incolla: in Facebook si cancella e riscrive l'ultima lettera e si sceglie la Pagina
+        parti.append("Dal sito di notizie locali che curo, @Ombra del Portico")
     parti.append(articolo.titolo)
     riassunto = _riassunto(articolo.sommario)
     if riassunto and riassunto != articolo.titolo:
