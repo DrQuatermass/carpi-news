@@ -47,6 +47,11 @@ logger = logging.getLogger(__name__)
 # COSTANTI DI DESIGN (allineate con identita' visiva ombradelportico.it)
 # -----------------------------------------------------------------------------
 WIDTH, HEIGHT = 1080, 1920
+# Impaginazione verticale. In basso Facebook e Instagram sovrappongono nome della Pagina,
+# didascalia e audio (circa gli ultimi 350 px): logo, foto, titolo e pulsante stanno sopra.
+LOGO_Y, LOGO_H = 60, 190
+CARD_Y, CARD_SIDE = 270, 820
+ZONA_COPERTA_BASSO = 350
 DEFAULT_FPS = 24
 
 CARTA = (247, 245, 239)        # fondo
@@ -281,14 +286,14 @@ class FacebookReelGenerator:
     # --- COMPOSIZIONE FRAME --------------------------------------------------
     def _compose_frame(self, image_path: Path, title: str, category: str, out_dir: Path) -> Path:
         bg = self._make_background(image_path)
-        card = self._make_card(image_path)
-        logo = self._make_logo()
+        card = self._make_card(image_path, card_w=CARD_SIDE, card_h=CARD_SIDE)
+        logo = self._make_logo(target_height=LOGO_H)
         overlay = self._make_overlay(title=title, category=category, logo=logo)
 
         frame = bg.convert("RGBA")
         cw, ch = card.size
         cx = (WIDTH - cw) // 2
-        frame.alpha_composite(card, (cx, 330))
+        frame.alpha_composite(card, (cx, CARD_Y))
         frame.alpha_composite(overlay, (0, 0))
 
         frame_path = out_dir / "frame.jpg"
@@ -347,7 +352,7 @@ class FacebookReelGenerator:
         # LOGO in alto
         lw, _ = logo.size
         logo_x = (WIDTH - lw) // 2
-        layer.alpha_composite(logo, (logo_x, 70))
+        layer.alpha_composite(logo, (logo_x, LOGO_Y))
 
         # Badge categoria
         cat_text = category.upper()
@@ -358,7 +363,7 @@ class FacebookReelGenerator:
         pad = 24
         bw = cat_w + pad * 2
         bh = cat_h + 24
-        by = 1262
+        by = CARD_Y + CARD_SIDE + 28
         bx = (WIDTH - bw) // 2
         draw.rounded_rectangle(
             [(bx, by), (bx + bw, by + bh)],
@@ -372,7 +377,7 @@ class FacebookReelGenerator:
         if len(lines) > 3:
             lines = lines[:3]
             lines[2] = lines[2].rstrip(".,;:") + "..."
-        y = 1372
+        y = by + bh + 34
         line_height = 86
         for line in lines:
             bbox = draw.textbbox((0, 0), line, font=title_font)
@@ -394,7 +399,8 @@ class FacebookReelGenerator:
             pill_w = min(WIDTH - 160, max_line_w + pad_x * 2)
             pill_h = len(cta_lines) * line_h + pad_y * 2
             pill_x = (WIDTH - pill_w) // 2
-            pill_y = HEIGHT - 255
+            # subito sotto il titolo, mai nella fascia coperta dall'interfaccia del social
+            pill_y = min(y + 30, HEIGHT - ZONA_COPERTA_BASSO - pill_h)
             draw.rounded_rectangle(
                 [(pill_x, pill_y), (pill_x + pill_w, pill_y + pill_h)],
                 radius=8,
