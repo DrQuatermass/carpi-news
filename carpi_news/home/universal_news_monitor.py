@@ -3104,6 +3104,12 @@ class AlboItalsoftScraper(BaseScraper):
                     continue
         return re.sub(r'\s+', ' ', s).strip()
 
+    @classmethod
+    def _numero(cls, s: str) -> str:
+        """Numero dell'atto senza gli zeri di riempimento ("000000000141" -> "141")."""
+        s = cls._testo(s)
+        return (s.lstrip('0') or s) if s.isdigit() else s
+
     def _url_atto(self, registro: str) -> str:
         chiave = re.sub(r'[^0-9]+', '-', registro).strip('-')
         return f"{self.albo_url.split('#')[0]}#reg-{chiave}"
@@ -3122,7 +3128,7 @@ class AlboItalsoftScraper(BaseScraper):
                 'registro': self._testo(celle[0].get_text()),
                 'ente': self._testo(celle[1].get_text()),
                 'tipo': self._testo(celle[2].get_text()),
-                'numero': self._testo(celle[3].get_text()),
+                'numero': self._numero(celle[3].get_text()),
                 'data_atto': self._testo(celle[4].get_text()),
                 'oggetto': self._testo(celle[5].get_text()),
                 'dal': self._testo(celle[6].get_text()),

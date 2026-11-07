@@ -2592,6 +2592,14 @@ class AlboItalsoftScraperTests(SimpleTestCase):
         self.assertEqual(AlboItalsoftScraper._testo('MOBILITÃ\u0080-VIABILITÃ\u0080'), 'MOBILITÀ-VIABILITÀ')
         self.assertEqual(AlboItalsoftScraper._testo(' città  già\n giusta '), 'città già giusta')
 
+    def test_numero_atto_senza_zeri(self):
+        from home.universal_news_monitor import AlboItalsoftScraper
+        self.assertEqual(AlboItalsoftScraper._numero(' 000000000141 '), '141')
+        self.assertEqual(AlboItalsoftScraper._numero('961'), '961')
+        self.assertEqual(AlboItalsoftScraper._numero('0'), '0')
+        self.assertEqual(AlboItalsoftScraper._numero('SUAP/0012'), 'SUAP/0012')
+        self.assertEqual(AlboItalsoftScraper._numero(''), '')
+
     def test_busta_p7m_aperta(self):
         from home.universal_news_monitor import AlboItalsoftScraper
         busta = b'0\x82\x10\x00firma' + b'%PDF-1.4 contenuto %%EOF\n' + b'certificati'
