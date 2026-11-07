@@ -2283,3 +2283,41 @@ class MonitorNoindexTests(TestCase):
         self.vecchio.refresh_from_db()
         self.assertEqual(self.vecchio.monitor_origine_id, self.testata.pk)
         self.assertTrue(self.vecchio.escluso_da_google)
+
+
+@override_settings(
+    DEBUG=True,
+    SECURE_SSL_REDIRECT=False,
+    CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}},
+)
+class NewsletterIscrizioneTests(TestCase):
+    AJAX = {"HTTP_X_REQUESTED_WITH": "XMLHttpRequest"}
+
+    def test_salva_l_origine_del_modulo(self):
+        from home.models import NewsletterSubscriber
+        r = self.client.post("/newsletter/", {"email": "Lettore@Example.it", "origine": "barra"}, **self.AJAX)
+        self.assertTrue(r.json()["ok"])
+        self.assertEqual(NewsletterSubscriber.objects.get().origine, "barra")
+        self.assertEqual(NewsletterSubscriber.objects.get().email, "lettore@example.it")
+
+    def test_origine_sconosciuta_non_salvata(self):
+        from home.models import NewsletterSubscriber
+        self.client.post("/newsletter/", {"email": "a@example.it", "origine": "<script>"}, **self.AJAX)
+        self.assertEqual(NewsletterSubscriber.objects.get().origine, "")
+
+    def test_honeypot_compilato_finge_successo_e_non_salva(self):
+        from home.models import NewsletterSubscriber
+        r = self.client.post("/newsletter/", {"email": "bot@example.it", "sito_web": "http://spam"}, **self.AJAX)
+        self.assertTrue(r.json()["ok"])
+        self.assertFalse(NewsletterSubscriber.objects.exists())
+
+    def test_email_non_valida_rifiutata(self):
+        from home.models import NewsletterSubscriber
+        r = self.client.post("/newsletter/", {"email": "non-una-email"}, **self.AJAX)
+        self.assertFalse(r.json()["ok"])
+        self.assertFalse(NewsletterSubscriber.objects.exists())
+
+    def test_gia_iscritto_messaggio_leggibile(self):
+        self.client.post("/newsletter/", {"email": "a@example.it"}, **self.AJAX)
+        r = self.client.post("/newsletter/", {"email": "a@example.it"}, **self.AJAX)
+        self.assertEqual(r.json()["message"], "Sei già iscritto alla newsletter.")

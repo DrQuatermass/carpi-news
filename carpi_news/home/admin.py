@@ -1533,11 +1533,11 @@ admin.site.add_action(APIUsageAdmin.dashboard_view, 'Visualizza Dashboard Costi'
 
 @admin.register(NewsletterSubscriber)
 class NewsletterSubscriberAdmin(admin.ModelAdmin):
-    list_display = ['email', 'nome', 'attivo', 'data_iscrizione']
-    list_filter = ['attivo']
+    list_display = ['email', 'nome', 'attivo', 'origine', 'data_iscrizione']
+    list_filter = ['attivo', 'origine']
     list_editable = ['attivo']
     search_fields = ['email', 'nome']
-    readonly_fields = ['data_iscrizione', 'token_disiscrizione']
+    readonly_fields = ['data_iscrizione', 'origine', 'token_disiscrizione']
     actions = ['attiva_selezionati', 'disattiva_selezionati']
 
     def attiva_selezionati(self, request, queryset):

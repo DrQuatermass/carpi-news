@@ -1317,20 +1317,41 @@ def _get_newsletter_context():
     }
 
 
+NEWSLETTER_ORIGINI = {'barra', 'barra_pc', 'fine_articolo', 'pagina'}
+NEWSLETTER_OK = 'Iscrizione completata! Da oggi riceverai le notizie di Carpi ogni pomeriggio.'
+
+
 def newsletter_subscribe(request):
-    """Pagina di iscrizione alla newsletter."""
+    """Pagina di iscrizione alla newsletter (anche AJAX dai moduli negli articoli)."""
     from django.contrib import messages as msg
+    from django.core.exceptions import ValidationError
+    from django.core.validators import validate_email
 
     is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
 
     success = False
     if request.method == 'POST':
+        # Honeypot: campo invisibile alle persone, i bot lo compilano. Risposta di successo
+        # finta, cosi' il bot non capisce di essere stato scartato.
+        if request.POST.get('sito_web', '').strip():
+            logger.info("Newsletter: iscrizione scartata (honeypot compilato)")
+            if is_ajax:
+                return JsonResponse({'ok': True, 'message': NEWSLETTER_OK})
+            return render(request, 'newsletter/subscribe.html', {'success': True})
+
         email = request.POST.get('email', '').strip().lower()
         nome = request.POST.get('nome', '').strip()
+        origine = request.POST.get('origine', '').strip()
+        if origine not in NEWSLETTER_ORIGINI:
+            origine = ''
+        try:
+            validate_email(email)
+        except ValidationError:
+            email = ''
         if email:
             subscriber, created = NewsletterSubscriber.objects.get_or_create(
                 email=email,
-                defaults={'nome': nome},
+                defaults={'nome': nome, 'origine': origine},
             )
             if created:
                 success = True
@@ -1338,19 +1359,21 @@ def newsletter_subscribe(request):
                 subscriber.attivo = True
                 if nome:
                     subscriber.nome = nome
+                if origine and not subscriber.origine:
+                    subscriber.origine = origine
                 subscriber.save()
                 success = True
             else:
                 if is_ajax:
-                    return JsonResponse({'ok': False, 'already': True, 'message': 'Sei giÃ  iscritto alla newsletter.'})
-                msg.info(request, 'Questa email Ã¨ giÃ  iscritta alla newsletter.')
+                    return JsonResponse({'ok': False, 'already': True, 'message': 'Sei già iscritto alla newsletter.'})
+                msg.info(request, 'Questa email è già iscritta alla newsletter.')
         else:
             if is_ajax:
                 return JsonResponse({'ok': False, 'message': 'Inserisci un indirizzo email valido.'})
             msg.error(request, 'Inserisci un indirizzo email valido.')
 
         if is_ajax and success:
-            return JsonResponse({'ok': True, 'message': 'Iscrizione completata! Da oggi riceverai le notizie di Carpi ogni pomeriggio.'})
+            return JsonResponse({'ok': True, 'message': NEWSLETTER_OK})
 
     return render(request, 'newsletter/subscribe.html', {'success': success})
 

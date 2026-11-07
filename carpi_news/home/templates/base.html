@@ -150,6 +150,7 @@
                         <li role="none"><a href="{% url 'categoria_articoli' 'eco-del-consiglio' %}" role="menuitem">L'Eco del consiglio</a></li>
                         <li role="none"><a href="{% url 'categoria_articoli' 'editoriale' %}" role="menuitem">Editoriale</a></li>
                         <li role="none"><a href="/caplet/" role="menuitem">Caplet</a></li>
+                        <li role="none"><a href="{% url 'newsletter_subscribe' %}" role="menuitem">Iscriviti alla newsletter</a></li>
                     </ul>
                 </li>
             </ul>
@@ -177,6 +178,7 @@
                         <li><a href="{% url 'categoria_articoli' 'eco-del-consiglio' %}">L'Eco del consiglio</a></li>
                         <li><a href="{% url 'categoria_articoli' 'editoriale' %}">Editoriale</a></li>
                         <li><a href="/caplet/">Caplet</a></li>
+                        <li><a href="{% url 'newsletter_subscribe' %}">Iscriviti alla newsletter</a></li>
                         <li><a href="{% url 'mappa' %}">Mappa</a></li>
                         {# Alla homepage si torna col logo: al posto di "Home", in fondo, "Chi siamo" #}
                         <li><a href="{% url 'about' %}" {% if request.resolver_match.url_name == 'about' %}class="active"{% endif %}>Chi siamo</a></li>

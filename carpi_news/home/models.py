@@ -964,6 +964,10 @@ class NewsletterSubscriber(models.Model):
     nome = models.CharField(max_length=100, blank=True)
     attivo = models.BooleanField(default=True)
     data_iscrizione = models.DateTimeField(auto_now_add=True)
+    origine = models.CharField(
+        max_length=20, blank=True,
+        help_text="Modulo da cui e' arrivata l'iscrizione: barra (telefono, in basso), barra_pc (computer, in basso a sinistra), fine_articolo, pagina",
+    )
     token_disiscrizione = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
 
     def __str__(self):
