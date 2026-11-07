@@ -1048,3 +1048,63 @@ class ArticoloEliminato(models.Model):
 
     def __str__(self):
         return self.titolo or self.fonte
+
+
+class GruppoFacebook(models.Model):
+    """Gruppo Facebook in cui si condividono a mano gli articoli.
+
+    Meta non permette piu' alle app di pubblicare nei gruppi (aprile 2024): la pagina
+    admin "Condividi nei gruppi" prepara testo e link tracciato, la pubblicazione e' a mano.
+    """
+    nome = models.CharField(max_length=120)
+    url = models.URLField("Link del gruppo", max_length=300)
+    slug = models.SlugField(max_length=60, unique=True, blank=True,
+                            help_text="Usato nel link tracciato (utm_medium); si crea dal nome")
+    comune = models.CharField(max_length=60, blank=True,
+                              help_text="Comune del gruppo (es. Carpi, Soliera). Vuoto = gruppo di tutta la zona")
+    parole_chiave = models.CharField(max_length=200, blank=True,
+                                     help_text="Frazioni o quartieri separati da virgola (es. Fossoli, Gargallo): "
+                                               "gli articoli che li nominano vengono proposti per primi")
+    come_pagina = models.BooleanField("Accetta la Pagina", default=True,
+                                      help_text="Spunta se nel gruppo si posta come Pagina Ombra del Portico; "
+                                                "altrimenti si posta dal profilo personale")
+    note = models.TextField(blank=True, help_text="Regole del gruppo (es. niente link nel weekend, max 1 post al giorno)")
+    attivo = models.BooleanField(default=True)
+    creato = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Gruppo Facebook"
+        verbose_name_plural = "Gruppi Facebook"
+        ordering = ['nome']
+
+    def __str__(self):
+        return self.nome
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            from django.utils.text import slugify
+            base = slugify(self.nome)[:50] or 'gruppo'
+            slug, n = base, 2
+            while GruppoFacebook.objects.filter(slug=slug).exclude(pk=self.pk).exists():
+                slug, n = f"{base}-{n}", n + 1
+            self.slug = slug
+        super().save(*args, **kwargs)
+
+    def lista_parole(self):
+        return [p.strip() for p in self.parole_chiave.split(',') if p.strip()]
+
+
+class CondivisioneGruppo(models.Model):
+    """Un articolo condiviso a mano in un gruppo Facebook."""
+    gruppo = models.ForeignKey(GruppoFacebook, on_delete=models.CASCADE, related_name='condivisioni')
+    articolo = models.ForeignKey(Articolo, on_delete=models.CASCADE, related_name='condivisioni_gruppi')
+    data = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        verbose_name = "Condivisione in un gruppo"
+        verbose_name_plural = "Condivisioni nei gruppi"
+        unique_together = [('gruppo', 'articolo')]
+        ordering = ['-data']
+
+    def __str__(self):
+        return f"{self.articolo.titolo[:50]} -> {self.gruppo.nome}"

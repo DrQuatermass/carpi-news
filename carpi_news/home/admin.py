@@ -12,7 +12,9 @@ from .models import (
     Articolo,
     ArticoloEliminato,
     ChatbotConversation,
+    CondivisioneGruppo,
     GeocodeCache,
+    GruppoFacebook,
     InstagramAutoDMLog,
     InstagramOptOut,
     MonitorConfig,
@@ -1594,3 +1596,96 @@ class ArticoloEliminatoAdmin(admin.ModelAdmin):
         if riepilogo:
             messages.info(request, f"Totale eliminati: {ArticoloEliminato.objects.count()} — per mese: {riepilogo}")
         return super().changelist_view(request, extra_context)
+
+
+@admin.register(GruppoFacebook)
+class GruppoFacebookAdmin(admin.ModelAdmin):
+    """Gruppi Facebook + pagina "Condividi nei gruppi" (pubblicazione a mano, vedi gruppi_facebook.py)."""
+    list_display = ['nome', 'comune', 'parole_chiave', 'come_pagina', 'attivo', 'n_condivisioni', 'ultima_condivisione']
+    list_filter = ['attivo', 'come_pagina', 'comune']
+    list_editable = ['attivo']
+    search_fields = ['nome', 'comune', 'parole_chiave']
+    readonly_fields = ['slug', 'creato']
+    change_list_template = 'admin/home/gruppofacebook/change_list.html'
+
+    def get_queryset(self, request):
+        from django.db.models import Max
+        return super().get_queryset(request).annotate(
+            _n=Count('condivisioni'), _ultima=Max('condivisioni__data'))
+
+    @admin.display(description='Condivisioni', ordering='_n')
+    def n_condivisioni(self, obj):
+        return obj._n
+
+    @admin.display(description='Ultima', ordering='_ultima')
+    def ultima_condivisione(self, obj):
+        return timezone.localtime(obj._ultima).strftime('%d/%m %H:%M') if obj._ultima else '-'
+
+    def get_urls(self):
+        return [
+            path('condividi/', self.admin_site.admin_view(self.condividi_view), name='gruppi_condividi'),
+        ] + super().get_urls()
+
+    def condividi_view(self, request):
+        from .gruppi_facebook import gruppi_ordinati, link_gruppo, testo_condivisione
+
+        try:
+            giorni = min(max(int(request.GET.get('giorni', 2)), 1), 14)
+        except ValueError:
+            giorni = 2
+
+        if request.method == 'POST':
+            articolo = Articolo.objects.filter(pk=request.POST.get('articolo')).first()
+            gruppo = GruppoFacebook.objects.filter(pk=request.POST.get('gruppo')).first()
+            if articolo and gruppo:
+                if request.POST.get('azione') == 'annulla':
+                    CondivisioneGruppo.objects.filter(articolo=articolo, gruppo=gruppo).delete()
+                else:
+                    CondivisioneGruppo.objects.get_or_create(articolo=articolo, gruppo=gruppo)
+            return redirect(f"{reverse('admin:gruppi_condividi')}?giorni={giorni}#art-{request.POST.get('articolo', '')}")
+
+        gruppi = list(GruppoFacebook.objects.filter(attivo=True))
+        articoli = list(Articolo.objects.filter(
+            approvato=True,
+            data_pubblicazione__gte=timezone.now() - timedelta(days=giorni),
+        ).order_by('-data_pubblicazione'))
+
+        fatte = {(c.articolo_id, c.gruppo_id): c.data for c in CondivisioneGruppo.objects.filter(
+            articolo__in=articoli)}
+        ultime_24h = dict(CondivisioneGruppo.objects.filter(
+            data__gte=timezone.now() - timedelta(hours=24)).values_list('gruppo').annotate(n=Count('id')))
+
+        schede = []
+        for articolo in articoli:
+            consigliati, altri = [], []
+            for gruppo, punti, motivo in gruppi_ordinati(articolo, gruppi):
+                condiviso = fatte.get((articolo.pk, gruppo.pk))
+                riga = {
+                    'gruppo': gruppo,
+                    'motivo': motivo,
+                    'condiviso': condiviso,
+                    'post_24h': ultime_24h.get(gruppo.pk, 0),
+                    'testo': '' if condiviso else testo_condivisione(articolo, gruppo, link_gruppo(articolo, gruppo)),
+                }
+                (consigliati if punti else altri).append(riga)
+            schede.append({'articolo': articolo, 'consigliati': consigliati, 'altri': altri,
+                           'n_fatte': sum(1 for r in consigliati + altri if r['condiviso'])})
+
+        context = {
+            **self.admin_site.each_context(request),
+            'title': 'Condividi nei gruppi Facebook',
+            'opts': self.model._meta,
+            'schede': schede,
+            'giorni': giorni,
+            'scelte_giorni': [1, 2, 3, 7],
+            'n_gruppi': len(gruppi),
+        }
+        return render(request, 'admin/home/gruppofacebook/condividi.html', context)
+
+
+@admin.register(CondivisioneGruppo)
+class CondivisioneGruppoAdmin(admin.ModelAdmin):
+    list_display = ['data', 'gruppo', 'articolo']
+    list_filter = ['gruppo']
+    date_hierarchy = 'data'
+    raw_id_fields = ['articolo']

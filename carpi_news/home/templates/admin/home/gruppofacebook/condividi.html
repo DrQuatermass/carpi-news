@@ -1,0 +1,95 @@
+{% extends "admin/base_site.html" %}
+
+{% block extrastyle %}{{ block.super }}
+<style>
+.cg { max-width: 860px; }
+.cg-intro { color: var(--body-quiet-color); line-height: 1.5; margin: 0 0 12px; }
+.cg-filtro { margin: 0 0 20px; }
+.cg-filtro a { margin-right: 10px; }
+.cg-filtro a.attivo { font-weight: 700; text-decoration: underline; }
+.cg-art { border: 1px solid var(--hairline-color); border-left: 4px solid #752d35; border-radius: 6px; padding: 12px 14px; margin: 0 0 18px; background: var(--body-bg); }
+.cg-art h2 { margin: 0 0 4px; font-size: 1.1rem; line-height: 1.3; background: none; color: var(--body-fg); padding: 0; text-transform: none; letter-spacing: 0; }
+.cg-meta { margin: 0 0 10px; color: var(--body-quiet-color); font-size: .85rem; }
+.cg-riga { border-top: 1px solid var(--hairline-color); padding: 10px 0; }
+.cg-riga.fatto { opacity: .65; }
+.cg-nome { font-weight: 600; margin-bottom: 6px; }
+.cg-tag { display: inline-block; font-weight: 400; font-size: .75rem; padding: 1px 7px; border-radius: 10px; background: var(--darkened-bg); color: var(--body-quiet-color); margin-left: 4px; }
+.cg-tag.profilo { background: #fff3cd; color: #7a5b00; }
+.cg-tag.avviso { background: #f8d7da; color: #842029; }
+.cg-note { font-weight: 400; font-size: .8rem; color: var(--body-quiet-color); margin-top: 3px; }
+.cg-testo { width: 100%; box-sizing: border-box; font-size: 14px; line-height: 1.4; margin: 4px 0 8px; }
+.cg-azioni { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.cg-azioni form, .cg-fatto form { display: inline; margin: 0; }
+a.button.cg-copia { background: #752d35; color: #fff; padding: 8px 14px; }
+.cg-fatto { font-size: .85rem; }
+.cg-fatto button { background: none; border: none; color: var(--link-fg); cursor: pointer; text-decoration: underline; padding: 0 4px; }
+.cg details { margin-top: 6px; }
+.cg summary { cursor: pointer; color: var(--link-fg); padding: 6px 0; }
+@media (max-width: 767px) {
+  .cg-azioni .button { flex: 1 1 auto; text-align: center; }
+}
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">Home</a> &rsaquo;
+  <a href="{% url 'admin:home_gruppofacebook_changelist' %}">Gruppi Facebook</a> &rsaquo;
+  Condividi
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="cg">
+  <p class="cg-intro">
+    Meta non permette di pubblicare nei gruppi in automatico. Per ogni gruppo:
+    <strong>Copia e apri il gruppo</strong> copia il testo con il link tracciato di quel gruppo e apre il gruppo;
+    incolla, pubblica, poi torna qui e premi <strong>Fatto</strong>.
+    Meglio 1-2 articoli al giorno per gruppo, e mai lo stesso link in tanti gruppi uno dopo l'altro.
+  </p>
+  <p class="cg-filtro">Articoli degli ultimi:
+    {% for g in scelte_giorni %}<a href="?giorni={{ g }}"{% if g == giorni %} class="attivo"{% endif %}>{{ g }} giorn{{ g|pluralize:"o,i" }}</a>{% endfor %}
+  </p>
+
+  {% if not n_gruppi %}
+    <p>Nessun gruppo attivo. <a href="{% url 'admin:home_gruppofacebook_add' %}">Aggiungi il primo gruppo</a>.</p>
+  {% endif %}
+
+  {% for s in schede %}
+  <section class="cg-art" id="art-{{ s.articolo.pk }}">
+    <h2><a href="{% url 'dettaglio_articolo' s.articolo.slug %}" target="_blank" rel="noopener">{{ s.articolo.titolo }}</a></h2>
+    <p class="cg-meta">{{ s.articolo.data_pubblicazione|date:"d/m H:i" }} &middot; {{ s.articolo.categoria }}{% if s.articolo.comune %} &middot; {{ s.articolo.comune }}{% endif %}{% if s.n_fatte %} &middot; condiviso in {{ s.n_fatte }} grupp{{ s.n_fatte|pluralize:"o,i" }}{% endif %}</p>
+    {% for r in s.consigliati %}{% include "admin/home/gruppofacebook/_riga.html" with articolo=s.articolo %}{% endfor %}
+    {% if s.altri %}
+    <details>
+      <summary>Altri gruppi ({{ s.altri|length }})</summary>
+      {% for r in s.altri %}{% include "admin/home/gruppofacebook/_riga.html" with articolo=s.articolo %}{% endfor %}
+    </details>
+    {% endif %}
+  </section>
+  {% empty %}
+    {% if n_gruppi %}<p>Nessun articolo pubblicato in questo periodo.</p>{% endif %}
+  {% endfor %}
+</div>
+
+<script>
+(function() {
+  function ripiego(campo) {
+    campo.focus();
+    campo.select();
+    try { document.execCommand('copy'); } catch (e) {}
+  }
+  document.addEventListener('click', function(e) {
+    var link = e.target.closest('.cg-copia');
+    if (!link) return;
+    var campo = link.closest('.cg-riga').querySelector('.cg-testo');
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(campo.value).catch(function() { ripiego(campo); });
+    } else {
+      ripiego(campo);
+    }
+    link.textContent = 'Testo copiato: incollalo nel gruppo';
+  });
+})();
+</script>
+{% endblock %}

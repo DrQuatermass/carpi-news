@@ -1,0 +1,31 @@
+<div class="cg-riga{% if r.condiviso %} fatto{% endif %}">
+  <div class="cg-nome">
+    <a href="{{ r.gruppo.url }}" target="_blank" rel="noopener">{{ r.gruppo.nome }}</a>
+    {% if r.motivo %}<span class="cg-tag">{{ r.motivo }}</span>{% endif %}
+    {% if r.gruppo.come_pagina %}<span class="cg-tag">come Pagina</span>{% else %}<span class="cg-tag profilo">dal profilo personale</span>{% endif %}
+    {% if r.post_24h and not r.condiviso %}<span class="cg-tag avviso">gi&agrave; {{ r.post_24h }} post nelle ultime 24 ore</span>{% endif %}
+    {% if r.gruppo.note %}<div class="cg-note">{{ r.gruppo.note }}</div>{% endif %}
+  </div>
+  {% if r.condiviso %}
+    <div class="cg-fatto">
+      Condiviso il {{ r.condiviso|date:"d/m H:i" }}
+      <form method="post">{% csrf_token %}
+        <input type="hidden" name="articolo" value="{{ articolo.pk }}">
+        <input type="hidden" name="gruppo" value="{{ r.gruppo.pk }}">
+        <input type="hidden" name="azione" value="annulla">
+        <button type="submit">annulla</button>
+      </form>
+    </div>
+  {% else %}
+    <textarea class="cg-testo" rows="6" aria-label="Testo da incollare in {{ r.gruppo.nome }}">{{ r.testo }}</textarea>
+    <div class="cg-azioni">
+      <a class="button cg-copia" href="{{ r.gruppo.url }}" target="_blank" rel="noopener">Copia e apri il gruppo</a>
+      <form method="post">{% csrf_token %}
+        <input type="hidden" name="articolo" value="{{ articolo.pk }}">
+        <input type="hidden" name="gruppo" value="{{ r.gruppo.pk }}">
+        <input type="hidden" name="azione" value="fatto">
+        <button type="submit" class="button default">Fatto</button>
+      </form>
+    </div>
+  {% endif %}
+</div>

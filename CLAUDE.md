@@ -484,6 +484,7 @@ Limiti Meta:
 - Instagram Story: Link Sticker non disponibile via Graph API.
 - Instagram Reel: link in caption non cliccabile (resta come testo) e nessun commento: su Instagram anche i link nei commenti non sono cliccabili. L'unico link cliccabile e' quello in bio (`/instagram/`).
 - Facebook Reel: dopo la pubblicazione la Pagina scrive il primo commento con il link (`FacebookPageReelManager.commenta_link`, medium `reel_commento`), perche' nei commenti Facebook il link e' cliccabile. Spegnibile con `FACEBOOK_REEL_LINK_COMMENT=False`.
+- Gruppi Facebook: Meta non permette alle app di pubblicare nei gruppi (aprile 2024). Condivisione a mano da `/admin/home/gruppofacebook/condividi/` (modelli `GruppoFacebook`, `CondivisioneGruppo`, logica in `home/gruppi_facebook.py`): gruppi proposti per parola chiave (frazione) > comune > zona, "Copia e apri il gruppo", "Fatto". Link tracciato per gruppo `utm_source=facebook_gruppo&utm_medium=<slug>`; la dashboard locale (`C:\Users\svenr\visite\visite.py`) lo conta come "Gruppi Facebook".
 - Storie IG/FB: l'API non permette l'adesivo link; i DM automatici IG restano fermi (accesso avanzato Meta richiede partita IVA).
 - Facebook Reel/Story pubblicati via `/video_stories`: si prova a inviare `description`/`text`; se Meta rifiuta, la pubblicazione viene ritentata senza descrizione per non bloccare la pipeline.
 
