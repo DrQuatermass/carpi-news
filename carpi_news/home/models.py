@@ -191,6 +191,16 @@ class Articolo(models.Model):
         return (self.titolo_seo or '').strip() or self.editorial_headline
 
     @property
+    def escluso_da_google(self):
+        """noindex: "Cosa fare oggi" (riepiloga eventi gia' pubblicati) e articoli dei monitor
+        segnati "Fuori dall'indice Google". Letto dal DB a ogni render, non dalla cache
+        dell'articolo, cosi' il selettore in admin vale subito."""
+        if self.categoria == 'Cosa fare oggi':
+            return True
+        return bool(self.monitor_origine_id) and MonitorConfig.objects.filter(
+            pk=self.monitor_origine_id, noindex=True).exists()
+
+    @property
     def categoria_slug(self):
         """Slug della categoria per URL /categoria/<slug>/ (breadcrumb, link interni)."""
         return self.CATEGORIA_SLUG_MAP.get(self.categoria, 'attualita')
@@ -771,6 +781,11 @@ class MonitorConfig(models.Model):
     # Stato e controllo
     is_active = models.BooleanField(default=True, help_text="Monitor attivo/disattivo")
     auto_approve = models.BooleanField(default=False, help_text="Approva automaticamente gli articoli")
+    noindex = models.BooleanField(
+        "Fuori dall'indice Google", default=False,
+        help_text="Gli articoli di questo monitor restano sul sito ma con noindex e fuori dalle sitemap "
+                  "(es. riscritture di altre testate). Vale anche per gli articoli gia' pubblicati.",
+    )
 
     # Configurazioni specifiche (JSON)
     config_data = models.JSONField(

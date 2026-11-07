@@ -626,6 +626,9 @@ def _notify_search_engines_background(instance):
     Notifica i motori di ricerca (Google, Bing, Yandex) della pubblicazione dell'articolo.
     Eseguito in background per non bloccare il salvataggio.
     """
+    if instance.escluso_da_google:
+        logger.info(f"[SIGNAL] Nessuna notifica indicizzazione (noindex): {instance.titolo}")
+        return
     logger.warning(f"[SIGNAL] Avvio notifica indicizzazione per: {instance.titolo}")
 
     def _notify():

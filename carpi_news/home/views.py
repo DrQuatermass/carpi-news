@@ -678,6 +678,8 @@ def sitemap_index(request):
         titolo__istartswith='test'
     ).exclude(
         categoria='Cosa fare oggi'
+    ).exclude(
+        monitor_origine__noindex=True
     ).aggregate(max_date=models.Max('data_pubblicazione'))['max_date'] or now
 
     template = loader.get_template('sitemap_index.xml')
@@ -703,6 +705,8 @@ def sitemap(request):
         data_pubblicazione__lte=now
     ).exclude(
         categoria='Cosa fare oggi'
+    ).exclude(
+        monitor_origine__noindex=True
     ).order_by('-data_pubblicazione')
 
     # Aggiungi campo days_old per prioritÃ  dinamiche
@@ -733,6 +737,8 @@ def sitemap_archive(request):
         data_pubblicazione__lt=cutoff_date
     ).exclude(
         categoria='Cosa fare oggi'
+    ).exclude(
+        monitor_origine__noindex=True
     ).only('slug', 'data_pubblicazione').order_by('-data_pubblicazione')[:10000]
 
     logger.info(f"Generata sitemap archivio con {articles.count()} articoli")
@@ -754,6 +760,8 @@ def news_sitemap(request):
         titolo__istartswith='test'
     ).exclude(
         categoria='Cosa fare oggi'
+    ).exclude(
+        monitor_origine__noindex=True
     ).order_by('-data_pubblicazione')
 
     for article in articles:

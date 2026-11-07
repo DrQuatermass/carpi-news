@@ -700,7 +700,7 @@ class ArticoloAdmin(admin.ModelAdmin):
 class MonitorConfigAdmin(admin.ModelAdmin):
     form = MonitorConfigForm
     list_display = ('name', 'scraper_type', 'category', 'status_indicator', 'last_run', 'control_buttons')
-    list_filter = ('is_active', 'scraper_type', 'category', 'use_ai_generation')
+    list_filter = ('is_active', 'noindex', 'scraper_type', 'category', 'use_ai_generation')
     search_fields = ('name', 'base_url')
     readonly_fields = ('created_at', 'updated_at', 'last_run', 'control_buttons', 'config_help')
 
@@ -709,7 +709,7 @@ class MonitorConfigAdmin(admin.ModelAdmin):
             'fields': ('name', 'base_url', 'scraper_type', 'category')
         }),
         ('Stato e Controllo', {
-            'fields': ('is_active', 'auto_approve', 'control_buttons')
+            'fields': ('is_active', 'auto_approve', 'noindex', 'control_buttons')
         }),
         ('Configurazione AI', {
             'fields': ('use_ai_generation', 'enable_web_search', 'ai_system_prompt'),

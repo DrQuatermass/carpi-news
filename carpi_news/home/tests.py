@@ -26,7 +26,7 @@ from home.content_polisher import content_polisher
 from home.image_variants import ensure_article_image_variants, generate_article_image_variants, get_article_source_image_path
 from home.management.commands.process_pending_pubbliredazionali import Command as ProcessPendingPubbliredazionaliCommand
 from home.management.commands.retry_failed_social_shares import Command as RetryFailedSocialSharesCommand
-from home.models import Articolo, InstagramOptOut, ShortLink, SocialPublicationLog
+from home.models import Articolo, InstagramOptOut, MonitorConfig, ShortLink, SocialPublicationLog
 from home.seo_locations import detect_municipality
 from home.share_links import build_share_url, build_short_share_url
 from home.social_sharing import SocialMediaManager
@@ -2217,3 +2217,50 @@ class ReelImmagineLocaleTests(TestCase):
             with patch.object(FacebookReelGenerator, '_download_image', return_value=None):
                 path = generator._resolve_image_path(articolo)
             self.assertEqual(path, Path(media, 'images', 'articles', 'x-16x9.webp'))
+
+
+@override_settings(
+    DEBUG=True,
+    SITE_URL="https://testserver",
+    CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}},
+)
+class MonitorNoindexTests(TestCase):
+    def setUp(self):
+        cache.clear()
+        self.testata = MonitorConfig.objects.create(name='Testata', base_url='https://www.testata.it/',
+                                                    scraper_type='html', noindex=True)
+        self.comune = MonitorConfig.objects.create(name='Comune', base_url='https://www.comune.it/',
+                                                   scraper_type='html')
+        common = dict(contenuto='<p>Testo</p>', sommario='S', categoria='Attualità', approvato=True,
+                      data_pubblicazione=timezone.now() - timedelta(hours=1))
+        self.riscritto = Articolo.objects.create(titolo='Riscritto da testata', monitor_origine=self.testata, **common)
+        self.originale = Articolo.objects.create(titolo='Notizia del comune', monitor_origine=self.comune, **common)
+        self.vecchio = Articolo.objects.create(titolo='Vecchio senza monitor', fonte='https://www.testata.it/a/',
+                                               **common)
+
+    def test_meta_robots_segue_il_monitor(self):
+        r = self.client.get(f'/articolo/{self.riscritto.slug}/')
+        self.assertContains(r, '<meta name="robots" content="noindex, follow">')
+        r = self.client.get(f'/articolo/{self.originale.slug}/')
+        self.assertContains(r, 'content="index, follow, max-image-preview:large"')
+
+    def test_sitemap_esclude_i_monitor_noindex(self):
+        for url in ('/sitemap.xml', '/sitemap-news.xml'):
+            r = self.client.get(url)
+            self.assertNotContains(r, self.riscritto.slug)
+            self.assertContains(r, self.originale.slug)
+
+    def test_selettore_vale_subito_anche_con_articolo_in_cache(self):
+        self.client.get(f'/articolo/{self.originale.slug}/')  # mette in cache il contesto
+        MonitorConfig.objects.filter(pk=self.comune.pk).update(noindex=True)
+        r = self.client.get(f'/articolo/{self.originale.slug}/')
+        self.assertContains(r, '<meta name="robots" content="noindex, follow">')
+
+    def test_collega_monitor_origine_dal_dominio(self):
+        call_command('collega_monitor_origine', stdout=StringIO())
+        self.vecchio.refresh_from_db()
+        self.assertIsNone(self.vecchio.monitor_origine_id)  # prova a vuoto
+        call_command('collega_monitor_origine', '--esegui', stdout=StringIO())
+        self.vecchio.refresh_from_db()
+        self.assertEqual(self.vecchio.monitor_origine_id, self.testata.pk)
+        self.assertTrue(self.vecchio.escluso_da_google)
