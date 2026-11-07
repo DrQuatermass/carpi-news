@@ -397,7 +397,7 @@ class SiteConfig:
         self.config = kwargs
         
         # Validazione base
-        if scraper_type not in ['html', 'wordpress_api', 'youtube_api', 'graphql', 'email']:
+        if scraper_type not in ['html', 'wordpress_api', 'youtube_api', 'graphql', 'email', 'albo_italsoft']:
             raise ValueError(f"Tipo scraper non supportato: {scraper_type}")
 
 
@@ -3045,6 +3045,328 @@ class EmailScraper(BaseScraper):
         return None  # Il contenuto è già estratto in scrape_articles
 
 
+# Tipi di atto con dati di privati cittadini e nessuna notizia: esclusi di default
+ALBO_TIPI_ESCLUSI_DEFAULT = [
+    'pubblicazioni di matrimonio',
+    'deposito art.60',
+    'cognome o nome',
+    'art.213',
+]
+
+
+class AlboItalsoftScraper(BaseScraper):
+    """Albo pretorio online Italsoft (itaFrontOffice), usato dai Comuni delle Terre d'Argine
+    e dall'Unione su trasparenza.terredargine.it/<ente>/?page_id=740.
+
+    La pagina contiene nell'HTML la tabella completa degli atti in pubblicazione. Il link
+    al dettaglio ha un pub_token che cambia a ogni visita, quindi la chiave dell'atto e'
+    il numero di registro: fonte = <albo_url>#reg-<numero>-<anno>.
+
+    config_data:
+      albo_url        pagina dell'albo (default base_url)
+      tipi_esclusi    sottostringhe del tipo atto da scartare (default ALBO_TIPI_ESCLUSI_DEFAULT)
+      max_giorni      solo atti pubblicati negli ultimi N giorni (default 3): al primo avvio
+                      non si importano le ~100 pubblicazioni in corso
+      leggi_dettaglio legge la scheda dell'atto (settore, protocollo, documenti), default true
+      leggi_pdf       aggiunge il testo del documento principale (ATTO), default true; i .p7m
+                      firmati vengono aperti, le scansioni senza testo saltate
+      pdf_max_mb      documenti piu' grandi non vengono scaricati (default 5: le scansioni
+                      delle ordinanze sono ~10 MB)
+      pdf_max_caratteri lunghezza massima del testo dell'atto (default 15000)
+    """
+
+    def __init__(self, config: SiteConfig, headers: Dict[str, str]):
+        super().__init__(config, headers)
+        cfg = config.config
+        self.albo_url = cfg.get('albo_url') or config.base_url
+        self.tipi_esclusi = [t.lower() for t in cfg.get('tipi_esclusi', ALBO_TIPI_ESCLUSI_DEFAULT)]
+        self.max_giorni = int(cfg.get('max_giorni', 3))
+        self.leggi_dettaglio = cfg.get('leggi_dettaglio', True)
+        self.leggi_pdf = cfg.get('leggi_pdf', True)
+        self.pdf_max_byte = int(float(cfg.get('pdf_max_mb', 5)) * 1024 * 1024)
+        self.pdf_max_caratteri = int(cfg.get('pdf_max_caratteri', 15000))
+        # URL fisso dell'atto -> (link al dettaglio con il token della lettura corrente, ente)
+        self._dettagli: Dict[str, tuple] = {}
+        self._schede: Dict[str, str] = {}
+
+    @staticmethod
+    def _testo(s: str) -> str:
+        """Spazi normalizzati e accenti ripresi: alcuni oggetti arrivano gia' codificati due
+        volte dal gestionale ("MOBILITÃ" per "MOBILITÀ"). Prima gli accenti, poi gli spazi:
+        la "à" doppiamente codificata finisce con uno spazio non separabile (Ã + \\xa0)."""
+        s = s or ''
+        if 'Ã' in s or 'Â' in s:
+            for codifica in ('cp1252', 'latin-1'):
+                try:
+                    s = s.encode(codifica).decode('utf-8')
+                    break
+                except (UnicodeEncodeError, UnicodeDecodeError):
+                    continue
+        return re.sub(r'\s+', ' ', s).strip()
+
+    def _url_atto(self, registro: str) -> str:
+        chiave = re.sub(r'[^0-9]+', '-', registro).strip('-')
+        return f"{self.albo_url.split('#')[0]}#reg-{chiave}"
+
+    def _leggi_tabella(self) -> List[Dict[str, str]]:
+        response = self._get_request(self.albo_url, timeout=self.timeout)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.content, 'html.parser')
+        righe = []
+        for tr in soup.select('#tabella_risultati tbody tr'):
+            celle = tr.find_all('td')
+            if len(celle) < 8:
+                continue
+            link = celle[8].find('a') if len(celle) > 8 else None
+            righe.append({
+                'registro': self._testo(celle[0].get_text()),
+                'ente': self._testo(celle[1].get_text()),
+                'tipo': self._testo(celle[2].get_text()),
+                'numero': self._testo(celle[3].get_text()),
+                'data_atto': self._testo(celle[4].get_text()),
+                'oggetto': self._testo(celle[5].get_text()),
+                'dal': self._testo(celle[6].get_text()),
+                'al': self._testo(celle[7].get_text()),
+                'dettaglio': link.get('href') if link else '',
+            })
+        return righe
+
+    def _escluso(self, riga: Dict[str, str]) -> bool:
+        tipo = riga['tipo'].lower()
+        return any(t and t in tipo for t in self.tipi_esclusi)
+
+    def _recente(self, riga: Dict[str, str]) -> bool:
+        if self.max_giorni <= 0:
+            return True
+        try:
+            dal = datetime.strptime(riga['dal'], '%d/%m/%Y')
+        except ValueError:
+            return True
+        return (datetime.now() - dal).days <= self.max_giorni
+
+    def _scheda(self, riga: Dict[str, str]) -> str:
+        """Testo della notizia grezza: i dati dell'elenco, una riga per campo."""
+        campi = [
+            ('Ente', riga['ente']),
+            ('Tipo atto', riga['tipo']),
+            ('Numero atto', riga['numero']),
+            ('Data atto', riga['data_atto']),
+            ('N. registro albo', riga['registro']),
+            ('In pubblicazione', f"dal {riga['dal']} al {riga['al']}" if riga['al'] else riga['dal']),
+        ]
+        righe = [f"{nome}: {valore}" for nome, valore in campi if valore]
+        # Righe vuote tra i campi: il polisher unisce le righe singole in un solo paragrafo
+        return "\n\n".join(["Oggetto: " + riga['oggetto']] + righe)
+
+    def _titolo(self, riga: Dict[str, str]) -> str:
+        numero = f" n. {riga['numero']}" if riga['numero'] else ''
+        return f"{riga['tipo']}{numero}: {riga['oggetto']}"[:200]
+
+    def scrape_articles(self) -> List[Dict[str, Any]]:
+        try:
+            righe = self._leggi_tabella()
+        except Exception as e:
+            self.logger.error(f"Albo {self.albo_url} non leggibile: {e}")
+            return []
+
+        articoli = []
+        esclusi = vecchi = 0
+        for riga in righe:
+            if not riga['registro'] or not riga['oggetto']:
+                continue
+            if self._escluso(riga):
+                esclusi += 1
+                continue
+            if not self._recente(riga):
+                vecchi += 1
+                continue
+            url = self._url_atto(riga['registro'])
+            scheda = self._scheda(riga)
+            self._schede[url] = scheda
+            if riga['dettaglio']:
+                self._dettagli[url] = (riga['dettaglio'], riga['ente'])
+            articoli.append({
+                'title': self._titolo(riga),
+                'url': url,
+                'preview': scheda,
+                'content': scheda,
+                'date': riga['dal'],
+                'image_url': None,
+                'content_type': 'albo',
+            })
+
+        self.logger.info(f"Albo: {len(righe)} atti in pubblicazione, {len(articoli)} recenti, "
+                         f"{esclusi} esclusi per tipo, {vecchi} piu' vecchi di {self.max_giorni} giorni")
+        return articoli
+
+    @staticmethod
+    def _byte(dimensione: str) -> int:
+        """'310.19 KiB' -> byte; 0 se non si capisce."""
+        m = re.match(r'([\d.,]+)\s*(B|KiB|MiB|GiB|KB|MB|GB)', dimensione or '', re.I)
+        if not m:
+            return 0
+        fattori = {'b': 1, 'kib': 1024, 'kb': 1024, 'mib': 1024 ** 2, 'mb': 1024 ** 2,
+                   'gib': 1024 ** 3, 'gb': 1024 ** 3}
+        return int(float(m.group(1).replace(',', '.')) * fattori[m.group(2).lower()])
+
+    def _leggi_dettaglio(self, link: str, ente: str = ''):
+        """Campi della scheda che l'elenco non ha (settore, protocollo, nomi dei documenti)
+        e l'elenco dei documenti: nome, ruolo (ATTO/ALLEGATO), byte, link per tipo di file.
+        Per i .p7m il sito offre due link: il file firmato e il PDF gia' estratto."""
+        response = self._get_request(link, timeout=self.timeout)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.content, 'html.parser')
+        gia_in_elenco = {'ente', 'n. pubblicazione', 'data pubblicazione', 'data scadenza',
+                         'nr.atto', 'data atto', 'tipo atto', 'oggetto'}
+        extra = []
+        for tr in soup.select('table.tablesorter tbody tr'):
+            celle = tr.find_all('td', recursive=False)
+            if len(celle) != 2:
+                continue
+            nome = self._testo(celle[0].get_text())
+            valore = self._testo(celle[1].get_text())
+            if not nome or not valore or nome.lower() in gia_in_elenco:
+                continue
+            if nome.lower().startswith('u.o.r') and valore.lower() == ente.lower():
+                continue
+            extra.append(f"{nome}: {valore}")
+        documenti = []
+        for th in soup.find_all('th'):
+            if 'Elenco Documenti' not in th.get_text():
+                continue
+            for tr in th.find_parent('table').select('tbody tr'):
+                celle = tr.find_all('td')
+                if not celle:
+                    continue
+                nome = self._testo(celle[0].contents[0] if celle[0].contents else '').lstrip('- ').strip()
+                if not nome:
+                    continue
+                link_per_tipo = {}
+                for a in tr.find_all('a', href=True):
+                    img = a.find('img')
+                    icona = (img.get('src', '') if img else '').rsplit('/', 1)[-1]
+                    tipo = re.sub(r'^file-|\.png$', '', icona).lower()   # pdf, p7m
+                    if tipo and 'pub_token' in a['href']:
+                        link_per_tipo.setdefault(tipo, a['href'])
+                documenti.append({
+                    'nome': nome,
+                    'byte': self._byte(self._testo(celle[1].get_text()) if len(celle) > 1 else ''),
+                    'ruolo': self._testo(celle[2].get_text()).lstrip('- ').upper() if len(celle) > 2 else '',
+                    'link': link_per_tipo,
+                })
+        if documenti:
+            extra.append("Documenti allegati: " + "; ".join(d['nome'] for d in documenti))
+        return extra, documenti
+
+    @staticmethod
+    def _pdf_da_p7m(dati: bytes) -> bytes:
+        """Il PDF dentro una busta di firma CAdES (.p7m, anche doppia): sta tra il primo
+        %PDF e l'ultimo %%EOF. Vale per le buste con contenuto in un blocco unico, il caso
+        dei gestionali; altrimenti torna b'' e il testo non viene letto."""
+        inizio = dati.find(b'%PDF')
+        fine = dati.rfind(b'%%EOF')
+        if inizio < 0 or fine < inizio:
+            return b''
+        return dati[inizio:fine + 5]
+
+    @staticmethod
+    def _testo_pdf(dati: bytes, max_caratteri: int) -> str:
+        """Testo del PDF a paragrafi; '' per le scansioni (nessun testo)."""
+        from PyPDF2 import PdfReader
+
+        reader = PdfReader(io.BytesIO(dati))
+        # Tutto il testo (fino a 40 pagine): la parte che decide sta in fondo
+        pagine = [(p.extract_text() or '') for p in reader.pages[:40]]
+        paragrafi, corrente = [], []
+        for riga in '\n'.join(pagine).splitlines():
+            riga = re.sub(r'\s+', ' ', riga).strip()
+            if not riga:
+                continue
+            corrente.append(riga)
+            # Il PDF va a capo a ogni riga: un paragrafo finisce con . ; :
+            if riga[-1] in '.;:':
+                paragrafi.append(' '.join(corrente))
+                corrente = []
+        if corrente:
+            paragrafi.append(' '.join(corrente))
+        return AlboItalsoftScraper._accorcia_atto('\n\n'.join(paragrafi), max_caratteri)
+
+    # Inizio della parte dispositiva: dopo premesse e richiami ("Visto...", "Richiamati...")
+    _DISPOSITIVO = re.compile(r'(?<![A-Za-z])(DETERMINA|ORDINA|DELIBERA|DECRETA|DISPONE|RENDE NOTO|AVVISA)(?![A-Za-z])')
+
+    @staticmethod
+    def _accorcia_atto(testo: str, max_caratteri: int) -> str:
+        """Atto lungo: l'inizio (intestazione e oggetto) e, per intero se ci sta, la parte
+        dispositiva, dove stanno decisione, importi e destinatari. Senza il marcatore,
+        inizio e fine."""
+        if len(testo) <= max_caratteri:
+            return testo
+        testa = max_caratteri // 4
+        spazio = max_caratteri - testa
+        marcatori = list(AlboItalsoftScraper._DISPOSITIVO.finditer(testo, testa))
+        # Il primo marcatore da cui il resto del testo ci sta
+        adatti = [m for m in marcatori if len(testo) - m.start() <= spazio]
+        if adatti:
+            dispositivo = testo[adatti[0].start():]
+        elif marcatori:
+            dispositivo = testo[marcatori[-1].start():][:spazio].rsplit(' ', 1)[0] + ' [...]'
+        else:
+            dispositivo = testo[-spazio:].split(' ', 1)[-1]
+        return testo[:testa].rsplit(' ', 1)[0] + '\n\n[... premesse omesse ...]\n\n' + dispositivo
+
+    def _testo_atto(self, documenti: List[Dict[str, Any]]) -> str:
+        """Testo del documento principale (ruolo ATTO, altrimenti il primo con un link)."""
+        candidati = [d for d in documenti if d['ruolo'] == 'ATTO' and d['link']] or \
+                    [d for d in documenti if d['link']]
+        if not candidati:
+            return ''
+        doc = candidati[0]
+        if doc['byte'] > self.pdf_max_byte:
+            self.logger.info(f"PDF non letto, troppo grande ({doc['byte'] // 1024} KiB): {doc['nome']}")
+            return ''
+        link = doc['link'].get('pdf') or doc['link'].get('p7m')
+        response = self._get_request(link, timeout=max(self.timeout, 30))
+        response.raise_for_status()
+        dati = response.content
+        if len(dati) > self.pdf_max_byte:
+            return ''
+        if not dati.startswith(b'%PDF'):
+            dati = self._pdf_da_p7m(dati)
+        if not dati:
+            self.logger.info(f"Documento senza PDF leggibile: {doc['nome']}")
+            return ''
+        testo = self._testo_pdf(dati, self.pdf_max_caratteri)
+        if len(testo) < 200:
+            # Scansione: solo immagini, al massimo il timbro di firma
+            self.logger.info(f"PDF senza testo (scansione?): {doc['nome']}")
+            return ''
+        return testo
+
+    def get_full_content(self, article_url: str) -> Optional[str]:
+        scheda = self._schede.get(article_url)
+        if not scheda:
+            return None
+        link, ente = self._dettagli.get(article_url, ('', ''))
+        if not (self.leggi_dettaglio and link):
+            return scheda
+        try:
+            extra, documenti = self._leggi_dettaglio(link, ente)
+        except Exception as e:
+            self.logger.warning(f"Dettaglio atto non letto ({article_url}): {e}")
+            return scheda
+        if extra:
+            scheda += "\n\n" + "\n\n".join(extra)
+        if self.leggi_pdf:
+            try:
+                testo = self._testo_atto(documenti)
+            except Exception as e:
+                self.logger.warning(f"Testo dell'atto non letto ({article_url}): {e}")
+                testo = ''
+            if testo:
+                scheda += "\n\nTESTO DELL'ATTO (estratto automaticamente dal PDF):\n\n" + testo
+        return scheda
+
+
 class UniversalNewsMonitor:
     """Monitor universale per diversi tipi di siti news"""
 
@@ -3132,7 +3454,8 @@ class UniversalNewsMonitor:
             'wordpress_api': WordPressAPIScraper,
             'youtube_api': YouTubeAPIScraper,
             'graphql': GraphQLScraper,
-            'email': EmailScraper
+            'email': EmailScraper,
+            'albo_italsoft': AlboItalsoftScraper,
         }
 
         scraper_class = scraper_classes.get(self.config.scraper_type)

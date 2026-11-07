@@ -783,6 +783,7 @@ class MonitorConfig(models.Model):
         ('youtube_api', 'YouTube API'),
         ('graphql', 'GraphQL API'),
         ('email', 'Email IMAP'),
+        ('albo_italsoft', 'Albo pretorio Italsoft'),
     ]
 
     # Campi base

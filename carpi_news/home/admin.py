@@ -193,6 +193,16 @@ class MonitorConfigForm(forms.ModelForm):
             <p><strong>password</strong>: Password email</p>
             <p><strong>mailbox</strong>: Cartella da monitorare (default: INBOX)</p>
 """
+        elif scraper_type == 'albo_italsoft':
+            help_text += """
+            <p><strong>albo_url</strong>: Pagina dell'albo (default: URL base), es. https://trasparenza.terredargine.it/carpi/?page_id=740</p>
+            <p><strong>tipi_esclusi</strong>: Parti del tipo atto da scartare (default: matrimoni, deposito art.60, cognome o nome, art.213)</p>
+            <p><strong>max_giorni</strong>: Solo atti pubblicati negli ultimi N giorni (default: 3)</p>
+            <p><strong>leggi_dettaglio</strong>: Legge la scheda dell'atto: settore, protocollo, documenti (default: true)</p>
+            <p><strong>leggi_pdf</strong>: Aggiunge il testo del documento principale, anche dai .p7m firmati (default: true)</p>
+            <p><strong>pdf_max_mb</strong>: Documenti piu' grandi non vengono scaricati, di solito scansioni (default: 5)</p>
+            <p><strong>pdf_max_caratteri</strong>: Lunghezza massima del testo; oltre si tengono inizio e parte dispositiva (default: 15000)</p>
+"""
 
         help_text += """
         </div>

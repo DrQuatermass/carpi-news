@@ -55,6 +55,7 @@ All monitor configurations are stored in the database (`MonitorConfig` model) an
 - **ANSA Emilia-Romagna**: RSS feed with keyword filtering for Carpi-related content
 - **TempoNews**: HTML scraping for local news
 - **YouTube Channels**: Transcript-based article generation
+- **Albi pretori Terre d'Argine** (dal 7/11/2026): scraper `albo_italsoft` (`AlboItalsoftScraper`) per la piattaforma Italsoft di `trasparenza.terredargine.it/<ente>/?page_id=740` (enti `carpi`, `unioneterredargine`, `campogalliano`, `novi`, `soliera`). Ogni atto diventa una notizia grezza da rielaborare, con fonte `<albo>#reg-<numero>-<anno>`: il link al dettaglio ha un `pub_token` che cambia a ogni visita. Esclusi di default matrimoni, deposito art.60, cambi di cognome e sequestri art.213 (dati di privati, `tipi_esclusi`). `max_giorni` (1 nei monitor creati) limita l'import agli atti recenti: alzarlo se il monitor resta fermo piu' di un giorno. All'importazione si aggiunge il testo del documento "ATTO" (PyPDF2, `leggi_pdf`): per i `.p7m` si usa il link al PDF gia' estratto dal sito, altrimenti si apre la busta; saltati i file oltre `pdf_max_mb` (5) e le scansioni senza testo (molte ordinanze di viabilita' di Carpi). Oltre `pdf_max_caratteri` (15000) si tengono l'inizio e la parte dispositiva (DETERMINA/ORDINA/DELIBERA...), dove stanno decisione e importi. Nota per la rielaborazione: `NOTE_FONTE['albo']`. Creazione: `python manage.py crea_monitor_albi [--tutti] [--disattivi]`
 
 ### Legacy Monitors (Being Replaced)
 - `carpi_calcio_monitor.py`: Original Carpi Calcio scraper

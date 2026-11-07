@@ -48,6 +48,13 @@ TIPO DI FONTE: notizia sportiva. Chi legge segue la squadra: risultato, marcator
 
     'consiglio': """
 TIPO DI FONTE: trascrizione di una seduta del consiglio. Racconta cosa si e' deciso e come ci si e' arrivati: pratiche, interventi, posizioni di maggioranza e opposizione, voti. Il lettore deve sapere cosa cambia e chi ha sostenuto cosa.""",
+
+    'albo': """
+TIPO DI FONTE: scheda di un atto pubblicato all'albo pretorio (determinazione, ordinanza, delibera, avviso di gara, convocazione). Hai la scheda (tipo e numero dell'atto, date, ufficio, oggetto in linguaggio burocratico) e spesso, sotto "TESTO DELL'ATTO", il testo estratto dal PDF: parole a volte attaccate, intestazioni e diciture di firma ripetute, premesse lunghe a volte omesse. La notizia sta nella parte che decide (DETERMINA, ORDINA, DELIBERA): cosa, chi, quanto, da quando.
+- Traduci l'oggetto in italiano semplice: cosa si fa, dove, chi lo fa, quanto costa, per quanto tempo. Cifre, indirizzi e date esattamente come nella scheda.
+- Cita l'atto come fonte (es. "con la determinazione dirigenziale n. 961 del 6 novembre"). Il motivo e le conseguenze solo se sono nella scheda o nelle ricerche; se non bastano, scrivi una notizia breve di servizio di 80-150 parole.
+- Ordinanze di viabilita' e cantieri: dove, da quando a quando, cosa cambia per chi passa.
+- Non riportare nomi di privati cittadini; le imprese che ricevono incarichi, lavori o contributi si'.""",
 }
 
 
@@ -124,6 +131,9 @@ def nota_per_monitor(nome):
     if (nome or '').startswith('La Voce di Carpi'):
         return NOTA_VOCE
     n = (nome or '').lower()
+    # Prima di 'comune': "Albo Pretorio Comune di Carpi"
+    if 'albo' in n:
+        return NOTE_FONTE['albo']
     if 'youtube' in n:
         return NOTE_FONTE['consiglio']
     if 'questura' in n or 'ansa' in n or 'gazzetta' in n:

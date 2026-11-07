@@ -2495,3 +2495,121 @@ class GruppiFacebookTests(TestCase):
     def test_riassunto_senza_stili_e_html(self):
         from home.gruppi_facebook import _riassunto
         self.assertEqual(_riassunto('<style>p{color:red}</style><p>Ciao &amp; benvenuti</p>'), 'Ciao & benvenuti')
+
+
+ALBO_HTML = """<html><body><table id="tabella_risultati"><tbody>
+<tr><td>2078/2026</td><td>Comune di Carpi</td><td>Pubblicazioni di matrimonio</td><td>224</td><td>{oggi}</td>
+<td><div>PUBBLICAZIONI DI MATRIMONIO ROSSI - BIANCHI</div></td><td>{oggi}</td><td>15/11/2026</td><td><a href="https://albo.test/?pub_token=a">x</a></td></tr>
+<tr><td>2073/2026</td><td>Comune di Carpi</td><td>Ordinanza</td><td>31</td><td>{oggi}</td>
+<td><div>ORDINANZA UFFICIO MOBILITÃ\x80-VIABILITÃ\x80 N.31/2026: POSA DISSUASORE IN VIA PAGANINI</div></td><td>{oggi}</td><td>21/11/2026</td><td><a href="https://albo.test/?pub_token=b">x</a></td></tr>
+<tr><td>1500/2026</td><td>Comune di Carpi</td><td>Delibera di Giunta</td><td>10</td><td>01/01/2026</td>
+<td><div>DELIBERA VECCHIA</div></td><td>01/01/2026</td><td>15/01/2026</td><td></td></tr>
+</tbody></table></body></html>"""
+
+ALBO_DETTAGLIO_HTML = """<html><body><table class="tablesorter"><tbody>
+<tr><td>U.O.R. Mittente</td><td>Comune di Carpi</td></tr>
+<tr><td>Protocollo</td><td>72505/2026</td></tr>
+<tr><td>Oggetto</td><td>gia' nell'elenco</td></tr>
+</tbody></table>
+<table class="tablesorter"><thead><tr><th>Elenco Documenti [2]</th></tr></thead>
+<tbody><tr><td>- ordinanza.pdf.p7m<br /><span>( Impronta MD5 )</span></td><td>{dimensione}</td><td>- ATTO</td>
+<td><a href="https://albo.test/?pub_token=p7m"><img src="https://albo.test/icons/file-p7m.png"></a></td>
+<td><a href="https://albo.test/?pub_token=pdf"><img src="https://albo.test/icons/file-pdf.png"></a></td></tr>
+<tr><td>- planimetria.pdf<br /></td><td>1 MiB</td><td>- ALLEGATO</td>
+<td><a href="https://albo.test/?pub_token=allegato"><img src="https://albo.test/icons/file-pdf.png"></a></td></tr>
+</tbody></table></body></html>"""
+
+
+class AlboItalsoftScraperTests(SimpleTestCase):
+    def _scraper(self, **config):
+        from home.universal_news_monitor import AlboItalsoftScraper, SiteConfig
+        sc = SiteConfig('Albo Pretorio Comune di Carpi', 'https://albo.test/carpi/?page_id=740',
+                        'albo_italsoft', 'Attualità', **config)
+        return AlboItalsoftScraper(sc, {})
+
+    def _risposta(self, html):
+        r = Mock()
+        r.content = html.encode('utf-8')
+        r.raise_for_status = Mock()
+        return r
+
+    def test_atti_recenti_con_url_fisso_e_tipi_esclusi(self):
+        from datetime import datetime
+        oggi = datetime.now().strftime('%d/%m/%Y')
+        scraper = self._scraper()
+        with patch.object(scraper, '_get_request', return_value=self._risposta(ALBO_HTML.format(oggi=oggi))):
+            atti = scraper.scrape_articles()
+
+        # Matrimonio escluso (dati di privati), delibera di gennaio troppo vecchia
+        self.assertEqual(len(atti), 1)
+        atto = atti[0]
+        self.assertEqual(atto['url'], 'https://albo.test/carpi/?page_id=740#reg-2073-2026')
+        # Accenti codificati due volte dal gestionale ripresi
+        self.assertIn('MOBILITÀ-VIABILITÀ', atto['title'])
+        self.assertTrue(atto['title'].startswith('Ordinanza n. 31: '))
+        self.assertIn('N. registro albo: 2073/2026', atto['content'])
+
+    def _contenuto(self, dimensione='135 KiB', pdf=b'%PDF-1.4 atto', testo_pdf='x' * 300, **config):
+        """get_full_content dell'ordinanza con scheda e PDF finti; ritorna (testo, url chiesti)."""
+        from datetime import datetime
+        oggi = datetime.now().strftime('%d/%m/%Y')
+        scraper = self._scraper(**config)
+        with patch.object(scraper, '_get_request', return_value=self._risposta(ALBO_HTML.format(oggi=oggi))):
+            url = scraper.scrape_articles()[0]['url']
+        dettaglio = self._risposta(ALBO_DETTAGLIO_HTML.format(dimensione=dimensione))
+        file_pdf = Mock(content=pdf, raise_for_status=Mock())
+        with patch.object(scraper, '_get_request', side_effect=[dettaglio, file_pdf]) as get, \
+                patch.object(scraper, '_testo_pdf', return_value=testo_pdf):
+            testo = scraper.get_full_content(url)
+        return testo, [c.args[0] for c in get.call_args_list]
+
+    def test_dettaglio_aggiunge_solo_i_campi_nuovi(self):
+        testo, _ = self._contenuto(leggi_pdf=False)
+        self.assertIn('Protocollo: 72505/2026', testo)
+        self.assertIn('Documenti allegati: ordinanza.pdf.p7m; planimetria.pdf', testo)
+        self.assertNotIn('U.O.R.', testo)
+        self.assertNotIn("gia' nell'elenco", testo)
+
+    def test_testo_dell_atto_dal_pdf_gia_estratto(self):
+        testo, chiesti = self._contenuto(testo_pdf='ORDINA il senso unico alternato ' * 20)
+        # Il documento ATTO, link al PDF senza firma (non il .p7m, non l'allegato)
+        self.assertEqual(chiesti, ['https://albo.test/?pub_token=b', 'https://albo.test/?pub_token=pdf'])
+        self.assertIn("TESTO DELL'ATTO", testo)
+        self.assertIn('ORDINA il senso unico alternato', testo)
+
+    def test_pdf_troppo_grande_o_scansione_saltati(self):
+        testo, chiesti = self._contenuto(dimensione='10.57 MiB')
+        self.assertEqual(len(chiesti), 1)  # solo la scheda, il PDF non si scarica
+        self.assertNotIn("TESTO DELL'ATTO", testo)
+
+        testo, _ = self._contenuto(testo_pdf='Firmato digitalmente')  # scansione: solo il timbro
+        self.assertNotIn("TESTO DELL'ATTO", testo)
+        self.assertIn('Protocollo: 72505/2026', testo)
+
+    def test_accenti_codificati_due_volte(self):
+        from home.universal_news_monitor import AlboItalsoftScraper
+        self.assertEqual(AlboItalsoftScraper._testo('festivitÃ   natalizie'), 'festività natalizie')
+        self.assertEqual(AlboItalsoftScraper._testo('MOBILITÃ\u0080-VIABILITÃ\u0080'), 'MOBILITÀ-VIABILITÀ')
+        self.assertEqual(AlboItalsoftScraper._testo(' città  già\n giusta '), 'città già giusta')
+
+    def test_busta_p7m_aperta(self):
+        from home.universal_news_monitor import AlboItalsoftScraper
+        busta = b'0\x82\x10\x00firma' + b'%PDF-1.4 contenuto %%EOF\n' + b'certificati'
+        self.assertEqual(AlboItalsoftScraper._pdf_da_p7m(busta), b'%PDF-1.4 contenuto %%EOF')
+        self.assertEqual(AlboItalsoftScraper._pdf_da_p7m(b'nessun pdf'), b'')
+        self.assertEqual(AlboItalsoftScraper._byte('10.57 MiB'), int(10.57 * 1024 ** 2))
+
+    def test_atto_lungo_tiene_la_parte_dispositiva(self):
+        from home.universal_news_monitor import AlboItalsoftScraper
+        testo = 'OGGETTO: affidamento sgombero neve. ' + 'Richiamata la delibera. ' * 400 + \
+                'DETERMINA di affidare alla ditta Rossi per euro 38.975,81. Il Dirigente'
+        corto = AlboItalsoftScraper._accorcia_atto(testo, 2000)
+        self.assertLessEqual(len(corto), 2100)
+        self.assertTrue(corto.startswith('OGGETTO: affidamento sgombero neve.'))
+        self.assertIn('[... premesse omesse ...]', corto)
+        self.assertTrue(corto.endswith('DETERMINA di affidare alla ditta Rossi per euro 38.975,81. Il Dirigente'))
+        self.assertEqual(AlboItalsoftScraper._accorcia_atto('breve', 2000), 'breve')
+
+    def test_nota_albo_prima_di_quella_del_comune(self):
+        from home.prompt_redazione import NOTE_FONTE, nota_per_monitor
+        self.assertEqual(nota_per_monitor('Albo Pretorio Comune di Carpi'), NOTE_FONTE['albo'])
