@@ -51,7 +51,78 @@ TIPO DI FONTE: trascrizione di una seduta del consiglio. Racconta cosa si e' dec
 }
 
 
+# Note per singolo monitor (dal 7/11/2026), scritte guardando le notizie grezze di ogni fonte:
+# cosa arriva, che difetti ha il testo, cosa fare nei casi tipici. Prevalgono sulla nota per tipo.
+# Provate A/B su 16 notizie vere (analisi/prompt_v3/prova_note.py).
+NOTE_MONITOR = {
+    'Email Comunicati Stampa': """
+FONTE: la casella dei comunicati stampa della redazione. Arrivano cose molto diverse, riconoscile dal testo:
+- Post della Polizia Locale Terre d'Argine (iniziano con "@PMTerredargine", pieni di hashtag e link t.co): ignora hashtag e link. "#Accadeora" vuol dire un incidente o un disagio in corso nel momento del post: scrivi una notizia breve di servizio (dove, cosa, percorsi alternativi), al passato se il fatto e' gia' chiuso. I consigli generici (oggetti in auto, deiezioni dei cani, pedoni) senza un fatto preciso diventano un pezzo di servizio di 100-150 parole, senza drammatizzare.
+- Comunicati di partiti, sindacati e associazioni (Pd, Cgil, Federconsumatori...): chi parla va detto nella prima frase, le tesi sono sue e vanno attribuite. Spesso sono provinciali: se Carpi o le Terre d'Argine non c'entrano, dillo e tieni il pezzo breve; se c'entrano, quella parte va in testa.
+- Comunicati di societa' sportive (Coopernuoto, Unisport...): risultati e convocazioni sono spesso in un allegato Google Drive che non si puo' leggere. Scrivi con quello che c'e' nella mail e cerca sul sito o sui social della societa'. Un "errata corrige" si riferisce a un comunicato precedente: da solo non e' una notizia.
+- Comunicati di Aziende sanitarie, Comuni ed enti: in testa cosa cambia per chi abita a Carpi e nelle Terre d'Argine (servizi spostati, orari, numeri da chiamare).""",
+
+    'Eventi Carpi GraphQL': """
+FONTE: scheda di un evento dal calendario del Comune di Carpi. La prima riga dice giorno e luogo; poi una descrizione spesso breve, a volte solo un programma (saluti, interventi, nomi e cariche) e il rimando "vai alla pagina dedicata" o "vai al sito dedicato"; in fondo data, ora e costo.
+- Chi legge deve capire che cos'e', chi parla e perche' vale la pena andarci. Se la scheda e' scarna usa la pagina dedicata e cerca l'ospite, il libro, lo spettacolo, la mostra o l'organizzatore: e' li' che c'e' il contenuto.
+- Un programma a elenco va raccontato: chi interviene e su cosa, non la lista dei saluti istituzionali.
+- Chiudi con data, ora, luogo, costo e prenotazione esattamente come nella scheda. Niente giudizi sul valore dell'evento.""",
+
+    'Comune Carpi GraphQL': """
+FONTE: notizia ufficiale del Comune di Carpi. E' la voce dell'amministrazione: dichiarazioni di sindaco e assessori vanno attribuite come tali, e i toni celebrativi ("record", "importante traguardo") vanno tolti.
+- In testa cosa cambia per i cittadini: bandi e scadenze, requisiti, lavori e strade, orari, costi, a chi rivolgersi. Riporta esattamente date, cifre e indirizzi.
+- Se e' un evento (spettacolo, visita guidata, cerimonia) valgono le regole degli eventi: cos'e', chi lo fa, e in fondo data, orario, luogo, costo e prenotazione.""",
+
+    'Carpi Calcio': """
+FONTE: sito ufficiale dell'AC Carpi (Serie C, stadio Cabassi). E' la voce della societa'. Tipi di notizia:
+- Cronaca o risultato di una partita: risultato, marcatori con minuto, momenti decisivi; classifica e prossima partita se le trovi con la ricerca.
+- Vigilia di una partita con i convocati: l'avversario, quando e dove si gioca, la situazione in classifica se la trovi, assenti e rientri se la fonte li indica. Non elencare tutti i nomi.
+- Biglietteria e settori: notizia breve di servizio con prezzi, orari, settori e come comprare.
+- Iniziative della societa' (scuole, beneficenza, eventi): cosa si fa, con chi, quando.
+- Giovanili: i risultati delle varie squadre raccontati in breve, senza gonfiare.""",
+
+    'Questura di Modena': """
+FONTE: comunicato della Polizia di Stato. Arrivano anche comunicati di altre questure d'Italia (Crotone, Torino...): se il fatto non riguarda Carpi, le Terre d'Argine o la provincia di Modena, dillo nella prima riga e scrivi un pezzo brevissimo.
+- Traduci il linguaggio burocratico ("fermo di indiziato di delitto ex art. 384 c.p.p.", "P.G.", "deferito") in italiano semplice, senza perdere la precisione giuridica: fermato, denunciato, arrestato sono cose diverse.
+- Chi e' fermato o denunciato non e' colpevole: "accusato di", "secondo la Polizia". Eta' e nazionalita' solo se servono a capire il fatto; mai i nomi delle vittime.
+- Dove e quando sono le prime cose che chi abita a Carpi vuole sapere.""",
+
+    'Terminal': """
+FONTE: il Terminal Terre d'Argine Innovation Lab, lo spazio dell'ex stazione delle corriere di Carpi (piazzale Allende) dedicato a digitale, formazione e giovani. Propone corsi e laboratori, spesso gratuiti e su iscrizione, e ospita presentazioni di progetti.
+- Di' per chi e' (bambini, ragazzi, adulti, anziani), cosa si impara o si fa, quante volte e quando, se si paga e come ci si iscrive.
+- Se presenta i risultati di una ricerca o di un progetto, i numeri vengono prima: chi li ha raccolti e cosa dicono.""",
+
+    'Modena Today Eventi': """
+FONTE: eventi della provincia di Modena ripresi da ModenaToday. Quasi sempre fuori Carpi (Modena, Bomporto, Formigine, Mirandola...).
+- Nella prima frase il comune in cui si svolge. Se e' vicino a Carpi o riguarda persone o realta' di Carpi, quella e' la notizia.
+- Racconta l'evento con parole tue, non ricalcare l'ordine e le frasi della testata; chiudi con data, orari, luogo e costo esatti.""",
+
+    'Notizie Diocesi': """
+FONTE: sito della Diocesi di Carpi (settimanale Notizie). Arrivano cose diverse:
+- Fatti di Carpi e delle parrocchie (celebrazioni, associazioni, donazioni, persone): sono la parte utile, scrivili come cronaca locale.
+- Rubriche e commenti firmati (es. "In punta di spillo"), testi religiosi o di spiritualita', notizie della Chiesa nazionale o internazionale: sono opinioni o temi non locali. Se scrivi, di' subito di chi e' l'opinione e attribuiscila; non presentarla come fatto.
+- Notizie gia' uscite su altri giornali (aziende, sanita'): stesso trattamento delle altre testate.""",
+
+    'Gazzetta di Modena - Carpi': """
+FONTE: articolo della Gazzetta di Modena. Il testo arriva con pezzi della pagina in testa (sezione "modenacronaca", occhiello, titolo, sommario, firma, data, "MINUTI DI LETTURA"): ignorali e parti dal testo vero.
+- Scrivi un pezzo tuo con gli stessi fatti, senza ricalcare ordine e frasi; le dichiarazioni raccolte dal giornalista vanno attribuite alla persona e, se esclusive, alla Gazzetta.
+- Molti articoli riguardano Modena e non Carpi: se e' cosi', dillo e tieni la parte che riguarda Carpi in testa.""",
+
+    'TempoNews': """
+FONTE: articolo di TempoNews, testata locale concorrente. Scrivi un pezzo tuo con gli stessi fatti, senza ricalcare ordine e frasi; le dichiarazioni raccolte da TempoNews vanno attribuite alla persona. Spesso l'apertura e' narrativa ("Il dolore per la perdita..."): parti invece dal fatto.""",
+}
+
+NOTA_VOCE = """
+FONTE: articolo della Voce di Carpi, testata locale concorrente. Nel testo titolo, occhiello e sommario arrivano attaccati alla prima frase senza spazi ("...dei CarabinieriGli uomini della Compagnia..."): separali mentalmente e parti dal testo vero.
+- Scrivi un pezzo tuo con gli stessi fatti, senza ricalcare ordine e frasi; le dichiarazioni raccolte dalla Voce vanno attribuite alla persona.
+- Alcune rubriche (es. "Global: le notizie di oggi dal mondo") non sono notizie locali."""
+
+
 def nota_per_monitor(nome):
+    if nome in NOTE_MONITOR:
+        return NOTE_MONITOR[nome]
+    if (nome or '').startswith('La Voce di Carpi'):
+        return NOTA_VOCE
     n = (nome or '').lower()
     if 'youtube' in n:
         return NOTE_FONTE['consiglio']

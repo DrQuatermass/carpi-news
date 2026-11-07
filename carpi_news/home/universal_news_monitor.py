@@ -2745,8 +2745,10 @@ class EmailScraper(BaseScraper):
                 domain = parsed.netloc.lower()
 
                 # Esclude domini social e estensioni immagini
+                # Estensione cercata nel percorso e non solo in fondo: nelle pagine WordPress l'URL
+                # dell'immagine arriva attaccato ad altro testo ("...foto.jpg14761181ufficiostampa...")
                 if (not any(excluded in domain for excluded in excluded_domains) and
-                    not url.lower().endswith(('.jpg', '.jpeg', '.png', '.gif', '.pdf'))):
+                        not re.search(r'\.(jpe?g|png|gif|webp|svg|pdf)(?![a-z])', parsed.path.lower())):
                     relevant_urls.append(url)
 
             # Limita a massimo 3 link per evitare overhead
