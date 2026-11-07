@@ -10,7 +10,18 @@ import json
 import logging
 import uuid
 import warnings
+from datetime import timedelta
 logger = logging.getLogger(__name__)
+
+
+# Annunci di eventi: 30 giorni dopo la data dell'evento la pagina e' scaduta per chi cerca
+# ("sabato c'e' la mostra" letto mesi dopo) e passa in noindex, fuori dalle sitemap.
+EVENTO_SCADUTO_GIORNI = 30
+
+
+def soglia_evento_scaduto():
+    """Eventi con data_evento precedente a questa data sono scaduti."""
+    return timezone.localdate() - timedelta(days=EVENTO_SCADUTO_GIORNI)
 
 
 class Articolo(models.Model):
@@ -192,10 +203,12 @@ class Articolo(models.Model):
 
     @property
     def escluso_da_google(self):
-        """noindex: "Cosa fare oggi" (riepiloga eventi gia' pubblicati) e articoli dei monitor
-        segnati "Fuori dall'indice Google". Letto dal DB a ogni render, non dalla cache
+        """noindex: "Cosa fare oggi" (riepiloga eventi gia' pubblicati), eventi scaduti
+        (EVENTO_SCADUTO_GIORNI dopo la data) e articoli dei monitor segnati "Fuori dall'indice Google". Letto dal DB a ogni render, non dalla cache
         dell'articolo, cosi' il selettore in admin vale subito."""
         if self.categoria == 'Cosa fare oggi':
+            return True
+        if self.data_evento and self.data_evento < soglia_evento_scaduto():
             return True
         return bool(self.monitor_origine_id) and MonitorConfig.objects.filter(
             pk=self.monitor_origine_id, noindex=True).exists()

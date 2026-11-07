@@ -2256,6 +2256,25 @@ class MonitorNoindexTests(TestCase):
         r = self.client.get(f'/articolo/{self.originale.slug}/')
         self.assertContains(r, '<meta name="robots" content="noindex, follow">')
 
+    def test_evento_scaduto_esce_dall_indice(self):
+        from datetime import date
+        from home.models import soglia_evento_scaduto
+        scaduto = Articolo.objects.create(titolo='Mostra scaduta', contenuto='<p>T</p>', sommario='S',
+                                          categoria='Cultura & Eventi', approvato=True,
+                                          data_pubblicazione=timezone.now() - timedelta(hours=2),
+                                          data_evento=soglia_evento_scaduto() - timedelta(days=1))
+        vicino = Articolo.objects.create(titolo='Mostra appena finita', contenuto='<p>T</p>', sommario='S',
+                                         categoria='Cultura & Eventi', approvato=True,
+                                         data_pubblicazione=timezone.now() - timedelta(hours=2),
+                                         data_evento=soglia_evento_scaduto())
+        r = self.client.get(f'/articolo/{scaduto.slug}/')
+        self.assertContains(r, '<meta name="robots" content="noindex, follow">')
+        r = self.client.get(f'/articolo/{vicino.slug}/')
+        self.assertContains(r, 'content="index, follow, max-image-preview:large"')
+        r = self.client.get('/sitemap.xml')
+        self.assertNotContains(r, scaduto.slug)
+        self.assertContains(r, vicino.slug)
+
     def test_collega_monitor_origine_dal_dominio(self):
         call_command('collega_monitor_origine', stdout=StringIO())
         self.vecchio.refresh_from_db()

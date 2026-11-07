@@ -18,7 +18,7 @@ from django.views.decorators.http import require_http_methods, require_POST
 from django.db import models
 from django.db.models import Count, F, FloatField, ExpressionWrapper, Max
 from datetime import datetime, timedelta
-from .models import Articolo, ArticoloRedirect, ChatbotConversation, NewsletterSubscriber, NewsletterLog
+from .models import Articolo, ArticoloRedirect, ChatbotConversation, NewsletterSubscriber, NewsletterLog, soglia_evento_scaduto
 from .chatbot_service import ChatbotService
 from .utils import canonical_article_url
 import time
@@ -680,6 +680,8 @@ def sitemap_index(request):
         categoria='Cosa fare oggi'
     ).exclude(
         monitor_origine__noindex=True
+    ).exclude(
+        data_evento__lt=soglia_evento_scaduto()
     ).aggregate(max_date=models.Max('data_pubblicazione'))['max_date'] or now
 
     template = loader.get_template('sitemap_index.xml')
@@ -707,6 +709,8 @@ def sitemap(request):
         categoria='Cosa fare oggi'
     ).exclude(
         monitor_origine__noindex=True
+    ).exclude(
+        data_evento__lt=soglia_evento_scaduto()
     ).order_by('-data_pubblicazione')
 
     # Aggiungi campo days_old per prioritÃ  dinamiche
@@ -739,6 +743,8 @@ def sitemap_archive(request):
         categoria='Cosa fare oggi'
     ).exclude(
         monitor_origine__noindex=True
+    ).exclude(
+        data_evento__lt=soglia_evento_scaduto()
     ).only('slug', 'data_pubblicazione').order_by('-data_pubblicazione')[:10000]
 
     logger.info(f"Generata sitemap archivio con {articles.count()} articoli")
@@ -762,6 +768,8 @@ def news_sitemap(request):
         categoria='Cosa fare oggi'
     ).exclude(
         monitor_origine__noindex=True
+    ).exclude(
+        data_evento__lt=soglia_evento_scaduto()
     ).order_by('-data_pubblicazione')
 
     for article in articles:
