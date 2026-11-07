@@ -2517,6 +2517,8 @@ ALBO_DETTAGLIO_HTML = """<html><body><table class="tablesorter"><tbody>
 <td><a href="https://albo.test/?pub_token=pdf"><img src="https://albo.test/icons/file-pdf.png"></a></td></tr>
 <tr><td>- planimetria.pdf<br /></td><td>1 MiB</td><td>- ALLEGATO</td>
 <td><a href="https://albo.test/?pub_token=allegato"><img src="https://albo.test/icons/file-pdf.png"></a></td></tr>
+<tr><td>- P_2026_PARERE_3.pdf.p7m<br /></td><td>100 KiB</td><td>- ALLEGATO</td>
+<td><a href="https://albo.test/?pub_token=parere"><img src="https://albo.test/icons/file-pdf.png"></a></td></tr>
 </tbody></table></body></html>"""
 
 
@@ -2549,42 +2551,70 @@ class AlboItalsoftScraperTests(SimpleTestCase):
         self.assertTrue(atto['title'].startswith('Ordinanza n. 31: '))
         self.assertIn('N. registro albo: 2073/2026', atto['content'])
 
-    def _contenuto(self, dimensione='135 KiB', pdf=b'%PDF-1.4 atto', testo_pdf='x' * 300, **config):
+    def _contenuto(self, dimensione='135 KiB', testo_atto='x' * 300, testo_allegato='y' * 300, **config):
         """get_full_content dell'ordinanza con scheda e PDF finti; ritorna (testo, url chiesti)."""
         from datetime import datetime
         oggi = datetime.now().strftime('%d/%m/%Y')
         scraper = self._scraper(**config)
         with patch.object(scraper, '_get_request', return_value=self._risposta(ALBO_HTML.format(oggi=oggi))):
             url = scraper.scrape_articles()[0]['url']
-        dettaglio = self._risposta(ALBO_DETTAGLIO_HTML.format(dimensione=dimensione))
-        file_pdf = Mock(content=pdf, raise_for_status=Mock())
-        with patch.object(scraper, '_get_request', side_effect=[dettaglio, file_pdf]) as get, \
-                patch.object(scraper, '_testo_pdf', return_value=testo_pdf):
+        risposte = {
+            'https://albo.test/?pub_token=b': self._risposta(ALBO_DETTAGLIO_HTML.format(dimensione=dimensione)),
+            'https://albo.test/?pub_token=pdf': Mock(content=b'%PDF atto', raise_for_status=Mock()),
+            'https://albo.test/?pub_token=allegato': Mock(content=b'%PDF allegato', raise_for_status=Mock()),
+        }
+        testi = {b'%PDF atto': testo_atto, b'%PDF allegato': testo_allegato}
+        with patch.object(scraper, '_get_request', side_effect=lambda u, **kw: risposte[u]) as get, \
+                patch.object(scraper, '_testo_pdf', side_effect=lambda dati, _max: testi[dati]):
             testo = scraper.get_full_content(url)
         return testo, [c.args[0] for c in get.call_args_list]
 
     def test_dettaglio_aggiunge_solo_i_campi_nuovi(self):
         testo, _ = self._contenuto(leggi_pdf=False)
         self.assertIn('Protocollo: 72505/2026', testo)
-        self.assertIn('Documenti allegati: ordinanza.pdf.p7m; planimetria.pdf', testo)
+        self.assertIn('Documenti allegati: ordinanza.pdf.p7m; planimetria.pdf; P_2026_PARERE_3.pdf.p7m', testo)
         self.assertNotIn('U.O.R.', testo)
         self.assertNotIn("gia' nell'elenco", testo)
 
-    def test_testo_dell_atto_dal_pdf_gia_estratto(self):
-        testo, chiesti = self._contenuto(testo_pdf='ORDINA il senso unico alternato ' * 20)
-        # Il documento ATTO, link al PDF senza firma (non il .p7m, non l'allegato)
-        self.assertEqual(chiesti, ['https://albo.test/?pub_token=b', 'https://albo.test/?pub_token=pdf'])
+    def test_testo_dell_atto_e_degli_allegati_utili(self):
+        testo, chiesti = self._contenuto(testo_atto='ORDINA il senso unico alternato ' * 20,
+                                         testo_allegato='Via Mazzini: chiusura dal 10 al 20 novembre ' * 10)
+        # Atto dal link al PDF senza firma (non il .p7m); allegato letto, parere no
+        self.assertEqual(sorted(chiesti), ['https://albo.test/?pub_token=allegato',
+                                           'https://albo.test/?pub_token=b',
+                                           'https://albo.test/?pub_token=pdf'])
         self.assertIn("TESTO DELL'ATTO", testo)
         self.assertIn('ORDINA il senso unico alternato', testo)
+        self.assertIn('ALLEGATO "planimetria.pdf"', testo)
+        self.assertIn('Via Mazzini: chiusura dal 10 al 20 novembre', testo)
+        self.assertLess(testo.index("TESTO DELL'ATTO"), testo.index('ALLEGATO "planimetria.pdf"'))
+
+    def test_allegati_nella_meta_dello_spazio(self):
+        testo, _ = self._contenuto(testo_atto='Premessa lunga. ' * 2000, testo_allegato='Opera da 150.000 euro. ' * 2000,
+                                   pdf_max_caratteri=10000)
+        atto = testo.split("TESTO DELL'ATTO")[1].split('ALLEGATO "')[0]
+        allegato = testo.split('ALLEGATO "planimetria.pdf"')[1]
+        self.assertLessEqual(len(allegato), 5200)
+        self.assertLessEqual(len(atto), 5300)
+        self.assertGreater(len(atto), 4000)  # all'atto lo spazio lasciato dall'allegato
 
     def test_pdf_troppo_grande_o_scansione_saltati(self):
-        testo, chiesti = self._contenuto(dimensione='10.57 MiB')
+        testo, chiesti = self._contenuto(dimensione='10.57 MiB', leggi_allegati=False)
         self.assertEqual(len(chiesti), 1)  # solo la scheda, il PDF non si scarica
         self.assertNotIn("TESTO DELL'ATTO", testo)
 
-        testo, _ = self._contenuto(testo_pdf='Firmato digitalmente')  # scansione: solo il timbro
+        testo, _ = self._contenuto(testo_atto='Firmato digitalmente', testo_allegato='')  # scansioni
         self.assertNotIn("TESTO DELL'ATTO", testo)
+        self.assertNotIn('ALLEGATO "', testo)
         self.assertIn('Protocollo: 72505/2026', testo)
+
+    def test_limite_fonte_piu_alto_per_gli_atti_dell_albo(self):
+        from home.universal_news_monitor import (MAX_ALBO_SOURCE_CHARS, MAX_SOURCE_CHARS,
+                                                 source_char_limit)
+        albo = 'https://trasparenza.terredargine.it/campogalliano/?page_id=740#reg-811-2026'
+        self.assertEqual(source_char_limit({'url': albo}), MAX_ALBO_SOURCE_CHARS)
+        self.assertEqual(source_char_limit({'url': 'https://www.comune.carpi.mo.it/notizia'}), MAX_SOURCE_CHARS)
+        self.assertEqual(source_char_limit({}), MAX_SOURCE_CHARS)
 
     def test_accenti_codificati_due_volte(self):
         from home.universal_news_monitor import AlboItalsoftScraper
@@ -2621,3 +2651,31 @@ class AlboItalsoftScraperTests(SimpleTestCase):
     def test_nota_albo_prima_di_quella_del_comune(self):
         from home.prompt_redazione import NOTE_FONTE, nota_per_monitor
         self.assertEqual(nota_per_monitor('Albo Pretorio Comune di Carpi'), NOTE_FONTE['albo'])
+
+
+class PolisherElenchiHtmlTests(SimpleTestCase):
+    """Elenchi HTML scritti dall'AI: prima uscivano come <p><ul>.</p> e <p></ul>...</p>."""
+
+    def _pulisci(self, html):
+        return content_polisher.polish_article({'titolo': 't', 'contenuto': html})['contenuto']
+
+    def test_elenco_con_a_capo_singoli_resta_intatto(self):
+        out = self._pulisci('<p>Gli interventi sono questi:</p>\n<ul>\n<li>Casa della salute, 5,5 milioni;</li>\n'
+                            '<li>strade, 150.000 euro.</li>\n</ul>\n<p>Fine.</p>')
+        self.assertIn('<ul> <li>Casa della salute, 5,5 milioni;</li> <li>strade, 150.000 euro.</li> </ul>', out)
+        self.assertNotIn('<p><ul>', out)
+        self.assertNotIn('<ul>.', out)
+        self.assertNotIn('<p></ul>', out)
+        self.assertNotIn('<p><p>', out)
+
+    def test_righe_vuote_tra_le_voci_non_perdono_i_li(self):
+        out = self._pulisci('<p>Prima.</p>\n\n<ul>\n\n<li>uno</li>\n\n<li>due</li>\n\n</ul>\n\n<h2>Titolo</h2>\n\n<p>Dopo</p>')
+        self.assertIn('<li>uno</li> <li>due</li>', out)
+        self.assertIn('<h2>Titolo</h2>', out)
+        self.assertTrue(out.endswith('<p>Dopo.</p>'))
+
+    def test_punto_dentro_il_paragrafo(self):
+        self.assertEqual(self._pulisci('<p>Testo con <strong>nome</strong></p>'),
+                         '<p>Testo con <strong>nome</strong>.</p>')
+        self.assertEqual(self._pulisci('Primo paragrafo\n\nSecondo paragrafo.'),
+                         '<p>Primo paragrafo.</p>\n\n<p>Secondo paragrafo.</p>')

@@ -283,8 +283,10 @@ class ContentPolisher:
         if not content:
             return ""
         content = self._normalize_escaped_line_breaks(content)
+        # Prima delle regole sugli elenchi: un <li> da solo su una riga verrebbe scartato
+        content = self._compatta_elenchi_html(content)
         content = self._normalize_sentence_dashes(content)
-        
+
         # Rimuovi emoji
         content = self.emoji_pattern.sub('', content)
         
@@ -320,8 +322,9 @@ class ContentPolisher:
         
         # Normalizza i line break - mantieni struttura paragrafi
         content = re.sub(r'\r\n', '\n', content)  # Windows -> Unix
+        content = self._separa_blocchi_html(content)
         content = re.sub(r'\n{3,}', '\n\n', content)  # Max 2 newlines consecutive
-        
+
         # Dividi in paragrafi mantenendo la struttura
         paragraphs = content.split('\n\n')
         paragraphs = [p.strip() for p in paragraphs if p.strip()]
@@ -338,6 +341,9 @@ class ContentPolisher:
             
             # Se è già un header HTML, mantienilo
             if re.match(r'^<h[1-6]>', paragraph):
+                formatted_paragraphs.append(paragraph)
+            # Elenco HTML completo (<ul>/<ol> ... </ul>/</ol>): resta com'e'
+            elif re.match(r'^<(ul|ol)\b[^>]*>.*</\1>$', paragraph, re.DOTALL):
                 formatted_paragraphs.append(paragraph)
             # Se contiene solo elementi lista
             elif re.match(r'^(<li>.*</li>\s*)+$', paragraph, re.DOTALL):
@@ -384,7 +390,11 @@ class ContentPolisher:
                 # Paragrafo normale di testo
                 # Assicurati che termini correttamente
                 if paragraph and not re.search(r'[.!?:"]\s*(<[^>]+>)*\s*$', paragraph):
-                    paragraph += '.'
+                    # Il punto dentro il paragrafo, non dopo </p>
+                    if re.search(r'</p>\s*$', paragraph):
+                        paragraph = re.sub(r'\s*</p>\s*$', '.</p>', paragraph)
+                    else:
+                        paragraph += '.'
                 
                 # Aggiungi tag <p> solo se non contiene già tag HTML di blocco
                 if not re.search(r'<(p|div|h[1-6]|ul|ol|li)', paragraph):
@@ -399,6 +409,27 @@ class ContentPolisher:
         
         return final_content
     
+    _BLOCCHI_HTML = r'p|ul|ol|h[1-6]|blockquote'
+
+    @staticmethod
+    def _compatta_elenchi_html(content: str) -> str:
+        """Ogni <ul>/<ol> su una riga sola: senza a capo dentro l'elenco nessuna regola lo
+        spezza in paragrafi o tratta le voci come <li> orfani."""
+        return re.sub(r'(<(ul|ol)\b[^>]*>.*?</\2>)',
+                      lambda m: re.sub(r'\s*\n\s*', ' ', m.group(1)), content, flags=re.DOTALL)
+
+    def _separa_blocchi_html(self, content: str) -> str:
+        """Un blocco HTML per paragrafo. L'AI scrive spesso <p>...</p> e <ul><li>... con a capo
+        singoli: senza questo l'intero articolo era un solo paragrafo "misto" e gli elenchi
+        uscivano come <p><ul>.</p> e <p></ul>...</p> (237 articoli pubblicati, ago 2025-feb 2026).
+        Gli elenchi restano un blocco solo, anche se l'AI va a capo due volte tra le voci."""
+        if not re.search(rf'<({self._BLOCCHI_HTML})\b', content):
+            return content
+        content = self._compatta_elenchi_html(content)
+        content = re.sub(rf'\s*(<(?:{self._BLOCCHI_HTML})\b[^>]*>)', r'\n\n\1', content)
+        content = re.sub(rf'(</(?:{self._BLOCCHI_HTML})>)\s*', r'\1\n\n', content)
+        return content.strip()
+
     def _wrap_lists_in_ul_tags(self, content: str) -> str:
         """Raggruppa elementi <li> consecutivi in <ul>"""
         # Trova gruppi di <li> consecutivi

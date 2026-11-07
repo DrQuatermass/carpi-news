@@ -48,6 +48,10 @@ MAX_SOURCE_CHARS = 20000  # ~6.500 token - margine extra
 # Le sedute di consiglio arrivano a 270.000 caratteri: con il limite normale l'AI si fermava
 # ai primi 30 minuti, prima del dibattito
 MAX_TRANSCRIPT_CHARS = 300000
+# Atti dell'albo pretorio: scheda + testo dell'atto + allegati (l'elenco delle opere di un
+# programma triennale sta in un allegato, dopo la delibera). ~10.000 token
+MAX_ALBO_SOURCE_CHARS = 32000
+ALBO_FONTE_RE = re.compile(r'#reg-\d+-\d+$')
 MAX_OUTPUT_TOKENS = 8192
 MAX_TRANSCRIPT_OUTPUT_TOKENS = 16000
 
@@ -113,7 +117,12 @@ def youtube_video_id(url: str) -> Optional[str]:
 
 
 def source_char_limit(article_data: Dict[str, Any]) -> int:
-    return MAX_TRANSCRIPT_CHARS if youtube_video_id(article_data.get('url')) else MAX_SOURCE_CHARS
+    url = article_data.get('url') or ''
+    if youtube_video_id(url):
+        return MAX_TRANSCRIPT_CHARS
+    if ALBO_FONTE_RE.search(url):
+        return MAX_ALBO_SOURCE_CHARS
+    return MAX_SOURCE_CHARS
 
 
 def output_token_limit(article_data: Dict[str, Any]) -> int:
@@ -3053,6 +3062,14 @@ ALBO_TIPI_ESCLUSI_DEFAULT = [
     'art.213',
 ]
 
+# Allegati senza contenuto per il lettore: pareri e visti contabili, la copia COMP_PDF
+# dell'atto con i timbri, moduli e istanze da compilare
+ALBO_ALLEGATI_ESCLUSI_DEFAULT = ['parere', 'visto', 'comp_pdf', 'istanza', 'modulo', 'domanda']
+
+# Testo dei PDF (atto + allegati) per notizia grezza; con scheda e intestazioni resta sotto
+# MAX_ALBO_SOURCE_CHARS, il limite della fonte per l'AI sugli atti dell'albo
+ALBO_PDF_MAX_CARATTERI = 30000
+
 
 class AlboItalsoftScraper(BaseScraper):
     """Albo pretorio online Italsoft (itaFrontOffice), usato dai Comuni delle Terre d'Argine
@@ -3072,7 +3089,10 @@ class AlboItalsoftScraper(BaseScraper):
                       firmati vengono aperti, le scansioni senza testo saltate
       pdf_max_mb      documenti piu' grandi non vengono scaricati (default 5: le scansioni
                       delle ordinanze sono ~10 MB)
-      pdf_max_caratteri lunghezza massima del testo dell'atto (default 15000)
+      pdf_max_caratteri testo massimo di atto + allegati (default ALBO_PDF_MAX_CARATTERI);
+                      oltre si tengono inizio e parte dispositiva
+      leggi_allegati  legge anche gli allegati utili, max_allegati (default 3), esclusi i nomi
+                      con allegati_esclusi (default ALBO_ALLEGATI_ESCLUSI_DEFAULT)
     """
 
     def __init__(self, config: SiteConfig, headers: Dict[str, str]):
@@ -3084,7 +3104,10 @@ class AlboItalsoftScraper(BaseScraper):
         self.leggi_dettaglio = cfg.get('leggi_dettaglio', True)
         self.leggi_pdf = cfg.get('leggi_pdf', True)
         self.pdf_max_byte = int(float(cfg.get('pdf_max_mb', 5)) * 1024 * 1024)
-        self.pdf_max_caratteri = int(cfg.get('pdf_max_caratteri', 15000))
+        self.pdf_max_caratteri = int(cfg.get('pdf_max_caratteri', ALBO_PDF_MAX_CARATTERI))
+        self.leggi_allegati = cfg.get('leggi_allegati', True)
+        self.max_allegati = int(cfg.get('max_allegati', 3))
+        self.allegati_esclusi = [e.lower() for e in cfg.get('allegati_esclusi', ALBO_ALLEGATI_ESCLUSI_DEFAULT)]
         # URL fisso dell'atto -> (link al dettaglio con il token della lettura corrente, ente)
         self._dettagli: Dict[str, tuple] = {}
         self._schede: Dict[str, str] = {}
@@ -3320,13 +3343,8 @@ class AlboItalsoftScraper(BaseScraper):
             dispositivo = testo[-spazio:].split(' ', 1)[-1]
         return testo[:testa].rsplit(' ', 1)[0] + '\n\n[... premesse omesse ...]\n\n' + dispositivo
 
-    def _testo_atto(self, documenti: List[Dict[str, Any]]) -> str:
-        """Testo del documento principale (ruolo ATTO, altrimenti il primo con un link)."""
-        candidati = [d for d in documenti if d['ruolo'] == 'ATTO' and d['link']] or \
-                    [d for d in documenti if d['link']]
-        if not candidati:
-            return ''
-        doc = candidati[0]
+    def _testo_documento(self, doc: Dict[str, Any]) -> str:
+        """Testo completo di un documento; '' se troppo grande, illeggibile o scansione."""
         if doc['byte'] > self.pdf_max_byte:
             self.logger.info(f"PDF non letto, troppo grande ({doc['byte'] // 1024} KiB): {doc['nome']}")
             return ''
@@ -3341,12 +3359,55 @@ class AlboItalsoftScraper(BaseScraper):
         if not dati:
             self.logger.info(f"Documento senza PDF leggibile: {doc['nome']}")
             return ''
-        testo = self._testo_pdf(dati, self.pdf_max_caratteri)
+        testo = self._testo_pdf(dati, 10 ** 6)
         if len(testo) < 200:
             # Scansione: solo immagini, al massimo il timbro di firma
             self.logger.info(f"PDF senza testo (scansione?): {doc['nome']}")
             return ''
         return testo
+
+    def _allegato_utile(self, doc: Dict[str, Any]) -> bool:
+        """Allegati con contenuto (schede, elenchi, planimetrie descritte), non pareri,
+        visti contabili, la copia COMP_PDF dell'atto o i moduli da compilare."""
+        nome = doc['nome'].lower()
+        return bool(doc['link']) and not any(e in nome for e in self.allegati_esclusi)
+
+    def _testi_documenti(self, documenti: List[Dict[str, Any]]) -> List[tuple]:
+        """[(etichetta, testo)] del documento ATTO e degli allegati utili, nello spazio di
+        pdf_max_caratteri. Agli allegati al massimo meta' dello spazio, all'atto il resto:
+        spesso la notizia sta nell'allegato (l'elenco delle opere di un programma triennale,
+        i contributi assegnati), mentre l'atto e' premesse e rimandi."""
+        atti = [d for d in documenti if d['ruolo'] == 'ATTO' and d['link']] or \
+               [d for d in documenti if d['link']][:1]
+        allegati = [d for d in documenti if d not in atti and self._allegato_utile(d)]
+        allegati = allegati[:self.max_allegati] if self.leggi_allegati else []
+
+        testi_allegati = []
+        for doc in allegati:
+            try:
+                testo = self._testo_documento(doc)
+            except Exception as e:
+                self.logger.warning(f"Allegato non letto ({doc['nome']}): {e}")
+                continue
+            if testo:
+                testi_allegati.append((doc['nome'], testo))
+
+        risultato = []
+        spazio_allegati = self.pdf_max_caratteri // 2
+        usato = 0
+        for nome, testo in testi_allegati:
+            if spazio_allegati - usato < 500:
+                break
+            testo = self._accorcia_atto(testo, spazio_allegati - usato)
+            usato += len(testo)
+            risultato.append((f"ALLEGATO \"{nome}\" (estratto automaticamente dal PDF)", testo))
+
+        if atti:
+            testo = self._testo_documento(atti[0])
+            if testo:
+                testo = self._accorcia_atto(testo, self.pdf_max_caratteri - usato)
+                risultato.insert(0, ("TESTO DELL'ATTO (estratto automaticamente dal PDF)", testo))
+        return risultato
 
     def get_full_content(self, article_url: str) -> Optional[str]:
         scheda = self._schede.get(article_url)
@@ -3364,12 +3425,12 @@ class AlboItalsoftScraper(BaseScraper):
             scheda += "\n\n" + "\n\n".join(extra)
         if self.leggi_pdf:
             try:
-                testo = self._testo_atto(documenti)
+                testi = self._testi_documenti(documenti)
             except Exception as e:
                 self.logger.warning(f"Testo dell'atto non letto ({article_url}): {e}")
-                testo = ''
-            if testo:
-                scheda += "\n\nTESTO DELL'ATTO (estratto automaticamente dal PDF):\n\n" + testo
+                testi = []
+            for etichetta, testo in testi:
+                scheda += f"\n\n{etichetta}:\n\n{testo}"
         return scheda
 
 
