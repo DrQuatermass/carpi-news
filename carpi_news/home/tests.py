@@ -2361,3 +2361,64 @@ class NewsletterModuliPagineTests(TestCase):
         self.assertIn('data-origine-pc="barra_pc"', html)
         self.assertEqual(html.count('id="nl-bar"'), 1)
         self.assertLess(html.index('id="nl-cta-box"'), html.index('<!-- Banner fine articolo -->'))
+
+
+@override_settings(SITE_URL="https://testserver")
+class ReelCommentoLinkTests(TestCase):
+    """Primo commento con il link sotto il Reel Facebook (nella descrizione non e' cliccabile)."""
+
+    def setUp(self):
+        self.articolo = Articolo.objects.create(
+            titolo='Reel con commento', contenuto='<p>T</p>', sommario='S', categoria='Attualità',
+            approvato=True, data_pubblicazione=timezone.now())
+
+    def _risposta(self, status, body):
+        r = Mock(status_code=status, text=json.dumps(body))
+        r.json.return_value = body
+        return r
+
+    def test_commento_con_link_tracciato(self):
+        from home.facebook_reels import FacebookPageReelManager
+        with patch('home.facebook_reels.requests.post', return_value=self._risposta(200, {'id': '1_2'})) as post:
+            ok, info = FacebookPageReelManager().commenta_link(self.articolo, '999', 'tok', attesa=0)
+        self.assertTrue(ok)
+        self.assertEqual(info, '1_2')
+        url, kwargs = post.call_args[0][0], post.call_args[1]
+        self.assertTrue(url.endswith('/999/comments'))
+        link = ShortLink.objects.get(articolo=self.articolo, platform='facebook', medium='reel_commento')
+        self.assertIn(f'/s/{link.token}/', kwargs['data']['message'])
+
+    def test_riprova_se_il_video_e_ancora_in_elaborazione(self):
+        from home.facebook_reels import FacebookPageReelManager
+        risposte = [self._risposta(400, {'error': {'code': 100, 'message': 'processing'}}),
+                    self._risposta(200, {'id': '1_3'})]
+        with patch('home.facebook_reels.requests.post', side_effect=risposte) as post:
+            ok, _ = FacebookPageReelManager().commenta_link(self.articolo, '999', 'tok', attesa=0)
+        self.assertTrue(ok)
+        self.assertEqual(post.call_count, 2)
+
+    def test_permesso_mancante_non_riprova(self):
+        from home.facebook_reels import FacebookPageReelManager
+        with patch('home.facebook_reels.requests.post',
+                   return_value=self._risposta(403, {'error': {'code': 200, 'message': 'permission'}})) as post:
+            ok, _ = FacebookPageReelManager().commenta_link(self.articolo, '999', 'tok', attesa=0)
+        self.assertFalse(ok)
+        self.assertEqual(post.call_count, 1)
+
+    def test_pubblicazione_avvia_il_commento(self):
+        from home import facebook_reels
+        manager = facebook_reels.FacebookPageReelManager()
+
+        def finto_publish(publisher, video_path, description=''):
+            publisher.last_video_id = '777'
+            return True, 'post_1'
+
+        with override_settings(FACEBOOK_PAGE_ID='123'), \
+             patch.object(manager, 'generate', return_value='/tmp/finto.mp4'), \
+             patch.object(manager, '_cleanup_local_file'), \
+             patch.object(facebook_reels.FacebookPageReelPublisher, 'publish', finto_publish), \
+             patch.object(facebook_reels.threading, 'Thread') as thread:
+            ok, _ = manager.publish(self.articolo, 'tok')
+        self.assertTrue(ok)
+        self.assertEqual(thread.call_args[1]['args'][1], '777')
+        thread.return_value.start.assert_called_once()

@@ -450,6 +450,8 @@ FACEBOOK_APP_SECRET = os.getenv('FACEBOOK_APP_SECRET', '')
 # come Storia e/o vero Reel Facebook via /video_reels.
 FACEBOOK_REEL_ENABLED = os.getenv('FACEBOOK_REEL_ENABLED', 'False').lower() in ['true', '1', 'yes']
 FACEBOOK_STORY_ENABLED = os.getenv('FACEBOOK_STORY_ENABLED', 'False').lower() in ['true', '1', 'yes']
+# Primo commento della Pagina sotto il Reel con il link all'articolo (nei commenti e' cliccabile).
+FACEBOOK_REEL_LINK_COMMENT = os.getenv('FACEBOOK_REEL_LINK_COMMENT', 'True').lower() in ['true', '1', 'yes']
 FACEBOOK_REEL_DURATION = int(os.getenv('FACEBOOK_REEL_DURATION', '15'))
 FACEBOOK_REEL_FPS = int(os.getenv('FACEBOOK_REEL_FPS', '24'))
 # Cartella con tracce royalty-free (MP3/WAV/M4A). Vuoto = pad ambient procedurale di fallback.

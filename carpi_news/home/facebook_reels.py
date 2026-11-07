@@ -28,6 +28,7 @@ import os
 import random
 import subprocess
 import tempfile
+import threading
 import time
 import wave
 from dataclasses import dataclass
@@ -703,6 +704,7 @@ class FacebookStoryPublisher:
             upload_url = start.get("upload_url")
             if not (video_id and upload_url):
                 return False, f"Risposta START incompleta: {start}"
+            self.last_video_id = video_id
             logger.info(f"{self.LABEL}: START ok video_id={video_id}")
 
             # FASE 2: UPLOAD binario
@@ -940,6 +942,13 @@ class FacebookPageReelManager(FacebookReelManager):
         if success:
             self._cleanup_local_file(video_path)
             logger.info(f"Facebook Reel pubblicato (id={info}): {articolo.titolo}")
+            video_id = getattr(publisher, "last_video_id", None)
+            if video_id and getattr(settings, "FACEBOOK_REEL_LINK_COMMENT", True):
+                threading.Thread(
+                    target=self.commenta_link,
+                    args=(articolo, video_id, page_token),
+                    daemon=True,
+                ).start()
         else:
             logger.info(
                 f"Facebook Reel: mantengo file locale per debug -> {video_path} "
@@ -947,6 +956,50 @@ class FacebookPageReelManager(FacebookReelManager):
             )
 
         return success, info
+
+    # Errori Graph che non passano riprovando: token scaduto (190), permesso mancante (10, 200-299)
+    _ERRORI_DEFINITIVI = {10, 190} | set(range(200, 300))
+
+    def commenta_link(self, articolo, video_id: str, page_token: str,
+                      tentativi: int = 4, attesa: int = 30) -> Tuple[bool, str]:
+        """Primo commento della Pagina sotto il Reel con il link all'articolo.
+
+        Nella descrizione del Reel il link non e' cliccabile, nei commenti Facebook si'.
+        Subito dopo la pubblicazione il video puo' essere ancora in elaborazione e
+        rifiutare i commenti: si riprova qualche volta. Un errore non tocca il Reel.
+        Richiede il permesso pages_manage_engagement sul token della Pagina.
+        """
+        try:
+            from .share_links import build_short_share_url
+
+            link = build_short_share_url(articolo, "facebook", "reel_commento")
+        except Exception:
+            link = getattr(settings, "SITE_URL", "https://ombradelportico.it").rstrip("/") + f"/articolo/{articolo.slug}/"
+        url = f"https://graph.facebook.com/{FacebookStoryPublisher.GRAPH_VERSION}/{video_id}/comments"
+        dati = {"message": f"Leggi l'articolo completo: {link}", "access_token": page_token}
+
+        errore = ""
+        for n in range(tentativi):
+            if n:
+                time.sleep(attesa)
+            try:
+                resp = requests.post(url, data=dati, timeout=30)
+            except requests.RequestException as e:
+                errore = str(e)
+                continue
+            if resp.status_code == 200:
+                comment_id = resp.json().get("id", "")
+                logger.info(f"Facebook Reel: commento con link pubblicato ({comment_id}) per '{articolo.titolo}'")
+                return True, comment_id
+            errore = f"{resp.status_code}: {resp.text[:300]}"
+            try:
+                codice = resp.json().get("error", {}).get("code")
+            except Exception:
+                codice = None
+            if codice in self._ERRORI_DEFINITIVI:
+                break
+        logger.warning(f"Facebook Reel: commento con link non pubblicato per '{articolo.titolo}': {errore}")
+        return False, errore
 
 
 facebook_reel_manager = FacebookPageReelManager()
