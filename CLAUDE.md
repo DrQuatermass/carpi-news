@@ -418,6 +418,7 @@ The monitoring system is now **fully database-driven**, replacing the old `monit
 All monitor configurations stored in `home_monitorconfig` table with fields:
 - Basic: `name`, `base_url`, `scraper_type`, `category`
 - Control: `is_active`, `auto_approve`, `last_run`
+- SEO: `noindex` ("Fuori dall'indice Google"): gli articoli del monitor (`Articolo.monitor_origine`) restano online ma con noindex, fuori dalle sitemap e senza IndexNow (`Articolo.escluso_da_google`). Dal 7/11/2026 attivo su La Voce (tutte le sezioni), Modena Today Eventi, Gazzetta, TempoNews, ANSA. Articoli precedenti al 28/9/2026 collegati al monitor dal dominio della fonte con `python manage.py collega_monitor_origine [--esegui]`
 - AI: `use_ai_generation`, `enable_web_search`, `ai_system_prompt`
 - Config: `config_data` (JSON field for type-specific settings)
 
