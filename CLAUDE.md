@@ -483,6 +483,8 @@ Convention UTM:
 Limiti Meta:
 - Instagram Story: Link Sticker non disponibile via Graph API.
 - Instagram Reel: link in caption non cliccabile; il link viene messo nel primo commento e in bio.
+- Facebook Reel: dopo la pubblicazione la Pagina scrive il primo commento con il link (`FacebookPageReelManager.commenta_link`, medium `reel_commento`), perche' nei commenti Facebook il link e' cliccabile. Spegnibile con `FACEBOOK_REEL_LINK_COMMENT=False`.
+- Storie IG/FB: l'API non permette l'adesivo link; i DM automatici IG restano fermi (accesso avanzato Meta richiede partita IVA).
 - Facebook Reel/Story pubblicati via `/video_stories`: si prova a inviare `description`/`text`; se Meta rifiuta, la pubblicazione viene ritentata senza descrizione per non bloccare la pipeline.
 
 Variabili ambiente:
