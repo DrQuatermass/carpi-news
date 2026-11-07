@@ -2321,3 +2321,43 @@ class NewsletterIscrizioneTests(TestCase):
         self.client.post("/newsletter/", {"email": "a@example.it"}, **self.AJAX)
         r = self.client.post("/newsletter/", {"email": "a@example.it"}, **self.AJAX)
         self.assertEqual(r.json()["message"], "Sei già iscritto alla newsletter.")
+
+
+@override_settings(
+    DEBUG=True,
+    SECURE_SSL_REDIRECT=False,
+    SITE_URL="https://testserver",
+    CACHES={"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}},
+)
+class NewsletterModuliPagineTests(TestCase):
+    """Barra/riquadro newsletter: articoli e liste (homepage in cache_page, quindi niente CSRF)."""
+
+    def setUp(self):
+        cache.clear()
+        self.articolo = Articolo.objects.create(
+            titolo='Notizia di prova newsletter', contenuto='<p>Testo</p>', sommario='S',
+            categoria='Attualità', approvato=True, data_pubblicazione=timezone.now() - timedelta(hours=1))
+
+    def test_iscrizione_senza_token_csrf(self):
+        from django.test import Client
+        from home.models import NewsletterSubscriber
+        client = Client(enforce_csrf_checks=True)
+        r = client.post("/newsletter/", {"email": "home@example.it", "origine": "barra_home"},
+                        HTTP_X_REQUESTED_WITH="XMLHttpRequest")
+        self.assertEqual(r.status_code, 200)
+        self.assertTrue(r.json()["ok"])
+        self.assertEqual(NewsletterSubscriber.objects.get().origine, "barra_home")
+
+    def test_homepage_ha_la_barra_senza_csrf(self):
+        html = self.client.get("/").content.decode()
+        self.assertIn('id="nl-bar"', html)
+        self.assertIn('value="barra_home"', html)
+        self.assertIn('data-origine-pc="barra_home_pc"', html)
+        self.assertNotIn('csrfmiddlewaretoken', html)
+
+    def test_articolo_riquadro_prima_del_banner_finale(self):
+        html = self.client.get(f"/articolo/{self.articolo.slug}/").content.decode()
+        self.assertIn('value="barra"', html)
+        self.assertIn('data-origine-pc="barra_pc"', html)
+        self.assertEqual(html.count('id="nl-bar"'), 1)
+        self.assertLess(html.index('id="nl-cta-box"'), html.index('<!-- Banner fine articolo -->'))

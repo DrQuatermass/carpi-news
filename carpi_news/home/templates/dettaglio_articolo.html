@@ -566,61 +566,6 @@
         }
     }
 
-/* Newsletter: sul computer riquadro in basso a sinistra (a destra c'e' il chatbot),
-   sul telefono barra a tutta larghezza. Compare dopo il 40% dell'articolo. */
-.nl-bar {
-  position: fixed;
-  left: 20px; bottom: 20px;
-  width: 360px; max-width: calc(100vw - 40px);
-  z-index: 900;
-  background: #fff;
-  border-top: 3px solid #752d35;
-  border-radius: 10px;
-  box-shadow: 0 6px 24px rgba(0,0,0,0.16);
-  padding: 14px 44px 14px 16px;
-  box-sizing: border-box;
-  text-align: left;
-  transform: translateY(calc(100% + 40px));
-  visibility: hidden;
-  transition: transform .3s ease, visibility .3s;
-}
-.nl-bar.aperta { transform: none; visibility: visible; }
-.nl-bar p { text-align: left; }
-/* immune agli stili del testo articolo (capolettera, giustificato) */
-.nl-bar p::first-letter { font: inherit; float: none; margin: 0; color: inherit; }
-.nl-bar-text { margin: 0 0 10px; font-size: 0.9rem; line-height: 1.35; color: #3d3f3b; }
-.nl-bar-text strong { color: #752d35; }
-.nl-bar-form { display: flex; gap: 6px; margin: 0; }
-.nl-bar-form input[type="email"] {
-  flex: 1; min-width: 0;
-  font-size: 16px; /* sotto i 16px iOS ingrandisce la pagina al tocco */
-  padding: 9px 10px;
-  border: 1px solid #c9c4bd; border-radius: 6px;
-}
-.nl-bar-form button {
-  background: #752d35; color: #fff; border: none; border-radius: 6px;
-  padding: 9px 14px; font-weight: 600; font-size: 0.95rem; cursor: pointer;
-}
-.nl-bar-close {
-  position: absolute; top: 4px; right: 4px;
-  width: 40px; height: 40px;
-  background: none; border: none; font-size: 24px; line-height: 1; color: #777; cursor: pointer;
-}
-.nl-bar-msg { margin: 4px 0; font-size: 0.92rem; color: #752d35; font-weight: 600; }
-@media (max-width: 768px) {
-  .nl-bar {
-    left: 0; right: 0; bottom: 0;
-    width: auto; max-width: none;
-    border-radius: 0;
-    box-shadow: 0 -4px 18px rgba(0,0,0,0.14);
-    padding: 10px 44px calc(12px + env(safe-area-inset-bottom)) 16px;
-    transform: translateY(110%);
-  }
-  .nl-bar-text { margin-bottom: 8px; font-size: 0.88rem; line-height: 1.3; }
-  .nl-bar-close { top: 2px; }
-  body.nl-bar-aperta .chatbot-toggle { bottom: calc(var(--nl-bar-h, 110px) + 12px); transition: bottom .3s ease; }
-}
-
 /* Newsletter CTA */
 .nl-cta-box {
   margin: 2rem 0;
@@ -1011,6 +956,24 @@
             })();
             </script>
 
+            <!-- Newsletter CTA: subito dopo il testo, quando il lettore ha appena finito -->
+            <div class="nl-cta-box" id="nl-cta-box">
+              <div class="nl-cta-icon">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+              </div>
+              <div class="nl-cta-text">
+                <strong>Ti è piaciuto questo articolo?</strong>
+                <span>Ricevi ogni giorno le notizie di Carpi alle 17:30, direttamente nella tua email.</span>
+              </div>
+              <form class="nl-cta-form" id="nl-cta-form">
+                <input type="email" name="email" placeholder="tua@email.it" required autocomplete="email">
+                <input type="hidden" name="origine" value="fine_articolo">
+                <input type="text" name="sito_web" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden">
+                <button type="submit">Iscriviti</button>
+              </form>
+              <p class="nl-cta-note">Gratis. Disiscrizione con un click.</p>
+            </div>
+
             <!-- Banner fine articolo -->
             {% show_banner 'article_bottom' %}
 
@@ -1102,37 +1065,7 @@
                 </div>
            <!-- </div>-->
 
-            <!-- Newsletter CTA -->
-            <div class="nl-cta-box" id="nl-cta-box">
-              <div class="nl-cta-icon">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
-              </div>
-              <div class="nl-cta-text">
-                <strong>Ti è piaciuto questo articolo?</strong>
-                <span>Ricevi ogni giorno le notizie di Carpi alle 17:30, direttamente nella tua email.</span>
-              </div>
-              <form class="nl-cta-form" id="nl-cta-form">
-                {% csrf_token %}
-                <input type="email" name="email" placeholder="tua@email.it" required autocomplete="email">
-                <input type="hidden" name="origine" value="fine_articolo">
-                <input type="text" name="sito_web" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden">
-                <button type="submit">Iscriviti</button>
-              </form>
-              <p class="nl-cta-note">Gratis. Disiscrizione con un click.</p>
-            </div>
-
-            <!-- Newsletter: barra in basso (telefono) o riquadro in basso a sinistra (computer), dopo il 40% dell'articolo -->
-            <div class="nl-bar" id="nl-bar" role="region" aria-label="Iscrizione alla newsletter">
-              <button type="button" class="nl-bar-close" aria-label="Chiudi">&times;</button>
-              <p class="nl-bar-text"><strong>Le notizie di Carpi ogni sera</strong>, gratis nella tua email</p>
-              <form class="nl-bar-form" id="nl-bar-form">
-                {% csrf_token %}
-                <input type="email" name="email" placeholder="tua@email.it" required autocomplete="email" aria-label="La tua email">
-                <input type="hidden" name="origine" value="barra">
-                <input type="text" name="sito_web" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden">
-                <button type="submit">Iscriviti</button>
-              </form>
-            </div>
+            {% include 'newsletter/barra.html' with nl_origine='barra' nl_origine_pc='barra_pc' %}
 
             {% if articoli_correlati %}
             <!-- Articoli correlati -->
@@ -1523,129 +1456,5 @@
     })();
     {% endif %}
 
-// Newsletter: riquadro in fondo all'articolo + barra in basso sul telefono
-(function() {
-  var CHIAVE = 'nl_bar_nascosta_fino';
-  function nascondiBarraPer(giorni) {
-    try { localStorage.setItem(CHIAVE, String(Date.now() + giorni * 864e5)); } catch (e) {}
-  }
-  function barraNascosta() {
-    try { return Date.now() < parseInt(localStorage.getItem(CHIAVE) || '0', 10); } catch (e) { return false; }
-  }
-  function iscrivi(form) {
-    return fetch('{% url "newsletter_subscribe" %}', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value,
-        'X-Requested-With': 'XMLHttpRequest',
-      },
-      body: new URLSearchParams(new FormData(form)).toString(),
-    }).then(function(r) { return r.json(); });
-  }
-  function testo(tag, classe, contenuto, colore) {
-    var el = document.createElement(tag);
-    el.className = classe;
-    el.textContent = contenuto;
-    if (colore) el.style.color = colore;
-    return el;
-  }
-
-  var bar = document.getElementById('nl-bar');
-  var contenuto = document.getElementById('article-content');
-  var box = document.getElementById('nl-cta-box');
-  var formBox = document.getElementById('nl-cta-form');
-  var aperta = false, finita = false;
-
-  function chiudiBarra() {
-    if (!bar) return;
-    finita = true;
-    aperta = false;
-    bar.classList.remove('aperta');
-    document.body.classList.remove('nl-bar-aperta');
-  }
-
-  // Riquadro in fondo all'articolo
-  if (box && formBox) {
-    formBox.addEventListener('submit', function(e) {
-      e.preventDefault();
-      iscrivi(formBox).then(function(data) {
-        box.textContent = '';
-        if (data.ok || data.already) {
-          box.classList.add('nl-success');
-          box.appendChild(testo('p', 'nl-success-msg', 'Iscrizione confermata!'));
-          box.appendChild(testo('p', 'nl-success-sub', data.message));
-          nascondiBarraPer(365);
-          chiudiBarra();
-        } else {
-          box.appendChild(testo('p', 'nl-success-msg', 'Attenzione', '#c0392b'));
-          box.appendChild(testo('p', 'nl-success-sub', data.message));
-        }
-      }).catch(function() {
-        box.textContent = '';
-        box.appendChild(testo('p', 'nl-success-sub', 'Errore di rete. Riprova più tardi.', '#c0392b'));
-      });
-    });
-  }
-
-  // Barra (telefono) / riquadro (computer): dopo il 40% dell'articolo, mai insieme al riquadro finale
-  if (!bar || !contenuto || barraNascosta()) return;
-  // Sul computer e' il riquadro in basso a sinistra: origine distinta per confrontarli
-  if (!window.matchMedia('(max-width: 768px)').matches) {
-    bar.querySelector('[name=origine]').value = 'barra_pc';
-  }
-
-  function apri() {
-    if (aperta || finita) return;
-    aperta = true;
-    bar.classList.add('aperta');
-    document.documentElement.style.setProperty('--nl-bar-h', bar.offsetHeight + 'px');
-    document.body.classList.add('nl-bar-aperta');
-  }
-  // Prestazioni (PageSpeed): nessun lavoro al caricamento, niente rete fino all'invio;
-  // durante lo scroll al massimo un calcolo per fotogramma, e l'ascolto si stacca
-  // appena la barra si apre. La barra e' fixed e si muove con transform: niente CLS.
-  var inAttesa = false;
-  function controlla() {
-    inAttesa = false;
-    var r = contenuto.getBoundingClientRect();
-    if (r.height > 0 && (window.innerHeight - r.top) / r.height >= 0.4) {
-      window.removeEventListener('scroll', suScroll);
-      apri();
-    }
-  }
-  function suScroll() {
-    if (inAttesa || aperta || finita) return;
-    inAttesa = true;
-    requestAnimationFrame(controlla);
-  }
-  window.addEventListener('scroll', suScroll, {passive: true});
-  if (box && 'IntersectionObserver' in window) {
-    // Arrivato al riquadro finale la barra non serve piu' (in questa visita)
-    new IntersectionObserver(function(entries) {
-      if (entries[0].isIntersecting) chiudiBarra();
-    }).observe(box);
-  }
-  bar.querySelector('.nl-bar-close').addEventListener('click', function() {
-    chiudiBarra();
-    nascondiBarraPer(30);
-  });
-  var formBar = document.getElementById('nl-bar-form');
-  formBar.addEventListener('submit', function(e) {
-    e.preventDefault();
-    var campo = formBar.querySelector('input[type="email"]');
-    iscrivi(formBar).then(function(data) {
-      if (data.ok || data.already) {
-        formBar.replaceWith(testo('p', 'nl-bar-msg', data.ok ? 'Fatto! Da stasera ricevi le notizie di Carpi.' : data.message));
-        nascondiBarraPer(365);
-        setTimeout(chiudiBarra, 3500);
-      } else {
-        campo.setCustomValidity(data.message);
-        formBar.reportValidity();
-        campo.addEventListener('input', function() { campo.setCustomValidity(''); }, {once: true});
-      }
-    }).catch(function() {});
-  });
-})();
 </script>
 {% endblock %}

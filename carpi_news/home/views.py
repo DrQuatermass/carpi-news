@@ -1317,10 +1317,14 @@ def _get_newsletter_context():
     }
 
 
-NEWSLETTER_ORIGINI = {'barra', 'barra_pc', 'fine_articolo', 'pagina'}
+NEWSLETTER_ORIGINI = {'barra', 'barra_pc', 'barra_home', 'barra_home_pc', 'fine_articolo', 'pagina'}
 NEWSLETTER_OK = 'Iscrizione completata! Da oggi riceverai le notizie di Carpi ogni pomeriggio.'
 
 
+# csrf_exempt: i moduli stanno anche in pagine con cache_page (homepage, categorie, comuni),
+# dove un token CSRF finirebbe in cache e scadrebbe. Contro lo spam: honeypot + validate_email;
+# l'iscrizione non tocca dati di sessione, quindi una richiesta forgiata non fa danni.
+@csrf_exempt
 def newsletter_subscribe(request):
     """Pagina di iscrizione alla newsletter (anche AJAX dai moduli negli articoli)."""
     from django.contrib import messages as msg
