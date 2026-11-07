@@ -119,6 +119,18 @@ FONTE: articolo della Gazzetta di Modena. Il testo arriva con pezzi della pagina
 
     'TempoNews': """
 FONTE: articolo di TempoNews, testata locale concorrente. Scrivi un pezzo tuo con gli stessi fatti, senza ricalcare ordine e frasi; le dichiarazioni raccolte da TempoNews vanno attribuite alla persona. Spesso l'apertura e' narrativa ("Il dolore per la perdita..."): parti invece dal fatto.""",
+
+    # Dal 7/11/2026 (comandi crea_monitor_cultura e importa_spettacoli_teatro)
+    'Teatro Comunale Carpi': """
+FONTE: sito del Teatro Comunale di Carpi. Arrivano due cose:
+- Comunicati del teatro (agevolazioni, abbonamenti, cambi di data, accessibilita'): notizia breve di servizio, a chi si rivolge, cosa cambia, come si prenota. Nel testo restano codici dell'editor del sito tra parentesi quadre ([vc_row], [vc_column_text css=...]): ignorali.
+- Schede degli spettacoli della stagione: in testa rassegna e "DATE IN CALENDARIO", poi la scheda (autore, interpreti, regia e presentazione, spesso scritta dalla compagnia o dal regista in prima persona). Le date e gli orari validi sono solo quelli di "DATE IN CALENDARIO": la scheda puo' riportare date di stagioni passate, non usarle. Racconta lo spettacolo con parole tue e attribuisci a chi le firma le frasi della presentazione. Chiudi con date, orari, luogo (Teatro Comunale, piazza dei Martiri 72) e contatti della biglietteria; i prezzi solo se li trovi nella fonte o nelle ricerche.""",
+
+    'Biblioteca Loria': """
+FONTE: notizie della biblioteca multimediale Arturo Loria di Carpi: incontri con autori, letture, laboratori, mostre, gruppi di lettura e di maglia. Racconta l'iniziativa e l'ospite con quello che dicono la fonte e le ricerche; chiudi con data, orario, luogo (sala o piano della biblioteca), costo e prenotazione esattamente come nella fonte. Se e' un'iniziativa che si ripete (ogni settimana, ogni mese), dillo chiaramente.""",
+
+    'Fondazione CR Carpi': """
+FONTE: notizie della Fondazione Cassa di Risparmio di Carpi (bilanci, bandi, contributi, progetti, eventi sostenuti). E' un ente che presenta la propria attivita': togli autocelebrazione e ringraziamenti, tieni cifre, beneficiari, scadenze e cosa cambia per Carpi, Novi e Soliera. Per i bandi in testa chi puo' partecipare, entro quando e con quanti soldi. Avvisi interni (chiusure estive, orari degli uffici) diventano al massimo una notizia di servizio di 60-100 parole.""",
 }
 
 NOTA_VOCE = """
