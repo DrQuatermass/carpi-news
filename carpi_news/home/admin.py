@@ -1655,9 +1655,12 @@ class GruppoFacebookAdmin(admin.ModelAdmin):
             return redirect(f"{reverse('admin:gruppi_condividi')}?giorni={giorni}#art-{request.POST.get('articolo', '')}")
 
         gruppi = list(GruppoFacebook.objects.filter(attivo=True))
+        # Solo gli articoli gia' online: quelli programmati (data futura) non hanno ancora la pagina
+        adesso = timezone.now()
         articoli = list(Articolo.objects.filter(
             approvato=True,
-            data_pubblicazione__gte=timezone.now() - timedelta(days=giorni),
+            data_pubblicazione__gte=adesso - timedelta(days=giorni),
+            data_pubblicazione__lte=adesso,
         ).order_by('-data_pubblicazione'))
 
         fatte = {(c.articolo_id, c.gruppo_id): c.data for c in CondivisioneGruppo.objects.filter(
