@@ -3198,17 +3198,14 @@ class AlboItalsoftScraper(BaseScraper):
             self.logger.error(f"Albo {self.albo_url} non leggibile: {e}")
             return []
 
+        totale = len(righe)
+        valide = [r for r in righe if r['registro'] and r['oggetto']]
+        esclusi = sum(1 for r in valide if self._escluso(r))
+        valide = [r for r in valide if not self._escluso(r)]
+        vecchi = sum(1 for r in valide if not self._recente(r))
+        valide, doppi = self._senza_doppioni([r for r in valide if self._recente(r)])
         articoli = []
-        esclusi = vecchi = 0
-        for riga in righe:
-            if not riga['registro'] or not riga['oggetto']:
-                continue
-            if self._escluso(riga):
-                esclusi += 1
-                continue
-            if not self._recente(riga):
-                vecchi += 1
-                continue
+        for riga in valide:
             url = self._url_atto(riga['registro'])
             scheda = self._scheda(riga)
             self._schede[url] = scheda
@@ -3224,9 +3221,42 @@ class AlboItalsoftScraper(BaseScraper):
                 'content_type': 'albo',
             })
 
-        self.logger.info(f"Albo: {len(righe)} atti in pubblicazione, {len(articoli)} recenti, "
-                         f"{esclusi} esclusi per tipo, {vecchi} piu' vecchi di {self.max_giorni} giorni")
+        self.logger.info(f"Albo: {totale} atti in pubblicazione, {len(articoli)} recenti, "
+                         f"{esclusi} esclusi per tipo, {vecchi} piu' vecchi di {self.max_giorni} giorni, "
+                         f"{doppi} pubblicazioni doppie")
         return articoli
+
+    def _senza_doppioni(self, righe: List[Dict[str, str]]):
+        """Lo stesso atto (ente, tipo, numero, data, oggetto) a volte e' pubblicato due volte,
+        una senza file: il 9/11/2026 l'ordinanza 800 dell'Unione era ai registri 2205 (vuoto)
+        e 2206 (con il PDF). Di ogni gruppo resta la pubblicazione con documenti, altrimenti
+        l'ultima registrata."""
+        gruppi: Dict[tuple, List[Dict[str, str]]] = {}
+        for riga in righe:
+            chiave = (riga['ente'], riga['tipo'], riga['numero'], riga['data_atto'], riga['oggetto'])
+            gruppi.setdefault(chiave, []).append(riga)
+
+        def ordine(riga):
+            cifre = re.findall(r'\d+', riga['registro'])
+            return (int(cifre[-1]), int(cifre[0])) if len(cifre) > 1 else (0, int(cifre[0]) if cifre else 0)
+
+        tenute = []
+        for chiave, gruppo in gruppi.items():
+            if len(gruppo) == 1 or not chiave[2]:
+                tenute.extend(gruppo)
+                continue
+            gruppo.sort(key=ordine, reverse=True)
+            scelta = gruppo[0]
+            if self.leggi_dettaglio:
+                for riga in gruppo:
+                    try:
+                        if riga['dettaglio'] and self._leggi_dettaglio(riga['dettaglio'], riga['ente'])[1]:
+                            scelta = riga
+                            break
+                    except Exception as e:
+                        self.logger.warning(f"Dettaglio {riga['registro']} non letto: {e}")
+            tenute.append(scelta)
+        return tenute, len(righe) - len(tenute)
 
     @staticmethod
     def _byte(dimensione: str) -> int:
@@ -3423,6 +3453,9 @@ class AlboItalsoftScraper(BaseScraper):
             return scheda
         if extra:
             scheda += "\n\n" + "\n\n".join(extra)
+        if not documenti:
+            scheda += ("\n\nDocumenti allegati: nessuno. L'albo non ha pubblicato il testo dell'atto: "
+                       "si conoscono solo i dati qui sopra.")
         if self.leggi_pdf:
             try:
                 testi = self._testi_documenti(documenti)

@@ -2608,6 +2608,35 @@ class AlboItalsoftScraperTests(SimpleTestCase):
         self.assertNotIn('ALLEGATO "', testo)
         self.assertIn('Protocollo: 72505/2026', testo)
 
+    def test_atto_pubblicato_due_volte_resta_quello_con_il_file(self):
+        # 9/11/2026: ordinanza 800 dell'Unione ai registri 2205 (senza file) e 2206 (con il PDF)
+        def riga(registro, numero='800', oggetto='ORDINANZA POTATURE'):
+            return {'registro': registro, 'ente': 'UNIONE', 'tipo': 'Ordinanza', 'numero': numero,
+                    'data_atto': '07/11/2026', 'oggetto': oggetto, 'dal': '09/11/2026', 'al': '',
+                    'dettaglio': f'https://albo.test/?d={registro}'}
+        righe = [riga('2204/2026', '804', 'DIVIETO DI SOSTA'), riga('2205/2026'), riga('2206/2026')]
+        scraper = self._scraper()
+        con_file = {'https://albo.test/?d=2205/2026': [{'nome': 'atto.pdf'}]}
+        with patch.object(scraper, '_leggi_dettaglio', side_effect=lambda link, ente: ([], con_file.get(link, []))):
+            tenute, doppi = scraper._senza_doppioni(righe)
+        self.assertEqual(doppi, 1)
+        self.assertEqual(sorted(r['registro'] for r in tenute), ['2204/2026', '2205/2026'])
+
+        # Nessuna delle due ha il file: resta l'ultima registrata
+        with patch.object(scraper, '_leggi_dettaglio', return_value=([], [])):
+            tenute, _ = scraper._senza_doppioni(righe)
+        self.assertEqual(sorted(r['registro'] for r in tenute), ['2204/2026', '2206/2026'])
+
+    def test_atto_senza_documenti_lo_dice(self):
+        from datetime import datetime
+        oggi = datetime.now().strftime('%d/%m/%Y')
+        scraper = self._scraper()
+        with patch.object(scraper, '_get_request', return_value=self._risposta(ALBO_HTML.format(oggi=oggi))):
+            url = scraper.scrape_articles()[0]['url']
+        with patch.object(scraper, '_leggi_dettaglio', return_value=(['Protocollo: 84101/2026'], [])):
+            testo = scraper.get_full_content(url)
+        self.assertIn("L'albo non ha pubblicato il testo dell'atto", testo)
+
     def test_limite_fonte_piu_alto_per_gli_atti_dell_albo(self):
         from home.universal_news_monitor import (MAX_ALBO_SOURCE_CHARS, MAX_SOURCE_CHARS,
                                                  source_char_limit)
