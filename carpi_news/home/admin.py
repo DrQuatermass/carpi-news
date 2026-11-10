@@ -1611,8 +1611,8 @@ class ArticoloEliminatoAdmin(admin.ModelAdmin):
 @admin.register(GruppoFacebook)
 class GruppoFacebookAdmin(admin.ModelAdmin):
     """Gruppi Facebook + pagina "Condividi nei gruppi" (pubblicazione a mano, vedi gruppi_facebook.py)."""
-    list_display = ['nome', 'comune', 'parole_chiave', 'come_pagina', 'attivo', 'n_condivisioni', 'ultima_condivisione']
-    list_filter = ['attivo', 'come_pagina', 'comune']
+    list_display = ['nome', 'comune', 'parole_chiave', 'attivo', 'n_condivisioni', 'ultima_condivisione']
+    list_filter = ['attivo', 'comune']
     list_editable = ['attivo']
     search_fields = ['nome', 'comune', 'parole_chiave']
     readonly_fields = ['slug', 'creato']
@@ -1637,7 +1637,7 @@ class GruppoFacebookAdmin(admin.ModelAdmin):
         ] + super().get_urls()
 
     def condividi_view(self, request):
-        from .gruppi_facebook import gruppi_ordinati, link_gruppo, testo_condivisione
+        from .gruppi_facebook import gruppi_ordinati, testo_condivisione
 
         try:
             giorni = min(max(int(request.GET.get('giorni', 2)), 1), 14)
@@ -1678,10 +1678,10 @@ class GruppoFacebookAdmin(admin.ModelAdmin):
                     'motivo': motivo,
                     'condiviso': condiviso,
                     'post_24h': ultime_24h.get(gruppo.pk, 0),
-                    'testo': '' if condiviso else testo_condivisione(articolo, gruppo, link_gruppo(articolo, gruppo)),
                 }
                 (consigliati if punti else altri).append(riga)
-            schede.append({'articolo': articolo, 'consigliati': consigliati, 'altri': altri,
+            schede.append({'articolo': articolo, 'testo': testo_condivisione(articolo),
+                           'consigliati': consigliati, 'altri': altri,
                            'n_fatte': sum(1 for r in consigliati + altri if r['condiviso'])})
 
         context = {

@@ -2437,7 +2437,7 @@ class GruppiFacebookTests(TestCase):
         self.fossoli = GruppoFacebook.objects.create(nome='Sei di Fossoli se', url='https://www.facebook.com/groups/1',
                                                      comune='Carpi', parole_chiave='Fossoli, Budrione')
         self.carpi = GruppoFacebook.objects.create(nome='Carpi Notizie', url='https://www.facebook.com/groups/2',
-                                                   comune='Carpi', come_pagina=False)
+                                                   comune='Carpi')
         self.zona = GruppoFacebook.objects.create(nome='Terre d Argine', url='https://www.facebook.com/groups/3')
         self.soliera = GruppoFacebook.objects.create(nome='Soliera', url='https://www.facebook.com/groups/4',
                                                      comune='Soliera')
@@ -2455,19 +2455,15 @@ class GruppiFacebookTests(TestCase):
         self.assertEqual(self.fossoli.slug, 'sei-di-fossoli-se')
         self.assertEqual(doppio.slug, 'sei-di-fossoli-se-2')
 
-    def test_testo_e_link_tracciato_per_gruppo(self):
+    def test_un_testo_per_articolo_con_link_tracciato(self):
         from home.gruppi_facebook import testo_condivisione
-        testo = testo_condivisione(self.articolo, self.fossoli)
-        link = ShortLink.objects.get(articolo=self.articolo, platform='facebook_gruppo', medium='sei-di-fossoli-se')
+        testo = testo_condivisione(self.articolo)
+        link = ShortLink.objects.get(articolo=self.articolo, platform='facebook_gruppo', medium='gruppi')
         self.assertTrue(testo.startswith('Festa della zucca a Fossoli'))
         self.assertTrue(testo.endswith(f'/s/{link.token}/'))
+        self.assertEqual(testo_condivisione(self.articolo), testo)
         r = self.client.get(f'/s/{link.token}/')
-        self.assertIn('utm_source=facebook_gruppo&utm_medium=sei-di-fossoli-se', r['Location'])
-
-    def test_dal_profilo_riga_di_presentazione(self):
-        from home.gruppi_facebook import testo_condivisione
-        self.assertTrue(testo_condivisione(self.articolo, self.carpi, 'L').startswith('Dal sito di notizie locali che curo, @Ombra del Portico'))
-        self.assertFalse(testo_condivisione(self.articolo, self.fossoli, 'L').startswith('Dal sito di notizie locali che curo, @Ombra del Portico'))
+        self.assertIn('utm_source=facebook_gruppo&utm_medium=gruppi', r['Location'])
 
     def test_pagina_admin_e_segna_fatto(self):
         from home.models import CondivisioneGruppo
@@ -2475,6 +2471,7 @@ class GruppiFacebookTests(TestCase):
         url = reverse('admin:gruppi_condividi')
         html = self.client.get(url).content.decode()
         self.assertIn('Festa della zucca a Fossoli', html)
+        self.assertEqual(html.count('class="cg-testo"'), 1)
         self.assertLess(html.index('Sei di Fossoli se'), html.index('Altri gruppi'))
         self.assertLess(html.index('Altri gruppi'), html.index('>Soliera<'))
         r = self.client.post(url + '?giorni=2', {'articolo': self.articolo.pk, 'gruppo': self.fossoli.pk, 'azione': 'fatto'})

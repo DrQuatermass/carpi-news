@@ -1,7 +1,7 @@
 """Condivisione a mano nei gruppi Facebook.
 
 Da aprile 2024 Meta non permette alle app di pubblicare nei gruppi: qui si prepara
-tutto (gruppi adatti, testo, link tracciato per gruppo) e la pubblicazione resta a mano
+tutto (gruppi adatti, un testo per articolo con link tracciato) e la pubblicazione resta a mano
 dalla pagina admin "Condividi nei gruppi" (GruppoFacebookAdmin.condividi_view).
 """
 import html
@@ -9,7 +9,8 @@ import re
 
 from .share_links import build_short_share_url
 
-PLATFORM = 'facebook_gruppo'  # utm_source dei link nei gruppi; utm_medium = slug del gruppo
+PLATFORM = 'facebook_gruppo'  # utm_source dei link nei gruppi
+MEDIUM = 'gruppi'  # utm_medium: un solo testo (e link) per articolo, uguale in tutti i gruppi
 
 PUNTI_PAROLA, PUNTI_COMUNE, PUNTI_ZONA = 3, 2, 1
 MOTIVI = {PUNTI_PAROLA: 'parla di', PUNTI_COMUNE: 'stesso comune', PUNTI_ZONA: 'gruppo di zona'}
@@ -47,9 +48,9 @@ def gruppi_ordinati(articolo, gruppi):
     return sorted(righe, key=lambda r: (-r[1], r[0].nome.lower()))
 
 
-def link_gruppo(articolo, gruppo):
-    """Short link /s/<token>/ che porta all'articolo con utm_source=facebook_gruppo&utm_medium=<slug>."""
-    return build_short_share_url(articolo, PLATFORM, gruppo.slug)
+def link_gruppi(articolo):
+    """Short link /s/<token>/ che porta all'articolo con utm_source=facebook_gruppo&utm_medium=gruppi."""
+    return build_short_share_url(articolo, PLATFORM, MEDIUM)
 
 
 def _riassunto(testo, massimo=220):
@@ -65,15 +66,11 @@ def _riassunto(testo, massimo=220):
     return taglio.rsplit(' ', 1)[0] + '...'
 
 
-def testo_condivisione(articolo, gruppo, link=None):
-    """Testo pronto da incollare nel gruppo. Dal profilo personale una riga di presentazione."""
-    parti = []
-    if not gruppo.come_pagina:
-        # Il tag non si incolla: in Facebook si cancella e riscrive l'ultima lettera e si sceglie la Pagina
-        parti.append("Dal sito di notizie locali che curo, @Ombra del Portico")
-    parti.append(articolo.titolo)
+def testo_condivisione(articolo, link=None):
+    """Testo pronto da incollare nei gruppi (si posta come Pagina): titolo, riassunto, link."""
+    parti = [articolo.titolo]
     riassunto = _riassunto(articolo.sommario)
     if riassunto and riassunto != articolo.titolo:
         parti.append(riassunto)
-    parti.append(link or link_gruppo(articolo, gruppo))
+    parti.append(link or link_gruppi(articolo))
     return '\n\n'.join(parti)
