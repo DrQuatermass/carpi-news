@@ -1,5 +1,5 @@
 import logging
-from django.db.models.signals import pre_save, post_save
+from django.db.models.signals import pre_save, post_save, post_delete
 from django.dispatch import receiver
 from django.core.files.base import ContentFile
 from .models import Banner
@@ -266,3 +266,29 @@ def handle_banner_approval(sender, instance, created, **kwargs):
             send_banner_approved_notification(instance)
         except Exception as e:
             logger.error(f"Errore invio email approvazione banner ID {instance.id}: {e}")
+
+
+# Campi che cambiano a ogni click/impression: non toccano cosa si vede nelle pagine.
+_CAMPI_CONTATORI = {'clicks', 'impressions'}
+
+
+@receiver(post_save, sender=Banner)
+@receiver(post_delete, sender=Banner)
+def invalida_pagine_in_cache(sender, instance, **kwargs):
+    """Svuota le pagine in cache (cache_page 5 min) quando un banner cambia.
+
+    Senza questo, dopo aver attivato o messo in pausa un banner le pagine
+    continuano a mostrare AdSense (o il vecchio banner) fino alla scadenza della cache.
+    """
+    update_fields = kwargs.get('update_fields')
+    if update_fields and set(update_fields) <= _CAMPI_CONTATORI:
+        return
+    from django.core.cache import cache
+    try:
+        if hasattr(cache, 'delete_pattern'):
+            cache.delete_pattern('*views.decorators.cache.cache_page*')
+            cache.delete_pattern('*views.decorators.cache.cache_header*')
+        else:
+            cache.clear()
+    except Exception as e:
+        logger.error(f"Invalidazione cache pagine dopo modifica banner {instance.pk} fallita: {e}")
