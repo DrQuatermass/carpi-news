@@ -844,6 +844,9 @@ class FacebookPageReelPublisher(FacebookStoryPublisher):
         except Exception:
             return True
 
+    # Luogo del Reel (ID della Pagina del luogo, home/luoghi_meta.py): lo imposta il gestore
+    place_id = ""
+
     def _finish_publish(self, video_id: str, description: str = "") -> Tuple[bool, str]:
         url = f"https://graph.facebook.com/{self.GRAPH_VERSION}/{self.page_id}/video_reels"
         params = {
@@ -855,7 +858,14 @@ class FacebookPageReelPublisher(FacebookStoryPublisher):
         if description:
             params["description"] = description[:2200]
             params["title"] = description.splitlines()[0][:255]
+        if self.place_id:
+            params["place"] = self.place_id
         resp = requests.post(url, params=params, timeout=60)
+        if resp.status_code != 200 and self.place_id:
+            # Un luogo che Meta non accetta non deve far saltare il Reel: si riprova senza
+            logger.warning(f"Facebook Reel: luogo {self.place_id} rifiutato, riprovo senza: {resp.text[:300]}")
+            params.pop("place")
+            resp = requests.post(url, params=params, timeout=60)
         if resp.status_code != 200:
             return False, f"{resp.status_code}: {resp.text[:500]}"
         try:
@@ -975,6 +985,8 @@ class FacebookPageReelManager(FacebookReelManager):
         description = f"{articolo.titolo}\n\nLeggi tutto: {short_url}"
 
         publisher = FacebookPageReelPublisher(page_id, page_token)
+        from home.luoghi_meta import place_id_per
+        publisher.place_id = place_id_per(articolo)
         success, info = publisher.publish(video_path, description=description)
 
         if success:

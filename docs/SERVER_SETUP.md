@@ -40,7 +40,7 @@ WantedBy=multi-user.target
 **root** (`crontab -l`):
 - `*/15min` — `process_pending_pubbliredazionali`
 - `17:30` — `send_newsletter`
-- `*/30min` — `retry_failed_social_shares` (con flock)
+- `*/10min` (crontab di root) — `retry_failed_social_shares` (con flock) sui quattro video: `--platform facebook_story --platform facebook_reel --platform instagram_story --platform instagram_reel --older-than-minutes 15 --newer-than-minutes 60 --limit 10 --execute`. Storia e Reel Facebook aggiunti il 19/11/2026 (prima solo Instagram); la finestra di 60 minuti dal primo tentativo evita di ripubblicare vecchi articoli
 
 **www-data** (`crontab -u www-data -l`):
 - `7:50` (ora italiana) — `manage.py reshare_tomorrow_events` → `logs/reshare_cron.log`

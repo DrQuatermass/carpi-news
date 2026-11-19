@@ -1113,7 +1113,19 @@ class SocialMediaManager:
                 'message': message,
                 'link': article_url,
             }
+            # Luogo: il comune dell'articolo (home/luoghi_meta.py), come su Instagram
+            from home.luoghi_meta import place_id_per
+            place_id = place_id_per(articolo)
+            if place_id:
+                data['place'] = place_id
             response = requests.post(url, data=data, timeout=30)
+            if response.status_code != 200 and place_id:
+                # Un luogo che Meta non accetta non deve far saltare il post: si riprova senza
+                logger.warning(
+                    f"Facebook: post con luogo {place_id} rifiutato, riprovo senza: {response.text[:300]}"
+                )
+                data.pop('place')
+                response = requests.post(url, data=data, timeout=30)
 
             # Debug logging
             logger.info(f"Facebook API response status: {response.status_code}")
