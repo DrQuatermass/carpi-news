@@ -122,7 +122,11 @@ class APIUsageTracker:
             from home.models import APIUsage
 
             # Calcola i costi
-            pricing = cls.ANTHROPIC_PRICING.get(model, cls.ANTHROPIC_PRICING['claude-sonnet-4-6'])
+            pricing = cls.ANTHROPIC_PRICING.get(model)
+            if pricing is None:
+                logger.warning(f"Prezzo Anthropic non in tabella per '{model}': costo stimato con il "
+                               f"listino di claude-sonnet-4-6. Aggiungere il modello ad ANTHROPIC_PRICING")
+                pricing = cls.ANTHROPIC_PRICING['claude-sonnet-4-6']
 
             # Costo = (tokens / 1,000,000) * prezzo_per_MTok
             input_cost = Decimal(str((input_tokens / 1_000_000) * pricing['input']))
@@ -188,7 +192,11 @@ class APIUsageTracker:
             from home.models import APIUsage
 
             # Calcola i costi
-            pricing = cls.OPENAI_PRICING.get(model, cls.OPENAI_PRICING['gpt-5.6-sol'])
+            pricing = cls.OPENAI_PRICING.get(model)
+            if pricing is None:
+                logger.warning(f"Prezzo OpenAI non in tabella per '{model}': costo stimato con il "
+                               f"listino di gpt-5.6-sol. Aggiungere il modello a OPENAI_PRICING")
+                pricing = cls.OPENAI_PRICING['gpt-5.6-sol']
 
             # Costo = (tokens / 1,000,000) * prezzo_per_MTok
             input_cost = Decimal(str((input_tokens / 1_000_000) * pricing['input']))
@@ -258,7 +266,11 @@ class APIUsageTracker:
         try:
             from home.models import APIUsage
 
-            pricing = cls.OPENROUTER_PRICING.get(model, cls.OPENROUTER_PRICING_DEFAULT)
+            pricing = cls.OPENROUTER_PRICING.get(model)
+            if pricing is None:
+                logger.warning(f"Prezzo OpenRouter non in tabella per '{model}': costo stimato con il "
+                               f"prezzo di riserva. Aggiungere il modello a OPENROUTER_PRICING")
+                pricing = cls.OPENROUTER_PRICING_DEFAULT
 
             input_cost = Decimal(str((input_tokens / 1_000_000) * pricing['input']))
             output_cost = Decimal(str((output_tokens / 1_000_000) * pricing['output']))
@@ -442,6 +454,25 @@ class APIUsageTracker:
                 'cost': float(openai_stats['total_cost'] or 0)
             }
 
+            # Stats OpenRouter
+            openrouter_stats = APIUsage.objects.filter(
+                api_type='openrouter',
+                timestamp__gte=start_datetime,
+                timestamp__lt=end_datetime
+            ).aggregate(
+                total_calls=Count('id'),
+                total_input_tokens=Sum('input_tokens'),
+                total_output_tokens=Sum('output_tokens'),
+                total_cost=Sum('cost_total')
+            )
+
+            stats['openrouter'] = {
+                'calls': openrouter_stats['total_calls'] or 0,
+                'input_tokens': openrouter_stats['total_input_tokens'] or 0,
+                'output_tokens': openrouter_stats['total_output_tokens'] or 0,
+                'cost': float(openrouter_stats['total_cost'] or 0)
+            }
+
             # Stats Google Search
             google_stats = APIUsage.objects.filter(
                 api_type='google_search',
@@ -461,7 +492,8 @@ class APIUsageTracker:
 
             # Totale
             stats['total'] = {
-                'cost': stats['anthropic']['cost'] + stats['openai']['cost'] + stats['google_search']['cost']
+                'cost': (stats['anthropic']['cost'] + stats['openai']['cost'] + stats['openrouter']['cost']
+                         + stats['google_search']['cost'])
             }
 
             return stats

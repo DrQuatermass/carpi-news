@@ -3811,6 +3811,12 @@ class UniversalNewsMonitor:
         ricerca web e compilazione di tutti i campi della generazione automatica.
         """
         self.logger.warning(f"[DEBUG] generate_ai_article START per: {article_data.get('title', 'N/A')}")
+        # Costi API collegati all'articolo quando esiste gia' (rielaborazione su richiesta):
+        # per un articolo nuovo il record APIUsage nasce prima dell'articolo e resta senza
+        self._articolo_costi = None
+        if existing_articolo_id:
+            from home.models import Articolo as _Articolo
+            self._articolo_costi = _Articolo.objects.filter(pk=existing_articolo_id).first()
         try:
             self.logger.warning("[DEBUG] Import Anthropic...")
             from anthropic import Anthropic
@@ -4004,7 +4010,7 @@ Poi scrivi l'articolo seguendo le istruzioni del sistema e rispondi con il JSON 
                         model=api_params["model"],
                         input_tokens=message.usage.input_tokens,
                         output_tokens=message.usage.output_tokens,
-                        related_article=None,  # Articolo non ancora creato
+                        related_article=getattr(self, '_articolo_costi', None),
                         success=True
                     )
                 except Exception as e:
@@ -4327,7 +4333,7 @@ Poi scrivi l'articolo seguendo le istruzioni del sistema e rispondi con il JSON 
                                 APIUsageTracker.track_google_search(
                                     operation='web_search_for_article',
                                     num_queries=1,  # Una query per tool_use
-                                    related_article=None,
+                                    related_article=getattr(self, '_articolo_costi', None),
                                     success=True
                                 )
                             except Exception as e:
@@ -4402,7 +4408,7 @@ Poi scrivi l'articolo seguendo le istruzioni del sistema e rispondi con il JSON 
                             model=api_params_iter["model"],
                             input_tokens=current_message.usage.input_tokens,
                             output_tokens=current_message.usage.output_tokens,
-                            related_article=None,
+                            related_article=getattr(self, '_articolo_costi', None),
                             success=True
                         )
                     except Exception as e:
@@ -4440,7 +4446,7 @@ Poi scrivi l'articolo seguendo le istruzioni del sistema e rispondi con il JSON 
                         model=final_params["model"],
                         input_tokens=final_message.usage.input_tokens,
                         output_tokens=final_message.usage.output_tokens,
-                        related_article=None,
+                        related_article=getattr(self, '_articolo_costi', None),
                         success=True
                     )
                 except Exception as e:
@@ -4502,7 +4508,7 @@ Poi scrivi l'articolo seguendo le istruzioni del sistema e rispondi con il JSON 
                 model=model,
                 input_tokens=getattr(u, 'prompt_tokens', 0) or 0,
                 output_tokens=getattr(u, 'completion_tokens', 0) or 0,
-                related_article=None,
+                related_article=getattr(self, '_articolo_costi', None),
                 success=True,
             )
         except Exception as e:
@@ -4528,7 +4534,7 @@ Poi scrivi l'articolo seguendo le istruzioni del sistema e rispondi con il JSON 
             APIUsageTracker.track_google_search(
                 operation='web_search_for_article',
                 num_queries=1,
-                related_article=None,
+                related_article=getattr(self, '_articolo_costi', None),
                 success=True,
             )
         except Exception as e:
@@ -4731,7 +4737,7 @@ Rielabora questa notizia seguendo le istruzioni del sistema. Rispondi SOLO con J
                 model=openai_model,
                 input_tokens=response.usage.prompt_tokens,
                 output_tokens=response.usage.completion_tokens,
-                related_article=None,
+                related_article=getattr(self, '_articolo_costi', None),
                 success=True
             )
         except Exception as tracker_error:
