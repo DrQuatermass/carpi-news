@@ -23,6 +23,9 @@ PLACE_IDS = {
     "soliera": "111566162193656",
     "novi-di-modena": "105823169458370",
 }
+# La localizzazione a volte scrive come comune l'Unione (atti e servizi delle Terre d'Argine):
+# non e' un luogo di Instagram, si usa Carpi, dove l'Unione ha sede (scelta di Sven, 19/11/2026)
+PLACE_IDS["terre-dargine"] = PLACE_IDS["unione-terre-dargine"] = PLACE_IDS["unione-delle-terre-dargine"] = PLACE_IDS["carpi"]
 
 
 def place_id_per(articolo) -> str:
