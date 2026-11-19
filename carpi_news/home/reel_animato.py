@@ -21,6 +21,7 @@ import copy
 import json
 import logging
 import re
+import shutil
 import os
 import subprocess
 import tempfile
@@ -445,8 +446,11 @@ class ReelAnimatoGenerator(FacebookReelGenerator):
         ]
         # Il server ha un solo processore e un video costa un paio di minuti di calcolo:
         # la codifica gira a priorita' bassa, cosi' le pagine del sito passano avanti
-        if os.name == "posix":
-            cmd = ["nice", "-n", "15"] + cmd
+        # Percorso completo: il servizio gunicorn ha nel PATH solo il venv, "nice" da solo non si trova
+        # (19/11/2026: il primo reel in produzione e' fallito cosi' ed e' uscito quello fermo)
+        nice = shutil.which("nice") or next((p for p in ("/usr/bin/nice", "/bin/nice") if os.path.exists(p)), None)
+        if nice:
+            cmd = [nice, "-n", "15"] + cmd
         proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=log_ffmpeg, stderr=log_ffmpeg)
         try:
             for i in range(n_frame):
