@@ -714,11 +714,13 @@ def _share_article_background(article_id, article_title):
             # Doppio controllo: verifica se è già stato condiviso su TUTTE le piattaforme
             # Questo previene duplicati anche se il lock scade prematuramente.
             # facebook_story e instagram richiedono foto: ignorati se manca.
-            # facebook_reel non parte all'approvazione degli eventi futuri:
-            # viene creato dal reminder del giorno prima dell'evento.
             platforms = ['telegram', 'facebook', 'facebook_story', 'instagram',
                          'instagram_story', 'instagram_reel']
             requires_photo = {'facebook_story', 'instagram', 'instagram_story', 'instagram_reel'}
+            # il Reel Facebook conta solo se e' acceso (FACEBOOK_REEL_ENABLED)
+            if social_manager.platforms.get('facebook_reel', {}).get('enabled'):
+                platforms.append('facebook_reel')
+                requires_photo.add('facebook_reel')
             already_shared_all = all(
                 SocialPublicationLog.objects.filter(
                     articolo=articolo,

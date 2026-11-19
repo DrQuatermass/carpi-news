@@ -36,7 +36,7 @@ from django.utils.html import strip_tags
 from PIL import Image, ImageChops, ImageDraw
 
 from home.facebook_reels import (
-    CARD_Y, CARTA, HEIGHT, INCHIOSTRO, LOGO_H, LOGO_Y, VINO, WIDTH, ZONA_COPERTA_BASSO,
+    CARTA, HEIGHT, INCHIOSTRO, VINO, WIDTH,
     FacebookReelGenerator, _ffmpeg_binary, _reels_output_dir,
 )
 
@@ -46,10 +46,20 @@ logger = logging.getLogger(__name__)
 # i punti li scrive il modello degli articoli, settings.ANTHROPIC_MODEL (Sonnet 5)
 MAX_CARATTERI_PUNTO = 95
 
-# Impaginazione: il pulsante non sta piu' sotto ogni testo ma solo nella schermata finale,
-# quindi la foto torna grande come nel reel fermo e il testo ha tutta la fascia fino alla
-# zona coperta dall'interfaccia del social
-LATO_FOTO = 820
+# Impaginazione sulle zone che i social coprono con la loro interfaccia, misurate il 19/11/2026
+# su due schermate dell'iPhone di Sven (750x1334, quindi 1 px di schermo = 1,44 px di video):
+# - Storia Facebook: nome della Pagina, orario e icone fino a circa 190 px dall'alto, anche al centro
+#   (il logo a 60 px ci finiva sotto);
+# - Reel Instagram: nome, audio e didascalia da circa 1480 px in giu' (il titolo ci finiva sotto),
+#   colonna dei pulsanti a destra da x = 950, tra 980 e 1730 px.
+# Lo stesso video serve Storie e Reel, quindi vale il vincolo piu' stretto di ciascun lato.
+LOGO_Y, LOGO_H = 200, 100
+CARD_Y = LOGO_Y + LOGO_H + 20
+LATO_FOTO = 750
+LARGHEZZA_TESTO = 800             # centrato: da 140 a 940 px, a sinistra dei pulsanti dei Reel
+FONDO_COPERTO = 450               # px in basso da lasciare liberi
+CARTELLA_VIDEO_UNICO = "ig_video"  # sotto media/: e' l'indirizzo pubblico da cui Instagram scarica il video
+PULSANTE_VIDEO_UNICO = "Leggi su ombradelportico.it"
 BARRA_Y = CARD_Y + LATO_FOTO + 16
 BARRA_H = 6
 BADGE_Y = BARRA_Y + BARRA_H + 22
@@ -227,6 +237,14 @@ def _lucchetto(percorso) -> threading.Lock:
 class ReelAnimatoGenerator(FacebookReelGenerator):
     """MP4 verticale 1080x1920 con foto in movimento, titolo e punti chiave in sequenza."""
 
+    # Un solo video per articolo, usato da Storia e Reel di Facebook e Instagram: stessa cartella
+    # (quella servita in pubblico per Instagram) e stessa scritta sul pulsante finale. Prima ogni
+    # piattaforma rifaceva il suo, 2-3 minuti di calcolo l'uno, solo per la scritta diversa.
+    # False (prove): cartella e scritta della configurazione ricevuta.
+    video_unico = True
+    # mezz'ora: il tempo perche' tutte le pubblicazioni di un articolo trovino il video gia' fatto
+    GENERATED_REUSE_TTL_SECONDS = 1800
+
     # "sfuma" | "righe" | "evidenzia" (morbidi) | "parole" | "lettere" (a scatti) | "dissolvenza"
     testo = "evidenzia"         # scelta del 19/11/2026 dopo il confronto sui video di prova
 
@@ -239,7 +257,8 @@ class ReelAnimatoGenerator(FacebookReelGenerator):
         if not getattr(settings, "REEL_ANIMATO", True):
             return super().generate(articolo)
         try:
-            output_mp4 = _reels_output_dir(self.config.output_dir_name) / f"{articolo.slug}.mp4"
+            cartella = CARTELLA_VIDEO_UNICO if self.video_unico else self.config.output_dir_name
+            output_mp4 = _reels_output_dir(cartella) / f"{articolo.slug}.mp4"
             # Storia e Reel Instagram partono in due thread e vogliono lo stesso file: il secondo
             # aspetta che il primo abbia finito e poi lo riusa. Il 19/11/2026 il Reel aveva preso
             # il file mentre era ancora in scrittura e Meta lo aveva rifiutato (errore 2207082)
@@ -272,6 +291,8 @@ class ReelAnimatoGenerator(FacebookReelGenerator):
         copia._durate += [copia._durata_scena(p, SECONDI_PUNTO) for p in punti]
         copia._durate.append(SECONDI_FINALE)
         copia.config = replace(self.config, duration_seconds=sum(copia._durate), fps=FPS_ANIMATO)
+        if self.video_unico:
+            copia.config.cta_text = PULSANTE_VIDEO_UNICO
 
         inizio = time.time()
         with tempfile.TemporaryDirectory(prefix="reel_") as tmpdir:
@@ -317,7 +338,7 @@ class ReelAnimatoGenerator(FacebookReelGenerator):
         layer.alpha_composite(logo, ((WIDTH - logo.size[0]) // 2, LOGO_Y))
         bh = self._draw_badge(draw, category, BADGE_Y)
         zona_su = BADGE_Y + bh + 30
-        zona_giu = HEIGHT - ZONA_COPERTA_BASSO - 20
+        zona_giu = HEIGHT - FONDO_COPERTO
         return layer.convert("RGB"), zona_su, zona_giu
 
     def _scena_finale(self, zona_su: int, altezza: int) -> dict:
@@ -360,7 +381,7 @@ class ReelAnimatoGenerator(FacebookReelGenerator):
         """Testo centrato nella zona, nel corpo piu' grande che sta in `max_righe` righe."""
         for size in misure:
             font = self._load_font(size)
-            righe = self._wrap(testo, font, max_width=WIDTH - 120)
+            righe = self._wrap(testo, font, max_width=LARGHEZZA_TESTO)
             if len(righe) <= max_righe and int(size * 1.27) * len(righe) <= altezza:
                 break
         if len(righe) > max_righe:

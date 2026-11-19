@@ -7,7 +7,6 @@ from django.db import models
 from home.models import Articolo, SocialPublicationLog
 from home.social_sharing import social_manager
 from datetime import date, timedelta
-from contextlib import contextmanager
 import logging
 
 logger = logging.getLogger(__name__)
@@ -54,7 +53,7 @@ class Command(BaseCommand):
             self.style.NOTICE(
                 "\nPiattaforme ricondivisione eventi: "
                 + ", ".join(reshare_platforms)
-                + " (facebook link sostituito da facebook_reel)"
+                + " (su Facebook torna il post con il link; il Reel solo se non è mai uscito)"
             )
         )
 
@@ -121,8 +120,8 @@ class Command(BaseCommand):
                     total_skipped += 1
                     continue
 
-            # Condividi sulle piattaforme abilitate per reminder evento:
-            # Facebook link (/feed) viene sostituito dal vero Reel Facebook.
+            # Condividi sulle piattaforme abilitate per reminder evento. Su Facebook l'articolo
+            # torna come post con il link: il Reel esce gia' all'approvazione e non si ripete.
             # IMPORTANTE: Per la ricondivisione, rimuoviamo temporaneamente i log delle pubblicazioni precedenti
             # per forzare la condivisione anche se l'articolo è già stato pubblicato in passato
             try:
@@ -130,14 +129,15 @@ class Command(BaseCommand):
                 existing_logs = list(SocialPublicationLog.objects.filter(articolo=articolo, success=True))
 
                 # Cancella temporaneamente i log per permettere la ricondivisione
-                SocialPublicationLog.objects.filter(articolo=articolo).delete()
+                # (non quello del Reel Facebook: non si ripubblica, e senza il suo log il recupero
+                # automatico dei fallimenti lo crederebbe mancante e ne farebbe un altro)
+                SocialPublicationLog.objects.filter(articolo=articolo).exclude(platform='facebook_reel').delete()
 
-                # Esegui la condivisione (ora share_article_on_approval non troverà log e condividerà)
-                with self._force_event_facebook_reel():
-                    results = social_manager.retry_failed_platforms_only(
-                        articolo,
-                        only_platforms=reshare_platforms,
-                    )
+                # Esegui la condivisione (ora non troverà log e condividerà)
+                results = social_manager.retry_failed_platforms_only(
+                    articolo,
+                    only_platforms=reshare_platforms,
+                )
 
                 # Mostra risultati per piattaforma
                 for platform, success in results.items():
@@ -173,32 +173,11 @@ class Command(BaseCommand):
 
     @staticmethod
     def _event_reshare_platforms():
-        """Piattaforme per reminder evento: Facebook link sostituito da Facebook Reel.
+        """Piattaforme del promemoria evento: tutte quelle accese.
 
-        Il Reel Facebook viene forzato anche se FACEBOOK_REEL_ENABLED=False: questa
-        regola vale solo per il reminder del giorno prima dell'evento.
-        """
-        platforms = []
-        for platform, config in social_manager.platforms.items():
-            if platform == 'facebook':
-                continue
-            if platform == 'facebook_reel':
-                if config.get('access_token') and config.get('page_id'):
-                    platforms.append(platform)
-                continue
-            if config.get('enabled'):
-                platforms.append(platform)
-        return platforms
-
-    @staticmethod
-    @contextmanager
-    def _force_event_facebook_reel():
-        """Abilita facebook_reel solo durante il reminder eventi, se configurato."""
-        config = social_manager.platforms.get('facebook_reel', {})
-        previous = config.get('enabled')
-        if config.get('access_token') and config.get('page_id'):
-            config['enabled'] = True
-        try:
-            yield
-        finally:
-            config['enabled'] = previous
+        Fino al 19/11/2026 il post Facebook con il link veniva sostituito dal Reel, forzato
+        anche con FACEBOOK_REEL_ENABLED=False. Ora il Reel esce all'approvazione di ogni
+        articolo e il promemoria ricondivide il post. Il Reel resta nell'elenco ma il suo log
+        non viene cancellato, quindi parte solo per gli eventi che non l'hanno mai avuto
+        (quelli approvati prima del cambio)."""
+        return [platform for platform, config in social_manager.platforms.items() if config.get('enabled')]

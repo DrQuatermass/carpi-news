@@ -932,9 +932,14 @@ class FacebookReelManager:
 
     @staticmethod
     def _cleanup_local_file(video_path: str) -> None:
-        """Rimuove il file MP4 locale dopo pubblicazione riuscita."""
+        """Rimuove il file MP4 locale dopo pubblicazione riuscita.
+
+        Non il video unico del reel animato (cartella ig_video): serve ancora a Instagram,
+        lo toglie la pulizia periodica (cleanup_social_media)."""
         try:
             p = Path(video_path)
+            if p.parent.name == "ig_video":
+                return
             if p.exists():
                 size_kb = p.stat().st_size // 1024
                 p.unlink()

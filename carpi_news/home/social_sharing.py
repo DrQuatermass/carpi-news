@@ -583,10 +583,32 @@ class SocialMediaManager:
             logger.info("Pubblicazione Facebook Story disabilitata")
             results['facebook_story'] = False
 
-        # Facebook Reel non parte mai alla pubblicazione iniziale.
-        # Viene creato solo da flussi espliciti: reminder eventi del giorno prima
-        # o comandi manuali di retry/forzatura.
-        logger.info("Facebook Reel non incluso nella condivisione immediata")
+        # Facebook Reel: dal 19/11/2026 esce all'approvazione di ogni articolo con foto, eventi
+        # compresi (prima solo dal promemoria degli eventi del giorno dopo). Sta dopo la Storia
+        # perche' riusa lo stesso video. Si spegne con FACEBOOK_REEL_ENABLED=False.
+        if self.platforms['facebook_reel']['enabled']:
+            if articolo.has_shareable_image:
+                should_share, already_done = self._prepare_publication_slot(articolo, 'facebook_reel')
+                if already_done:
+                    logger.info(f"Facebook Reel: Articolo '{articolo.titolo}' già pubblicato, skip")
+                    results['facebook_reel'] = True
+                elif should_share:
+                    success, error_msg = self._share_to_facebook_reel(articolo)
+                    results['facebook_reel'] = success
+                    shared_url, short_link = self._tracking_link(articolo, 'facebook', 'reel')
+                    self._finalize_publication(
+                        articolo, 'facebook_reel', success,
+                        None if success else error_msg,
+                        shared_url=shared_url,
+                        short_link=short_link,
+                    )
+                else:
+                    results['facebook_reel'] = False
+            else:
+                logger.warning(f"Facebook Reel saltato per '{articolo.titolo}': immagine obbligatoria")
+                results['facebook_reel'] = False
+        else:
+            logger.info("Pubblicazione Facebook Reel disabilitata")
 
         # Instagram (solo se c'è un'immagine)
         if self.platforms['instagram']['enabled']:

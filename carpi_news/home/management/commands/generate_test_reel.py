@@ -108,6 +108,7 @@ class Command(BaseCommand):
         cfg.output_dir_name = "reels_prova" if modo == "evidenzia" else f"reels_prova_{modo}"
         generator = ReelAnimatoGenerator(config=cfg)
         generator.testo = modo
+        generator.video_unico = False      # le prove restano in media/reels_prova
         for articolo in articoli:
             punti = punti_dal_sommario(articolo) if opts.get("senza_ai") else punti_chiave(articolo)
             self.stdout.write(self.style.NOTICE(f"\n[{articolo.pk}] {articolo.titolo}"))
