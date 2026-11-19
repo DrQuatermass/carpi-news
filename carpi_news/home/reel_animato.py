@@ -244,7 +244,7 @@ class ReelAnimatoGenerator(FacebookReelGenerator):
 
         inizio = time.time()
         with tempfile.TemporaryDirectory(prefix="reel_") as tmpdir:
-            audio_path = copia._prepare_audio(out_dir=Path(tmpdir))
+            audio_path = copia._audio_per(articolo, out_dir=Path(tmpdir))
             # Si scrive su un file provvisorio e lo si rinomina a video chiuso: chi guarda la
             # cartella (un altro processo, la pulizia periodica) non trova mai un MP4 a meta'
             parziale = output_mp4.with_name(f"{output_mp4.stem}.parziale-{os.getpid()}.mp4")

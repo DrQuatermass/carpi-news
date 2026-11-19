@@ -193,7 +193,7 @@ class FacebookReelGenerator:
                     category=articolo.categoria or "Notizie",
                     out_dir=tmp,
                 )
-                audio_path = self._prepare_audio(out_dir=tmp)
+                audio_path = self._audio_per(articolo, out_dir=tmp)
                 self._encode_video(frame_path, audio_path, output_mp4)
                 logger.info(f"Reel generato: {output_mp4} ({output_mp4.stat().st_size // 1024} KB)")
                 return str(output_mp4)
@@ -586,6 +586,17 @@ class FacebookReelGenerator:
         return lines
 
     # --- AUDIO ---------------------------------------------------------------
+    def _audio_per(self, articolo, out_dir: Path) -> Path:
+        """Brano adatto al tono dell'articolo (home.reel_musica).
+        Senza brani nella cartella: sottofondo sintetico di riserva."""
+        from home.reel_musica import scegli_brano
+
+        brano = scegli_brano(articolo, _music_dir())
+        if brano:
+            logger.info(f"Reel: brano {brano.name}")
+            return brano
+        return self._prepare_audio(out_dir=out_dir)
+
     def _prepare_audio(self, out_dir: Path) -> Path:
         """Sceglie a caso un file dalla music dir; se nessuno, genera pad ambient procedurale."""
         music_dir = _music_dir()
