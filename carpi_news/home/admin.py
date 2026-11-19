@@ -321,11 +321,12 @@ class ArticoloAdmin(admin.ModelAdmin):
                     'fields': ('richieste_modifica', 'fonti_web_display', 'rigenera_button')
                 }),
                 ('Reel', {
-                    'fields': ('reel_punti',),
+                    'fields': ('reel_punti', 'reel_tono'),
                     'description': "Il reel mostra il titolo e poi queste frasi, una schermata per riga. "
                                    "Se le scrivi prima di approvare, il reel usa le tue; se lasci vuoto le "
                                    "scrive l'AI alla pubblicazione e le trovi qui. Correggerle dopo vale "
-                                   "solo per i reel generati da quel momento.",
+                                   "solo per i reel generati da quel momento. Il tono decide la musica: lascia vuoto per farlo "
+                                   "scegliere all'AI, oppure impostalo tu.",
                 }),
                 ('Luogo', {
                     'fields': ('comune', 'luogo_nome', 'luogo_indirizzo', ('lat', 'lng'), 'luogo_preciso',

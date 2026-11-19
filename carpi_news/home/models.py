@@ -132,6 +132,16 @@ class Articolo(models.Model):
         "Punti chiave del reel", blank=True,
         help_text="Le frasi che scorrono nel reel dopo il titolo, una per riga (al massimo 3, circa 95 "
                   "caratteri l'una). Vuoto: le scrive l'AI al primo reel e le salva qui.")
+    REEL_TONO_CHOICES = [
+        ('raccolto', 'Raccolto (lutti)'),
+        ('sobrio', 'Sobrio (cronaca, temi delicati)'),
+        ('neutro', 'Neutro (amministrazione, servizi)'),
+        ('vivace', 'Vivace (feste, eventi, sport)'),
+    ]
+    reel_tono = models.CharField(
+        "Tono della musica", max_length=10, blank=True, choices=REEL_TONO_CHOICES,
+        help_text="Decide tra quali brani si sceglie il sottofondo del reel. Vuoto: lo sceglie l'AI "
+                  "insieme ai punti chiave; se l'AI non risponde decidono categoria e titolo.")
 
     # CAMPI PUBBLIREDAZIONALE
     is_pubbliredazionale = models.BooleanField(default=False, help_text="È un articolo pubbliredazionale", db_index=True)

@@ -91,7 +91,14 @@ si legge in 4 secondi su un telefono. Un solo fatto per punto, senza incisi e su
 - cronaca giudiziaria: chi e' indagato o arrestato non e' colpevole. Scrivi "e' accusato di", "e' stato arrestato per", mai che ha commesso il fatto;
 - niente emoji, hashtag, domande, inviti a leggere o a scoprire.
 
-Rispondi solo con JSON: {{"punti": ["...", "...", "..."]}}
+Indica anche il tono della musica di sottofondo, una sola parola tra:
+- "raccolto": lutti, morti, tragedie, commemorazioni di vittime;
+- "sobrio": cronaca nera e giudiziaria, incidenti, violenza, malattia, crisi aziendali e licenziamenti, qualsiasi tema su cui una musica allegra stonerebbe;
+- "neutro": amministrazione, politica, bilanci, servizi, avvisi, economia, scuola;
+- "vivace": feste, spettacoli, sport, iniziative e buone notizie leggere.
+Nel dubbio scegli il piu' sobrio dei due.
+
+Rispondi solo con JSON: {{"punti": ["...", "...", "..."], "tono": "..."}}
 
 TITOLO: {titolo}
 
@@ -117,26 +124,46 @@ def punti_dal_sommario(articolo, quanti: int = 3) -> list[str]:
 def punti_per(articolo) -> list[str]:
     """Punti del reel di un articolo: quelli salvati (scritti a mano o da un reel precedente),
     altrimenti scritti ora dall'AI e salvati, cosi' Facebook e Instagram mostrano le stesse frasi
-    e l'AI viene chiamata una volta sola per articolo."""
+    e l'AI viene chiamata una volta sola per articolo. Nella stessa chiamata l'AI sceglie il tono
+    della musica (Articolo.reel_tono), che resta quello impostato a mano se c'e'."""
+    if articolo.pk:
+        # Dal database, non dall'oggetto: Facebook e Instagram lavorano in thread diversi, ognuno
+        # con la sua copia dell'articolo caricata prima che l'altro salvasse punti e tono
+        salvato = type(articolo).objects.filter(pk=articolo.pk).values_list("reel_punti", "reel_tono").first()
+        if salvato:
+            articolo.reel_punti, articolo.reel_tono = salvato
     salvati = [r.strip() for r in (getattr(articolo, "reel_punti", "") or "").splitlines() if r.strip()]
     if salvati:
         return salvati[:3]
     if not getattr(settings, 'ANTHROPIC_API_KEY', ''):
         return punti_dal_sommario(articolo)
-    punti = punti_chiave(articolo, ripiego=False)
+    punti, tono = punti_e_tono(articolo)
     if not punti:
         return punti_dal_sommario(articolo)
+    campi = {"reel_punti": "\n".join(punti)}
+    if tono and not getattr(articolo, "reel_tono", ""):
+        campi["reel_tono"] = tono
+    for campo, valore in campi.items():
+        setattr(articolo, campo, valore)
     if articolo.pk:
-        # update() e non save(): niente segnali di salvataggio (immagini, social) per un campo di servizio
-        type(articolo).objects.filter(pk=articolo.pk).update(reel_punti="\n".join(punti))
-        articolo.reel_punti = "\n".join(punti)
+        # update() e non save(): niente segnali di salvataggio (immagini, social) per campi di servizio
+        type(articolo).objects.filter(pk=articolo.pk).update(**campi)
     return punti
 
 
 def punti_chiave(articolo, ripiego: bool = True) -> list[str]:
     """Tre punti chiave scritti dall'AI; prime frasi del sommario se l'AI non e' disponibile."""
+    punti, _ = punti_e_tono(articolo)
+    return punti or (punti_dal_sommario(articolo) if ripiego else [])
+
+
+def punti_e_tono(articolo) -> tuple:
+    """(punti, tono) chiesti all'AI in una sola chiamata; ([], '') se l'AI non e' disponibile."""
+    from home.reel_musica import TONI
+
     if not getattr(settings, 'ANTHROPIC_API_KEY', ''):
-        return punti_dal_sommario(articolo) if ripiego else []
+        return [], ''
+    tono = ''
     try:
         import anthropic
         from home.anthropic_params import anthropic_model, response_text, thinking_params
@@ -163,7 +190,10 @@ def punti_chiave(articolo, ripiego: bool = True) -> list[str]:
                 logger.warning("Tracking costi reel_punti fallito: %s", e)
             testo_risposta = response_text(risposta)
             m = re.search(r'\{.*\}', testo_risposta, re.DOTALL)
-            punti = [str(p).strip() for p in json.loads(m.group(0)).get('punti', []) if str(p).strip()][:3]
+            dati = json.loads(m.group(0))
+            punti = [str(p).strip() for p in dati.get('punti', []) if str(p).strip()][:3]
+            proposto = str(dati.get('tono') or '').strip().lower()
+            tono = proposto if proposto in TONI else tono
             lunghi = [p for p in punti if len(p) > MAX_CARATTERI_PUNTO]
             if punti and not lunghi:
                 break
@@ -171,13 +201,14 @@ def punti_chiave(articolo, ripiego: bool = True) -> list[str]:
                 {'role': 'assistant', 'content': testo_risposta},
                 {'role': 'user', 'content': (
                     f"Troppo lunghi: {', '.join(str(len(p)) for p in punti)} caratteri. Riscrivi i tre punti "
-                    f"sotto i {MAX_CARATTERI_PUNTO} caratteri ciascuno, togliendo i dettagli secondari. Solo JSON.")},
+                    f"sotto i {MAX_CARATTERI_PUNTO} caratteri ciascuno, togliendo i dettagli secondari. "
+                    f"Stesso JSON di prima, con il tono.")},
             ]
         if punti:
-            return punti
+            return punti, tono
     except Exception as e:
         logger.warning("Reel animato: punti chiave AI non riusciti (%s), uso il sommario", e)
-    return punti_dal_sommario(articolo) if ripiego else []
+    return [], ''
 
 
 _LUCCHETTI: dict = {}

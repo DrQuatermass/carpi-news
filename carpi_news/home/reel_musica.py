@@ -3,7 +3,9 @@ Scelta del sottofondo di Storie e Reel.
 
 Fino al 19/11/2026 il brano era sorteggiato tra tutti quelli della cartella, qualunque fosse
 la notizia: un carnevale poteva finire su un lutto. Ora:
-- ogni brano ha un tono (raccolto, sobrio, neutro, vivace) e l'articolo ne ammette solo alcuni;
+- ogni brano ha un tono (raccolto, sobrio, neutro, vivace) e l'articolo ne ammette solo alcuni:
+  il tono lo sceglie l'AI nella stessa chiamata dei punti chiave (Articolo.reel_tono), e le
+  regole su titolo e categoria restano come riserva;
 - lo stesso articolo ha lo stesso brano su Facebook e su Instagram.
 Il brano parte dal suo inizio: la partenza a meta' (dopo l'introduzione) e' stata provata e
 scartata lo stesso giorno.
@@ -89,7 +91,15 @@ TITOLO_SOBRIO = re.compile(
 )
 
 
+TONI = ("raccolto", "sobrio", "neutro", "vivace")
+
+
 def toni_ammessi(articolo) -> tuple:
+    """Il tono salvato sull'articolo (scelto dall'AI con i punti chiave, o a mano dall'admin);
+    se manca, le regole su titolo e categoria."""
+    salvato = (getattr(articolo, "reel_tono", "") or "").strip().lower()
+    if salvato in TONI:
+        return (salvato,)
     titolo = getattr(articolo, "titolo", "") or ""
     if TITOLO_LUTTO.search(titolo):
         return ("raccolto",)
