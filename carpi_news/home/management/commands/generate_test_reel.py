@@ -42,17 +42,44 @@ class Command(BaseCommand):
             help="Durata in secondi (default da FACEBOOK_REEL_DURATION o 15)",
         )
 
+        parser.add_argument(
+            "--animato",
+            action="store_true",
+            help="Reel animato di prova (foto in movimento + punti chiave), in media/reels_prova/",
+        )
+        parser.add_argument(
+            "--ultimi",
+            type=int,
+            default=0,
+            help="Con --animato: genera per gli ultimi N articoli approvati con foto",
+        )
+        parser.add_argument(
+            "--testo",
+            choices=["righe", "sfuma", "evidenzia", "parole", "lettere", "dissolvenza"],
+            default="evidenzia",
+            help="Con --animato: come entra il testo (default evidenzia). I video vanno in "
+                 "media/reels_prova/, o media/reels_prova_<modo>/ per gli altri modi",
+        )
+        parser.add_argument(
+            "--senza-ai",
+            action="store_true",
+            help="Con --animato: punti chiave dalle prime frasi del sommario, senza chiamare l'AI",
+        )
+
     def handle(self, *args, **opts):
+        cfg = ReelConfig.from_settings()
+        if opts.get("duration"):
+            cfg.duration_seconds = opts["duration"]
+
+        if opts.get("animato"):
+            return self._animati(cfg, opts)
+
         articolo = self._pick_article(opts.get("slug"), opts.get("id"))
 
         if not articolo.foto:
             raise CommandError(
                 f"L'articolo '{articolo.titolo}' non ha foto: Reel non generabile."
             )
-
-        cfg = ReelConfig.from_settings()
-        if opts.get("duration"):
-            cfg.duration_seconds = opts["duration"]
 
         generator = FacebookReelGenerator(config=cfg)
         self.stdout.write(self.style.NOTICE(
@@ -64,6 +91,33 @@ class Command(BaseCommand):
             raise CommandError("Generazione fallita - controlla i log per dettagli.")
 
         self.stdout.write(self.style.SUCCESS(f"OK -> {path}"))
+
+    def _animati(self, cfg, opts):
+        from home.reel_animato import ReelAnimatoGenerator, punti_chiave, punti_dal_sommario
+
+        if opts.get("ultimi") and not (opts.get("slug") or opts.get("id")):
+            articoli = list(
+                Articolo.objects.filter(approvato=True)
+                .exclude(foto__isnull=True).exclude(foto__exact="")
+                .order_by("-data_pubblicazione", "-data_creazione")[:opts["ultimi"]]
+            )
+        else:
+            articoli = [self._pick_article(opts.get("slug"), opts.get("id"))]
+
+        modo = opts["testo"]
+        cfg.output_dir_name = "reels_prova" if modo == "evidenzia" else f"reels_prova_{modo}"
+        generator = ReelAnimatoGenerator(config=cfg)
+        generator.testo = modo
+        for articolo in articoli:
+            punti = punti_dal_sommario(articolo) if opts.get("senza_ai") else punti_chiave(articolo)
+            self.stdout.write(self.style.NOTICE(f"\n[{articolo.pk}] {articolo.titolo}"))
+            for p in punti:
+                self.stdout.write(f"   - {p}")
+            path = generator.generate(articolo, punti=punti)
+            if path:
+                self.stdout.write(self.style.SUCCESS(f"   OK -> {path}"))
+            else:
+                self.stdout.write(self.style.ERROR("   Generazione fallita - controlla i log"))
 
     def _pick_article(self, slug, pk) -> Articolo:
         if pk:

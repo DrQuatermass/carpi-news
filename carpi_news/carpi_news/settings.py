@@ -485,6 +485,9 @@ INSTAGRAM_WEBHOOK_HANDLE_SYNC = os.getenv('INSTAGRAM_WEBHOOK_HANDLE_SYNC', 'Fals
 # e IG Reel/Story. Per trovarlo: https://developers.facebook.com/tools/explorer/
 # query "pages/search?q=Carpi&type=place". Senza, il tag non viene applicato.
 CARPI_PLACE_ID = os.getenv('CARPI_PLACE_ID', '')
+# Gli altri comuni stanno in home/luoghi_meta.py (PLACE_IDS): il luogo del Reel segue Articolo.comune.
+# Reel Instagram anche nel feed e nella griglia del profilo (False = solo sezione Reel, come fino al 19/11/2026)
+INSTAGRAM_REEL_SHARE_TO_FEED = os.getenv('INSTAGRAM_REEL_SHARE_TO_FEED', 'True').lower() in ['true', '1', 'yes']
 # Audio name brandizzato sul Reel IG ('Audio originale di <nome>' visto dagli utenti)
 INSTAGRAM_REEL_AUDIO_NAME = os.getenv('INSTAGRAM_REEL_AUDIO_NAME', 'Ombra del Portico - Notizie di Carpi')
 

@@ -354,22 +354,8 @@ class FacebookReelGenerator:
         logo_x = (WIDTH - lw) // 2
         layer.alpha_composite(logo, (logo_x, LOGO_Y))
 
-        # Badge categoria
-        cat_text = category.upper()
-        cat_font = self._load_cta_font(30)
-        bbox = draw.textbbox((0, 0), cat_text, font=cat_font)
-        cat_w = bbox[2] - bbox[0]
-        cat_h = bbox[3] - bbox[1]
-        pad = 24
-        bw = cat_w + pad * 2
-        bh = cat_h + 24
         by = CARD_Y + CARD_SIDE + 28
-        bx = (WIDTH - bw) // 2
-        draw.rounded_rectangle(
-            [(bx, by), (bx + bw, by + bh)],
-            radius=bh // 2, fill=VINO + (255,)
-        )
-        draw.text((bx + pad, by + 8), cat_text, font=cat_font, fill=WHITE + (255,))
+        bh = self._draw_badge(draw, category, by)
 
         # Titolo
         title_font = self._load_font(68)
@@ -386,6 +372,29 @@ class FacebookReelGenerator:
             draw.text((x, y), line, font=title_font, fill=INCHIOSTRO + (255,))
             y += line_height
 
+        self._draw_cta(layer, draw, y)
+        return layer
+
+    def _draw_badge(self, draw: ImageDraw.ImageDraw, category: str, by: int) -> int:
+        """Etichetta della categoria centrata all'altezza `by`. Restituisce la sua altezza."""
+        cat_text = category.upper()
+        cat_font = self._load_cta_font(30)
+        bbox = draw.textbbox((0, 0), cat_text, font=cat_font)
+        cat_w = bbox[2] - bbox[0]
+        cat_h = bbox[3] - bbox[1]
+        pad = 24
+        bw = cat_w + pad * 2
+        bh = cat_h + 24
+        bx = (WIDTH - bw) // 2
+        draw.rounded_rectangle(
+            [(bx, by), (bx + bw, by + bh)],
+            radius=bh // 2, fill=VINO + (255,)
+        )
+        draw.text((bx + pad, by + 8), cat_text, font=cat_font, fill=WHITE + (255,))
+        return bh
+
+    def _draw_cta(self, layer: Image.Image, draw: ImageDraw.ImageDraw, y: int) -> None:
+        """Pulsante sotto il testo che finisce all'altezza `y`."""
         # CTA: pulsante amaranto pieno, angoli quasi squadrati, senza ombra (come il sito)
         cta_font = self._load_cta_font(42)
         cta_lines = [line.strip() for line in self.config.cta_text.splitlines() if line.strip()]
@@ -422,8 +431,6 @@ class FacebookReelGenerator:
             hx = (WIDTH - hw) // 2
             hy = (pill_y + pill_h + 26) if cta_lines else HEIGHT - 145
             draw.text((hx, hy), hint, font=hint_font, fill=MUTED + (255,))
-
-        return layer
 
     def _load_font(self, size: int) -> ImageFont.FreeTypeFont:
         try:

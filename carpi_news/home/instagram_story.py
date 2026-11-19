@@ -112,7 +112,11 @@ class InstagramVideoPublisher:
             if self.media_type == "REELS" and caption:
                 # Caption supportata solo per Reels (max 2200 char)
                 data["caption"] = caption[:2200]
-                data["share_to_feed"] = "false"
+            if self.media_type == "REELS":
+                # Nel feed e nella griglia del profilo, non solo nella sezione Reel
+                # (fino al 19/11/2026 era "false"). INSTAGRAM_REEL_SHARE_TO_FEED=False per tornare indietro.
+                nel_feed = getattr(settings, "INSTAGRAM_REEL_SHARE_TO_FEED", True)
+                data["share_to_feed"] = "true" if nel_feed else "false"
 
             # Metadati avanzati per discovery (entrambi i media_type)
             if location_id:
@@ -375,7 +379,11 @@ class _BaseIgVideoManager:
         # Metadati avanzati per discovery.
         # Le Stories IG accettano un set di parametri piu' stretto dei Reel:
         # il location tag viene inviato solo ai Reel per evitare reject del container.
-        location_id = getattr(settings, "CARPI_PLACE_ID", "") if self.MEDIA_TYPE == "REELS" else ""
+        # Il luogo e' quello del comune dell'articolo (home/luoghi_meta.py), non sempre Carpi.
+        location_id = ""
+        if self.MEDIA_TYPE == "REELS":
+            from home.luoghi_meta import place_id_per
+            location_id = place_id_per(articolo)
         audio_name = getattr(settings, "INSTAGRAM_REEL_AUDIO_NAME", "") if self.MEDIA_TYPE == "REELS" else ""
         cover_url = self._build_cover_url(articolo) if self.MEDIA_TYPE == "REELS" else ""
 
