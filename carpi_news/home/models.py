@@ -128,6 +128,11 @@ class Articolo(models.Model):
                                      help_text="Con 'Inserito a mano' la localizzazione automatica non lo tocca più")
     luogo_aggiornato = models.DateTimeField(blank=True, null=True, db_index=True)
 
+    reel_punti = models.TextField(
+        "Punti chiave del reel", blank=True,
+        help_text="Le frasi che scorrono nel reel dopo il titolo, una per riga (al massimo 3, circa 95 "
+                  "caratteri l'una). Vuoto: le scrive l'AI al primo reel e le salva qui.")
+
     # CAMPI PUBBLIREDAZIONALE
     is_pubbliredazionale = models.BooleanField(default=False, help_text="È un articolo pubbliredazionale", db_index=True)
 

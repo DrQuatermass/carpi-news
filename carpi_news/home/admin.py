@@ -320,6 +320,13 @@ class ArticoloAdmin(admin.ModelAdmin):
                 ('Rigenerazione AI', {
                     'fields': ('richieste_modifica', 'fonti_web_display', 'rigenera_button')
                 }),
+                ('Reel', {
+                    'fields': ('reel_punti',),
+                    'description': "Il reel mostra il titolo e poi queste frasi, una schermata per riga. "
+                                   "Se le scrivi prima di approvare, il reel usa le tue; se lasci vuoto le "
+                                   "scrive l'AI alla pubblicazione e le trovi qui. Correggerle dopo vale "
+                                   "solo per i reel generati da quel momento.",
+                }),
                 ('Luogo', {
                     'fields': ('comune', 'luogo_nome', 'luogo_indirizzo', ('lat', 'lng'), 'luogo_preciso',
                                'luogo_origine', 'luogo_aggiornato'),

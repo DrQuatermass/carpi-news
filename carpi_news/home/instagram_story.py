@@ -31,6 +31,7 @@ import requests
 from django.conf import settings
 
 from home.facebook_reels import FacebookReelGenerator, ReelConfig
+from home.reel_animato import ReelAnimatoGenerator
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +39,7 @@ logger = logging.getLogger(__name__)
 # -----------------------------------------------------------------------------
 # GENERATORS (sottoclassi che cambiano solo cta + output dir)
 # -----------------------------------------------------------------------------
-class InstagramStoryGenerator(FacebookReelGenerator):
+class InstagramStoryGenerator(ReelAnimatoGenerator):
     """Genera il video 1080x1920 destinato a Storia Instagram (15s)."""
 
     def __init__(self, config: Optional[ReelConfig] = None):
@@ -51,7 +52,7 @@ class InstagramStoryGenerator(FacebookReelGenerator):
         super().__init__(config)
 
 
-class InstagramReelGenerator(FacebookReelGenerator):
+class InstagramReelGenerator(ReelAnimatoGenerator):
     """Genera il video 1080x1920 destinato a Reel Instagram (15s).
     Condivide la cartella e il file di output con InstagramStoryGenerator
     perche' i due video sono identici (stesso CTA, stesso template)."""

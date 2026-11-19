@@ -1307,8 +1307,27 @@ class SocialMediaManager:
                 'caption': caption,
             }
 
+            # Luogo: il comune dell'articolo (home/luoghi_meta.py), come per i Reel
+            from home.luoghi_meta import place_id_per
+            location_id = place_id_per(articolo)
+            if location_id:
+                create_data['location_id'] = location_id
+
             create_response = requests.post(create_url, data=create_data, timeout=30)
             logger.info(f"Instagram container response: {create_response.status_code} - {create_response.text}")
+
+            if create_response.status_code != 200 and location_id:
+                # Un luogo che Meta non accetta non deve far saltare il post: si riprova senza
+                logger.warning(
+                    f"Instagram: container con luogo {location_id} rifiutato, riprovo senza: "
+                    f"{create_response.text[:300]}"
+                )
+                create_data.pop('location_id')
+                create_response = requests.post(create_url, data=create_data, timeout=30)
+                logger.info(
+                    f"Instagram container response (senza luogo): {create_response.status_code} - "
+                    f"{create_response.text}"
+                )
 
             if create_response.status_code != 200:
                 error = f"Errore creazione container Instagram: {create_response.text}"

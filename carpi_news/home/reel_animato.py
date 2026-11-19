@@ -10,17 +10,20 @@ Reel animato: stesso impianto grafico di home.facebook_reels, ma il video si muo
 I punti li scrive il modello degli articoli (ANTHROPIC_MODEL) (APIUsage operation `reel_punti`); senza
 chiave API o se la chiamata fallisce si usano le prime frasi del sommario.
 
-Per ora e' solo una prova: nessuna pubblicazione usa questo generatore.
+Dal 19/11/2026 e' il video di Storie e Reel di Facebook e Instagram (REEL_ANIMATO=False
+per tornare al reel fermo). I punti si salvano in Articolo.reel_punti, correggibili dall'admin.
     python manage.py generate_test_reel --animato [--ultimi 5 | --id N | --slug S]
 """
 
 from __future__ import annotations
 
+import copy
 import json
 import logging
 import re
 import subprocess
 import tempfile
+import time
 from dataclasses import replace
 from pathlib import Path
 from typing import Optional
@@ -108,10 +111,29 @@ def punti_dal_sommario(articolo, quanti: int = 3) -> list[str]:
     return [f for f in frasi if 25 <= len(f) <= MAX_CARATTERI_PUNTO + 20][:quanti]
 
 
-def punti_chiave(articolo) -> list[str]:
-    """Tre punti chiave scritti dall'AI; prime frasi del sommario se l'AI non e' disponibile."""
+def punti_per(articolo) -> list[str]:
+    """Punti del reel di un articolo: quelli salvati (scritti a mano o da un reel precedente),
+    altrimenti scritti ora dall'AI e salvati, cosi' Facebook e Instagram mostrano le stesse frasi
+    e l'AI viene chiamata una volta sola per articolo."""
+    salvati = [r.strip() for r in (getattr(articolo, "reel_punti", "") or "").splitlines() if r.strip()]
+    if salvati:
+        return salvati[:3]
     if not getattr(settings, 'ANTHROPIC_API_KEY', ''):
         return punti_dal_sommario(articolo)
+    punti = punti_chiave(articolo, ripiego=False)
+    if not punti:
+        return punti_dal_sommario(articolo)
+    if articolo.pk:
+        # update() e non save(): niente segnali di salvataggio (immagini, social) per un campo di servizio
+        type(articolo).objects.filter(pk=articolo.pk).update(reel_punti="\n".join(punti))
+        articolo.reel_punti = "\n".join(punti)
+    return punti
+
+
+def punti_chiave(articolo, ripiego: bool = True) -> list[str]:
+    """Tre punti chiave scritti dall'AI; prime frasi del sommario se l'AI non e' disponibile."""
+    if not getattr(settings, 'ANTHROPIC_API_KEY', ''):
+        return punti_dal_sommario(articolo) if ripiego else []
     try:
         import anthropic
         from home.anthropic_params import anthropic_model, response_text, thinking_params
@@ -152,7 +174,7 @@ def punti_chiave(articolo) -> list[str]:
             return punti
     except Exception as e:
         logger.warning("Reel animato: punti chiave AI non riusciti (%s), uso il sommario", e)
-    return punti_dal_sommario(articolo)
+    return punti_dal_sommario(articolo) if ripiego else []
 
 
 # -----------------------------------------------------------------------------
@@ -164,31 +186,50 @@ class ReelAnimatoGenerator(FacebookReelGenerator):
     # "sfuma" | "righe" | "evidenzia" (morbidi) | "parole" | "lettere" (a scatti) | "dissolvenza"
     testo = "evidenzia"         # scelta del 19/11/2026 dopo il confronto sui video di prova
 
-    def generate(self, articolo, punti: Optional[list[str]] = None) -> Optional[str]:
+    def generate(self, articolo, punti: Optional[list[str]] = None, riusa: bool = True) -> Optional[str]:
+        """Reel animato dell'articolo. Con REEL_ANIMATO=False, o se qualcosa va storto, il reel
+        fermo di FacebookReelGenerator: la pubblicazione non si ferma per un video.
+
+        `riusa`: come il reel fermo, un file dello stesso articolo generato da meno di
+        GENERATED_REUSE_TTL_SECONDS non si rifa' (Storia e Reel Instagram usano lo stesso MP4)."""
+        if not getattr(settings, "REEL_ANIMATO", True):
+            return super().generate(articolo)
         try:
+            output_mp4 = _reels_output_dir(self.config.output_dir_name) / f"{articolo.slug}.mp4"
+            if riusa and output_mp4.exists():
+                if time.time() - output_mp4.stat().st_mtime <= self.GENERATED_REUSE_TTL_SECONDS:
+                    logger.info(f"Reel animato: riuso {output_mp4.name}")
+                    return str(output_mp4)
+
             image_path = self._resolve_image_path(articolo)
             if not image_path:
                 logger.warning(f"Reel animato: nessuna immagine valida per '{articolo.titolo}'")
                 return None
             if punti is None:
-                punti = punti_chiave(articolo)
-            if punti:
-                # la durata dipende dai testi; vale anche per il sottofondo di riserva
-                self._durate = [self._durata_scena(articolo.titolo, SECONDI_TITOLO)]
-                self._durate += [self._durata_scena(p, SECONDI_PUNTO) for p in punti]
-                self._durate.append(SECONDI_FINALE)
-                self.config = replace(self.config, duration_seconds=sum(self._durate), fps=FPS_ANIMATO)
+                punti = punti_per(articolo)
+            if not punti:
+                logger.warning(f"Reel animato: nessun punto chiave per '{articolo.titolo}', uso il reel fermo")
+                return super().generate(articolo)
 
-            output_mp4 = _reels_output_dir(self.config.output_dir_name) / f"{articolo.slug}.mp4"
+            # I gestori (reel_manager, ig_reel_manager...) tengono un solo generatore per tutti gli
+            # articoli e le pubblicazioni girano in thread: durata e fotogrammi stanno su una copia
+            copia = copy.copy(self)
+            copia._durate = [copia._durata_scena(articolo.titolo, SECONDI_TITOLO)]
+            copia._durate += [copia._durata_scena(p, SECONDI_PUNTO) for p in punti]
+            copia._durate.append(SECONDI_FINALE)
+            copia.config = replace(self.config, duration_seconds=sum(copia._durate), fps=FPS_ANIMATO)
+
+            inizio = time.time()
             with tempfile.TemporaryDirectory(prefix="reel_") as tmpdir:
-                audio_path = self._prepare_audio(out_dir=Path(tmpdir))
-                self._render(image_path, articolo.titolo, articolo.categoria or "Notizie",
-                             punti, audio_path, output_mp4, Path(tmpdir))
-            logger.info(f"Reel animato generato: {output_mp4} ({output_mp4.stat().st_size // 1024} KB)")
+                audio_path = copia._prepare_audio(out_dir=Path(tmpdir))
+                copia._render(image_path, articolo.titolo, articolo.categoria or "Notizie",
+                              punti, audio_path, output_mp4, Path(tmpdir))
+            logger.info(f"Reel animato generato: {output_mp4} ({output_mp4.stat().st_size // 1024} KB, "
+                        f"{copia.config.duration_seconds:.0f}s di video in {time.time() - inizio:.0f}s)")
             return str(output_mp4)
         except Exception as e:
-            logger.error(f"Reel animato: errore per '{articolo.titolo}': {e}", exc_info=True)
-            return None
+            logger.error(f"Reel animato: errore per '{articolo.titolo}': {e}. Uso il reel fermo", exc_info=True)
+            return super().generate(articolo)
 
     def _durata_scena(self, testo: str, minimo: float) -> float:
         """Il tempo di scrivere il testo piu' quello di rileggerlo fermo, mai sotto `minimo`."""

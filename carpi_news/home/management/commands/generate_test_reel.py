@@ -113,7 +113,7 @@ class Command(BaseCommand):
             self.stdout.write(self.style.NOTICE(f"\n[{articolo.pk}] {articolo.titolo}"))
             for p in punti:
                 self.stdout.write(f"   - {p}")
-            path = generator.generate(articolo, punti=punti)
+            path = generator.generate(articolo, punti=punti, riusa=False)
             if path:
                 self.stdout.write(self.style.SUCCESS(f"   OK -> {path}"))
             else:

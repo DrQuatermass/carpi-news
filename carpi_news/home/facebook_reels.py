@@ -865,7 +865,16 @@ class FacebookReelManager:
     """Facade che combina generazione locale e pubblicazione su Facebook Stories."""
 
     def __init__(self):
-        self.generator = FacebookReelGenerator()
+        self._generator = None
+
+    @property
+    def generator(self):
+        """Reel animato (home.reel_animato), che da solo ripiega su quello fermo.
+        Creato al primo uso: reel_animato importa questo modulo."""
+        if self._generator is None:
+            from home.reel_animato import ReelAnimatoGenerator
+            self._generator = ReelAnimatoGenerator()
+        return self._generator
 
     def generate(self, articolo) -> Optional[str]:
         """Solo generazione locale (utile per anteprime/dev)."""
