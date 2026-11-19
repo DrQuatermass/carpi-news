@@ -25,6 +25,7 @@ import shutil
 import os
 import subprocess
 import tempfile
+import threading
 import time
 from dataclasses import replace
 from pathlib import Path
@@ -179,6 +180,16 @@ def punti_chiave(articolo, ripiego: bool = True) -> list[str]:
     return punti_dal_sommario(articolo) if ripiego else []
 
 
+_LUCCHETTI: dict = {}
+_GUARDIA = threading.Lock()
+
+
+def _lucchetto(percorso) -> threading.Lock:
+    """Un lucchetto per file di uscita, condiviso tra i thread del processo."""
+    with _GUARDIA:
+        return _LUCCHETTI.setdefault(str(percorso), threading.Lock())
+
+
 # -----------------------------------------------------------------------------
 # GENERATORE
 # -----------------------------------------------------------------------------
@@ -198,40 +209,55 @@ class ReelAnimatoGenerator(FacebookReelGenerator):
             return super().generate(articolo)
         try:
             output_mp4 = _reels_output_dir(self.config.output_dir_name) / f"{articolo.slug}.mp4"
-            if riusa and output_mp4.exists():
-                if time.time() - output_mp4.stat().st_mtime <= self.GENERATED_REUSE_TTL_SECONDS:
-                    logger.info(f"Reel animato: riuso {output_mp4.name}")
-                    return str(output_mp4)
-
-            image_path = self._resolve_image_path(articolo)
-            if not image_path:
-                logger.warning(f"Reel animato: nessuna immagine valida per '{articolo.titolo}'")
-                return None
-            if punti is None:
-                punti = punti_per(articolo)
-            if not punti:
-                logger.warning(f"Reel animato: nessun punto chiave per '{articolo.titolo}', uso il reel fermo")
-                return super().generate(articolo)
-
-            # I gestori (reel_manager, ig_reel_manager...) tengono un solo generatore per tutti gli
-            # articoli e le pubblicazioni girano in thread: durata e fotogrammi stanno su una copia
-            copia = copy.copy(self)
-            copia._durate = [copia._durata_scena(articolo.titolo, SECONDI_TITOLO)]
-            copia._durate += [copia._durata_scena(p, SECONDI_PUNTO) for p in punti]
-            copia._durate.append(SECONDI_FINALE)
-            copia.config = replace(self.config, duration_seconds=sum(copia._durate), fps=FPS_ANIMATO)
-
-            inizio = time.time()
-            with tempfile.TemporaryDirectory(prefix="reel_") as tmpdir:
-                audio_path = copia._prepare_audio(out_dir=Path(tmpdir))
-                copia._render(image_path, articolo.titolo, articolo.categoria or "Notizie",
-                              punti, audio_path, output_mp4, Path(tmpdir))
-            logger.info(f"Reel animato generato: {output_mp4} ({output_mp4.stat().st_size // 1024} KB, "
-                        f"{copia.config.duration_seconds:.0f}s di video in {time.time() - inizio:.0f}s)")
-            return str(output_mp4)
+            # Storia e Reel Instagram partono in due thread e vogliono lo stesso file: il secondo
+            # aspetta che il primo abbia finito e poi lo riusa. Il 19/11/2026 il Reel aveva preso
+            # il file mentre era ancora in scrittura e Meta lo aveva rifiutato (errore 2207082)
+            with _lucchetto(output_mp4):
+                return self._genera(articolo, punti, riusa, output_mp4)
         except Exception as e:
             logger.error(f"Reel animato: errore per '{articolo.titolo}': {e}. Uso il reel fermo", exc_info=True)
             return super().generate(articolo)
+
+    def _genera(self, articolo, punti, riusa: bool, output_mp4: Path) -> Optional[str]:
+        if riusa and output_mp4.exists():
+            if time.time() - output_mp4.stat().st_mtime <= self.GENERATED_REUSE_TTL_SECONDS:
+                logger.info(f"Reel animato: riuso {output_mp4.name}")
+                return str(output_mp4)
+
+        image_path = self._resolve_image_path(articolo)
+        if not image_path:
+            logger.warning(f"Reel animato: nessuna immagine valida per '{articolo.titolo}'")
+            return None
+        if punti is None:
+            punti = punti_per(articolo)
+        if not punti:
+            logger.warning(f"Reel animato: nessun punto chiave per '{articolo.titolo}', uso il reel fermo")
+            return FacebookReelGenerator.generate(self, articolo)
+
+        # I gestori (reel_manager, ig_reel_manager...) tengono un solo generatore per tutti gli
+        # articoli e le pubblicazioni girano in thread: durata e fotogrammi stanno su una copia
+        copia = copy.copy(self)
+        copia._durate = [copia._durata_scena(articolo.titolo, SECONDI_TITOLO)]
+        copia._durate += [copia._durata_scena(p, SECONDI_PUNTO) for p in punti]
+        copia._durate.append(SECONDI_FINALE)
+        copia.config = replace(self.config, duration_seconds=sum(copia._durate), fps=FPS_ANIMATO)
+
+        inizio = time.time()
+        with tempfile.TemporaryDirectory(prefix="reel_") as tmpdir:
+            audio_path = copia._prepare_audio(out_dir=Path(tmpdir))
+            # Si scrive su un file provvisorio e lo si rinomina a video chiuso: chi guarda la
+            # cartella (un altro processo, la pulizia periodica) non trova mai un MP4 a meta'
+            parziale = output_mp4.with_name(f"{output_mp4.stem}.parziale-{os.getpid()}.mp4")
+            try:
+                copia._render(image_path, articolo.titolo, articolo.categoria or "Notizie",
+                              punti, audio_path, parziale, Path(tmpdir))
+                os.replace(parziale, output_mp4)
+            finally:
+                if parziale.exists():
+                    parziale.unlink()
+        logger.info(f"Reel animato generato: {output_mp4} ({output_mp4.stat().st_size // 1024} KB, "
+                    f"{copia.config.duration_seconds:.0f}s di video in {time.time() - inizio:.0f}s)")
+        return str(output_mp4)
 
     def _durata_scena(self, testo: str, minimo: float) -> float:
         """Il tempo di scrivere il testo piu' quello di rileggerlo fermo, mai sotto `minimo`."""
