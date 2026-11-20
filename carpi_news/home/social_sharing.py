@@ -1088,6 +1088,11 @@ class SocialMediaManager:
                 logger.error("Impossibile ottenere Page Access Token")
                 return False
 
+            # Etichetta le visite che arrivano dal post: prima il link era l'indirizzo semplice
+            # e nei log il post della Pagina non si distingueva dal resto di Facebook
+            separatore = '&' if '?' in article_url else '?'
+            article_url = f"{article_url}{separatore}utm_source=facebook&utm_medium=post&utm_campaign=share"
+
             # Prepara il contenuto del post
             # Facebook supporta fino a 63206 caratteri, ma è meglio limitare
             message = f"{articolo.titolo}\n\n{articolo.sommario[:500]}"
