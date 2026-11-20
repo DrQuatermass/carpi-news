@@ -62,6 +62,7 @@ TIPO DI FONTE: scheda di un atto pubblicato all'albo pretorio (determinazione, o
 - Nel testo di' in parole semplici chi ha deciso e quando ("la giunta ha approvato il 4 novembre", "l'Unione ha deciso"), senza sigle, numeri di protocollo, CIG, CUP o articoli di legge. Non citare il tipo e il numero dell'atto ("determinazione n. 1111") e non chiudere con un rimando all'atto o all'albo pretorio ("la proroga arriva con la determinazione...", "consultabile all'albo"): il link alla fonte c'e' gia'. Chiudi come gli altri articoli, con l'ultima informazione utile.
 - Il motivo e le conseguenze solo se sono nella scheda, negli allegati o nelle ricerche; se non bastano, scrivi una notizia breve di servizio di 80-150 parole.
 - Ordinanze di viabilita' e cantieri: dove, da quando a quando, cosa cambia per chi passa.
+- Se la scheda si apre con "ATTO NON LETTO", non sai cosa l'atto dispone: conosci solo l'oggetto. Scrivi una notizia breve, 60-120 parole, che dice che l'atto e' stato pubblicato, da chi e su cosa, e che il suo contenuto non e' ancora noto alla redazione. Non dedurre cosa l'atto ordina, ne' a che punto sono lavori, cantieri o pratiche, dall'oggetto o dalle ricerche web: le notizie che trovi possono essere vecchie e l'atto puo' dire il contrario (un'ordinanza su un'opera puo' aprire un cantiere oppure dichiararlo concluso). Le ricerche servono solo a spiegare che cos'e' il luogo o l'opera, indicando a quando risale cio' che riporti.
 - Non riportare nomi di privati cittadini; le imprese che ricevono incarichi, lavori o contributi si'.""",
 }
 

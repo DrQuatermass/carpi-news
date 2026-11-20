@@ -3071,6 +3071,12 @@ ALBO_ALLEGATI_ESCLUSI_DEFAULT = ['parere', 'visto', 'comp_pdf', 'istanza', 'modu
 ALBO_PDF_MAX_CARATTERI = 30000
 
 
+ALBO_AVVISO_TESTO_NON_LETTO = (
+    "ATTO NON LETTO: i documenti pubblicati sono scansioni senza testo o file troppo "
+    "grandi. Di questo atto si conoscono solo i dati della scheda qui sotto, non cosa dispone."
+)
+
+
 class AlboItalsoftScraper(BaseScraper):
     """Albo pretorio online Italsoft (itaFrontOffice), usato dai Comuni delle Terre d'Argine
     e dall'Unione su trasparenza.terredargine.it/<ente>/?page_id=740.
@@ -3464,6 +3470,11 @@ class AlboItalsoftScraper(BaseScraper):
                 testi = []
             for etichetta, testo in testi:
                 scheda += f"\n\n{etichetta}:\n\n{testo}"
+            if documenti and not testi:
+                # In testa, cosi' si vede subito nella notizia grezza e nella email di notifica.
+                # Il 20/11/2026 un'ordinanza letta solo dall'oggetto e' diventata un articolo che
+                # dava per aperto un cantiere che l'atto dichiarava concluso (NOTE_FONTE['albo']).
+                scheda = ALBO_AVVISO_TESTO_NON_LETTO + "\n\n" + scheda
         return scheda
 
 

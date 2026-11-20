@@ -2582,6 +2582,7 @@ class AlboItalsoftScraperTests(SimpleTestCase):
                                            'https://albo.test/?pub_token=pdf'])
         self.assertIn("TESTO DELL'ATTO", testo)
         self.assertIn('ORDINA il senso unico alternato', testo)
+        self.assertNotIn('ATTO NON LETTO', testo)
         self.assertIn('ALLEGATO "planimetria.pdf"', testo)
         self.assertIn('Via Mazzini: chiusura dal 10 al 20 novembre', testo)
         self.assertLess(testo.index("TESTO DELL'ATTO"), testo.index('ALLEGATO "planimetria.pdf"'))
@@ -2599,9 +2600,11 @@ class AlboItalsoftScraperTests(SimpleTestCase):
         testo, chiesti = self._contenuto(dimensione='10.57 MiB', leggi_allegati=False)
         self.assertEqual(len(chiesti), 1)  # solo la scheda, il PDF non si scarica
         self.assertNotIn("TESTO DELL'ATTO", testo)
+        self.assertTrue(testo.startswith('ATTO NON LETTO:'))   # avviso per chi sceglie e per l'AI
 
         testo, _ = self._contenuto(testo_atto='Firmato digitalmente', testo_allegato='')  # scansioni
         self.assertNotIn("TESTO DELL'ATTO", testo)
+        self.assertTrue(testo.startswith('ATTO NON LETTO:'))
         self.assertNotIn('ALLEGATO "', testo)
         self.assertIn('Protocollo: 72505/2026', testo)
 
