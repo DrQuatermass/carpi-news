@@ -66,8 +66,35 @@ def _center_crop_box(image_width, image_height, target_ratio):
         return (left, 0, left + crop_width, image_height)
 
     crop_height = int(image_width / target_ratio)
-    top = (image_height - crop_height) // 2
+    # Foto verticale o quasi quadrata: il soggetto (un volto, di solito) sta nella parte alta, e il
+    # ritaglio al centro lo decapitava (20/11/2026, ritratto di Andrea Saltini: restava la maglietta).
+    # Si toglie poco sopra e molto sotto. Le foto orizzontali restano ritagliate al centro.
+    quota_sopra = QUOTA_SOPRA_VERTICALI if source_ratio < RAPPORTO_FOTO_STRETTA else 0.5
+    top = int((image_height - crop_height) * quota_sopra)
     return (0, top, image_width, top + crop_height)
+
+
+RAPPORTO_FOTO_STRETTA = 1.25     # larghezza/altezza sotto cui la foto conta come verticale o quadrata
+QUOTA_SOPRA_VERTICALI = 0.2      # del taglio in altezza, quanto si toglie sopra (0.5 = al centro)
+
+
+def _foto_intera_su_sfondo(img, size):
+    """Tutta la foto, non ritagliata, al centro di un riquadro `size`; ai lati la stessa foto
+    ingrandita, sfocata e un po' scurita. Per le anteprime social delle foto verticali."""
+    from PIL import ImageEnhance, ImageFilter
+
+    target_width, target_height = size
+    scala = max(target_width / img.width, target_height / img.height)
+    sfondo = img.resize((max(1, round(img.width * scala)), max(1, round(img.height * scala))),
+                        Image.Resampling.BILINEAR)
+    left = (sfondo.width - target_width) // 2
+    top = (sfondo.height - target_height) // 2
+    sfondo = sfondo.crop((left, top, left + target_width, top + target_height))
+    sfondo = ImageEnhance.Brightness(sfondo.filter(ImageFilter.GaussianBlur(28))).enhance(0.82)
+    larghezza = max(1, round(img.width * target_height / img.height))
+    intera = img.resize((larghezza, target_height), Image.Resampling.LANCZOS)
+    sfondo.paste(intera, ((target_width - larghezza) // 2, 0))
+    return sfondo
 
 
 # Qualità JPEG per la variante social. Il JPEG serve perché Facebook, WhatsApp e
@@ -101,7 +128,14 @@ def crop_resize_social_jpeg(source_path, output_path, size=None, quality=SOCIAL_
     """Genera la variante social in JPEG (di default nel formato 16x9 1200x675)."""
     if size is None:
         size = ARTICLE_IMAGE_VARIANTS["16x9"]
-    resized = _crop_resize(source_path, size)
+    # Foto verticale o quasi quadrata: in 16:9 se ne perderebbe meta'. Nell'anteprima di Facebook,
+    # WhatsApp e Telegram va intera, con i lati riempiti dalla foto stessa sfocata.
+    with Image.open(source_path) as img:
+        img = _to_rgb(img)
+        stretta = img.width / img.height < RAPPORTO_FOTO_STRETTA
+        resized = _foto_intera_su_sfondo(img, size) if stretta else None
+    if resized is None:
+        resized = _crop_resize(source_path, size)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     resized.save(output_path, "JPEG", quality=quality, optimize=True, progressive=True)
 

@@ -224,6 +224,7 @@ The project uses Django's media files system for storing downloaded images:
 - **Download System**: Automatic download for Comune Carpi GraphQL API images
 - **Image Validation**: Smart caching system validates external image URLs
 - **URL Encoding**: Automatic fix for image URLs with spaces (La Voce di Carpi)
+- **Foto verticali o quasi quadrate** (larghezza/altezza sotto 1,25; dal 20/11/2026, `home/image_variants.py`): le varianti del sito (16:9, 4:3, 1:1) si ritagliano verso l'alto e non al centro, dove tagliavano i volti; il JPEG social delle anteprime (Facebook, WhatsApp, Telegram) mostra la foto intera con i lati riempiti dalla foto stessa sfocata. Il post Instagram parte dalla foto originale, come il Reel. `smartcrop` non e' installato sul server: il ritaglio e' sempre quello di `_center_crop_box`.
 
 **Media files are served by Apache in production:**
 ```apache

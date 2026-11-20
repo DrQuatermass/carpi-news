@@ -165,6 +165,19 @@ class SocialMediaManager:
             return self._get_absolute_image_url(str(articolo.foto).strip())
         return None
 
+    def _get_article_original_image_url(self, articolo) -> Optional[str]:
+        """URL assoluto della foto originale dell'articolo (caricata o scaricata), non ritagliata."""
+        site_url = getattr(settings, 'SITE_URL', 'https://ombradelportico.it')
+        if getattr(articolo, 'foto_upload', None):
+            try:
+                if articolo.foto_upload.name:
+                    return self._normalize_url(f"{site_url}{articolo.foto_upload.url}")
+            except (ValueError, AttributeError):
+                pass
+        if articolo.foto and str(articolo.foto).strip():
+            return self._get_absolute_image_url(str(articolo.foto).strip())
+        return None
+
     def _log_enabled_platforms(self) -> None:
         enabled = [name for name, cfg in self.platforms.items() if cfg.get('enabled')]
         logger.info(
@@ -1319,7 +1332,10 @@ class SocialMediaManager:
                 caption = caption[:2197] + "..."
 
             # URL immagine assoluto
-            original_image_url = self._get_article_image_url(articolo)
+            # La foto originale, come il Reel, e non la variante 16:9 delle anteprime: da quella il
+            # riquadro quadrato del modello ritagliava una seconda volta e teneva solo il centro
+            original_image_url = (self._get_article_original_image_url(articolo)
+                                  or self._get_article_image_url(articolo))
             if not original_image_url:
                 error = "URL immagine non valido (né foto né foto_upload utilizzabili)"
                 logger.error(error)
