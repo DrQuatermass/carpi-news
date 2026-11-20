@@ -685,7 +685,9 @@ def _share_article_background(article_id, article_title):
         from django.core.cache import cache
         from .models import SocialPublicationLog
         lock_key = f'share_article_lock_{article_id}'
-        lock_timeout = 180  # 3 minuti (tempo massimo stimato per condivisione completa)
+        # 15 minuti: con il video (2-3 minuti di lavorazione) la condivisione completa supera i 3
+        # minuti di prima. Il lucchetto si toglie comunque a fine condivisione.
+        lock_timeout = 900
 
         # Tenta di acquisire il lock (atomic operation)
         if not cache.add(lock_key, 'locked', lock_timeout):

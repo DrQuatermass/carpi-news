@@ -122,27 +122,33 @@ class ArticoliFeedRSS(Feed):
 
     def _notify_telegram_for_new_articles(self, articoli):
         """Notifica su Telegram gli articoli che appaiono nel feed per la prima volta"""
-        from .social_sharing import social_manager
-        import logging
-        logger = logging.getLogger(__name__)
+        import threading
+        from .models import SocialPublicationLog
+        from .signals import _share_article_background
 
         for articolo in articoli:
             # Salta se già notificato
             if articolo.telegram_notified:
                 continue
 
-            # Notifica su Telegram
             try:
-                results = social_manager.share_article_on_approval(articolo)
-                if results.get('telegram'):
-                    # Segna come notificato
-                    articolo.telegram_notified = True
-                    articolo.save(update_fields=['telegram_notified'])
-                    logger.info(f"[FEED] Articolo notificato su Telegram: {articolo.titolo}")
-                else:
-                    logger.warning(f"[FEED] Notifica Telegram fallita per: {articolo.titolo}")
+                if SocialPublicationLog.objects.filter(
+                    articolo=articolo, platform='telegram', success=True
+                ).exists():
+                    Articolo.objects.filter(pk=articolo.pk).update(telegram_notified=True)
+                    continue
+                # Mai condividere dentro la richiesta del feed: con i video la condivisione dura
+                # minuti, gunicorn chiude la richiesta a 30 secondi e le piattaforme prenotate
+                # restano "In progress..." (20/11/2026). Parte in background, con lo stesso
+                # lucchetto dell'approvazione: se la condivisione e' gia' in corso non fa nulla.
+                threading.Thread(
+                    target=_share_article_background,
+                    args=(articolo.id, articolo.titolo),
+                    name=f"ShareArticleFeed-{articolo.id}",
+                    daemon=True,
+                ).start()
             except Exception as e:
-                logger.error(f"[FEED] Errore notifica Telegram per {articolo.titolo}: {e}")
+                logger.error(f"[FEED] Errore avvio condivisione per {articolo.titolo}: {e}")
 
     def feed_extra_kwargs(self, obj):
         """Aggiungi metadati extra al feed basati sull'ultimo articolo approvato"""
