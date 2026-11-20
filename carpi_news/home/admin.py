@@ -200,7 +200,7 @@ class MonitorConfigForm(forms.ModelForm):
             <p><strong>max_giorni</strong>: Solo atti pubblicati negli ultimi N giorni (default: 3)</p>
             <p><strong>leggi_dettaglio</strong>: Legge la scheda dell'atto: settore, protocollo, documenti (default: true)</p>
             <p><strong>leggi_pdf</strong>: Aggiunge il testo del documento principale, anche dai .p7m firmati (default: true)</p>
-            <p><strong>pdf_max_mb</strong>: Documenti piu' grandi non vengono scaricati, di solito scansioni (default: 5)</p>
+            <p><strong>pdf_max_mb</strong>: Documenti piu' grandi non vengono scaricati, di solito scansioni (default: 10)</p>
             <p><strong>pdf_max_caratteri</strong>: Lunghezza massima del testo; oltre si tengono inizio e parte dispositiva (default: 15000)</p>
 """
 

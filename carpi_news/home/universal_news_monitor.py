@@ -3087,7 +3087,7 @@ class AlboItalsoftScraper(BaseScraper):
       leggi_dettaglio legge la scheda dell'atto (settore, protocollo, documenti), default true
       leggi_pdf       aggiunge il testo del documento principale (ATTO), default true; i .p7m
                       firmati vengono aperti, le scansioni senza testo saltate
-      pdf_max_mb      documenti piu' grandi non vengono scaricati (default 5: le scansioni
+      pdf_max_mb      documenti piu' grandi non vengono scaricati (default 10, dal 20/11/2026: le scansioni
                       delle ordinanze sono ~10 MB)
       pdf_max_caratteri testo massimo di atto + allegati (default ALBO_PDF_MAX_CARATTERI);
                       oltre si tengono inizio e parte dispositiva
@@ -3103,7 +3103,7 @@ class AlboItalsoftScraper(BaseScraper):
         self.max_giorni = int(cfg.get('max_giorni', 3))
         self.leggi_dettaglio = cfg.get('leggi_dettaglio', True)
         self.leggi_pdf = cfg.get('leggi_pdf', True)
-        self.pdf_max_byte = int(float(cfg.get('pdf_max_mb', 5)) * 1024 * 1024)
+        self.pdf_max_byte = int(float(cfg.get('pdf_max_mb', 10)) * 1024 * 1024)
         self.pdf_max_caratteri = int(cfg.get('pdf_max_caratteri', ALBO_PDF_MAX_CARATTERI))
         self.leggi_allegati = cfg.get('leggi_allegati', True)
         self.max_allegati = int(cfg.get('max_allegati', 3))
