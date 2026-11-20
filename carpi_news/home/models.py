@@ -545,8 +545,13 @@ class Articolo(models.Model):
             if webp_name.endswith('.webp'):
                 import os
                 jpeg_name = webp_name[:-5] + '.jpg'
-                if os.path.exists(os.path.join(settings.MEDIA_ROOT, jpeg_name)):
-                    return f"{site_url}{self.image_16x9.url[:-5]}.jpg"
+                jpeg_path = os.path.join(settings.MEDIA_ROOT, jpeg_name)
+                if os.path.exists(jpeg_path):
+                    # ?v=<data del file>: Facebook e i browser tengono l'immagine in memoria per
+                    # indirizzo (i media escono con cache di un anno). Se il JPEG viene rifatto,
+                    # l'indirizzo cambia e l'anteprima si aggiorna (20/11/2026, foto verticali).
+                    versione = int(os.path.getmtime(jpeg_path))
+                    return f"{site_url}{self.image_16x9.url[:-5]}.jpg?v={versione}"
             image_16x9_url = self._absolute_media_field_url(self.image_16x9)
             if image_16x9_url:
                 return image_16x9_url
