@@ -701,6 +701,19 @@ def _share_article_background(article_id, article_title):
 
             articolo = Articolo.objects.get(pk=article_id)
 
+            # La localizzazione parte insieme a questa condivisione e impiega qualche secondo
+            # (AI + coordinate): senza attenderla il primo post usciva con il comune vecchio o
+            # vuoto. Al massimo 20 secondi, poi si pubblica con quello che c'e'.
+            if articolo.luogo_origine != 'manuale':
+                from datetime import timedelta
+                partenza = timezone.now() - timedelta(seconds=30)
+                for _ in range(20):
+                    aggiornato = Articolo.objects.filter(pk=article_id).values_list('luogo_aggiornato', flat=True).first()
+                    if aggiornato and aggiornato >= partenza:
+                        break
+                    time.sleep(1)
+                articolo = Articolo.objects.get(pk=article_id)
+
             # Verifica che sia ancora approvato (doppio controllo)
             if not articolo.approvato:
                 logger.warning(f"[Background Thread] Articolo '{article_title}' non più approvato, annullo condivisione")
