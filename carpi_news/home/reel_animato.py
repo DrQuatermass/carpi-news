@@ -79,6 +79,7 @@ EVIDENZIA_PAROLE_AL_SECONDO = 3.5 # "evidenzia": testo grigio subito, l'inchiost
 EVIDENZIA_PAUSA = 1.5             # secondi a testo tutto evidenziato prima di cambiare schermata
 EVIDENZIA_SFUMATURA = 90          # px del bordo morbido dell'inchiostro
 GRIGIO_TESTO = (168, 166, 158)
+GRIGIO_SCURO = (118, 116, 110)     # prova: leggibile anche prima che passi l'inchiostro
 MODI_MORBIDI = ("sfuma", "righe", "evidenzia")
 SECONDI_TITOLO = 3.0              # durata minima della scena del titolo
 SECONDI_PUNTO = 4.0               # durata minima di ogni punto
@@ -247,6 +248,12 @@ class ReelAnimatoGenerator(FacebookReelGenerator):
 
     # "sfuma" | "righe" | "evidenzia" (morbidi) | "parole" | "lettere" (a scatti) | "dissolvenza"
     testo = "evidenzia"         # scelta del 19/11/2026 dopo il confronto sui video di prova
+    # Titolo dal primo fotogramma (20/11/2026): sul Reel Facebook tre persone su quattro uscivano
+    # entro il secondo 0:01, quando il titolo era ancora in dissolvenza e in grigio chiaro.
+    # "scuro" (scelta di Sven sui video di prova): tutto il titolo subito in grigio scuro, poi
+    # l'inchiostro lo percorre. "chiaro": lo stesso con il grigio dei punti. "nero": gia' nero,
+    # senza inchiostro. False: come prima, compare in mezzo secondo in grigio chiaro.
+    titolo_subito = "scuro"
 
     def generate(self, articolo, punti: Optional[list[str]] = None, riusa: bool = True) -> Optional[str]:
         """Reel animato dell'articolo. Con REEL_ANIMATO=False, o se qualcosa va storto, il reel
@@ -430,6 +437,13 @@ class ReelAnimatoGenerator(FacebookReelGenerator):
         font = scena["font"]
         if self.testo == "evidenzia":
             pieno = scena["layer"].getchannel("A")
+            subito = scena.get("subito")
+            if subito is True or subito == "nero":
+                return [(INCHIOSTRO, pieno)]
+            colore_base = GRIGIO_TESTO
+            if subito:              # "chiaro" | "scuro": grigio pieno dal primo fotogramma, poi l'inchiostro
+                colore_base = GRIGIO_SCURO if subito == "scuro" else GRIGIO_TESTO
+                tau += 0.45
             entrata = self._morbido(tau / 0.45)
             grigio = pieno if entrata >= 1 else pieno.point(lambda v, f=entrata: int(v * f))
             # l'inchiostro avanza in modo continuo lungo le righe, con il bordo sfumato
@@ -452,7 +466,7 @@ class ReelAnimatoGenerator(FacebookReelGenerator):
                     if xs >= x - 20:
                         draw.rectangle([(xs, y), (xs + 3, y1)],
                                        fill=int(255 * (1 - self._morbido(i / EVIDENZIA_SFUMATURA))))
-            return [(GRIGIO_TESTO, grigio), (INCHIOSTRO, ImageChops.multiply(pieno, tenda))]
+            return [(colore_base, grigio), (INCHIOSTRO, ImageChops.multiply(pieno, tenda))]
 
         maschera = Image.new("L", dim, 0)
         draw = ImageDraw.Draw(maschera)
@@ -497,6 +511,7 @@ class ReelAnimatoGenerator(FacebookReelGenerator):
 
         # scene: titolo, poi i punti che si dividono il tempo rimasto
         scene = [(self._scena(title, altezza, (68, 62, 58, 54, 50), 4), self._durate[0] if punti else durata)]
+        scene[0][0]["subito"] = self.titolo_subito
         for p, d in zip(punti, self._durate[1:]):
             scene.append((self._scena(p, altezza, (62, 58, 54, 50, 46), 4), d))
         if punti:
