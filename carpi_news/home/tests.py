@@ -2708,3 +2708,43 @@ class PolisherElenchiHtmlTests(SimpleTestCase):
                          '<p>Testo con <strong>nome</strong>.</p>')
         self.assertEqual(self._pulisci('Primo paragrafo\n\nSecondo paragrafo.'),
                          '<p>Primo paragrafo.</p>\n\n<p>Secondo paragrafo.</p>')
+
+
+class AttoLettoAllaRielaborazioneTests(TestCase):
+    """Notizia grezza dell'albo con l'avviso "ATTO NON LETTO": alla rielaborazione si legge l'atto."""
+
+    def _grezza(self):
+        return Articolo.objects.create(
+            titolo='Ordinanza n. 34: ciclabile', categoria='Attualità', approvato=False,
+            fonte='https://albo.test/carpi/?page_id=740#reg-2173-2026',
+            contenuto='ATTO NON LETTO: i documenti pubblicati sono scansioni.\n\nN. registro albo: 2173/2026')
+
+    def test_il_testo_letto_sostituisce_l_avviso(self):
+        from home.rielaborazione_ai import _con_testo_dell_atto
+        a = self._grezza()
+        with patch('home.albo_scansioni.leggi_atto', return_value="TESTO DELL'ATTO (trascritto):\n\nORDINA la creazione") as letto:
+            testo = _con_testo_dell_atto(a, Mock(), a.contenuto)
+        letto.assert_called_once()
+        self.assertNotIn('ATTO NON LETTO', testo)
+        self.assertTrue(testo.startswith('N. registro albo: 2173/2026'))
+        self.assertIn('ORDINA la creazione', testo)
+        a.refresh_from_db()
+        self.assertIn('ORDINA la creazione', a.contenuto)      # salvato sulla grezza
+        self.assertNotIn('ATTO NON LETTO', a.contenuto)
+
+    def test_senza_avviso_o_senza_testo_non_cambia_nulla(self):
+        from home.rielaborazione_ai import _con_testo_dell_atto
+        a = self._grezza()
+        with patch('home.albo_scansioni.leggi_atto') as letto:
+            self.assertEqual(_con_testo_dell_atto(a, Mock(), 'N. registro albo: 1/2026'), 'N. registro albo: 1/2026')
+        letto.assert_not_called()
+        with patch('home.albo_scansioni.leggi_atto', return_value=''):
+            self.assertEqual(_con_testo_dell_atto(a, Mock(), a.contenuto), a.contenuto)
+        with patch('home.albo_scansioni.leggi_atto', side_effect=RuntimeError('albo irraggiungibile')):
+            self.assertEqual(_con_testo_dell_atto(a, Mock(), a.contenuto), a.contenuto)
+
+    def test_registro_dalla_fonte(self):
+        from home.albo_scansioni import _registro_da_fonte
+        self.assertEqual(_registro_da_fonte('https://albo.test/carpi/?page_id=740#reg-2173-2026'),
+                         ('https://albo.test/carpi/?page_id=740', '2173/2026'))
+        self.assertEqual(_registro_da_fonte('https://temponews.it/articolo/'), (None, None))

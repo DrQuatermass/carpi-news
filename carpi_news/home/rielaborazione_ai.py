@@ -126,6 +126,33 @@ def pagine_linkate(articolo):
     return pagine
 
 
+def _con_testo_dell_atto(articolo, monitor, testo):
+    """Notizia grezza dell'albo che si apre con l'avviso "ATTO NON LETTO": si prova a leggere
+    l'atto adesso (scansione trascritta dall'AI, vedi home/albo_scansioni.py). Se riesce,
+    l'avviso sparisce e il testo dell'atto si aggiunge alla scheda; se no resta tutto com'e'
+    e vale la regola della notizia breve."""
+    from home.universal_news_monitor import ALBO_AVVISO_TESTO_NON_LETTO
+
+    if not testo.startswith(ALBO_AVVISO_TESTO_NON_LETTO.split(':')[0] + ':'):
+        return testo
+    try:
+        from home.albo_scansioni import leggi_atto
+        atto = leggi_atto(articolo, monitor)
+    except Exception as e:
+        logger.warning(f"Articolo {articolo.id}: atto non letto alla rielaborazione: {e}")
+        return testo
+    if not atto:
+        return testo
+    scheda = testo.split('\n\n', 1)[1] if '\n\n' in testo else ''
+    # Si salva anche sulla notizia: se la rielaborazione fallisce, il testo letto non va perso
+    from home.models import Articolo
+    from django.utils.html import escape
+    nuovo = f"{scheda}\n\n{atto}".strip()
+    Articolo.objects.filter(pk=articolo.pk, approvato=False).update(
+        contenuto="".join(f"<p>{escape(p)}</p>" for p in nuovo.split("\n\n")))
+    return nuovo
+
+
 def rielabora_articolo(articolo_id, richieste_modifica=None):
     """Rielabora in modo sincrono (1-3 minuti). Ritorna il messaggio della pipeline."""
     from home.models import Articolo
@@ -142,6 +169,8 @@ def rielabora_articolo(articolo_id, richieste_modifica=None):
     testo = re.sub(r'<[^>]+>', ' ', articolo.contenuto or '')
     testo = re.sub(r'[ \t]+', ' ', testo)
     testo = re.sub(r'\n\s*\n+', '\n\n', testo).strip()
+
+    testo = _con_testo_dell_atto(articolo, monitor, testo)
 
     trascrizione = _trascrizione_video(articolo)
     if trascrizione:
