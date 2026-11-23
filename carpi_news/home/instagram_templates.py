@@ -6,7 +6,7 @@ Produce un'immagine 1080x1080 in stile coerente con il Reel:
 - Card quadrata con foto articolo + bordo oro
 - Badge categoria
 - Titolo Playfair Display (max 2 righe, ellipsis automatica)
-- CTA "Leggi nel link in bio"
+- CTA "Scrivi LINK" con la spiegazione del DM automatico (dal 23/11/2026; prima "Leggi nel link in bio")
 - Sfondo blurred dell'articolo stesso, scurito per leggibilita'
 
 Punto d'ingresso pubblico:
@@ -48,6 +48,15 @@ LAYOUT = {
     "title_y_end": 922,
     "cta_y": 985,
 }
+
+
+# Invito del DM automatico (home/views_webhooks.py): solo su Instagram, dove i link nelle
+# didascalie e nei commenti non sono cliccabili. Post, Storie, Reel e copertine usano questi testi.
+IG_CTA_PULSANTE = "Scrivi LINK"
+IG_CTA_SPIEGAZIONE = "per l'articolo completo"
+# Riga fissa sotto titolo e punti chiave del video Instagram (la schermata finale ha il pulsante)
+IG_CTA_INVITO = "Scrivi LINK per l'articolo completo"
+IG_CTA_DIDASCALIA = "Commenta LINK per l'articolo completo. Lo trovi anche nel link in bio."
 
 
 def _project_base_dir() -> Path:
@@ -287,8 +296,9 @@ def render_instagram_post(
     slug: str,
     title: str,
     category: str = "Notizie",
-    cta_line_1: str = "Leggi nel link in bio",
+    cta_line_1: str = IG_CTA_PULSANTE,
     cta_line_2: str = "",
+    cta_hint: str = IG_CTA_SPIEGAZIONE,
 ) -> Optional[Path]:
     """
     Genera il template Instagram 1080x1080 a partire dall'immagine dell'articolo.
@@ -363,7 +373,7 @@ def render_instagram_post(
             pill_w = min(SIZE - 150, max_line_w + pad_x * 2)
             pill_h = len(cta_lines) * line_h + pad_y * 2
             pill_x = (SIZE - pill_w) // 2
-            pill_y = 948
+            pill_y = 940 if cta_hint else 948   # piu' su quando sotto c'e' la spiegazione
             draw.rounded_rectangle(
                 [(pill_x, pill_y), (pill_x + pill_w, pill_y + pill_h)],
                 radius=6,
@@ -383,6 +393,18 @@ def render_instagram_post(
                     emoji_font,
                     WHITE + (255,),
                 )
+
+            # Riga di spiegazione sotto il pulsante: cosa succede se si scrive LINK
+            if cta_hint:
+                hint_font = _load_sans(26, [
+                    "/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf",
+                    "C:/Windows/Fonts/arial.ttf",
+                    "/System/Library/Fonts/Supplemental/Arial.ttf",
+                    "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+                ])
+                hb = draw.textbbox((0, 0), cta_hint, font=hint_font)
+                draw.text(((SIZE - (hb[2] - hb[0])) // 2, pill_y + pill_h + 10), cta_hint,
+                          font=hint_font, fill=MUTED + (255,))
 
         final = Image.alpha_composite(bg, overlay).convert("RGB")
         out_path = _output_dir() / f"{slug}_ig.jpg"

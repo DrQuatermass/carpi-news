@@ -1773,7 +1773,7 @@ class InstagramWebhookTests(TestCase):
             json=Mock(return_value={"caption": caption, "media_product_type": media_product_type, "id": "x"}),
         )
 
-    def _comment_payload(self, sender, media_id, text="🔥"):
+    def _comment_payload(self, sender, media_id, text="LINK"):
         return {
             "object": "instagram",
             "entry": [{
@@ -1854,6 +1854,21 @@ class InstagramWebhookTests(TestCase):
 
         self.assertEqual(self._dm_count(mock_post), 2)
 
+    @patch("home.views_webhooks.requests.post")
+    def test_emoji_and_reactions_do_not_trigger_by_default(self, mock_post):
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.text = "{}"
+        self._signed_post(self._comment_payload("emoji-user", "media-1", text="Che vergogna 🤬🔥"))
+        self._signed_post({
+            "entry": [{"changes": [{"field": "message_reactions", "value": {
+                "sender": {"id": "reaction-user"}, "media": {"id": "media-1"}, "reaction": {"emoji": "❤️"},
+            }}]}]
+        })
+        self.assertEqual(self._dm_count(mock_post), 0)
+
+        self._signed_post(self._comment_payload("link-user", "media-1", text="link per favore 🙏"))
+        self.assertEqual(self._dm_count(mock_post), 1)
+
     def _signed_post(self, payload):
         body = json.dumps(payload).encode("utf-8")
         signature = hmac.new(b"secret", body, hashlib.sha256).hexdigest()
@@ -1887,6 +1902,7 @@ class InstagramWebhookTests(TestCase):
         )
         self.assertEqual(response.status_code, 403)
 
+    @override_settings(INSTAGRAM_AUTO_DM_ACCEPT_ANY_EMOJI=True)
     @patch("home.views_webhooks.requests.post")
     def test_valid_reaction_sends_dm_and_rate_limits(self, mock_post):
         mock_post.return_value.status_code = 200
@@ -2015,6 +2031,7 @@ class InstagramWebhookTests(TestCase):
         self.assertTrue(InstagramOptOut.objects.filter(ig_user_id="ig-stop").exists())
         mock_post.assert_not_called()
 
+    @override_settings(INSTAGRAM_AUTO_DM_ACCEPT_ANY_EMOJI=True)
     @patch("home.views_webhooks.requests.post")
     def test_text_emoji_reply_sends_dm(self, mock_post):
         mock_post.return_value.status_code = 200
@@ -2089,6 +2106,7 @@ class InstagramWebhookTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(mock_post.call_count, 1)
 
+    @override_settings(INSTAGRAM_AUTO_DM_ACCEPT_ANY_EMOJI=True)
     @patch("home.views_webhooks.requests.post")
     def test_reel_comment_with_emoji_triggers_dm(self, mock_post):
         mock_post.return_value.status_code = 200
@@ -2207,6 +2225,7 @@ class InstagramWebhookTests(TestCase):
         self.assertEqual(self._signed_post(mapped_payload).status_code, 200)
         self.assertEqual(mock_post.call_count, 1)
 
+    @override_settings(INSTAGRAM_AUTO_DM_ACCEPT_ANY_EMOJI=True)
     @patch("home.views_webhooks.requests.post")
     def test_story_reaction_unmapped_media_falls_back_to_recent_story(self, mock_post):
         mock_post.return_value.status_code = 200
@@ -2230,6 +2249,7 @@ class InstagramWebhookTests(TestCase):
         self.assertEqual(mock_post.call_count, 1)
 
     @override_settings(INSTAGRAM_AUTO_DM_STORY_FALLBACK_MINUTES=0)
+    @override_settings(INSTAGRAM_AUTO_DM_ACCEPT_ANY_EMOJI=True)
     @patch("home.views_webhooks.requests.post")
     def test_story_fallback_can_be_disabled(self, mock_post):
         payload = {
@@ -2250,6 +2270,7 @@ class InstagramWebhookTests(TestCase):
         self.assertEqual(response.status_code, 200)
         mock_post.assert_not_called()
 
+    @override_settings(INSTAGRAM_AUTO_DM_ACCEPT_ANY_EMOJI=True)
     @patch("home.views_webhooks.requests.post")
     def test_messaging_payload_reaction_without_media_falls_back_to_recent_story(self, mock_post):
         mock_post.return_value.status_code = 200
@@ -2890,3 +2911,22 @@ class AttoLettoAllaRielaborazioneTests(TestCase):
         self.assertEqual(_registro_da_fonte('https://albo.test/carpi/?page_id=740#reg-2173-2026'),
                          ('https://albo.test/carpi/?page_id=740', '2173/2026'))
         self.assertEqual(_registro_da_fonte('https://temponews.it/articolo/'), (None, None))
+
+
+class VideoInstagramSeparatoTests(SimpleTestCase):
+    """Dal 23/11/2026 Facebook e Instagram hanno video diversi: solo Instagram spiega il DM."""
+
+    def test_cartelle_e_scritte_diverse(self):
+        from home.instagram_story import InstagramReelGenerator, InstagramStoryGenerator
+        from home.instagram_templates import IG_CTA_INVITO
+        from home.reel_animato import ReelAnimatoGenerator
+
+        fb = ReelAnimatoGenerator()
+        self.assertEqual(fb.config.output_dir_name, "reels")
+        self.assertEqual(fb.config.cta_text, "Leggi su ombradelportico.it")
+        self.assertEqual(fb.invito_testi, "")
+        for gen in (InstagramStoryGenerator(), InstagramReelGenerator()):
+            self.assertEqual(gen.config.output_dir_name, "ig_video")
+            # alla fine il sito come su Facebook, l'invito sta sotto i testi
+            self.assertEqual(gen.config.cta_text, "Leggi su ombradelportico.it")
+            self.assertEqual(gen.invito_testi, IG_CTA_INVITO)

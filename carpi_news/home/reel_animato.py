@@ -12,6 +12,9 @@ chiave API o se la chiamata fallisce si usano le prime frasi del sommario.
 
 Dal 19/11/2026 e' il video di Storie e Reel di Facebook e Instagram (REEL_ANIMATO=False
 per tornare al reel fermo). I punti si salvano in Articolo.reel_punti, correggibili dall'admin.
+Dal 23/11/2026 i video sono due: Facebook (media/reels, "Leggi su ombradelportico.it") e
+Instagram (media/ig_video): sotto titolo e punti la riga fissa "Scrivi LINK per l'articolo
+completo", alla fine il pulsante "Scrivi LINK" (DM automatico, c'e' solo su Instagram).
     python manage.py generate_test_reel --animato [--ultimi 5 | --id N | --slug S]
 """
 
@@ -52,14 +55,12 @@ MAX_CARATTERI_PUNTO = 95
 #   (il logo a 60 px ci finiva sotto);
 # - Reel Instagram: nome, audio e didascalia da circa 1480 px in giu' (il titolo ci finiva sotto),
 #   colonna dei pulsanti a destra da x = 950, tra 980 e 1730 px.
-# Lo stesso video serve Storie e Reel, quindi vale il vincolo piu' stretto di ciascun lato.
+# Lo stesso impaginato serve Storie e Reel, quindi vale il vincolo piu' stretto di ciascun lato.
 LOGO_Y, LOGO_H = 200, 100
 CARD_Y = LOGO_Y + LOGO_H + 20
 LATO_FOTO = 750
 LARGHEZZA_TESTO = 800             # centrato: da 140 a 940 px, a sinistra dei pulsanti dei Reel
 FONDO_COPERTO = 450               # px in basso da lasciare liberi
-CARTELLA_VIDEO_UNICO = "ig_video"  # sotto media/: e' l'indirizzo pubblico da cui Instagram scarica il video
-PULSANTE_VIDEO_UNICO = "Leggi su ombradelportico.it"
 BARRA_Y = CARD_Y + LATO_FOTO + 16
 BARRA_H = 6
 BADGE_Y = BARRA_Y + BARRA_H + 22
@@ -87,6 +88,8 @@ SECONDI_FINALE = 2.5              # schermata finale con il pulsante
 SECONDI_LETTURA = 1.8             # tempo a testo fermo dopo l'ultima parola scritta
 ENTRATA, USCITA = 0.35, 0.50      # secondi di comparsa e scomparsa del testo
 BARRA_VUOTA = (221, 217, 207)
+INVITO_ALTEZZA = 90               # px tolti in fondo alla zona del testo per la riga dell'invito
+INVITO_CORPO = 40
 
 PROMPT_PUNTI = """Sei il redattore social di un giornale locale. Da questo articolo ricava 3 punti \
 per un video verticale: tre frasi brevi che, lette una dopo l'altra dopo il titolo, danno la notizia \
@@ -238,12 +241,10 @@ def _lucchetto(percorso) -> threading.Lock:
 class ReelAnimatoGenerator(FacebookReelGenerator):
     """MP4 verticale 1080x1920 con foto in movimento, titolo e punti chiave in sequenza."""
 
-    # Un solo video per articolo, usato da Storia e Reel di Facebook e Instagram: stessa cartella
-    # (quella servita in pubblico per Instagram) e stessa scritta sul pulsante finale. Prima ogni
-    # piattaforma rifaceva il suo, 2-3 minuti di calcolo l'uno, solo per la scritta diversa.
-    # False (prove): cartella e scritta della configurazione ricevuta.
-    video_unico = True
-    # mezz'ora: il tempo perche' tutte le pubblicazioni di un articolo trovino il video gia' fatto
+    # Cartella e scritta finale vengono dalla configurazione: Storia e Reel di Facebook
+    # condividono media/reels, Storia e Reel di Instagram media/ig_video. Dal 19 al 23/11/2026 il
+    # video era uno solo per tutti, ma Instagram ora spiega il DM automatico e Facebook no.
+    # mezz'ora: il tempo perche' le pubblicazioni della stessa piattaforma trovino il video gia' fatto
     GENERATED_REUSE_TTL_SECONDS = 1800
 
     # "sfuma" | "righe" | "evidenzia" (morbidi) | "parole" | "lettere" (a scatti) | "dissolvenza"
@@ -254,6 +255,8 @@ class ReelAnimatoGenerator(FacebookReelGenerator):
     # l'inchiostro lo percorre. "chiaro": lo stesso con il grigio dei punti. "nero": gia' nero,
     # senza inchiostro. False: come prima, compare in mezzo secondo in grigio chiaro.
     titolo_subito = "scuro"
+    # Riga fissa sotto titolo e punti (Instagram: "Scrivi LINK per l'articolo completo"); vuota su Facebook
+    invito_testi = ""
 
     def generate(self, articolo, punti: Optional[list[str]] = None, riusa: bool = True) -> Optional[str]:
         """Reel animato dell'articolo. Con REEL_ANIMATO=False, o se qualcosa va storto, il reel
@@ -264,8 +267,7 @@ class ReelAnimatoGenerator(FacebookReelGenerator):
         if not getattr(settings, "REEL_ANIMATO", True):
             return super().generate(articolo)
         try:
-            cartella = CARTELLA_VIDEO_UNICO if self.video_unico else self.config.output_dir_name
-            output_mp4 = _reels_output_dir(cartella) / f"{articolo.slug}.mp4"
+            output_mp4 = _reels_output_dir(self.config.output_dir_name) / f"{articolo.slug}.mp4"
             # Storia e Reel Instagram partono in due thread e vogliono lo stesso file: il secondo
             # aspetta che il primo abbia finito e poi lo riusa. Il 19/11/2026 il Reel aveva preso
             # il file mentre era ancora in scrittura e Meta lo aveva rifiutato (errore 2207082)
@@ -298,8 +300,6 @@ class ReelAnimatoGenerator(FacebookReelGenerator):
         copia._durate += [copia._durata_scena(p, SECONDI_PUNTO) for p in punti]
         copia._durate.append(SECONDI_FINALE)
         copia.config = replace(self.config, duration_seconds=sum(copia._durate), fps=FPS_ANIMATO)
-        if self.video_unico:
-            copia.config.cta_text = PULSANTE_VIDEO_UNICO
 
         inizio = time.time()
         with tempfile.TemporaryDirectory(prefix="reel_") as tmpdir:
@@ -349,14 +349,42 @@ class ReelAnimatoGenerator(FacebookReelGenerator):
         return layer.convert("RGB"), zona_su, zona_giu
 
     def _scena_finale(self, zona_su: int, altezza: int) -> dict:
-        """Ultima schermata: solo il pulsante, al centro della zona del testo."""
+        """Ultima schermata: il pulsante (con la riga di spiegazione sotto, se c'e'), al centro
+        della zona del testo."""
         layer = Image.new("RGBA", (WIDTH, HEIGHT), (0, 0, 0, 0))
         draw = ImageDraw.Draw(layer)
         n_righe = len([r for r in self.config.cta_text.splitlines() if r.strip()]) or 1
         alto_pulsante = n_righe * 54 + 40
+        if self.config.cta_hint:
+            alto_pulsante += 26 + 46      # spazio e riga della spiegazione (_draw_cta)
         # _draw_cta mette il pulsante 30 px sotto la quota che riceve
         self._draw_cta(layer, draw, zona_su + (altezza - alto_pulsante) // 2 - 30)
         return {"finale": True, "layer": layer.crop((0, zona_su, WIDTH, zona_su + altezza))}
+
+    def _riga_invito(self, testo: str) -> Image.Image:
+        """La riga dell'invito: in grassetto amaranto, con la parola LINK in un riquadro pieno."""
+        font = self._load_cta_font(INVITO_CORPO)
+        misura = ImageDraw.Draw(Image.new("RGB", (10, 10)))
+        prima, sep, dopo = testo.partition("LINK")
+        pad_x, pad_y = 14, 8
+        w_prima = font.getlength(prima)
+        w_link = font.getlength("LINK")
+        w_dopo = font.getlength(dopo)
+        bb = misura.textbbox((0, 0), "LINK", font=font)
+        alto = bb[3] + pad_y * 2
+        larghezza = int(w_prima + w_link + pad_x * 2 + w_dopo) + 4
+        layer = Image.new("RGBA", (larghezza, alto), (0, 0, 0, 0))
+        draw = ImageDraw.Draw(layer)
+        x = 0
+        if prima:
+            draw.text((x, pad_y), prima, font=font, fill=VINO + (255,))
+            x += w_prima
+        if sep:
+            draw.rounded_rectangle([(x, 0), (x + w_link + pad_x * 2, alto - 1)], radius=6, fill=VINO + (255,))
+            draw.text((x + pad_x, pad_y), "LINK", font=font, fill=(255, 255, 255, 255))
+            x += w_link + pad_x * 2
+        draw.text((x, pad_y), dopo, font=font, fill=VINO + (255,))
+        return layer
 
     def _foto(self, image_path: Path) -> tuple[Image.Image, bool]:
         """Foto intera (nessun ritaglio), con il lato corto un po' piu' grande del riquadro,
@@ -503,6 +531,12 @@ class ReelAnimatoGenerator(FacebookReelGenerator):
         n_frame = int(durata * cfg.fps)
 
         fondo, zona_su, zona_giu = self._fondo(category)
+        invito = None
+        if self.invito_testi:
+            # la riga sta sotto il testo, che perde lo spazio in fondo: non si toccano mai
+            zona_giu -= INVITO_ALTEZZA
+            invito = self._riga_invito(self.invito_testi)
+            invito_y = zona_giu + (INVITO_ALTEZZA - invito.size[1]) // 2
         altezza = zona_giu - zona_su
         foto, grande = self._foto(image_path)
         maschera = Image.new("L", (LATO_FOTO, LATO_FOTO), 0)
@@ -588,6 +622,15 @@ class ReelAnimatoGenerator(FacebookReelGenerator):
                     if alpha < 1:
                         trasparenza = trasparenza.point(lambda v, f=alpha: int(v * f))
                     frame.paste(layer.convert("RGB"), (0, zona_su + dy), trasparenza)
+
+                # invito fisso sotto i testi; sfuma quando arriva la schermata finale col pulsante
+                if invito is not None:
+                    vis = 1.0 - self._morbido(tau / 0.6) if scena.get("finale") else 1.0
+                    if vis > 0:
+                        a_inv = invito.getchannel("A")
+                        if vis < 1:
+                            a_inv = a_inv.point(lambda v, f=vis: int(v * f))
+                        frame.paste(invito.convert("RGB"), ((WIDTH - invito.size[0]) // 2, invito_y), a_inv)
 
                 # barra di avanzamento
                 draw = ImageDraw.Draw(frame)

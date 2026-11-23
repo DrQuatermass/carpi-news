@@ -424,7 +424,7 @@ class FacebookReelGenerator:
 
         # Hint sotto la pillola (es. "Tocca il link in bio per leggere")
         if self.config.cta_hint:
-            hint_font = self._load_hint_font(30)
+            hint_font = self._load_hint_font(36)   # 30 era piccolo sul telefono (23/11/2026)
             hint = self.config.cta_hint
             hbb = draw.textbbox((0, 0), hint, font=hint_font)
             hw = hbb[2] - hbb[0]
@@ -944,11 +944,12 @@ class FacebookReelManager:
     def _cleanup_local_file(video_path: str) -> None:
         """Rimuove il file MP4 locale dopo pubblicazione riuscita.
 
-        Non il video unico del reel animato (cartella ig_video): serve ancora a Instagram,
-        lo toglie la pulizia periodica (cleanup_social_media)."""
+        Non il reel animato (cartelle reels e ig_video): la Storia Facebook esce prima del Reel
+        Facebook e lo stesso video serve a entrambi; lo toglie la pulizia periodica
+        (cleanup_social_media)."""
         try:
             p = Path(video_path)
-            if p.parent.name == "ig_video":
+            if p.parent.name in ("ig_video", "reels") and getattr(settings, "REEL_ANIMATO", True):
                 return
             if p.exists():
                 size_kb = p.stat().st_size // 1024

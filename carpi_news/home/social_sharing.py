@@ -385,7 +385,7 @@ class SocialMediaManager:
         """
         Scarica l'immagine articolo, applica il template Instagram 1080x1080
         coerente con il Reel (logo + card + badge categoria + titolo Playfair +
-        CTA "Leggi nel link in bio") e ritorna l'URL pubblico dell'immagine
+        CTA "Scrivi LINK" con la spiegazione del DM automatico) e ritorna l'URL pubblico dell'immagine
         salvata in MEDIA_ROOT/images/instagram_temp/<slug>_ig.jpg.
 
         Args:
@@ -1321,8 +1321,10 @@ class SocialMediaManager:
             if len(articolo.sommario) > 450:
                 caption += "..."
 
-            # Finche' l'app Meta non ha Advanced Access ai DM IG, usa una CTA pubblica.
-            caption += "\n\nLeggi nel link in bio"
+            # Invito al DM automatico (home/views_webhooks.py): i link nelle didascalie
+            # non sono cliccabili
+            from .instagram_templates import IG_CTA_DIDASCALIA
+            caption += f"\n\n{IG_CTA_DIDASCALIA}"
 
             # Aggiungi hashtags basati sulla categoria
             hashtags = self._get_instagram_hashtags(articolo)

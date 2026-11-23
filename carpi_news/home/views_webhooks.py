@@ -74,15 +74,20 @@ def _emoji_only(text: str) -> bool:
     try:
         import emoji
 
-        return bool(getattr(settings, "INSTAGRAM_AUTO_DM_ACCEPT_ANY_EMOJI", True)) and emoji.purely_emoji(cleaned)
+        return bool(getattr(settings, "INSTAGRAM_AUTO_DM_ACCEPT_ANY_EMOJI", False)) and emoji.purely_emoji(cleaned)
     except Exception:
-        return bool(getattr(settings, "INSTAGRAM_AUTO_DM_ACCEPT_ANY_EMOJI", True)) and all(
+        return bool(getattr(settings, "INSTAGRAM_AUTO_DM_ACCEPT_ANY_EMOJI", False)) and all(
             _is_emoji_char(char) for char in cleaned if ord(char) != 0xFE0F
         )
 
 
+def _emoji_trigger_attivo() -> bool:
+    """Reazioni ed emoji fanno partire il DM solo con INSTAGRAM_AUTO_DM_ACCEPT_ANY_EMOJI."""
+    return bool(getattr(settings, "INSTAGRAM_AUTO_DM_ACCEPT_ANY_EMOJI", False))
+
+
 def _contains_emoji(text: str) -> bool:
-    if not getattr(settings, "INSTAGRAM_AUTO_DM_ACCEPT_ANY_EMOJI", True):
+    if not getattr(settings, "INSTAGRAM_AUTO_DM_ACCEPT_ANY_EMOJI", False):
         return False
     try:
         import emoji
@@ -169,7 +174,7 @@ def _extract_events(payload: dict[str, Any]):
             if emoji_value:
                 if not media_id:
                     logger.info("Instagram webhook: reaction story senza media_id sender=%s", sender_id)
-                yield sender_id, media_id, "story_reaction", emoji_value, True
+                yield sender_id, media_id, "story_reaction", emoji_value, _emoji_trigger_attivo()
             elif text:
                 is_trigger, rule = _text_trigger_match(text)
                 logger.info(
@@ -222,7 +227,7 @@ def _extract_events(payload: dict[str, Any]):
             if emoji_value:
                 if not media_id:
                     logger.info("Instagram webhook: reazione senza media_id field=%s sender=%s", field, sender_id)
-                yield sender_id, media_id, "story_reaction", emoji_value, True
+                yield sender_id, media_id, "story_reaction", emoji_value, _emoji_trigger_attivo()
             elif text:
                 trigger_type = "reel_comment" if field == "comments" else "story_reply"
                 is_trigger, rule = _text_trigger_match(text)

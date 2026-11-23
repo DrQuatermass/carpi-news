@@ -61,6 +61,11 @@ class Command(BaseCommand):
                  "media/reels_prova/, o media/reels_prova_<modo>/ per gli altri modi",
         )
         parser.add_argument(
+            "--instagram",
+            action="store_true",
+            help="Con --animato: versione Instagram (Scrivi LINK e spiegazione del DM), in media/reels_prova_ig/",
+        )
+        parser.add_argument(
             "--senza-ai",
             action="store_true",
             help="Con --animato: punti chiave dalle prime frasi del sommario, senza chiamare l'AI",
@@ -105,10 +110,14 @@ class Command(BaseCommand):
             articoli = [self._pick_article(opts.get("slug"), opts.get("id"))]
 
         modo = opts["testo"]
-        cfg.output_dir_name = "reels_prova" if modo == "evidenzia" else f"reels_prova_{modo}"
-        generator = ReelAnimatoGenerator(config=cfg)
+        if opts.get("instagram"):
+            from home.instagram_story import InstagramReelGenerator
+            generator = InstagramReelGenerator(config=cfg)
+            generator.config.output_dir_name = "reels_prova_ig"
+        else:
+            cfg.output_dir_name = "reels_prova" if modo == "evidenzia" else f"reels_prova_{modo}"
+            generator = ReelAnimatoGenerator(config=cfg)
         generator.testo = modo
-        generator.video_unico = False      # le prove restano in media/reels_prova
         for articolo in articoli:
             punti = punti_dal_sommario(articolo) if opts.get("senza_ai") else punti_chiave(articolo)
             self.stdout.write(self.style.NOTICE(f"\n[{articolo.pk}] {articolo.titolo}"))

@@ -470,7 +470,10 @@ INSTAGRAM_REEL_ENABLED = os.getenv('INSTAGRAM_REEL_ENABLED', 'False').lower() in
 INSTAGRAM_WEBHOOK_VERIFY_TOKEN = os.getenv('INSTAGRAM_WEBHOOK_VERIFY_TOKEN', '')
 INSTAGRAM_APP_SECRET = os.getenv('INSTAGRAM_APP_SECRET', '')
 INSTAGRAM_PAGE_ACCESS_TOKEN = os.getenv('INSTAGRAM_PAGE_ACCESS_TOKEN', FACEBOOK_ACCESS_TOKEN)
-INSTAGRAM_AUTO_DM_ACCEPT_ANY_EMOJI = os.getenv('INSTAGRAM_AUTO_DM_ACCEPT_ANY_EMOJI', 'True').lower() in ['true', '1', 'yes']
+# Dal 23/11/2026 le emoji non fanno partire il DM (prima bastava un'emoji in un commento
+# qualsiasi, anche polemico): solo le parole di INSTAGRAM_AUTO_DM_TEXT_TRIGGERS. True le riaccende,
+# reazioni comprese.
+INSTAGRAM_AUTO_DM_ACCEPT_ANY_EMOJI = os.getenv('INSTAGRAM_AUTO_DM_ACCEPT_ANY_EMOJI', 'False').lower() in ['true', '1', 'yes']
 INSTAGRAM_AUTO_DM_TEXT_TRIGGERS = [
     item.strip().upper()
     for item in os.getenv('INSTAGRAM_AUTO_DM_TEXT_TRIGGERS', 'LINK,INFO,LEGGI').split(',')

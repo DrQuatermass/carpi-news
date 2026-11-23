@@ -4,8 +4,9 @@ Storia e Reel automatici Instagram per Ombra del Portico.
 Riusa la pipeline di generazione video di home.facebook_reels (stesso template
 grafico 1080x1920 con logo, card, badge, titolo, musica royalty-free) ma:
 - Salva in media/stories/ o media/ig_reels/ a seconda del target
-- CTA "Leggi nel link in bio"; nei Reel il link tracciato viene inserito
-  nella descrizione/caption.
+- CTA "Scrivi LINK" con la spiegazione del DM automatico (home/views_webhooks.py): dal
+  23/11/2026 il video Instagram e' diverso da quello Facebook. La didascalia del Reel invita a
+  commentare LINK (i link nelle didascalie non sono cliccabili).
 - Pubblica via Instagram Graph API con media_type=STORIES o REELS
 
 Limitazioni Meta (importanti da sapere):
@@ -31,9 +32,20 @@ import requests
 from django.conf import settings
 
 from home.facebook_reels import FacebookReelGenerator, ReelConfig
+from home.instagram_templates import IG_CTA_DIDASCALIA, IG_CTA_INVITO, IG_CTA_PULSANTE, IG_CTA_SPIEGAZIONE
 from home.reel_animato import ReelAnimatoGenerator
 
 logger = logging.getLogger(__name__)
+
+
+def _config_instagram(config: Optional[ReelConfig]) -> ReelConfig:
+    """Cartella del video Instagram, uno per Storia e Reel. La schermata finale e' quella di
+    Facebook ("Leggi su ombradelportico.it"); l'invito a scrivere LINK e' la riga fissa sotto
+    titolo e punti (invito_testi)."""
+    if config is None:
+        config = ReelConfig.from_settings()
+    config.output_dir_name = "ig_video"
+    return config
 
 
 # -----------------------------------------------------------------------------
@@ -42,14 +54,12 @@ logger = logging.getLogger(__name__)
 class InstagramStoryGenerator(ReelAnimatoGenerator):
     """Genera il video 1080x1920 destinato a Storia Instagram (15s)."""
 
+    invito_testi = IG_CTA_INVITO
+
     def __init__(self, config: Optional[ReelConfig] = None):
-        if config is None:
-            config = ReelConfig.from_settings()
         # Cartella condivisa con InstagramReelGenerator (stesso CTA, stesso video):
         # cosi' Story e Reel IG riusano lo stesso MP4 invece di rigenerarlo.
-        config.output_dir_name = "ig_video"
-        config.cta_text = "Leggi nel link in bio"
-        super().__init__(config)
+        super().__init__(_config_instagram(config))
 
 
 class InstagramReelGenerator(ReelAnimatoGenerator):
@@ -57,11 +67,10 @@ class InstagramReelGenerator(ReelAnimatoGenerator):
     Condivide la cartella e il file di output con InstagramStoryGenerator
     perche' i due video sono identici (stesso CTA, stesso template)."""
 
+    invito_testi = IG_CTA_INVITO
+
     def __init__(self, config: Optional[ReelConfig] = None):
-        if config is None:
-            config = ReelConfig.from_settings()
-        config.output_dir_name = "ig_video"
-        config.cta_text = "Leggi nel link in bio"
+        config = _config_instagram(config)
         config.video_fade_in_seconds = 0
         super().__init__(config)
 
@@ -433,8 +442,10 @@ class _BaseIgVideoManager:
             from home.facebook_reels import FacebookReelGenerator
             import tempfile
 
-            config = ReelConfig.from_settings()
-            config.cta_text = "Leggi nel link in bio"
+            # La copertina e' un'immagine ferma: porta l'invito come il post con foto
+            config = _config_instagram(None)
+            config.cta_text = IG_CTA_PULSANTE
+            config.cta_hint = IG_CTA_SPIEGAZIONE
             tmp_gen = FacebookReelGenerator(config)
             image_path = tmp_gen._resolve_image_path(articolo)
             if not image_path:
@@ -488,8 +499,7 @@ class _BaseIgVideoManager:
             "",
             sommario,
             "",
-            "Leggi l'articolo completo:",
-            self._build_reel_description_link(articolo),
+            IG_CTA_DIDASCALIA,
             "",
             hashtags,
         ]
