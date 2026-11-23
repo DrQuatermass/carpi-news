@@ -138,6 +138,7 @@ class Command(BaseCommand):
                     articolo,
                     only_platforms=reshare_platforms,
                 )
+                self._ripristina_media_ids(articolo, existing_logs)
 
                 # Mostra risultati per piattaforma
                 for platform, success in results.items():
@@ -170,6 +171,36 @@ class Command(BaseCommand):
         if total_failed > 0:
             self.stdout.write(self.style.ERROR(f'  Falliti:              {total_failed}'))
         self.stdout.write(f'{"="*70}\n')
+
+    @staticmethod
+    def _ripristina_media_ids(articolo, existing_logs):
+        """Rimette nei log nuovi gli id Instagram dei contenuti gia' pubblicati.
+
+        I log si cancellano per poter ripubblicare, ma post, Reel e Storie di prima restano
+        online: senza i loro id il webhook dei DM non riconosce piu' l'articolo di chi li
+        commenta.
+        """
+        for old in existing_logs:
+            old_ids = [str(m) for m in ([old.instagram_media_id] + list(old.instagram_media_ids or [])) if m]
+            if not old_ids:
+                continue
+            new = SocialPublicationLog.objects.filter(articolo=articolo, platform=old.platform).first()
+            if new is None:
+                # Ripubblicazione non riuscita (o piattaforma non ricondivisa): si ricrea il log
+                # di prima, cosi' resta anche il segno della pubblicazione originale
+                old.pk = None
+                old.save()
+                continue
+            media_ids = list(new.instagram_media_ids or [])
+            for media_id in old_ids:
+                if media_id not in media_ids:
+                    media_ids.insert(0, media_id)
+            new.instagram_media_ids = media_ids[-50:]
+            update_fields = ['instagram_media_ids']
+            if not new.instagram_media_id:
+                new.instagram_media_id = old_ids[0]
+                update_fields.append('instagram_media_id')
+            new.save(update_fields=update_fields)
 
     @staticmethod
     def _event_reshare_platforms():

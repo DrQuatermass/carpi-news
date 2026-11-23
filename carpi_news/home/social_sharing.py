@@ -658,13 +658,12 @@ class SocialMediaManager:
                     # Usa retry automatico con delay crescente
                     success, error_msg = self._share_to_instagram_with_retry(articolo, article_url)
                     results['instagram'] = success
-                    # Aggiorna il record con messaggio errore dettagliato
-                    SocialPublicationLog.objects.filter(
-                        articolo=articolo,
-                        platform='instagram'
-                    ).update(
-                        success=success,
-                        error_message=None if success else error_msg[:1000]  # Limita a 1000 char
+                    # In caso di successo error_msg e' l'id del post: il webhook dei DM lo usa
+                    # per riconoscere l'articolo dei commenti
+                    self._finalize_publication(
+                        articolo, 'instagram', success,
+                        None if success else error_msg,
+                        instagram_media_id=error_msg if success else "",
                     )
             else:
                 logger.warning(f"Condivisione Instagram saltata per '{articolo.titolo}': immagine obbligatoria")
@@ -898,6 +897,7 @@ class SocialMediaManager:
                     self._finalize_publication(
                         articolo, 'instagram', success,
                         None if success else error_msg,
+                        instagram_media_id=error_msg if success else "",
                     )
             else:
                 logger.warning(f"Instagram: immagine obbligatoria, skip retry")
@@ -1250,7 +1250,8 @@ class SocialMediaManager:
             max_retries: Numero massimo di tentativi (default 3)
 
         Returns:
-            Tuple (success: bool, error_message: str)
+            Tuple (success: bool, error_message: str). Se riesce, il secondo valore e' l'id
+            del post su Instagram (serve al webhook dei DM per collegare i commenti).
         """
         delays = [0, 30, 60]  # Delay in secondi: immediato, +30s, +60s
 
@@ -1268,7 +1269,7 @@ class SocialMediaManager:
             if success:
                 if attempt > 0:
                     logger.info(f"Instagram: Successo al tentativo {attempt + 1}/{max_retries}")
-                return True, ""
+                return True, error_msg
             else:
                 logger.warning(f"Instagram: Tentativo {attempt + 1}/{max_retries} fallito: {error_msg[:200]}")
 
@@ -1419,7 +1420,7 @@ class SocialMediaManager:
                 # Cleanup: Instagram ha gia' scaricato e processato l'immagine,
                 # il file locale non serve piu'. Su failure NON eliminiamo per debug.
                 self._cleanup_instagram_local_file(articolo.slug)
-                return True, ""
+                return True, str(post_id or "")
             else:
                 error = f"Errore pubblicazione Instagram: {publish_response.text}"
                 logger.error(error)

@@ -2,6 +2,7 @@ from unittest.mock import Mock, patch
 from io import BytesIO, StringIO
 import hashlib
 import hmac
+import requests
 import json
 import tempfile
 from datetime import timedelta
@@ -1631,6 +1632,47 @@ class RetryFailedSocialSharesCommandTests(TestCase):
         self.assertTrue(log.success)
         self.assertEqual(log.instagram_media_id, "ig-media-1")
 
+    def test_instagram_feed_post_saves_media_id(self):
+        manager = SocialMediaManager()
+        manager.platforms["instagram"]["enabled"] = True
+
+        with patch.object(manager, "_share_to_instagram_with_retry", return_value=(True, "feed-media-1")):
+            results = manager.retry_failed_platforms_only(self.articolo, only_platforms=["instagram"])
+
+        self.assertEqual(results["instagram"], True)
+        log = SocialPublicationLog.objects.get(articolo=self.articolo, platform="instagram")
+        self.assertTrue(log.success)
+        self.assertIsNone(log.error_message)
+        self.assertEqual(log.instagram_media_id, "feed-media-1")
+        self.assertEqual(log.instagram_media_ids, ["feed-media-1"])
+
+    def test_reshare_keeps_previous_instagram_media_ids(self):
+        from home.management.commands.reshare_tomorrow_events import Command as ReshareCommand
+
+        old = SocialPublicationLog.objects.create(
+            articolo=self.articolo, platform="instagram_reel", success=True,
+            instagram_media_id="reel-vecchio", instagram_media_ids=["reel-vecchio"],
+        )
+        old_story = SocialPublicationLog.objects.create(
+            articolo=self.articolo, platform="instagram_story", success=True,
+            instagram_media_id="story-vecchia", instagram_media_ids=["story-vecchia"],
+        )
+        existing = [old, old_story]
+        SocialPublicationLog.objects.filter(articolo=self.articolo).delete()
+        # Il Reel si ripubblica, la Storia no
+        SocialPublicationLog.objects.create(
+            articolo=self.articolo, platform="instagram_reel", success=True,
+            instagram_media_id="reel-nuovo", instagram_media_ids=["reel-nuovo"],
+        )
+
+        ReshareCommand._ripristina_media_ids(self.articolo, existing)
+
+        reel = SocialPublicationLog.objects.get(articolo=self.articolo, platform="instagram_reel")
+        self.assertEqual(reel.instagram_media_id, "reel-nuovo")
+        self.assertEqual(reel.instagram_media_ids, ["reel-vecchio", "reel-nuovo"])
+        story = SocialPublicationLog.objects.get(articolo=self.articolo, platform="instagram_story")
+        self.assertEqual(story.instagram_media_ids, ["story-vecchia"])
+
 
 class ProcessPendingPubbliredazionaliCommandTests(TestCase):
     def make_pubbliredazionale(self, interview_data=None):
@@ -1711,6 +1753,106 @@ class InstagramWebhookTests(TestCase):
             instagram_media_id="media-1",
             instagram_media_ids=["media-1"],
         )
+        cache.clear()
+        # Lettura delle didascalie da Meta: di default Meta non risponde (si ripiega come prima)
+        get_patcher = patch("home.views_webhooks.requests.get", side_effect=requests.RequestException("offline"))
+        self.mock_get = get_patcher.start()
+        self.addCleanup(get_patcher.stop)
+
+    @staticmethod
+    def _dm_calls(mock_post):
+        return [c for c in mock_post.call_args_list if c.args and "me/messages" in str(c.args[0])]
+
+    def _dm_count(self, mock_post):
+        return len(self._dm_calls(mock_post))
+
+    def _graph_media(self, caption, media_product_type="FEED"):
+        self.mock_get.side_effect = None
+        self.mock_get.return_value = Mock(
+            status_code=200,
+            json=Mock(return_value={"caption": caption, "media_product_type": media_product_type, "id": "x"}),
+        )
+
+    def _comment_payload(self, sender, media_id, text="🔥"):
+        return {
+            "object": "instagram",
+            "entry": [{
+                "changes": [{
+                    "field": "comments",
+                    "value": {"from": {"id": sender}, "media": {"id": media_id}, "text": text},
+                }]
+            }],
+        }
+
+    @patch("home.views_webhooks.requests.post")
+    def test_feed_post_comment_matches_article(self, mock_post):
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.text = "{}"
+        SocialPublicationLog.objects.create(
+            articolo=self.articolo, platform="instagram", success=True,
+            instagram_media_id="feed-1", instagram_media_ids=["feed-1"],
+        )
+
+        self._signed_post(self._comment_payload("feed-user", "feed-1"))
+
+        self.assertEqual(self._dm_count(mock_post), 1)
+        self.assertIn("Articolo IG", self._dm_calls(mock_post)[-1].kwargs["json"]["message"]["text"])
+        self.mock_get.assert_not_called()
+
+    @patch("home.views_webhooks.requests.post")
+    def test_unmapped_media_recognized_from_caption_not_recent_reel(self, mock_post):
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.text = "{}"
+        altro = Articolo.objects.create(
+            titolo="Altro articolo", contenuto="c", sommario="s", categoria="Cronaca",
+            approvato=True, data_pubblicazione=timezone.now(),
+        )
+        SocialPublicationLog.objects.create(
+            articolo=altro, platform="instagram_reel", success=True, instagram_media_id="recent-reel",
+        )
+        feed_log = SocialPublicationLog.objects.create(articolo=self.articolo, platform="instagram", success=True)
+        self._graph_media("Articolo IG\n\nSommario\n\nLeggi nel link in bio")
+
+        self._signed_post(self._comment_payload("caption-user", "feed-vecchio"))
+
+        self.assertEqual(self._dm_count(mock_post), 1)
+        self.assertIn("Articolo IG", self._dm_calls(mock_post)[-1].kwargs["json"]["message"]["text"])
+        feed_log.refresh_from_db()
+        self.assertEqual(feed_log.instagram_media_ids, ["feed-vecchio"])
+
+        # La seconda volta basta il database
+        self.mock_get.reset_mock()
+        self._signed_post(self._comment_payload("caption-user-2", "feed-vecchio"))
+        self.assertEqual(self._dm_count(mock_post), 2)
+        self.mock_get.assert_not_called()
+
+    @patch("home.views_webhooks.requests.post")
+    def test_unknown_caption_sends_no_dm(self, mock_post):
+        SocialPublicationLog.objects.create(
+            articolo=self.articolo, platform="instagram_reel", success=True, instagram_media_id="recent-reel",
+        )
+        self._graph_media("Un post fatto a mano dalla redazione")
+
+        self._signed_post(self._comment_payload("manual-user", "post-a-mano"))
+
+        self.assertEqual(self._dm_count(mock_post), 0)
+
+    @patch("home.views_webhooks.requests.post")
+    def test_same_user_two_articles_gets_two_dms(self, mock_post):
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.text = "{}"
+        altro = Articolo.objects.create(
+            titolo="Altro articolo", contenuto="c", sommario="s", categoria="Cronaca",
+            approvato=True, data_pubblicazione=timezone.now(),
+        )
+        SocialPublicationLog.objects.create(
+            articolo=altro, platform="instagram_reel", success=True, instagram_media_id="reel-altro",
+        )
+
+        self._signed_post(self._comment_payload("same-user", "media-1"))
+        self._signed_post(self._comment_payload("same-user", "reel-altro"))
+
+        self.assertEqual(self._dm_count(mock_post), 2)
 
     def _signed_post(self, payload):
         body = json.dumps(payload).encode("utf-8")

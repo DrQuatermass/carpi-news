@@ -297,19 +297,105 @@ def _send_dm(sender_id: str, articolo, short_url: str) -> tuple[bool, str]:
     return False, last_error
 
 
-def _find_publication_log(media_id: str, trigger_type: str):
-    base_qs = SocialPublicationLog.objects.filter(
-        platform__in=["instagram_story", "instagram_reel"],
-        success=True,
-    ).select_related("articolo")
+IG_PLATFORMS = ["instagram", "instagram_story", "instagram_reel"]
+MEDIA_PRODUCT_PLATFORM = {"FEED": "instagram", "REELS": "instagram_reel", "STORY": "instagram_story"}
+
+
+def _articolo_da_didascalia(media_id: str):
+    """Riconosce l'articolo di un contenuto Instagram non collegato leggendone la didascalia.
+
+    Post, Reel e Storie pubblicati dal sito hanno il titolo dell'articolo in prima riga. Serve
+    per i contenuti di cui non si e' salvato l'id (i post con foto fino al 23/11/2026, quelli
+    pubblicati a mano). Restituisce (articolo, piattaforma), (None, "") se la didascalia non
+    corrisponde a nessun articolo, None se Meta non risponde.
+    """
+    from .models import Articolo
+
+    cache_key = f"igdm_media_articolo:{media_id}"
+    cached = cache.get(cache_key)
+    if cached is not None:
+        articolo_id, platform = cached
+        if not articolo_id:
+            return None, ""
+        articolo = Articolo.objects.filter(pk=articolo_id).first()
+        return (articolo, platform) if articolo else (None, "")
+
+    token = getattr(settings, "INSTAGRAM_PAGE_ACCESS_TOKEN", "") or getattr(settings, "FACEBOOK_ACCESS_TOKEN", "")
+    if not token:
+        return None
+    try:
+        response = requests.get(
+            f"https://graph.facebook.com/v24.0/{media_id}",
+            params={"fields": "caption,media_product_type", "access_token": token},
+            timeout=(3, 10),
+        )
+        data = response.json()
+    except (requests.RequestException, ValueError) as e:
+        logger.warning("Instagram webhook: lettura didascalia di %s non riuscita: %s", media_id, e)
+        return None
+    if response.status_code != 200 or not isinstance(data, dict) or "error" in data:
+        logger.warning("Instagram webhook: lettura didascalia di %s non riuscita: %s", media_id, str(data)[:300])
+        return None
+
+    platform = MEDIA_PRODUCT_PLATFORM.get(str(data.get("media_product_type") or "").upper(), "")
+    prima_riga = (data.get("caption") or "").strip().split("\n", 1)[0].strip()
+    articolo = None
+    if prima_riga:
+        qs = Articolo.objects.filter(approvato=True).order_by("-data_pubblicazione")
+        articolo = qs.filter(titolo=prima_riga).first() or qs.filter(titolo__iexact=prima_riga).first()
+    cache.set(cache_key, (articolo.pk if articolo else 0, platform), 30 * 86400)
+    if not articolo:
+        logger.warning(
+            "Instagram webhook: media %s senza articolo, didascalia=%s", media_id, _log_safe(prima_riga)
+        )
+        return None, ""
+
+    # Si salva l'id nel log della pubblicazione, cosi' le volte dopo basta il database
+    log = (
+        SocialPublicationLog.objects.filter(articolo=articolo, platform=platform).first()
+        if platform else None
+    )
+    if log:
+        media_ids = list(log.instagram_media_ids or [])
+        if media_id not in media_ids:
+            log.instagram_media_ids = (media_ids + [media_id])[-50:]
+            log.save(update_fields=["instagram_media_ids", "updated_at"])
+    logger.info(
+        "Instagram webhook: media %s riconosciuto dalla didascalia, articolo %s (%s)",
+        media_id, articolo.pk, platform or "tipo sconosciuto",
+    )
+    return articolo, platform
+
+
+def _find_articolo(media_id: str, trigger_type: str):
+    """L'articolo a cui si riferisce un commento, una risposta o una reazione.
+
+    Prima l'id del contenuto nei log di pubblicazione, poi la didascalia letta da Meta. Il
+    ripiego sull'ultimo Reel o sull'ultima Storia pubblicati vale solo quando Meta non manda
+    l'id o non risponde: con un id riconosciuto ma senza articolo non parte nessun DM, perche'
+    un articolo a caso e' peggio di nessun messaggio.
+    """
     if media_id:
+        media_id = str(media_id)
+        # Niente filtro su success: un contenuto con l'id e' online anche se la
+        # ripubblicazione successiva dello stesso articolo e' fallita
+        base_qs = SocialPublicationLog.objects.filter(platform__in=IG_PLATFORMS).select_related("articolo")
         log = base_qs.filter(instagram_media_id=media_id).order_by("-updated_at").first()
         if log:
-            return log
-        for candidate in base_qs.exclude(instagram_media_ids=[]).order_by("-updated_at")[:200]:
-            if media_id in (candidate.instagram_media_ids or []):
-                return candidate
+            return log.articolo
+        for candidate in base_qs.exclude(instagram_media_ids=[]).order_by("-updated_at")[:500]:
+            if media_id in [str(m) for m in (candidate.instagram_media_ids or [])]:
+                return candidate.articolo
 
+        trovato = _articolo_da_didascalia(media_id)
+        if trovato is not None:
+            return trovato[0]
+
+    log = _fallback_publication_log(media_id, trigger_type)
+    return log.articolo if log else None
+
+
+def _fallback_publication_log(media_id: str, trigger_type: str):
     if trigger_type == "reel_comment":
         fallback_minutes = int(getattr(settings, "INSTAGRAM_AUTO_DM_REEL_FALLBACK_MINUTES", 4320))
         platform = "instagram_reel"
@@ -382,23 +468,25 @@ def _handle_event(sender_id: str, media_id: str, trigger_type: str, trigger_valu
         logger.info("Instagram webhook: utente %s in opt-out, DM saltato", sender_id)
         return
 
-    log = _find_publication_log(media_id, trigger_type)
-    if not log:
+    articolo = _find_articolo(media_id, trigger_type)
+    if not articolo:
         logger.warning("Instagram webhook: media_id non mappato, nessun DM inviato: %s", media_id)
         return
 
-    rate_key = f"igdm:{sender_id}"
+    # Un DM per persona e articolo al minuto: chi commenta due contenuti diversi riceve
+    # entrambi i link
+    rate_key = f"igdm:{sender_id}:{articolo.pk}"
     if not cache.add(rate_key, True, 60):
-        logger.info("Instagram webhook: rate limit DM per %s", sender_id)
+        logger.info("Instagram webhook: rate limit DM per %s articolo %s", sender_id, articolo.pk)
         return
 
-    short_link = get_or_create_short_link(log.articolo, "instagram", "instagram_dm")
-    short_url = build_short_share_url(log.articolo, "instagram", "instagram_dm")
-    sent, info = _send_dm(sender_id, log.articolo, short_url)
+    short_link = get_or_create_short_link(articolo, "instagram", "instagram_dm")
+    short_url = build_short_share_url(articolo, "instagram", "instagram_dm")
+    sent, info = _send_dm(sender_id, articolo, short_url)
     if not sent:
         cache.delete(rate_key)
     InstagramAutoDMLog.objects.create(
-        articolo=log.articolo,
+        articolo=articolo,
         ig_user_id=sender_id,
         trigger_type=trigger_type,
         trigger_value=(trigger_value or "")[:255],
@@ -408,7 +496,7 @@ def _handle_event(sender_id: str, media_id: str, trigger_type: str, trigger_valu
         dm_error="" if sent else info,
     )
     if sent:
-        logger.info("Instagram webhook: DM inviato a %s per articolo %s", sender_id, log.articolo_id)
+        logger.info("Instagram webhook: DM inviato a %s per articolo %s", sender_id, articolo.pk)
     else:
         logger.warning("Instagram webhook: DM fallito per %s: %s", sender_id, info)
 
