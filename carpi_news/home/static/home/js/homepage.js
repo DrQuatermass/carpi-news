@@ -258,6 +258,9 @@ function createActiveBanner(banner) {
         </div>
     `;
 
+    // L'impression parte quando il banner entra nello schermo (script in base.html)
+    if (window.trackBannerImpressions) window.trackBannerImpressions(bannerSlot);
+
     return bannerSlot;
 }
 

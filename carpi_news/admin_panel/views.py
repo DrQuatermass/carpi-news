@@ -635,11 +635,15 @@ def banner_click(request, banner_id):
     markup strutturato della pagina di destinazione (o di articoli raggiunti
     via redirect) a questa URL di tracking.
     """
+    from django.db.models import F
+    from .banner_tracking import clic_da_contare
+
     banner = get_object_or_404(Banner, id=banner_id)
 
-    # Incrementa il contatore dei click
-    banner.clicks += 1
-    banner.save(update_fields=['clicks'])
+    # Conta solo i clic di chi ha visto il banner nella pagina (o arriva dalla
+    # newsletter): i bot che aprono direttamente il link non contano.
+    if clic_da_contare(request, banner.id):
+        Banner.objects.filter(pk=banner.pk).update(clicks=F('clicks') + 1)
 
     # Reindirizza all'URL del banner, bloccando indicizzazione
     response = redirect(banner.link_url)

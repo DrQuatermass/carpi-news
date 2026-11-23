@@ -1300,7 +1300,7 @@ def _get_newsletter_context():
                 _img = _site + _img
             newsletter_banners.append({
                 'image_url': _img,
-                'link_url': f"{_site}/admin-panel/banner/{_b.id}/click/",
+                'link_url': f"{_site}/admin-panel/banner/{_b.id}/click/?src=newsletter",
                 'alt_text': _b.alt_text or _b.title,
             })
     except Exception:
@@ -1440,20 +1440,15 @@ def short_link_redirect(request, token):
 def banner_impression(request, banner_id):
     """Beacon JS: conta un'impression banner, dedup via cache, atomico."""
     from admin_panel.models import Banner
+    from admin_panel.banner_tracking import is_bot, impression_da_contare, segna_visto
 
-    user_agent = request.META.get('HTTP_USER_AGENT', '').lower()
-    bot_keywords = ['bot', 'crawler', 'spider', 'scraper', 'curl', 'wget', 'python-requests']
-    if any(keyword in user_agent for keyword in bot_keywords):
+    if is_bot(request) or not Banner.objects.filter(pk=banner_id, status='active').exists():
         return HttpResponse(status=204)
 
-    ip = request.META.get('HTTP_X_FORWARDED_FOR', request.META.get('REMOTE_ADDR', '')).split(',')[0].strip()
-    cache_key = f"banner_impr:{banner_id}:{ip}:{hash(user_agent[:80])}"
-    if not cache.get(cache_key):
-        updated = Banner.objects.filter(pk=banner_id, status='active').update(
-            impressions=F('impressions') + 1
-        )
-        if updated:
-            cache.set(cache_key, True, 600)
+    # Il visitatore ha visto il banner: un suo clic nelle prossime ore sara' valido.
+    segna_visto(request, banner_id)
+    if impression_da_contare(request, banner_id):
+        Banner.objects.filter(pk=banner_id).update(impressions=F('impressions') + 1)
 
     return HttpResponse(status=204)
 

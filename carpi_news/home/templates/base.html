@@ -510,22 +510,24 @@
             }
         }
 
-        const banners = document.querySelectorAll('[data-banner-id]');
-        if (!banners.length) return;
+        const observer = ('IntersectionObserver' in window) ? new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) {
+                    send(entry.target.getAttribute('data-banner-id'));
+                    observer.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.5 }) : null;
 
-        if ('IntersectionObserver' in window) {
-            const observer = new IntersectionObserver((entries) => {
-                entries.forEach((entry) => {
-                    if (entry.isIntersecting) {
-                        send(entry.target.getAttribute('data-banner-id'));
-                        observer.unobserve(entry.target);
-                    }
-                });
-            }, { threshold: 0.5 });
-            banners.forEach((el) => observer.observe(el));
-        } else {
-            banners.forEach((el) => send(el.getAttribute('data-banner-id')));
+        // Osserva i banner dentro root. Chiamata anche da homepage.js per i banner
+        // aggiunti dopo il caricamento (pagine successive): senza impression il clic
+        // su quei banner non verrebbe contato.
+        function track(root) {
+            const els = (root || document).querySelectorAll('[data-banner-id]');
+            els.forEach((el) => observer ? observer.observe(el) : send(el.getAttribute('data-banner-id')));
         }
+        window.trackBannerImpressions = track;
+        track(document);
     })();
     </script>
 </body>

@@ -312,6 +312,54 @@ class ShareLinkTests(TestCase):
         response = self.client.post(reverse("banner_impression", kwargs={"banner_id": 999999}))
         self.assertEqual(response.status_code, 204)
 
+    def test_banner_click_counts_only_after_impression_or_from_newsletter(self):
+        user = User.objects.create_user(username="banner-click", password="x")
+        banner = Banner.objects.create(
+            user=user,
+            title="Banner clic",
+            link_url="https://example.com",
+            alt_text="Banner clic",
+            position="between_articles",
+            priority=3,
+            duration_days=30,
+            start_date=timezone.now() - timedelta(days=1),
+            end_date=timezone.now() + timedelta(days=30),
+            status="active",
+            payment_status="completed",
+            approved=True,
+        )
+        click = reverse("admin_panel:banner_click", kwargs={"banner_id": banner.pk})
+        impr = reverse("banner_impression", kwargs={"banner_id": banner.pk})
+        persona = {"HTTP_USER_AGENT": "Mozilla/5.0 Chrome/156", "REMOTE_ADDR": "203.0.113.20"}
+        cache.clear()
+
+        def clicks():
+            banner.refresh_from_db()
+            return banner.clicks
+
+        # Bot che apre il link senza aver caricato la pagina: redirect, nessun clic
+        response = self.client.get(click, HTTP_USER_AGENT="Mozilla/5.0 Chrome/136", REMOTE_ADDR="198.51.100.7")
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], "https://example.com")
+        self.assertEqual(clicks(), 0)
+
+        # Visitatore che ha visto il banner: il clic conta, il doppio clic no
+        self.client.post(impr, **persona)
+        self.client.get(click, **persona)
+        self.assertEqual(clicks(), 1)
+        self.client.get(click, **persona)
+        self.assertEqual(clicks(), 1)
+
+        # Stesso IP ma browser diverso: non ha visto il banner
+        self.client.get(click, HTTP_USER_AGENT="Altro browser", REMOTE_ADDR="203.0.113.20")
+        self.assertEqual(clicks(), 1)
+
+        # Newsletter: conta una volta per visitatore, mai per i bot
+        self.client.get(click + "?src=newsletter", HTTP_USER_AGENT="Mozilla/5.0 Mail", REMOTE_ADDR="192.0.2.5")
+        self.client.get(click + "?src=newsletter", HTTP_USER_AGENT="Mozilla/5.0 Mail", REMOTE_ADDR="192.0.2.5")
+        self.client.get(click + "?src=newsletter", HTTP_USER_AGENT="Googlebot", REMOTE_ADDR="192.0.2.6")
+        self.assertEqual(clicks(), 2)
+
     def test_categorie_menu_context_processor_uses_cache_and_invalidates_on_article_save(self):
         cache.clear()
 
