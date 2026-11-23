@@ -2930,3 +2930,51 @@ class VideoInstagramSeparatoTests(SimpleTestCase):
             # alla fine il sito come su Facebook, l'invito sta sotto i testi
             self.assertEqual(gen.config.cta_text, "Leggi su ombradelportico.it")
             self.assertEqual(gen.invito_testi, IG_CTA_INVITO)
+
+
+class PromemoriaEventiDistribuitoTests(TestCase):
+    """Il promemoria del mattino distribuisce gli eventi fino alle 11:50, i piu' letti per primi."""
+
+    def _cmd(self):
+        from home.management.commands.reshare_tomorrow_events import Command
+        return Command
+
+    def test_orari_a_intervalli_uguali_fino_all_ora_indicata(self):
+        inizio = timezone.localtime().replace(hour=7, minute=50, second=0, microsecond=0)
+        with patch('home.management.commands.reshare_tomorrow_events.timezone.localtime', return_value=inizio):
+            orari = self._cmd()._orari(5, '11:50')
+            self.assertEqual([o.strftime('%H:%M') for o in orari], ['07:50', '08:50', '09:50', '10:50', '11:50'])
+            self.assertEqual([o.strftime('%H:%M') for o in self._cmd()._orari(2, '11:50')], ['07:50', '11:50'])
+            self.assertEqual(self._cmd()._orari(1, '11:50'), [])          # un solo evento: subito
+            self.assertEqual(self._cmd()._orari(5, '11:50', subito=True), [])
+            self.assertEqual(self._cmd()._orari(5, '07:00'), [])          # ora gia' passata
+            self.assertEqual(self._cmd()._orari(5, 'mezzogiorno'), [])
+
+    def test_i_piu_letti_per_giorno_escono_per_primi(self):
+        adesso = timezone.now()
+        vecchio = Articolo(titolo='Vecchio', views=300, data_pubblicazione=adesso - timedelta(days=30))
+        nuovo = Articolo(titolo='Nuovo', views=60, data_pubblicazione=adesso - timedelta(days=2))
+        fermo = Articolo(titolo='Fermo', views=0, data_pubblicazione=adesso - timedelta(days=2))
+        ordinati = sorted([vecchio, fermo, nuovo], key=self._cmd()._importanza, reverse=True)
+        self.assertEqual([a.titolo for a in ordinati], ['Nuovo', 'Vecchio', 'Fermo'])   # 30, 10 e 0 al giorno
+
+    def test_il_comando_aspetta_ogni_orario_e_condivide_in_ordine(self):
+        domani = timezone.localdate() + timedelta(days=1)
+        adesso = timezone.now()
+        # bulk_create: niente segnali di approvazione, che in un test farebbero partire la condivisione
+        Articolo.objects.bulk_create([
+            Articolo(titolo=titolo, slug=slug, contenuto='x', sommario='x', categoria='Cultura & Eventi',
+                     approvato=True, data_evento=domani, views=views,
+                     data_pubblicazione=adesso - timedelta(days=1))
+            for titolo, slug, views in (('Evento poco letto', 'evento-poco-letto', 5),
+                                        ('Evento molto letto', 'evento-molto-letto', 500))])
+        condivisi, attese = [], []
+        inizio = timezone.localtime().replace(hour=7, minute=50, second=0, microsecond=0)
+        base = 'home.management.commands.reshare_tomorrow_events'
+        with patch(f'{base}.timezone.localtime', return_value=inizio), \
+             patch(f'{base}.Command._aspetta', side_effect=lambda q: attese.append(q.strftime('%H:%M'))), \
+             patch(f'{base}.social_manager.retry_failed_platforms_only',
+                   side_effect=lambda a, only_platforms=None: condivisi.append(a.titolo) or {'facebook': True}):
+            call_command('reshare_tomorrow_events', stdout=StringIO())
+        self.assertEqual(condivisi, ['Evento molto letto', 'Evento poco letto'])
+        self.assertEqual(attese, ['07:50', '11:50'])

@@ -8,6 +8,10 @@ from home.models import Articolo, SocialPublicationLog
 from home.social_sharing import social_manager
 from datetime import date, timedelta
 import logging
+import time
+
+from django.db import connection
+from django.utils import timezone
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +34,18 @@ class Command(BaseCommand):
             '--force',
             action='store_true',
             help='Ricondivide anche se già pubblicato oggi',
+        )
+        parser.add_argument(
+            '--entro',
+            type=str,
+            default='11:50',
+            help="Ora (HH:MM) a cui parte l'ultima ricondivisione: gli eventi si distribuiscono a "
+                 "intervalli uguali da adesso a quell'ora. Default 11:50",
+        )
+        parser.add_argument(
+            '--subito',
+            action='store_true',
+            help='Ricondivide tutto di seguito, senza distribuire nel tempo',
         )
 
     def handle(self, *args, **options):
@@ -69,7 +85,8 @@ class Command(BaseCommand):
             approvato=True
         ).order_by('titolo')
 
-        articoli = list(articoli_query)
+        # I piu' letti per primi: escono agli orari migliori (vedi _importanza)
+        articoli = sorted(articoli_query, key=self._importanza, reverse=True)
 
         if not articoli:
             self.stdout.write(self.style.WARNING(f'[X] Nessun articolo trovato con data_evento = {target_date.strftime("%d/%m/%Y")}'))
@@ -102,7 +119,23 @@ class Command(BaseCommand):
         total_skipped = 0
         total_failed = 0
 
-        for articolo in articoli:
+        # Distribuzione nel tempo (dal 23/11/2026): prima uscivano uno dietro l'altro, a 4-5 minuti,
+        # e Facebook ne mostrava pochissimo (21/11: cinque Reel in un quarto d'ora, 20-37
+        # visualizzazioni l'uno contro le 270-340 di quelli usciti da soli).
+        orari = self._orari(len(articoli), options['entro'], options['subito'])
+        if orari:
+            self.stdout.write(self.style.NOTICE('\nOrari previsti:'))
+            for articolo, quando in zip(articoli, orari):
+                self.stdout.write(f'  {quando:%H:%M}  {articolo.titolo}')
+
+        for indice, articolo in enumerate(articoli):
+            if orari:
+                self._aspetta(orari[indice])
+                # Dopo ore di attesa l'articolo puo' essere cambiato o non essere piu' approvato
+                articolo = Articolo.objects.filter(pk=articolo.pk, approvato=True).first()
+                if articolo is None:
+                    total_skipped += 1
+                    continue
             self.stdout.write(f'\n{"="*70}')
             self.stdout.write(f'Ricondivisione: {articolo.titolo}')
             self.stdout.write(f'{"="*70}')
@@ -171,6 +204,43 @@ class Command(BaseCommand):
         if total_failed > 0:
             self.stdout.write(self.style.ERROR(f'  Falliti:              {total_failed}'))
         self.stdout.write(f'{"="*70}\n')
+
+    @staticmethod
+    def _importanza(articolo):
+        """Letture sul sito per giorno di vita dell'articolo: l'interesse che l'evento ha gia'
+        mostrato. Il contatore comprende anche i robot, che pero' passano su tutti gli articoli
+        allo stesso modo: per mettere in ordine basta. A parita', prima chi ha la foto."""
+        pubblicato = articolo.data_pubblicazione or articolo.data_creazione
+        giorni = max(1.0, (timezone.now() - pubblicato).total_seconds() / 86400) if pubblicato else 1.0
+        return ((articolo.views or 0) / giorni, bool(articolo.has_shareable_image))
+
+    @staticmethod
+    def _orari(quanti, entro, subito=False):
+        """Orari di ricondivisione: il primo adesso, l'ultimo all'ora `entro`, gli altri a
+        intervalli uguali in mezzo. Lista vuota se non c'e' da distribuire (un solo evento,
+        --subito, ora gia' passata, formato sbagliato): allora escono di seguito come prima."""
+        if subito or quanti < 2:
+            return []
+        adesso = timezone.localtime()
+        try:
+            ore, minuti = (int(x) for x in entro.split(':'))
+            fine = adesso.replace(hour=ore, minute=minuti, second=0, microsecond=0)
+        except (ValueError, AttributeError):
+            return []
+        if fine <= adesso:
+            return []
+        passo = (fine - adesso) / (quanti - 1)
+        return [adesso + passo * i for i in range(quanti)]
+
+    @staticmethod
+    def _aspetta(quando):
+        """Dorme fino a `quando`. La connessione al database si chiude prima: lasciata aperta
+        per ore, alla ripresa sarebbe scaduta."""
+        attesa = (quando - timezone.localtime()).total_seconds()
+        if attesa <= 0:
+            return
+        connection.close()
+        time.sleep(attesa)
 
     @staticmethod
     def _ripristina_media_ids(articolo, existing_logs):
