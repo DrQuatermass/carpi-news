@@ -493,7 +493,7 @@ class _BaseIgVideoManager:
             from home.social_sharing import social_manager
             hashtags = social_manager._get_instagram_hashtags(articolo)
         except Exception:
-            hashtags = "#OmbraDelPortico #Carpi #NotizieCarpi"
+            hashtags = "#Carpi"
         parts = [
             articolo.titolo,
             "",

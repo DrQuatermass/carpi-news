@@ -3069,3 +3069,40 @@ class PubblicaProgrammatiTests(TestCase):
         out = StringIO()
         call_command('reshare_tomorrow_events', '--dry-run', stdout=out)
         self.assertIn('Nessun articolo trovato', out.getvalue())
+
+
+class DescrizioneReelFacebookTests(SimpleTestCase):
+    """La descrizione del Reel Facebook porta titolo, link, sommario e pochi hashtag."""
+
+    def test_link_subito_sotto_il_titolo_poi_sommario_e_hashtag(self):
+        from home.facebook_reels import descrizione_reel
+        a = Articolo(titolo='Bilancio 2027, Carpi alza Imu', comune='Carpi', tags='bilancio, Imu, asfalti, giunta',
+                     sommario='La giunta ha approvato lo schema. ' * 30)
+        righe = descrizione_reel(a, 'https://ombradelportico.it/s/AbC/').split('\n\n')
+        self.assertEqual(righe[0], 'Bilancio 2027, Carpi alza Imu')
+        self.assertEqual(righe[1], 'Leggi tutto: https://ombradelportico.it/s/AbC/')
+        self.assertLessEqual(len(righe[2]), 400)
+        self.assertTrue(righe[2].endswith('.'))              # tagliato a fine frase
+        self.assertEqual(righe[3], '#Carpi #bilancio #Imu')  # il comune e due parole chiave
+
+    def test_senza_sommario_e_senza_tag(self):
+        from home.facebook_reels import descrizione_reel
+        a = Articolo(titolo='Festa a Novi', comune='Novi di Modena', sommario='', tags='')
+        self.assertEqual(descrizione_reel(a, 'https://x/s/1/'),
+                         'Festa a Novi\n\nLeggi tutto: https://x/s/1/\n\n#NoviDiModena')
+
+
+class HashtagInstagramTests(SimpleTestCase):
+    """Al massimo cinque hashtag: il comune, le parole chiave dell'articolo, la categoria."""
+
+    def test_comune_parole_chiave_e_categoria_entro_cinque(self):
+        a = Articolo(titolo='x', comune='Soliera', categoria='Cronaca', tags='api, sciami, Pettirosso, volontari, miele')
+        tags = SocialMediaManager()._get_instagram_hashtags(a).split()
+        self.assertEqual(tags, ['#Soliera', '#api', '#sciami', '#Pettirosso', '#Cronaca'])
+
+    def test_senza_parole_chiave_si_riempie_dalla_categoria_ma_mai_oltre_cinque(self):
+        a = Articolo(titolo='x', comune='', categoria='Sport', tags='')
+        tags = SocialMediaManager()._get_instagram_hashtags(a).split()
+        self.assertEqual(tags[:2], ['#Carpi', '#Sport'])
+        self.assertLessEqual(len(tags), 5)
+        self.assertNotIn('#OmbraDelPortico', tags)

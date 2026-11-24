@@ -11,6 +11,8 @@ from io import BytesIO
 
 logger = logging.getLogger(__name__)
 
+MAX_HASHTAG_INSTAGRAM = 5
+
 
 class SocialMediaManager:
     """Gestisce la condivisione automatica sui social media - Telegram, Facebook e Instagram
@@ -1512,18 +1514,16 @@ class SocialMediaManager:
         elif articolo_or_categoria:
             categoria = str(articolo_or_categoria)
 
-        # Base corta: brand + iperlocali. Il resto arriva dai SEO tag.
-        tags = [
-            "#OmbraDelPortico",
-            "#Carpi",
-            "#CarpiNews",
-            "#Modena",
-            "#EmiliaRomagna",
-        ]
+        # Al massimo 5 (dal 24/11/2026): da dicembre 2025 Instagram ne ammette cinque per contenuto.
+        # Prima ne partivano fino a 12 con in testa cinque fissi (#OmbraDelPortico, #Carpi,
+        # #CarpiNews, #Modena, #EmiliaRomagna), quindi quelli dell'articolo restavano fuori.
+        # Ora: il comune dell'articolo, fino a tre sue parole chiave, la categoria.
+        comune = (getattr(articolo, "comune", "") if articolo is not None else "") or "Carpi"
+        tags = [self._hashtagify(comune.title()) or "#Carpi"]
 
         # Tag SEO specifici dell'articolo, generati dall'AI o inseriti in admin.
         if articolo is not None:
-            for tag in getattr(articolo, "tag_list", [])[:6]:
+            for tag in getattr(articolo, "tag_list", [])[:3]:
                 hashtag = self._hashtagify(tag)
                 if hashtag:
                     tags.append(hashtag)
@@ -1543,7 +1543,7 @@ class SocialMediaManager:
             "L'Eco del Consiglio": '#ConsiglioComunale #PoliticaCarpi #ComuneCarpi',
             'Editoriale': '#Editoriale #OpinioniCarpi #CarpiNews',
         }
-        if len(tags) < 9:
+        if len(tags) < MAX_HASHTAG_INSTAGRAM:
             fallback = category_hashtags.get(categoria, '#NotizieLocali')
             tags.extend(fallback.split())
 
@@ -1555,7 +1555,7 @@ class SocialMediaManager:
                 seen.add(key)
                 deduped.append(tag)
 
-        return " ".join(deduped[:12]).strip()
+        return " ".join(deduped[:MAX_HASHTAG_INSTAGRAM]).strip()
 
     def get_platform_status(self) -> Dict[str, Dict]:
         """Stato configurazione di tutte le piattaforme."""

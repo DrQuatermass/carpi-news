@@ -882,6 +882,49 @@ FacebookReelPublisher = FacebookStoryPublisher
 # =============================================================================
 # FACADE: orchestrazione generazione + pubblicazione
 # =============================================================================
+SOMMARIO_REEL_MAX = 400
+HASHTAG_REEL_MAX = 3
+
+
+def descrizione_reel(articolo, link: str) -> str:
+    """Descrizione del Reel Facebook: titolo, link, sommario e pochi hashtag.
+
+    Fino al 24/11/2026 era solo titolo e link: a Facebook, che dalla descrizione capisce di cosa
+    parla il video e a chi mostrarlo, arrivava una riga. Il link resta subito sotto il titolo,
+    prima del sommario: e' da li' che arriva la maggior parte dei lettori (67 su 83 il 20-21/11,
+    gli altri dal commento) e piu' in basso finirebbe dietro "Altro...".
+    Hashtag: il comune e due parole chiave dell'articolo, non quelli generici."""
+    import re
+    import unicodedata
+
+    def hashtag(valore: str) -> str:
+        testo = unicodedata.normalize("NFKD", str(valore or "")).encode("ascii", "ignore").decode("ascii")
+        compatto = re.sub(r"[^A-Za-z0-9]+", "", testo.title() if " " in testo.strip() else testo)
+        return f"#{compatto[:40]}" if compatto and not compatto.isdigit() else ""
+
+    parti = [articolo.titolo, f"Leggi tutto: {link}"]
+
+    sommario = re.sub(r"\s+", " ", articolo.sommario or "").strip()
+    if len(sommario) > SOMMARIO_REEL_MAX:
+        taglio = sommario[:SOMMARIO_REEL_MAX]
+        fine_frase = max(taglio.rfind(". "), taglio.rfind("! "), taglio.rfind("? "))
+        sommario = taglio[:fine_frase + 1] if fine_frase > 150 else taglio.rsplit(" ", 1)[0] + "..."
+    if sommario:
+        parti.append(sommario)
+
+    tags, visti = [], set()
+    for valore in [getattr(articolo, "comune", "") or "Carpi"] + list(getattr(articolo, "tag_list", []) or []):
+        h = hashtag(valore)
+        if h and h.lower() not in visti:
+            visti.add(h.lower())
+            tags.append(h)
+        if len(tags) >= HASHTAG_REEL_MAX:
+            break
+    if tags:
+        parti.append(" ".join(tags))
+    return "\n\n".join(parti)[:2200]
+
+
 class FacebookReelManager:
     """Facade che combina generazione locale e pubblicazione su Facebook Stories."""
 
@@ -983,7 +1026,7 @@ class FacebookPageReelManager(FacebookReelManager):
             short_url = build_short_share_url(articolo, "facebook", "reel")
         except Exception:
             short_url = getattr(settings, "SITE_URL", "https://ombradelportico.it").rstrip("/") + f"/articolo/{articolo.slug}/"
-        description = f"{articolo.titolo}\n\nLeggi tutto: {short_url}"
+        description = descrizione_reel(articolo, short_url)
 
         publisher = FacebookPageReelPublisher(page_id, page_token)
         from home.luoghi_meta import place_id_per
