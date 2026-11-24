@@ -80,9 +80,11 @@ class Command(BaseCommand):
         self.stdout.write(f'{"="*70}\n')
 
         # Cerca articoli approvati con data_evento = target_date
+        # Non ancora usciti (approvati in anticipo con data futura): li pubblica pubblica_programmati
         articoli_query = Articolo.objects.filter(
             data_evento=target_date,
-            approvato=True
+            approvato=True,
+            data_pubblicazione__lte=timezone.now(),
         ).order_by('titolo')
 
         # I piu' letti per primi: escono agli orari migliori (vedi _importanza)

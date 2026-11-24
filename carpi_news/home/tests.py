@@ -3026,3 +3026,46 @@ class PromemoriaEventiDistribuitoTests(TestCase):
             call_command('reshare_tomorrow_events', stdout=StringIO())
         self.assertEqual(condivisi, ['Evento molto letto', 'Evento poco letto'])
         self.assertEqual(attese, ['07:50', '11:50'])
+
+
+class PubblicaProgrammatiTests(TestCase):
+    """Articoli approvati in anticipo: escono sui social quando arriva la data di pubblicazione."""
+
+    def _crea(self, slug, ore, **extra):
+        # bulk_create: niente segnali di approvazione
+        return Articolo.objects.bulk_create([Articolo(
+            titolo=slug, slug=slug, contenuto='x', sommario='x', categoria='Cultura & Eventi',
+            approvato=True, data_pubblicazione=timezone.now() + timedelta(hours=ore), **extra)])[0]
+
+    def test_sceglie_solo_quelli_arrivati_e_mai_condivisi(self):
+        from home.management.commands.pubblica_programmati import articoli_da_pubblicare
+        from home.models import SocialPublicationLog
+        arrivato = self._crea('arrivato', -1)
+        self._crea('futuro', 5)
+        self._crea('troppo-vecchio', -24 * 5)
+        condiviso = self._crea('gia-condiviso', -1)
+        SocialPublicationLog.objects.create(articolo=condiviso, platform='telegram', success=True)
+        Articolo.objects.bulk_create([Articolo(titolo='non approvato', slug='non-approvato', contenuto='x',
+                                               sommario='x', approvato=False,
+                                               data_pubblicazione=timezone.now() - timedelta(hours=1))])
+        self.assertEqual([a.slug for a in articoli_da_pubblicare()], [arrivato.slug])
+
+    def test_il_comando_condivide_e_svuota_la_cache(self):
+        a = self._crea('evento-programmato', -1)
+        base = 'home.signals'
+        with patch(f'{base}._share_article_background') as share, \
+             patch(f'{base}.ensure_publication_images_ready'), \
+             patch(f'{base}.generate_responsive_images_for_article'), \
+             patch('home.indexing_notifier.notifier.notify_article_published') as notify, \
+             patch('home.management.commands.pubblica_programmati.cache.clear') as clear:
+            call_command('pubblica_programmati', stdout=StringIO())
+        share.assert_called_once_with(a.id, a.titolo)
+        clear.assert_called_once()
+        self.assertEqual(notify.call_count, 0 if a.escluso_da_google else 1)
+
+    def test_il_promemoria_salta_gli_articoli_non_ancora_usciti(self):
+        domani = timezone.localdate() + timedelta(days=1)
+        self._crea('non-ancora-uscito', 24 * 3, data_evento=domani)
+        out = StringIO()
+        call_command('reshare_tomorrow_events', '--dry-run', stdout=out)
+        self.assertIn('Nessun articolo trovato', out.getvalue())
