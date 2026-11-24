@@ -12,6 +12,7 @@ import anthropic
 from django.conf import settings
 
 from home.anthropic_params import response_text, thinking_params
+from home.prompt_redazione import REGOLA_DATI_MANCANTI
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +40,7 @@ REGOLE_RICERCA = """
 RICERCA WEB E FEDELTA' AI FATTI:
 Hai a disposizione lo strumento web_search, per un massimo di {max_ricerche} ricerche. Usalo quando un'informazione verificabile migliora il testo: un precedente, un numero, un orario, il ruolo di una persona. Se il materiale fornito basta, scrivi senza cercare.
 Scrivi per lettori che conoscono la citta': un dettaglio plausibile ma non verificato viene riconosciuto subito come errore. Ogni fatto del testo deve quindi venire dal materiale fornito o dai risultati delle ricerche. Se un dato non c'e', non scriverlo e non stimarlo. Non creare virgolettati. Ironia e tono personale vanno bene finche' non affermano fatti nuovi: anche la descrizione di un luogo, la sua acustica, le distanze, le abitudini del pubblico e i consigli pratici (arrivare prima, cosa portare) sono affermazioni di fatto, quindi scrivile solo se il materiale le sostiene.
-Dai risultati prendi solo cio' che riguarda davvero l'argomento. Non inserire link a siti esterni nel testo."""
+Dai risultati prendi solo cio' che riguarda davvero l'argomento. Non inserire link a siti esterni nel testo.""" + REGOLA_DATI_MANCANTI
 
 
 def modello_rubriche():

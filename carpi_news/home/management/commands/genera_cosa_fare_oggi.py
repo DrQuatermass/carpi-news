@@ -297,7 +297,7 @@ EVENTI ({len(eventi_info)}):
 COME SCRIVERLA:
 - Una o due frasi di apertura che dicono che giornata è (quanti appuntamenti, di che tipo, dove), partendo dai fatti. Niente formule come "è una di quelle giornate", "c'è un filo che tiene insieme".
 - Poi un blocco per evento: <h3>TITOLO</h3>, dove TITOLO è il titolo dell'evento copiato esattamente come lo trovi sopra (serve per il link), seguito da uno o due paragrafi.
-- In ogni blocco, prima cos'è e per chi è, poi in una frase finale le informazioni pratiche presenti nella scheda: orario, luogo con indirizzo, costo o ingresso libero, come prenotare. Se un dato manca nella scheda, non scriverlo e non stimarlo.
+- In ogni blocco, prima cos'è e per chi è, poi in una frase finale le informazioni pratiche: orario, luogo con indirizzo, costo o ingresso libero, come prenotare. Se un dato manca nella scheda cercalo; se non lo trovi, non scriverlo, non stimarlo e non dire che manca.
 - Metti prima gli eventi di oggi in ordine di orario; quelli "in corso" (mostre) vanno in fondo, presentati come ancora aperti, con la data di chiusura e l'orario di oggi.
 - Una mostra "in corso" che secondo la scheda oggi ({giorno_settimana}) è chiusa (per esempio apre solo nel fine settimana) va tolta del tutto: niente blocco, niente accenno.
 - Il primo paragrafo deve contare solo gli appuntamenti che poi presenti.
@@ -306,9 +306,9 @@ COME SCRIVERLA:
 - Tag HTML ammessi: <p>, <h3>, <strong>, <em>. Niente link (li aggiunge il sistema).
 - Lunghezza: circa {parole} parole in tutto."""
 
-        # Modello e tracking costi: home/rubriche_ai.py. Una ricerca al massimo: le schede bastano,
-        # serve solo se un dato pratico manca o va verificato
-        esito = genera_con_ricerca(prompt, operation='cosa_fare_oggi', max_ricerche=1)
+        # Modello e tracking costi: home/rubriche_ai.py. Ricerche per i dati pratici che mancano
+        # nelle schede (prezzi, orari): fino al 24/11/2026 era una sola, e il testo diceva cosa mancava
+        esito = genera_con_ricerca(prompt, operation='cosa_fare_oggi')
         self._fonti_web = esito['fonti_web']
         self._modello = esito['modello']
         logger.info("Cosa fare oggi generato con %s, %d ricerche web" % (esito['modello'], esito['ricerche']))

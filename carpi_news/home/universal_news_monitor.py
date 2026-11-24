@@ -24,7 +24,7 @@ from PIL import Image
 
 from home.models import Articolo, MonitorConfig
 from home.anthropic_params import anthropic_model, thinking_params
-from home.prompt_redazione import NOTE_FONTE, PROMPT_BASE
+from home.prompt_redazione import NOTE_FONTE, PROMPT_BASE, REGOLA_DATI_MANCANTI
 
 # Import platform-specific locking
 if platform.system() == 'Windows':
@@ -86,8 +86,7 @@ Scrivi per un giornale locale: chi legge conosce i luoghi e le persone, e un det
 - Il tono locale e le immagini vanno bene finche' non affermano fatti. Formule come "come ogni anno", "nelle edizioni passate", "a due passi da", "da sempre" sono affermazioni di fatto: usale solo se la fonte le sostiene.
 - Se fonte e ricerche insieme danno poco, scrivi un articolo piu' breve: la lunghezza non e' un obiettivo, la completezza si'.
 - Se la fonte contiene un'incongruenza (date che non tornano, numeri in contrasto tra loro) segnalala nel testo con una frase chiara per il lettore, invece di scegliere una versione o di tacere.
-- Dalle ricerche web prendi solo informazioni che riguardano davvero questa notizia, e collocale nel loro tempo. Risultati generici o su altri soggetti non vanno usati.
-"""
+- Dalle ricerche web prendi solo informazioni che riguardano davvero questa notizia, e collocale nel loro tempo. Risultati generici o su altri soggetti non vanno usati.""" + REGOLA_DATI_MANCANTI + "\n"
 
 ARTICLE_OUTPUT_GUARDRAILS = """
 
@@ -3944,8 +3943,10 @@ Ogni risultato ha la sua data: i fatti datati vanno collocati nel loro tempo, pe
                     "Prima di scrivere fai almeno una ricerca con web_search, per verificare i nomi e le "
                     "date principali. Se la fonte e' scarna (una scheda di poche righe, un rimando a "
                     "\"la pagina dedicata\" o all'organizzatore), cerca anche cosa sono l'evento, l'opera "
-                    "o il progetto e chi sono le persone citate: e' quello che serve al lettore. Se le "
-                    "ricerche non aggiungono niente di pertinente, scrivi con il materiale che hai."
+                    "o il progetto e chi sono le persone citate: e' quello che serve al lettore. Se "
+                    "mancano dati pratici (prezzi, orari, prenotazione), cercali sul sito "
+                    "dell'organizzatore o del luogo. Se le ricerche non aggiungono niente di "
+                    "pertinente, scrivi con il materiale che hai, senza dire cosa manca."
                 )
             else:
                 istruzioni_ricerca = "Lavora solo con il materiale fornito."

@@ -27,6 +27,15 @@ COME SCRIVERE
 - Ricerca web: e' la tua seconda fonte. Oltre a verificare nomi, cariche e date, usala per dare al lettore quello che la fonte non dice e che gli serve per capire: cos'e' l'evento, l'opera o il progetto, chi sono le persone citate, i numeri del contesto, i fatti recenti collegati proprio a questa notizia. Una notizia completa risponde alle domande che un lettore di Carpi si farebbe dopo aver letto la fonte. Lascia fuori i risultati su altri soggetti o su fatti senza un legame diretto con la notizia, e colloca nel loro tempo quelli che usi."""
 
 
+# Dal 24/11/2026: gli articoli chiudevano con frasi tipo "la scheda non indica il costo
+# dell'ingresso [...] fara' bene a verificare sul posto". Un dato mancante si cerca; se non si
+# trova, si tace. Aggiunta in coda a SOURCE_FIDELITY_GUARDRAILS e alle regole delle rubriche.
+REGOLA_DATI_MANCANTI = """
+- Se manca un'informazione che il lettore vorrebbe (prezzi, orari, giorni di apertura, come prenotare, chi organizza, dove si trova), cercala con web_search: il sito dell'organizzatore, del luogo o del Comune, la pagina dell'evento, i suoi canali social. Usala se la trovi in una pagina che riguarda proprio questa notizia ed e' aggiornata (stessa edizione, stesso anno: i prezzi dell'anno scorso non valgono).
+- Se non la trovi, non parlarne. Niente frasi su cosa la fonte, la scheda o il comunicato non dicono ("non indica", "non e' specificato", "non sono ancora noti", "mancano informazioni su"), e niente inviti a verificare sul posto, a informarsi o a contattare gli organizzatori al posto del dato. Un contatto (telefono, email, sito) si riporta solo quando la fonte o le ricerche lo danno come il modo per informarsi o prenotare, ed esattamente com'e'.
+- Non nominare il materiale su cui lavori ("la scheda del calendario", "il comunicato", "la fonte") come se il lettore lo avesse davanti: attribuisci le informazioni a chi le da' (il Comune, gli organizzatori, la societa'). Restano valide le regole particolari di una fonte, come quella sull'atto non letto dell'albo pretorio."""
+
+
 NOTE_FONTE = {
     'comunicato': """
 TIPO DI FONTE: comunicato stampa arrivato in redazione. Chi lo scrive presenta la notizia nel modo piu' favorevole a se': togli autocelebrazione, ringraziamenti e aggettivi, tieni fatti, numeri, date e contatti utili. Dei virgolettati scegline uno o due, i piu' informativi, non tutti. Se il mittente e' un partito, un gruppo consiliare o un sindacato, scrivi fin dall'inizio chi parla e presenta le sue tesi come sue. Se il comunicato e' un messaggio breve della Polizia Locale (viabilita', incidenti, avvisi), scrivi una notizia breve di servizio: cosa, dove, da quando, cosa fare.""",
