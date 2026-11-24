@@ -85,7 +85,7 @@ Scrivi per un giornale locale: chi legge conosce i luoghi e le persone, e un det
 - Virgolettati: riporta soltanto frasi presenti nella fonte, con le stesse parole e attribuite alla stessa persona. Non creare citazioni, non allungarle, non attribuire frasi a soggetti generici come "i medici" o "gli organizzatori".
 - Il tono locale e le immagini vanno bene finche' non affermano fatti. Formule come "come ogni anno", "nelle edizioni passate", "a due passi da", "da sempre" sono affermazioni di fatto: usale solo se la fonte le sostiene.
 - Se fonte e ricerche insieme danno poco, scrivi un articolo piu' breve: la lunghezza non e' un obiettivo, la completezza si'.
-- Se la fonte contiene un'incongruenza (date che non tornano, numeri in contrasto tra loro) segnalala nel testo con una frase chiara per il lettore, invece di scegliere una versione o di tacere.
+- Se la fonte contiene un'incongruenza (date che non tornano, numeri in contrasto tra loro, un nome diverso da quello delle altre pagine) o se fonte e ricerche non coincidono, prima prova a risolverla: cerca le pagine di chi organizza o decide (ente, museo, societa', sito dell'evento) e controlla nome, data o cifra. Se una versione e' chiaramente quella giusta (la fonte ha un refuso, le pagine ufficiali concordano), scrivi quella senza raccontare la discrepanza. Segnala l'incongruenza al lettore solo se resta aperta e riguarda cio' che gli serve (una data, un orario, un prezzo): una frase chiara con le due versioni, senza inviti a chiedere conferma.
 - Dalle ricerche web prendi solo informazioni che riguardano davvero questa notizia, e collocale nel loro tempo. Risultati generici o su altri soggetti non vanno usati.""" + REGOLA_DATI_MANCANTI + "\n"
 
 ARTICLE_OUTPUT_GUARDRAILS = """
