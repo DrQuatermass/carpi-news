@@ -1373,19 +1373,27 @@ class SocialMediaManager:
             if location_id:
                 create_data['location_id'] = location_id
 
+            # Testo alternativo (lettori di schermo): l'API lo accetta solo per i post con foto
+            alt_text = self._testo_alternativo(articolo)
+            if alt_text:
+                create_data['alt_text'] = alt_text
+
             create_response = requests.post(create_url, data=create_data, timeout=30)
             logger.info(f"Instagram container response: {create_response.status_code} - {create_response.text}")
 
-            if create_response.status_code != 200 and location_id:
-                # Un luogo che Meta non accetta non deve far saltare il post: si riprova senza
+            # Testo alternativo e luogo sono in piu': se Meta li rifiuta non devono far saltare
+            # il post. Si toglie prima l'uno, poi l'altro, e si riprova.
+            for extra in ('alt_text', 'location_id'):
+                if create_response.status_code == 200 or extra not in create_data:
+                    continue
                 logger.warning(
-                    f"Instagram: container con luogo {location_id} rifiutato, riprovo senza: "
+                    f"Instagram: container con {extra} rifiutato, riprovo senza: "
                     f"{create_response.text[:300]}"
                 )
-                create_data.pop('location_id')
+                create_data.pop(extra)
                 create_response = requests.post(create_url, data=create_data, timeout=30)
                 logger.info(
-                    f"Instagram container response (senza luogo): {create_response.status_code} - "
+                    f"Instagram container response (senza {extra}): {create_response.status_code} - "
                     f"{create_response.text}"
                 )
 
@@ -1499,6 +1507,25 @@ class SocialMediaManager:
         if not compact or compact.isdigit():
             return ""
         return f"#{compact[:40]}"
+
+    @staticmethod
+    def _testo_alternativo(articolo) -> str:
+        """Testo alternativo del post con foto di Instagram: il titolo, che e' scritto
+        nell'immagine, e i punti chiave del video dello stesso articolo (idea di Sven,
+        24/11/2026). I punti si rileggono dal database: li salva il primo video, che esce
+        prima del post con foto. Senza punti, l'inizio del sommario. Massimo 1000 caratteri."""
+        punti = ""
+        if getattr(articolo, "pk", None):
+            punti = type(articolo).objects.filter(pk=articolo.pk).values_list("reel_punti", flat=True).first() or ""
+        punti = punti or getattr(articolo, "reel_punti", "") or ""
+        frasi = [p.strip().rstrip(".") + "." for p in punti.splitlines() if p.strip()]
+        if not frasi:
+            sommario = re.sub(r"\s+", " ", getattr(articolo, "sommario", "") or "").strip()
+            if sommario:
+                frasi = [sommario[:300].rsplit(" ", 1)[0] + "..." if len(sommario) > 300 else sommario]
+        titolo = (articolo.titolo or "").strip().rstrip(".")
+        testo = " ".join([f"Foto dell'articolo con il titolo: {titolo}."] + frasi)
+        return testo[:1000]
 
     def _get_instagram_hashtags(self, articolo_or_categoria=None, categoria: str = "") -> str:
         """

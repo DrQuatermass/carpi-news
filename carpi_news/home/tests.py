@@ -3106,3 +3106,21 @@ class HashtagInstagramTests(SimpleTestCase):
         self.assertEqual(tags[:2], ['#Carpi', '#Sport'])
         self.assertLessEqual(len(tags), 5)
         self.assertNotIn('#OmbraDelPortico', tags)
+
+
+class TestoAlternativoInstagramTests(SimpleTestCase):
+    """Il post con foto di Instagram porta come testo alternativo titolo e punti del video."""
+
+    def test_titolo_e_punti_del_video(self):
+        a = Articolo(titolo='Un bastone che conta i passi', sommario='Sommario.',
+                     reel_punti='Pesa meno di 80 grammi\nSupera il 90% di accuratezza.')
+        self.assertEqual(
+            SocialMediaManager._testo_alternativo(a),
+            "Foto dell'articolo con il titolo: Un bastone che conta i passi. "
+            "Pesa meno di 80 grammi. Supera il 90% di accuratezza.")
+
+    def test_senza_punti_usa_il_sommario_e_non_supera_mille_caratteri(self):
+        a = Articolo(titolo='Titolo', sommario='Parola ' * 400, reel_punti='')
+        testo = SocialMediaManager._testo_alternativo(a)
+        self.assertTrue(testo.startswith("Foto dell'articolo con il titolo: Titolo. Parola"))
+        self.assertLessEqual(len(testo), 1000)
