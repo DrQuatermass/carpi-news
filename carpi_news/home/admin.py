@@ -1619,11 +1619,11 @@ class ArticoloEliminatoAdmin(admin.ModelAdmin):
 @admin.register(GruppoFacebook)
 class GruppoFacebookAdmin(admin.ModelAdmin):
     """Gruppi Facebook + pagina "Condividi nei gruppi" (pubblicazione a mano, vedi gruppi_facebook.py)."""
-    list_display = ['nome', 'comune', 'parole_chiave', 'attivo', 'n_condivisioni', 'ultima_condivisione']
-    list_filter = ['attivo', 'comune']
-    list_editable = ['attivo']
-    search_fields = ['nome', 'comune', 'parole_chiave']
-    readonly_fields = ['slug', 'creato']
+    list_display = ['nome', 'ordine', 'attivo', 'n_condivisioni', 'ultima_condivisione']
+    list_filter = ['attivo']
+    list_editable = ['ordine', 'attivo']
+    search_fields = ['nome']
+    readonly_fields = ['creato']
     change_list_template = 'admin/home/gruppofacebook/change_list.html'
 
     def get_queryset(self, request):
@@ -1645,7 +1645,8 @@ class GruppoFacebookAdmin(admin.ModelAdmin):
         ] + super().get_urls()
 
     def condividi_view(self, request):
-        from .gruppi_facebook import gruppi_ordinati, testo_condivisione
+        from django.http import JsonResponse
+        from .gruppi_facebook import testo_condivisione
 
         try:
             giorni = min(max(int(request.GET.get('giorni', 2)), 1), 14)
@@ -1655,11 +1656,17 @@ class GruppoFacebookAdmin(admin.ModelAdmin):
         if request.method == 'POST':
             articolo = Articolo.objects.filter(pk=request.POST.get('articolo')).first()
             gruppo = GruppoFacebook.objects.filter(pk=request.POST.get('gruppo')).first()
+            fatto = None
             if articolo and gruppo:
                 if request.POST.get('azione') == 'annulla':
                     CondivisioneGruppo.objects.filter(articolo=articolo, gruppo=gruppo).delete()
                 else:
-                    CondivisioneGruppo.objects.get_or_create(articolo=articolo, gruppo=gruppo)
+                    fatto = CondivisioneGruppo.objects.get_or_create(articolo=articolo, gruppo=gruppo)[0]
+            # La pagina segna la condivisione senza ricaricarsi (fetch); il redirect resta per
+            # chi ha JavaScript spento
+            if request.headers.get('x-requested-with') == 'XMLHttpRequest':
+                return JsonResponse({'ok': bool(articolo and gruppo),
+                                     'ora': timezone.localtime(fatto.data).strftime('%d/%m %H:%M') if fatto else ''})
             return redirect(f"{reverse('admin:gruppi_condividi')}?giorni={giorni}#art-{request.POST.get('articolo', '')}")
 
         gruppi = list(GruppoFacebook.objects.filter(attivo=True))
@@ -1673,24 +1680,12 @@ class GruppoFacebookAdmin(admin.ModelAdmin):
 
         fatte = {(c.articolo_id, c.gruppo_id): c.data for c in CondivisioneGruppo.objects.filter(
             articolo__in=articoli)}
-        ultime_24h = dict(CondivisioneGruppo.objects.filter(
-            data__gte=timezone.now() - timedelta(hours=24)).values_list('gruppo').annotate(n=Count('id')))
 
         schede = []
         for articolo in articoli:
-            consigliati, altri = [], []
-            for gruppo, punti, motivo in gruppi_ordinati(articolo, gruppi):
-                condiviso = fatte.get((articolo.pk, gruppo.pk))
-                riga = {
-                    'gruppo': gruppo,
-                    'motivo': motivo,
-                    'condiviso': condiviso,
-                    'post_24h': ultime_24h.get(gruppo.pk, 0),
-                }
-                (consigliati if punti else altri).append(riga)
-            schede.append({'articolo': articolo, 'testo': testo_condivisione(articolo),
-                           'consigliati': consigliati, 'altri': altri,
-                           'n_fatte': sum(1 for r in consigliati + altri if r['condiviso'])})
+            partenze = [{'gruppo': g, 'condiviso': fatte.get((articolo.pk, g.pk))} for g in gruppi]
+            schede.append({'articolo': articolo, 'testo': testo_condivisione(articolo), 'partenze': partenze,
+                           'n_fatte': sum(1 for r in partenze if r['condiviso'])})
 
         context = {
             **self.admin_site.each_context(request),

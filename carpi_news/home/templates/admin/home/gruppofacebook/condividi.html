@@ -10,27 +10,18 @@
 .cg-art { border: 1px solid var(--hairline-color); border-left: 4px solid #752d35; border-radius: 6px; padding: 12px 14px; margin: 0 0 18px; background: var(--body-bg); }
 .cg-art h2 { margin: 0 0 4px; font-size: 1.1rem; line-height: 1.3; background: none; color: var(--body-fg); padding: 0; text-transform: none; letter-spacing: 0; }
 .cg-meta { margin: 0 0 10px; color: var(--body-quiet-color); font-size: .85rem; }
-.cg-copiatura { margin: 0 0 8px; }
-.cg-riga { border-top: 1px solid var(--hairline-color); padding: 8px 0; display: flex; gap: 10px; align-items: center; justify-content: space-between; }
-.cg-riga.fatto { opacity: .65; }
-.cg-nome { font-weight: 600; flex: 1 1 auto; min-width: 0; }
-.cg-tag { display: inline-block; font-weight: 400; font-size: .75rem; padding: 1px 7px; border-radius: 10px; background: var(--darkened-bg); color: var(--body-quiet-color); margin-left: 4px; }
-.cg-tag.avviso { background: #f8d7da; color: #842029; }
-.cg-note { font-weight: 400; font-size: .8rem; color: var(--body-quiet-color); margin-top: 3px; }
-.cg-testo { width: 100%; box-sizing: border-box; font-size: 14px; line-height: 1.4; margin: 4px 0 8px; }
-.cg-azioni { display: flex; gap: 8px; align-items: center; flex: 0 0 auto; }
-.cg-fatto { flex: 0 0 auto; }
-.cg-azioni .button { padding: 8px 14px; font-size: .85rem; line-height: 1.2; margin: 0; }
-.cg-azioni form, .cg-fatto form { display: inline; margin: 0; }
-.button.cg-copia { background: #752d35; color: #fff; padding: 8px 14px; }
-.cg-gruppi { margin: 4px 0 0; font-size: .8rem; color: var(--body-quiet-color); text-transform: uppercase; letter-spacing: .03em; }
-.cg-fatto { font-size: .85rem; }
-.cg-fatto button { background: none; border: none; color: var(--link-fg); cursor: pointer; text-decoration: underline; padding: 0 4px; }
-.cg details { margin-top: 6px; }
-.cg summary { cursor: pointer; color: var(--link-fg); padding: 6px 0; }
+.cg-testo { width: 100%; box-sizing: border-box; font-size: 14px; line-height: 1.4; margin: 4px 0 10px; }
+.cg-partenze { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.cg-partenza { display: inline-flex; align-items: center; gap: 6px; }
+.button.cg-apri { background: #752d35; color: #fff; padding: 9px 14px; font-size: .9rem; line-height: 1.2; margin: 0; cursor: pointer; }
+.cg-partenza.fatto .cg-apri { background: var(--darkened-bg); color: var(--body-quiet-color); }
+.cg-ora { font-size: .8rem; color: var(--body-quiet-color); }
+.cg-annulla { background: none; border: none; color: var(--link-fg); cursor: pointer; text-decoration: underline; padding: 0; font-size: .8rem; }
+.cg-partenza:not(.fatto) .cg-ora, .cg-partenza:not(.fatto) .cg-annulla { display: none; }
+.cg-avviso { color: #842029; font-size: .85rem; margin: 6px 0 0; }
 @media (max-width: 767px) {
-  .cg-riga { flex-wrap: wrap; }
-  .cg-copia { width: 100%; }
+  .cg-partenze { flex-direction: column; align-items: stretch; }
+  .cg-apri { width: 100%; }
 }
 </style>
 {% endblock %}
@@ -46,58 +37,90 @@
 {% block content %}
 <div class="cg">
   <p class="cg-intro">
-    Meta non permette di pubblicare nei gruppi in automatico. Per ogni articolo:
-    <strong>Copia il testo</strong> una volta, poi per ogni gruppo <strong>Apri</strong>, incolla e pubblica come Pagina,
-    torna qui e premi <strong>Fatto</strong>.
-    Meglio 1-2 articoli al giorno per gruppo, e mai lo stesso link in tanti gruppi uno dopo l'altro.
+    Un clic su un gruppo <strong>copia il testo</strong> e apre quel gruppo con la finestra del post gi&agrave; pronta.
+    Su Facebook: incolla, premi <strong>Aggiungi gruppi</strong> per scegliere gli altri (fino a 10 per post) e pubblica.
+    Per un altro post dello stesso articolo usa il pulsante successivo: ogni pulsante parte da un gruppo diverso,
+    quindi i gruppi dei pulsanti non vanno spuntati negli altri post.
   </p>
   <p class="cg-filtro">Articoli degli ultimi:
     {% for g in scelte_giorni %}<a href="?giorni={{ g }}"{% if g == giorni %} class="attivo"{% endif %}>{{ g }} giorn{{ g|pluralize:"o,i" }}</a>{% endfor %}
   </p>
 
   {% if not n_gruppi %}
-    <p>Nessun gruppo attivo. <a href="{% url 'admin:home_gruppofacebook_add' %}">Aggiungi il primo gruppo</a>.</p>
+    <p>Nessun gruppo di partenza attivo. <a href="{% url 'admin:home_gruppofacebook_changelist' %}">Attivane almeno uno</a>.</p>
   {% endif %}
 
   {% for s in schede %}
-  <section class="cg-art" id="art-{{ s.articolo.pk }}">
+  <section class="cg-art" id="art-{{ s.articolo.pk }}" data-articolo="{{ s.articolo.pk }}">
     <h2><a href="{% url 'dettaglio_articolo' s.articolo.slug %}" target="_blank" rel="noopener">{{ s.articolo.titolo }}</a></h2>
-    <p class="cg-meta">{{ s.articolo.data_pubblicazione|date:"d/m H:i" }} &middot; {{ s.articolo.categoria }}{% if s.articolo.comune %} &middot; {{ s.articolo.comune }}{% endif %}{% if s.n_fatte %} &middot; condiviso in {{ s.n_fatte }} grupp{{ s.n_fatte|pluralize:"o,i" }}{% endif %}</p>
-    <div class="cg-copiatura">
-      <textarea class="cg-testo" rows="5" aria-label="Testo da incollare nei gruppi">{{ s.testo }}</textarea>
-      <button type="button" class="button cg-copia">Copia il testo</button>
+    <p class="cg-meta">{{ s.articolo.data_pubblicazione|date:"d/m H:i" }} &middot; {{ s.articolo.categoria }}{% if s.articolo.comune %} &middot; {{ s.articolo.comune }}{% endif %}</p>
+    <textarea class="cg-testo" rows="5" aria-label="Testo da incollare nei gruppi">{{ s.testo }}</textarea>
+    <div class="cg-partenze">
+      {% for r in s.partenze %}
+      <span class="cg-partenza{% if r.condiviso %} fatto{% endif %}" data-gruppo="{{ r.gruppo.pk }}">
+        <button type="button" class="button cg-apri" data-url="{{ r.gruppo.url_nuovo_post }}"{% if r.gruppo.note %} title="{{ r.gruppo.note }}"{% endif %}>Copia e apri: {{ r.gruppo.nome }}</button>
+        <span class="cg-ora">{% if r.condiviso %}{{ r.condiviso|date:"d/m H:i" }}{% endif %}</span>
+        <button type="button" class="cg-annulla">annulla</button>
+      </span>
+      {% endfor %}
     </div>
-    {% if s.consigliati %}<p class="cg-gruppi">Gruppi consigliati</p>{% endif %}
-    {% for r in s.consigliati %}{% include "admin/home/gruppofacebook/_riga.html" with articolo=s.articolo %}{% endfor %}
-    {% if s.altri %}
-    <details>
-      <summary>Altri gruppi ({{ s.altri|length }})</summary>
-      {% for r in s.altri %}{% include "admin/home/gruppofacebook/_riga.html" with articolo=s.articolo %}{% endfor %}
-    </details>
-    {% endif %}
+    <p class="cg-avviso" hidden></p>
   </section>
   {% empty %}
     {% if n_gruppi %}<p>Nessun articolo pubblicato in questo periodo.</p>{% endif %}
   {% endfor %}
 </div>
 
+<form id="cg-csrf" hidden>{% csrf_token %}</form>
 <script>
 (function() {
-  function ripiego(campo) {
+  var csrf = document.querySelector('#cg-csrf input[name=csrfmiddlewaretoken]').value;
+
+  // Copia subito, dentro il clic: dopo l'apertura della nuova scheda la pagina perde il fuoco
+  // e il browser non lascia piu' scrivere negli appunti.
+  function copia(campo) {
     campo.focus();
     campo.select();
-    try { document.execCommand('copy'); } catch (e) {}
-  }
-  document.addEventListener('click', function(e) {
-    var tasto = e.target.closest('.cg-copia');
-    if (!tasto) return;
-    var campo = tasto.closest('.cg-copiatura').querySelector('.cg-testo');
-    if (navigator.clipboard && window.isSecureContext) {
-      navigator.clipboard.writeText(campo.value).catch(function() { ripiego(campo); });
-    } else {
-      ripiego(campo);
+    var riuscito = false;
+    try { riuscito = document.execCommand('copy'); } catch (e) {}
+    if (!riuscito && navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(campo.value).catch(function() {});
     }
-    tasto.textContent = 'Copiato: incollalo nei gruppi';
+    return riuscito;
+  }
+
+  function segna(scheda, voce, azione) {
+    var dati = new URLSearchParams({articolo: scheda.dataset.articolo, gruppo: voce.dataset.gruppo, azione: azione});
+    return fetch(window.location.pathname + window.location.search, {
+      method: 'POST',
+      headers: {'X-CSRFToken': csrf, 'X-Requested-With': 'XMLHttpRequest', 'Content-Type': 'application/x-www-form-urlencoded'},
+      body: dati.toString(),
+      credentials: 'same-origin'
+    }).then(function(r) { return r.json(); });
+  }
+
+  document.addEventListener('click', function(e) {
+    var apri = e.target.closest('.cg-apri');
+    var annulla = e.target.closest('.cg-annulla');
+    if (!apri && !annulla) return;
+    var voce = (apri || annulla).closest('.cg-partenza');
+    var scheda = voce.closest('.cg-art');
+    var avviso = scheda.querySelector('.cg-avviso');
+    avviso.hidden = true;
+
+    if (annulla) {
+      segna(scheda, voce, 'annulla').then(function() { voce.classList.remove('fatto'); });
+      return;
+    }
+    copia(scheda.querySelector('.cg-testo'));
+    window.open(apri.dataset.url, '_blank', 'noopener');
+    segna(scheda, voce, 'fatto').then(function(risposta) {
+      voce.classList.add('fatto');
+      voce.querySelector('.cg-ora').textContent = risposta.ora || '';
+    }).catch(function() {
+      avviso.textContent = 'Condivisione non registrata: ricarica la pagina e riprova.';
+      avviso.hidden = false;
+    });
   });
 })();
 </script>

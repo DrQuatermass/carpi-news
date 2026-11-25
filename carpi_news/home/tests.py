@@ -2637,7 +2637,7 @@ class ReelCommentoLinkTests(TestCase):
 
 @override_settings(SITE_URL="https://testserver", DEBUG=True, SECURE_SSL_REDIRECT=False)
 class GruppiFacebookTests(TestCase):
-    """Condivisione a mano nei gruppi: gruppi proposti, testo, link tracciato, pagina admin."""
+    """Condivisione a mano nei gruppi: testo, link tracciato, pulsanti dei gruppi di partenza."""
 
     def setUp(self):
         from home.models import GruppoFacebook
@@ -2645,26 +2645,16 @@ class GruppiFacebookTests(TestCase):
             titolo='Festa della zucca a Fossoli', contenuto='<p>T</p>',
             sommario='Domenica in piazza a Fossoli torna la festa. Stand, musica e giochi per tutta la giornata.',
             categoria='Cultura & Eventi', comune='Carpi', approvato=True, data_pubblicazione=timezone.now())
-        self.fossoli = GruppoFacebook.objects.create(nome='Sei di Fossoli se', url='https://www.facebook.com/groups/1',
-                                                     comune='Carpi', parole_chiave='Fossoli, Budrione')
-        self.carpi = GruppoFacebook.objects.create(nome='Carpi Notizie', url='https://www.facebook.com/groups/2',
-                                                   comune='Carpi')
-        self.zona = GruppoFacebook.objects.create(nome='Terre d Argine', url='https://www.facebook.com/groups/3')
-        self.soliera = GruppoFacebook.objects.create(nome='Soliera', url='https://www.facebook.com/groups/4',
-                                                     comune='Soliera')
+        self.secondo = GruppoFacebook.objects.create(nome='Sei di Carpi se', ordine=2,
+                                                     url='https://www.facebook.com/groups/2/')
+        self.primo = GruppoFacebook.objects.create(nome='ViVi Carpi', ordine=1,
+                                                   url='https://www.facebook.com/groups/1')
+        self.spento = GruppoFacebook.objects.create(nome='Gruppo spento', url='https://www.facebook.com/groups/3/',
+                                                    attivo=False)
 
-    def test_ordine_parola_chiave_comune_zona(self):
-        from home.gruppi_facebook import gruppi_ordinati
-        righe = gruppi_ordinati(self.articolo, [self.soliera, self.zona, self.carpi, self.fossoli])
-        self.assertEqual([r[0] for r in righe], [self.fossoli, self.carpi, self.zona, self.soliera])
-        self.assertEqual(righe[0][2], 'parla di Fossoli')
-        self.assertEqual(righe[3][1], 0)
-
-    def test_slug_unico_dal_nome(self):
-        from home.models import GruppoFacebook
-        doppio = GruppoFacebook.objects.create(nome='Sei di Fossoli se', url='https://www.facebook.com/groups/9')
-        self.assertEqual(self.fossoli.slug, 'sei-di-fossoli-se')
-        self.assertEqual(doppio.slug, 'sei-di-fossoli-se-2')
+    def test_indirizzo_che_apre_la_finestra_del_post(self):
+        self.assertEqual(self.primo.url_nuovo_post, 'https://www.facebook.com/groups/1/?should_open_composer=true')
+        self.assertEqual(self.secondo.url_nuovo_post, 'https://www.facebook.com/groups/2/?should_open_composer=true')
 
     def test_un_testo_per_articolo_con_link_tracciato(self):
         from home.gruppi_facebook import testo_condivisione
@@ -2676,29 +2666,37 @@ class GruppiFacebookTests(TestCase):
         r = self.client.get(f'/s/{link.token}/')
         self.assertIn('utm_source=facebook_gruppo&utm_medium=gruppi', r['Location'])
 
-    def test_pagina_admin_e_segna_fatto(self):
+    def test_pagina_con_un_pulsante_per_gruppo_attivo(self):
+        self.client.force_login(User.objects.create_superuser('admin', 'a@example.it', 'x'))
+        html = self.client.get(reverse('admin:gruppi_condividi')).content.decode()
+        self.assertIn('Festa della zucca a Fossoli', html)
+        self.assertEqual(html.count('class="cg-testo"'), 1)
+        self.assertEqual(html.count('class="button cg-apri"'), 2)
+        self.assertLess(html.index('Copia e apri: ViVi Carpi'), html.index('Copia e apri: Sei di Carpi se'))
+        self.assertNotIn('Gruppo spento', html)
+        self.assertIn('data-url="https://www.facebook.com/groups/1/?should_open_composer=true"', html)
+
+    def test_segna_fatto_senza_ricaricare_e_annulla(self):
         from home.models import CondivisioneGruppo
         self.client.force_login(User.objects.create_superuser('admin', 'a@example.it', 'x'))
         url = reverse('admin:gruppi_condividi')
-        html = self.client.get(url).content.decode()
-        self.assertIn('Festa della zucca a Fossoli', html)
-        self.assertEqual(html.count('class="cg-testo"'), 1)
-        self.assertLess(html.index('Sei di Fossoli se'), html.index('Altri gruppi'))
-        self.assertLess(html.index('Altri gruppi'), html.index('>Soliera<'))
-        r = self.client.post(url + '?giorni=2', {'articolo': self.articolo.pk, 'gruppo': self.fossoli.pk, 'azione': 'fatto'})
+        dati = {'articolo': self.articolo.pk, 'gruppo': self.primo.pk, 'azione': 'fatto'}
+        r = self.client.post(url, dati, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertTrue(r.json()['ok'])
+        self.assertRegex(r.json()['ora'], r'^\d\d/\d\d \d\d:\d\d$')
+        self.client.post(url, dati, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(CondivisioneGruppo.objects.filter(articolo=self.articolo, gruppo=self.primo).count(), 1)
+        self.assertIn('cg-partenza fatto', self.client.get(url).content.decode())
+        r = self.client.post(url + '?giorni=2', {**dati, 'azione': 'annulla'})
         self.assertEqual(r.status_code, 302)
-        self.assertTrue(CondivisioneGruppo.objects.filter(articolo=self.articolo, gruppo=self.fossoli).exists())
-        self.assertIn('Condiviso il', self.client.get(url).content.decode())
-        self.client.post(url, {'articolo': self.articolo.pk, 'gruppo': self.fossoli.pk, 'azione': 'annulla'})
         self.assertFalse(CondivisioneGruppo.objects.exists())
 
-    def test_gruppo_di_frazione_solo_se_nominata(self):
-        from home.gruppi_facebook import punteggio
-        altro = Articolo.objects.create(
-            titolo='Lavori in via Roma a Carpi', contenuto='<p>T</p>', sommario='Cantiere in centro.',
-            categoria='Attualità', comune='Carpi', approvato=True, data_pubblicazione=timezone.now())
-        self.assertEqual(punteggio(altro, self.fossoli)[0], 0)
-        self.assertEqual(punteggio(altro, self.carpi)[0], 2)
+    def test_elenco_gruppi_nell_admin(self):
+        self.client.force_login(User.objects.create_superuser('admin', 'a@example.it', 'x'))
+        r = self.client.get(reverse('admin:home_gruppofacebook_changelist'))
+        self.assertEqual(r.status_code, 200)
+        r = self.client.get(reverse('admin:home_gruppofacebook_change', args=[self.primo.pk]))
+        self.assertEqual(r.status_code, 200)
 
     def test_riassunto_senza_stili_e_html(self):
         from home.gruppi_facebook import _riassunto
