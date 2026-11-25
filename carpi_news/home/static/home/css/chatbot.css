@@ -452,6 +452,17 @@
     border-radius: 8px;
 }
 
+/* La miniatura e' un <img>: deve riempire il riquadro (lo stile delle card del sito
+   per .article-image img la lasciava larga 90px e alta in proporzione) */
+.chatbot-container .article-card .article-image img {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: none !important;
+    object-fit: cover !important;
+    display: block !important;
+    border-radius: 8px;
+}
+
 .article-card .article-content {
     flex: 1;
     padding: 6px 10px;
@@ -480,6 +491,17 @@
     -webkit-box-orient: vertical;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+/* style.css forza su .article-title (titolo della pagina articolo) display:block, nessun
+   limite di righe e margine 1,5rem, tutto !important: qui serve un selettore piu' specifico */
+.chatbot-container .article-card .article-title {
+    display: -webkit-box !important;
+    -webkit-line-clamp: 3 !important;
+    -webkit-box-orient: vertical !important;
+    overflow: hidden !important;
+    margin: 2px 0 4px !important;
+    line-height: 1.3 !important;
 }
 
 .article-summary {
@@ -536,6 +558,13 @@
         width: 100%;
         height: 100%;
         border-radius: 0;
+        /* Sopra la testata del sito (z-index 1000-1001), che copriva la X per chiudere */
+        z-index: 1002;
+    }
+
+    /* A chat aperta il pulsante copriva il tasto di invio: si chiude con la X */
+    .chatbot-toggle.chat-aperta {
+        display: none;
     }
 
     /* Quando la tastiera è aperta il JS sovrascrive top/height via visualViewport */
@@ -554,6 +583,16 @@
 
     .message-content {
         max-width: 85%;
+    }
+
+    /* Card piu' basse: tre card non devono riempire lo schermo */
+    .chatbot-container .article-card .article-summary {
+        display: none !important;
+    }
+
+    .chatbot-container .article-card .article-image {
+        width: 72px;
+        height: 72px;
     }
 
     .chatbot-header {

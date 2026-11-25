@@ -90,6 +90,7 @@ class OmbraChatbot {
     open() {
         this.isOpen = true;
         this.container.classList.add('active');
+        this.toggleBtn.classList.add('chat-aperta');
         this.input?.focus();
 
         // Mostra sempre messaggio di benvenuto all'apertura
@@ -104,6 +105,7 @@ class OmbraChatbot {
     close() {
         this.isOpen = false;
         this.container.classList.remove('active');
+        this.toggleBtn.classList.remove('chat-aperta');
 
         // Pulisci messaggi quando si chiude la chat
         this.clearMessages();
@@ -153,6 +155,7 @@ class OmbraChatbot {
 
             // Aggiungi risposta bot
             this.addBotMessage(data.response);
+            const rispostaEl = this.messagesArea.lastElementChild;
 
             // Se ci sono articoli, gestisci redirect
             if (data.articles && data.articles.length > 0) {
@@ -178,6 +181,14 @@ class OmbraChatbot {
                     // Aggiungi bottone per vedere tutti
                     this.addViewAllButton(resultsUrl, data.total_found || data.articles.length);
                 }
+            }
+
+            // Risposta lunga (domanda): resta in vista il suo inizio, non le card in fondo
+            if (rispostaEl && (data.response || '').length > 160) {
+                setTimeout(() => {
+                    const delta = rispostaEl.getBoundingClientRect().top - this.messagesArea.getBoundingClientRect().top;
+                    this.messagesArea.scrollTop += delta - 8;
+                }, 150);
             }
 
         } catch (error) {
@@ -385,6 +396,8 @@ class OmbraChatbot {
         let html = this.escapeHtml(text || '');
         html = html.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
         html = html.replace(/\[([^\]\n]+)\]\((\/[^)\s"'<>]*)\)/g, '<a href="$2">$1</a>');
+        // Niente riga vuota tra i punti di un elenco (su telefono allunga troppo la risposta)
+        html = html.replace(/\n\s*\n(?=\s*• )/g, '\n');
         return html.replace(/\n/g, '<br>');
     }
 
