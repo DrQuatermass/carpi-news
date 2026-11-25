@@ -66,6 +66,9 @@
     right: 30px;
     width: 380px;
     height: 600px;
+    /* Finestre basse: senza limite la testata (e la X) usciva dallo schermo in alto */
+    max-height: calc(100vh - 120px);
+    max-height: calc(100dvh - 120px);
     background: rgba(247, 245, 239, 0.98);
     backdrop-filter: blur(20px);
     border-radius: 16px;
@@ -74,7 +77,8 @@
     display: none;
     flex-direction: column;
     overflow: hidden;
-    z-index: 998;
+    /* Sopra la testata del sito (z-index 1000-1001), che ne copriva la parte alta e la X */
+    z-index: 1002;
     animation: slideUp 0.3s ease;
 }
 
@@ -159,7 +163,11 @@
     border: none;
     color: #f7f5ef;
     cursor: pointer;
-    padding: 5px;
+    padding: 10px;
+    margin: -5px -5px -5px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     transition: opacity 0.3s ease;
 }
 
@@ -170,6 +178,8 @@
 .chatbot-close svg {
     width: 24px;
     height: 24px;
+    /* Senza questo il path dell'icona restava nero sul bordeaux della testata */
+    fill: currentColor;
 }
 
 /* Area messaggi */
@@ -557,9 +567,8 @@
         bottom: 0;
         width: 100%;
         height: 100%;
+        max-height: none;
         border-radius: 0;
-        /* Sopra la testata del sito (z-index 1000-1001), che copriva la X per chiudere */
-        z-index: 1002;
     }
 
     /* A chat aperta il pulsante copriva il tasto di invio: si chiude con la X */
