@@ -156,34 +156,16 @@ class OmbraChatbot {
 
             // Se ci sono articoli, gestisci redirect
             if (data.articles && data.articles.length > 0) {
-                if (data.articles.length === 1) {
-                    // Un solo articolo: redirect diretto
+                const isQuestion = data.intent && data.intent.request_type === 'question';
+                if (data.articles.length === 1 && !isQuestion) {
+                    // Ricerca con un solo articolo: redirect diretto
                     this.addBotMessage('Ti porto all\'articolo...');
                     setTimeout(() => {
                         window.location.href = data.articles[0].url;
                     }, 1000);
                 } else {
-                    // Multipli articoli - distingui tra ricerca e domanda
-                    // Se la risposta è lunga (>100 caratteri), è probabilmente una risposta AI per una domanda
-                    // In quel caso NON mostrare card per non distrarre dalla risposta
-                    const responseLength = data.response ? data.response.length : 0;
-                    const isLongResponse = responseLength > 100;
-
-                    console.log('🤖 CHATBOT DEBUG:', {
-                        responseLength: responseLength,
-                        isLong: isLongResponse,
-                        showCards: !isLongResponse,
-                        articlesCount: data.articles.length
-                    });
-
-                    if (!isLongResponse) {
-                        // Risposta breve = ricerca normale: mostra card preview
-                        console.log('📇 Mostro card preview');
-                        this.addArticlesCarousel(data.articles.slice(0, 3));
-                    } else {
-                        console.log('🚫 NON mostro card (risposta lunga)');
-                    }
-                    // Risposta lunga = domanda: solo bottone, niente card
+                    // Ricerca: card dei primi tre. Domanda: le card degli articoli letti per rispondere
+                    this.addArticlesCarousel(data.articles.slice(0, 3));
 
                     // Crea URL per pagina risultati
                     const params = new URLSearchParams({
@@ -194,7 +176,7 @@ class OmbraChatbot {
                     const resultsUrl = `/chatbot/risultati/?${params.toString()}`;
 
                     // Aggiungi bottone per vedere tutti
-                    this.addViewAllButton(resultsUrl, data.articles.length);
+                    this.addViewAllButton(resultsUrl, data.total_found || data.articles.length);
                 }
             }
 
@@ -296,7 +278,7 @@ class OmbraChatbot {
             <div class="message-avatar bot">🏛️</div>
             <div class="message-content">
                 <a href="${url}" class="view-all-button">
-                    Vedi tutti i ${totalCount} articoli →
+                    ${totalCount === 1 ? 'Vedi l\'articolo' : `Vedi tutti i ${totalCount} articoli`} →
                 </a>
             </div>
         `;
@@ -318,7 +300,7 @@ class OmbraChatbot {
             messageEl.innerHTML = `
                 <div class="message-avatar bot">🏛️</div>
                 <div class="message-content">
-                    ${this.escapeHtml(message.text)}
+                    ${this.formatBotText(message.text)}
                     <div class="message-time">${time}</div>
                 </div>
             `;
@@ -395,6 +377,15 @@ class OmbraChatbot {
         this.messagesArea.innerHTML = '';
         localStorage.removeItem('chatbot-messages');
         this.addBotMessage('Cronologia cancellata. Come posso aiutarti?');
+    }
+
+    formatBotText(text) {
+        // Testo del bot: si fa l'escape di tutto, poi si riattivano solo **grassetto**,
+        // i link interni al sito [testo](/percorso/) e gli a capo
+        let html = this.escapeHtml(text || '');
+        html = html.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+        html = html.replace(/\[([^\]\n]+)\]\((\/[^)\s"'<>]*)\)/g, '<a href="$2">$1</a>');
+        return html.replace(/\n/g, '<br>');
     }
 
     escapeHtml(text) {

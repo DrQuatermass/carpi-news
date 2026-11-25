@@ -1042,6 +1042,7 @@ def chatbot_api(request):
         return JsonResponse({
             'response': result['response'],
             'articles': result['articles'],
+            'total_found': result.get('total_found', len(result['articles'])),
             'intent': result['intent'],
             'session_id': session_id
         })
