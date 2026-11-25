@@ -3069,6 +3069,54 @@ class PubblicaProgrammatiTests(TestCase):
         self.assertIn('Nessun articolo trovato', out.getvalue())
 
 
+class RotazioneBraniReelTests(TestCase):
+    """I brani di un tono ruotano: nessuno torna prima che siano usciti tutti gli altri."""
+
+    def setUp(self):
+        import tempfile
+        from pathlib import Path
+        self.cartella = Path(tempfile.mkdtemp())
+        self.sobri = ['Taccuino di Vetro.mp3', 'eliveta-corporate-491206.mp3',
+                      'penguinmusic-inspiring-minimal-434823.mp3']
+        for nome in self.sobri + ['alec_koff-carnaval-484622.mp3']:
+            (self.cartella / nome).write_bytes(b'x')
+
+    def _articolo(self, n, tono='sobrio'):
+        a = Articolo(titolo=f'Notizia {n}', slug=f'notizia-{n}', contenuto='<p>T</p>', categoria='Cronaca',
+                     reel_tono=tono)
+        Articolo.objects.bulk_create([a])
+        return Articolo.objects.get(slug=f'notizia-{n}')
+
+    def test_tutti_i_brani_del_tono_prima_di_ripeterne_uno(self):
+        from home.reel_musica import scegli_brano
+        usciti = [scegli_brano(self._articolo(n), self.cartella).name for n in range(7)]
+        self.assertEqual(sorted(usciti[:3]), sorted(self.sobri))
+        self.assertEqual(usciti[3:6], usciti[:3])
+        self.assertEqual(usciti[6], usciti[0])
+
+    def test_stesso_brano_per_lo_stesso_articolo(self):
+        from home.reel_musica import scegli_brano
+        a = self._articolo(1)
+        primo = scegli_brano(a, self.cartella)
+        self._articolo(2)
+        self.assertEqual(scegli_brano(Articolo.objects.get(pk=a.pk), self.cartella), primo)
+        self.assertEqual(Articolo.objects.get(pk=a.pk).reel_brano, primo.name)
+
+    def test_tono_cambiato_a_mano_cambia_brano(self):
+        from home.reel_musica import scegli_brano
+        a = self._articolo(1)
+        scegli_brano(a, self.cartella)
+        Articolo.objects.filter(pk=a.pk).update(reel_tono='vivace')
+        nuovo = scegli_brano(Articolo.objects.get(pk=a.pk), self.cartella)
+        self.assertEqual(nuovo.name, 'alec_koff-carnaval-484622.mp3')
+
+    def test_articolo_non_salvato_non_rompe(self):
+        from types import SimpleNamespace
+        from home.reel_musica import scegli_brano
+        finto = SimpleNamespace(titolo='Prova', slug='prova', categoria='Cronaca', reel_tono='')
+        self.assertIn(scegli_brano(finto, self.cartella).name, self.sobri)
+
+
 class DescrizioneReelFacebookTests(SimpleTestCase):
     """La descrizione del Reel Facebook porta titolo, link, sommario e pochi hashtag."""
 

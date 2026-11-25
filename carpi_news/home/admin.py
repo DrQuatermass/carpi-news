@@ -321,7 +321,7 @@ class ArticoloAdmin(admin.ModelAdmin):
                     'fields': ('richieste_modifica', 'fonti_web_display', 'rigenera_button')
                 }),
                 ('Reel', {
-                    'fields': ('reel_punti', 'reel_tono'),
+                    'fields': ('reel_punti', 'reel_tono', 'reel_brano'),
                     'description': "Il reel mostra il titolo e poi queste frasi, una schermata per riga. "
                                    "Se le scrivi prima di approvare, il reel usa le tue; se lasci vuoto le "
                                    "scrive l'AI alla pubblicazione e le trovi qui. Correggerle dopo vale "

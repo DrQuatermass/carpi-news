@@ -6,7 +6,11 @@ la notizia: un carnevale poteva finire su un lutto. Ora:
 - ogni brano ha un tono (raccolto, sobrio, neutro, vivace) e l'articolo ne ammette solo alcuni:
   il tono lo sceglie l'AI nella stessa chiamata dei punti chiave (Articolo.reel_tono), e le
   regole su titolo e categoria restano come riserva;
-- lo stesso articolo ha lo stesso brano su Facebook e su Instagram.
+- lo stesso articolo ha lo stesso brano su Facebook e su Instagram;
+- dal 25/11/2026 i brani ruotano: il brano scelto si salva sull'articolo (Articolo.reel_brano)
+  e tra quelli ammessi esce quello usato meno di recente, cosi' nessuno torna prima che siano
+  usciti tutti gli altri dello stesso tono. Prima decideva un numero ricavato dallo slug e
+  capitava lo stesso brano su articoli vicini.
 Il brano parte dal suo inizio: la partenza a meta' (dopo l'introduzione) e' stata provata e
 scartata lo stesso giorno.
 
@@ -112,7 +116,8 @@ def toni_ammessi(articolo) -> tuple:
 def scegli_brano(articolo, cartella: Path) -> Optional[Path]:
     """Brano per l'articolo, oppure None se la cartella non ha brani.
 
-    La scelta dipende solo dall'articolo: Facebook e Instagram ottengono lo stesso brano."""
+    Facebook e Instagram ottengono lo stesso brano: la prima scelta si salva sull'articolo.
+    Tra i brani ammessi esce quello usato meno di recente (mai usati per primi)."""
     if not cartella.exists():
         return None
     brani = []
@@ -126,4 +131,47 @@ def scegli_brano(articolo, cartella: Path) -> Optional[Path]:
     # se mancano i brani del tono giusto (cartella incompleta): quelli sobri, poi tutti
     candidati = ([b for b in brani if b[1] in ammessi] or [b for b in brani if b[1] == "sobrio"] or brani)
     chiave = getattr(articolo, "slug", "") or getattr(articolo, "titolo", "") or ""
-    return candidati[zlib.crc32(chiave.encode("utf-8")) % len(candidati)][0]
+    if not getattr(articolo, "pk", None) or not hasattr(type(articolo), "objects"):
+        return candidati[zlib.crc32(chiave.encode("utf-8")) % len(candidati)][0]
+    try:
+        return _a_rotazione(articolo, candidati, chiave)
+    except Exception:  # la musica non deve mai fermare il video
+        return candidati[zlib.crc32(chiave.encode("utf-8")) % len(candidati)][0]
+
+
+def _a_rotazione(articolo, candidati, chiave) -> Path:
+    from django.db.models import Max
+    from django.utils import timezone
+
+    Articolo = type(articolo)
+    per_nome = {p.name: p for p, _ in candidati}
+
+    def salvato():
+        return Articolo.objects.filter(pk=articolo.pk).values_list("reel_brano", flat=True).first() or ""
+
+    # gia' scelto (dall'altra piattaforma, o a una pubblicazione precedente): resta quello,
+    # a meno che il tono sia stato cambiato e il brano non sia piu' tra gli ammessi
+    nome = salvato()
+    if nome in per_nome:
+        return per_nome[nome]
+
+    ultimo_uso = dict(
+        Articolo.objects.filter(reel_brano__in=list(per_nome), reel_brano_scelto__isnull=False)
+        .exclude(pk=articolo.pk)
+        .values_list("reel_brano").annotate(ultimo=Max("reel_brano_scelto"))
+    )
+    mai_usati = sorted(n for n in per_nome if n not in ultimo_uso)
+    if mai_usati:
+        # tra i mai usati decide lo slug: stessa risposta per Facebook e Instagram anche se
+        # arrivano insieme, ma non sempre il primo in ordine alfabetico
+        scelto = mai_usati[zlib.crc32(chiave.encode("utf-8")) % len(mai_usati)]
+    else:
+        scelto = min(per_nome, key=lambda n: (ultimo_uso[n], n))
+
+    aggiornati = Articolo.objects.filter(pk=articolo.pk).exclude(reel_brano__in=list(per_nome)).update(
+        reel_brano=scelto, reel_brano_scelto=timezone.now())
+    if not aggiornati:  # l'altra piattaforma ha salvato un attimo prima
+        nome = salvato()
+        scelto = nome if nome in per_nome else scelto
+    articolo.reel_brano = scelto
+    return per_nome[scelto]

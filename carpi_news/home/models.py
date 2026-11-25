@@ -142,6 +142,11 @@ class Articolo(models.Model):
         "Tono della musica", max_length=10, blank=True, choices=REEL_TONO_CHOICES,
         help_text="Decide tra quali brani si sceglie il sottofondo del reel. Vuoto: lo sceglie l'AI "
                   "insieme ai punti chiave; se l'AI non risponde decidono categoria e titolo.")
+    reel_brano = models.CharField(
+        "Brano del reel", max_length=200, blank=True,
+        help_text="File del sottofondo scelto per questo articolo (lo stesso su Facebook e Instagram). "
+                  "Si riempie da solo: i brani di un tono ruotano, nessuno torna prima che siano usciti gli altri.")
+    reel_brano_scelto = models.DateTimeField("Brano scelto il", null=True, blank=True, editable=False)
 
     # CAMPI PUBBLIREDAZIONALE
     is_pubbliredazionale = models.BooleanField(default=False, help_text="È un articolo pubbliredazionale", db_index=True)
