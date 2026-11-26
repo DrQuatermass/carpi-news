@@ -1243,9 +1243,14 @@ class SocialMediaManager:
 
             # Prepara il contenuto del post
             # Facebook supporta fino a 63206 caratteri, ma è meglio limitare
-            message = f"{articolo.titolo}\n\n{articolo.sommario[:500]}"
-            if len(articolo.sommario) > 500:
-                message += "..."
+            # Dal 26/11/2026 il post apre con il sommario e non piu' con il titolo: il titolo lo
+            # mostra gia' la scheda del link, e ripeterlo sopra occupava le uniche righe che
+            # Facebook lascia visibili prima di "Altro" (la Voce apre con una frase diversa).
+            sommario = (articolo.sommario or "").strip()
+            if sommario:
+                message = sommario[:500] + ("..." if len(sommario) > 500 else "")
+            else:
+                message = articolo.titolo
 
             # Domanda "acchiappa-commenti" generata dall'AI (solo Facebook, per ora).
             # Se vuota, il post resta identico a prima (nessuna regressione).

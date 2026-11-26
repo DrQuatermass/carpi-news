@@ -2660,7 +2660,9 @@ class GruppiFacebookTests(TestCase):
         from home.gruppi_facebook import testo_condivisione
         testo = testo_condivisione(self.articolo)
         link = ShortLink.objects.get(articolo=self.articolo, platform='facebook_gruppo', medium='gruppi')
-        self.assertTrue(testo.startswith('Festa della zucca a Fossoli'))
+        # apre con il riassunto, non con il titolo: quello lo mostra la scheda del link
+        self.assertTrue(testo.startswith('Domenica in piazza a Fossoli torna la festa.'))
+        self.assertNotIn('Festa della zucca a Fossoli', testo)
         self.assertTrue(testo.endswith(f'/s/{link.token}/'))
         self.assertEqual(testo_condivisione(self.articolo), testo)
         r = self.client.get(f'/s/{link.token}/')
@@ -3323,3 +3325,29 @@ class ReelFacebookRimandatoTests(TestCase):
         reel.assert_called_once()
         self.assertEqual(
             SocialPublicationLog.objects.filter(articolo=self.articolo, success=True).count(), 2)
+
+
+class TestoPostFacebookTests(SimpleTestCase):
+    """Il post della Pagina apre con il sommario: il titolo lo mostra gia' la scheda del link."""
+
+    def _messaggio(self, articolo):
+        manager = SocialMediaManager()
+        manager.platforms['facebook'].update(access_token='t', page_id='1')
+        risposta = Mock(status_code=200, text='{}')
+        risposta.json.return_value = {'id': '1_2'}
+        with patch.object(manager, '_get_page_access_token', return_value='pt'), \
+                patch.object(manager, '_refresh_facebook_link_preview'), \
+                patch.object(manager, '_prepara_anteprima_gruppi'), \
+                patch('home.luoghi_meta.place_id_per', return_value=''), \
+                patch('home.social_sharing.requests.post', return_value=risposta) as post:
+            self.assertTrue(manager._share_to_facebook(articolo, 'https://ombradelportico.it/articolo/x/'))
+        return post.call_args.kwargs['data']['message']
+
+    def test_sommario_poi_domanda_senza_titolo(self):
+        a = Articolo(titolo='Nuova piazza a Limidi', sommario='Via Papotti diventa una piazza.',
+                     spunto_social='Voi come la vorreste?')
+        self.assertEqual(self._messaggio(a), 'Via Papotti diventa una piazza.\n\nVoi come la vorreste?')
+
+    def test_senza_sommario_resta_il_titolo(self):
+        a = Articolo(titolo='Nuova piazza a Limidi', sommario='', spunto_social='')
+        self.assertEqual(self._messaggio(a), 'Nuova piazza a Limidi')
