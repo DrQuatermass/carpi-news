@@ -14,6 +14,11 @@ logger = logging.getLogger(__name__)
 MAX_HASHTAG_INSTAGRAM = 5
 
 
+# Stato di attesa (inizio di SocialPublicationLog.error_message) di Storia e Reel Facebook
+# rimandati rispetto al post con il link
+REEL_RIMANDATO = "Rimandato"
+
+
 class SocialMediaManager:
     """Gestisce la condivisione automatica sui social media - Telegram, Facebook e Instagram
 
@@ -237,6 +242,10 @@ class SocialMediaManager:
                 .first()
             )
 
+            if log_entry and (log_entry.error_message or '').startswith(REEL_RIMANDATO):
+                # Reel o Storia Facebook in attesa della loro ora: li fa uscire pubblica_reel_rimandati
+                return False, False
+
             if log_entry and log_entry.error_message == 'In progress...':
                 stale_after = timezone.now() - timedelta(minutes=15)
                 last_touch = log_entry.updated_at or log_entry.published_at
@@ -260,6 +269,85 @@ class SocialMediaManager:
                 )
 
         return True, False
+
+    @staticmethod
+    def uscita_reel_rimandato(creato, ore: float):
+        """Quando escono Storia e Reel Facebook di un articolo approvato a `creato`: `ore` dopo,
+        ma mai tra le 22 e le 7 (si va alle 7 del mattino)."""
+        from django.utils import timezone
+        from datetime import timedelta
+
+        uscita = timezone.localtime(creato + timedelta(hours=ore))
+        if uscita.hour >= 22:
+            uscita = (uscita + timedelta(days=1)).replace(hour=7, minute=0, second=0, microsecond=0)
+        elif uscita.hour < 7:
+            uscita = uscita.replace(hour=7, minute=0, second=0, microsecond=0)
+        return uscita
+
+    def _rimanda_reel_facebook(self, articolo, platform: str) -> bool:
+        """Dal 26/11/2026 Storia e Reel Facebook non escono piu' insieme al post con il link
+        ma FACEBOOK_REEL_RITARDO_ORE dopo (default 3; 0 = insieme, come prima): tre contenuti
+        in tre minuti si dividevano lo stesso pubblico. Qui si segna solo l'attesa; li pubblica
+        `pubblica_reel_rimandati` dal cron. True se la pubblicazione e' rimandata."""
+        from .models import SocialPublicationLog
+        from django.db import transaction
+        from django.utils import timezone
+
+        ore = float(getattr(settings, 'FACEBOOK_REEL_RITARDO_ORE', 3) or 0)
+        if ore <= 0:
+            return False
+        with transaction.atomic():
+            log = (SocialPublicationLog.objects.select_for_update()
+                   .filter(articolo=articolo, platform=platform).first())
+            if log:
+                # gia' in attesa: resta in attesa; gia' tentato o riuscito: flusso normale
+                return (log.error_message or '').startswith(REEL_RIMANDATO)
+            uscita = self.uscita_reel_rimandato(timezone.now(), ore)
+            SocialPublicationLog.objects.create(
+                articolo=articolo, platform=platform, success=False,
+                error_message=f"{REEL_RIMANDATO}: esce il {uscita:%d/%m} alle {uscita:%H:%M}")
+        logger.info(f"{platform}: rimandato alle {uscita:%H:%M} del {uscita:%d/%m} per '{articolo.titolo}'")
+        return True
+
+    def pubblica_reel_rimandati(self, adesso=None) -> int:
+        """Fa uscire Storie e Reel Facebook rimandati la cui ora e' arrivata. Restituisce quanti
+        ne ha pubblicati. Chiamato da `pubblica_programmati` (cron ogni 5 minuti)."""
+        from .models import SocialPublicationLog
+        from django.utils import timezone
+
+        adesso = adesso or timezone.now()
+        ore = float(getattr(settings, 'FACEBOOK_REEL_RITARDO_ORE', 3) or 0)
+        in_attesa = (SocialPublicationLog.objects
+                     .filter(platform__in=('facebook_story', 'facebook_reel'), success=False,
+                             error_message__startswith=REEL_RIMANDATO, articolo__approvato=True)
+                     .select_related('articolo').order_by('published_at', 'id'))
+        pubblicati = 0
+        for log in in_attesa:
+            if self.uscita_reel_rimandato(log.published_at, ore) > adesso:
+                continue
+            # La riga si prende cambiandone lo stato: un secondo cron partito nel frattempo la salta
+            presa = SocialPublicationLog.objects.filter(
+                pk=log.pk, error_message__startswith=REEL_RIMANDATO,
+            ).update(error_message='In progress...', updated_at=timezone.now(),
+                     # da qui parte la finestra dei tentativi di recupero, se la pubblicazione fallisce
+                     published_at=timezone.now())
+            if not presa:
+                continue
+            articolo, platform = log.articolo, log.platform
+            if not self.platforms[platform]['enabled'] or not articolo.has_shareable_image:
+                self._finalize_publication(articolo, platform, False, "Disabilitato o senza immagine")
+                continue
+            if platform == 'facebook_story':
+                success, error_msg = self._share_to_facebook_story(articolo)
+                medium = 'story'
+            else:
+                success, error_msg = self._share_to_facebook_reel(articolo)
+                medium = 'reel'
+            shared_url, short_link = self._tracking_link(articolo, 'facebook', medium)
+            self._finalize_publication(articolo, platform, success, None if success else error_msg,
+                                       shared_url=shared_url, short_link=short_link)
+            pubblicati += 1 if success else 0
+        return pubblicati
 
     def _finalize_publication(
         self,
@@ -604,9 +692,12 @@ class SocialMediaManager:
         # Facebook Story (indipendente dal post Pagina: richiede immagine)
         if self.platforms['facebook_story']['enabled']:
             if articolo.has_shareable_image:
-                should_share, already_done = self._prepare_publication_slot(
-                    articolo, 'facebook_story'
-                )
+                if self._rimanda_reel_facebook(articolo, 'facebook_story'):
+                    should_share, already_done = False, False
+                else:
+                    should_share, already_done = self._prepare_publication_slot(
+                        articolo, 'facebook_story'
+                    )
                 if already_done:
                     logger.info(f"Facebook Story: Articolo '{articolo.titolo}' già pubblicato, skip")
                     results['facebook_story'] = True
@@ -642,7 +733,10 @@ class SocialMediaManager:
         # perche' riusa lo stesso video. Si spegne con FACEBOOK_REEL_ENABLED=False.
         if self.platforms['facebook_reel']['enabled']:
             if articolo.has_shareable_image:
-                should_share, already_done = self._prepare_publication_slot(articolo, 'facebook_reel')
+                if self._rimanda_reel_facebook(articolo, 'facebook_reel'):
+                    should_share, already_done = False, False
+                else:
+                    should_share, already_done = self._prepare_publication_slot(articolo, 'facebook_reel')
                 if already_done:
                     logger.info(f"Facebook Reel: Articolo '{articolo.titolo}' già pubblicato, skip")
                     results['facebook_reel'] = True
@@ -1510,7 +1604,10 @@ class SocialMediaManager:
             from .instagram_templates import punti_carosello, IG_CTA_INVITO
             from home.luoghi_meta import place_id_per
 
-            punti = punti_carosello(self._punti_chiave(articolo))
+            # Con Storia e Reel Facebook rimandati, il video non ha ancora scritto i punti:
+            # punti_per li rilegge o li fa scrivere ora all'AI e li salva per i video
+            from .reel_animato import punti_per
+            punti = punti_carosello("\n".join(punti_per(articolo)))
             if len(punti) < 2:
                 logger.info("Instagram: articolo senza punti chiave, esce la foto singola")
                 return ""

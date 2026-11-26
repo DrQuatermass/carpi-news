@@ -495,6 +495,8 @@ REEL_ANIMATO = os.getenv('REEL_ANIMATO', 'True').lower() in ['true', '1', 'yes']
 INSTAGRAM_REEL_SHARE_TO_FEED = os.getenv('INSTAGRAM_REEL_SHARE_TO_FEED', 'True').lower() in ['true', '1', 'yes']
 # Carosello (foto + punti chiave) al posto della foto singola su Instagram; False = solo foto
 INSTAGRAM_CAROSELLO = os.getenv('INSTAGRAM_CAROSELLO', 'True').lower() in ['true', '1', 'yes']
+# Ore tra il post Facebook con il link e Storia + Reel dello stesso articolo (0 = insieme)
+FACEBOOK_REEL_RITARDO_ORE = float(os.getenv('FACEBOOK_REEL_RITARDO_ORE', '3'))
 # Audio name brandizzato sul Reel IG ('Audio originale di <nome>' visto dagli utenti)
 INSTAGRAM_REEL_AUDIO_NAME = os.getenv('INSTAGRAM_REEL_AUDIO_NAME', 'Ombra del Portico - Notizie di Carpi')
 

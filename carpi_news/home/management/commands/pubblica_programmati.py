@@ -42,8 +42,24 @@ class Command(BaseCommand):
                                  "vecchi non si pubblicano, per non ripescare articoli mai condivisi")
         parser.add_argument('--dry-run', action='store_true', help='Elenca senza pubblicare')
 
+    def _reel_rimandati(self):
+        """Storie e Reel Facebook usciti apposta qualche ora dopo il post con il link
+        (FACEBOOK_REEL_RITARDO_ORE). Un lucchetto evita che due giri del cron generino video
+        insieme sul server a un solo core."""
+        from home.social_sharing import social_manager
+        if not cache.add('reel_rimandati_in_corso', 1, 20 * 60):
+            return
+        try:
+            n = social_manager.pubblica_reel_rimandati()
+            if n:
+                self.stdout.write(f"{timezone.localtime():%d/%m %H:%M} reel e storie Facebook rimandati usciti: {n}")
+        finally:
+            cache.delete('reel_rimandati_in_corso')
+
     def handle(self, *args, **options):
         articoli = list(articoli_da_pubblicare(options['finestra']))
+        if not options['dry_run']:
+            self._reel_rimandati()
         if not articoli:
             return
         for a in articoli:

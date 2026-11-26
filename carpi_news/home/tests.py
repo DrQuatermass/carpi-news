@@ -3262,3 +3262,64 @@ class CaroselloInstagramTests(SimpleTestCase):
         esito, post = self._pubblica([])
         self.assertEqual(esito, '')
         post.assert_not_called()
+
+
+class ReelFacebookRimandatoTests(TestCase):
+    """Storia e Reel Facebook escono qualche ora dopo il post con il link, non insieme."""
+
+    def setUp(self):
+        self.articolo = Articolo.objects.create(
+            titolo='Nuova piazza a Limidi', contenuto='<p>T</p>', sommario='Sommario.',
+            categoria='Attualità', approvato=False, data_pubblicazione=timezone.now())
+        # approvato con update(): niente segnali di approvazione (social, motori di ricerca)
+        Articolo.objects.filter(pk=self.articolo.pk).update(approvato=True)
+        self.articolo.refresh_from_db()
+        self.manager = SocialMediaManager()
+
+    def _ora(self, ore, minuti=0):
+        return timezone.make_aware(timezone.datetime(2026, 11, 26, ore, minuti))
+
+    def test_tre_ore_dopo_ma_non_di_notte(self):
+        uscita = SocialMediaManager.uscita_reel_rimandato
+        self.assertEqual(uscita(self._ora(10), 3), self._ora(13))
+        self.assertEqual(uscita(self._ora(20, 30), 3),
+                         timezone.make_aware(timezone.datetime(2026, 11, 27, 7, 0)))
+        self.assertEqual(uscita(self._ora(2), 3), self._ora(7))
+
+    @override_settings(FACEBOOK_REEL_RITARDO_ORE=3)
+    def test_all_approvazione_si_segna_l_attesa_e_nessuno_la_scavalca(self):
+        self.assertTrue(self.manager._rimanda_reel_facebook(self.articolo, 'facebook_reel'))
+        log = SocialPublicationLog.objects.get(articolo=self.articolo, platform='facebook_reel')
+        self.assertFalse(log.success)
+        self.assertTrue(log.error_message.startswith('Rimandato'))
+        # un secondo salvataggio dell'articolo e i tentativi di recupero non lo fanno uscire prima
+        self.assertTrue(self.manager._rimanda_reel_facebook(self.articolo, 'facebook_reel'))
+        self.assertEqual(self.manager._prepare_publication_slot(self.articolo, 'facebook_reel'), (False, False))
+        cmd = RetryFailedSocialSharesCommand()
+        voci = cmd._retry_items({'older_than_minutes': 0, 'platform': None, 'newer_than_minutes': 0,
+                                 'in_progress_only': False, 'limit': 10, 'article_limit': 10})
+        self.assertEqual(list(voci), [])
+
+    @override_settings(FACEBOOK_REEL_RITARDO_ORE=0)
+    def test_con_zero_ore_esce_insieme_come_prima(self):
+        self.assertFalse(self.manager._rimanda_reel_facebook(self.articolo, 'facebook_reel'))
+        self.assertFalse(SocialPublicationLog.objects.filter(articolo=self.articolo).exists())
+
+    @override_settings(FACEBOOK_REEL_RITARDO_ORE=3)
+    def test_escono_quando_arriva_l_ora(self):
+        for platform in ('facebook_story', 'facebook_reel'):
+            self.manager._rimanda_reel_facebook(self.articolo, platform)
+            self.manager.platforms[platform]['enabled'] = True
+        creato = SocialPublicationLog.objects.filter(articolo=self.articolo).first().published_at
+        dopo = SocialMediaManager.uscita_reel_rimandato(creato, 3) + timedelta(minutes=1)
+        with patch.object(SocialMediaManager, '_share_to_facebook_story', return_value=(True, '')) as storia, \
+                patch.object(SocialMediaManager, '_share_to_facebook_reel', return_value=(True, '')) as reel, \
+                patch.object(Articolo, 'has_shareable_image', True):
+            self.assertEqual(self.manager.pubblica_reel_rimandati(adesso=creato + timedelta(minutes=30)), 0)
+            storia.assert_not_called()
+            self.assertEqual(self.manager.pubblica_reel_rimandati(adesso=dopo), 2)
+            self.assertEqual(self.manager.pubblica_reel_rimandati(adesso=dopo), 0)
+        storia.assert_called_once()
+        reel.assert_called_once()
+        self.assertEqual(
+            SocialPublicationLog.objects.filter(articolo=self.articolo, success=True).count(), 2)

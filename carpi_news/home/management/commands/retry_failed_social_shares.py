@@ -139,6 +139,10 @@ class Command(BaseCommand):
             .select_related("articolo")
             .order_by("updated_at")
         )
+        # Storie e Reel Facebook in attesa della loro ora non sono falliti (li fa uscire
+        # pubblica_programmati)
+        from home.social_sharing import REEL_RIMANDATO
+        qs = qs.exclude(error_message__startswith=REEL_RIMANDATO)
         if newer_than_minutes > 0:
             # La finestra parte dal primo tentativo (published_at, creazione del log), non
             # dall'ultimo: ogni retry aggiorna updated_at e con quello un articolo che fallisce
