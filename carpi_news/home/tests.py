@@ -2698,6 +2698,21 @@ class GruppiFacebookTests(TestCase):
         r = self.client.get(reverse('admin:home_gruppofacebook_change', args=[self.primo.pk]))
         self.assertEqual(r.status_code, 200)
 
+    def test_link_dei_gruppi_fatto_leggere_a_facebook(self):
+        from home.social_sharing import social_manager
+        with patch('home.social_sharing.requests.post') as post:
+            post.return_value = Mock(status_code=200, text='{}')
+            social_manager._prepara_anteprima_gruppi(self.articolo, 'chiave')
+        dati = post.call_args.kwargs['data']
+        link = ShortLink.objects.get(articolo=self.articolo, platform='facebook_gruppo', medium='gruppi')
+        self.assertTrue(dati['id'].endswith(f'/s/{link.token}/'))
+        self.assertEqual(dati['scrape'], 'true')
+
+    def test_errore_di_facebook_non_ferma_la_condivisione(self):
+        from home.social_sharing import social_manager
+        with patch('home.social_sharing.requests.post', side_effect=requests.ConnectionError('giu')):
+            social_manager._prepara_anteprima_gruppi(self.articolo, 'chiave')
+
     def test_riassunto_senza_stili_e_html(self):
         from home.gruppi_facebook import _riassunto
         self.assertEqual(_riassunto('<style>p{color:red}</style><p>Ciao &amp; benvenuti</p>'), 'Ciao & benvenuti')

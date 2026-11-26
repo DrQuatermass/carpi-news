@@ -320,6 +320,14 @@ class SocialMediaManager:
         except Exception as e:
             logger.warning(f"Facebook: errore refresh Open Graph per {article_url}: {str(e)[:200]}")
 
+    def _prepara_anteprima_gruppi(self, articolo, access_token: str) -> None:
+        """Fa leggere a Facebook il link breve usato nei gruppi (crea il link se manca)."""
+        try:
+            from .gruppi_facebook import link_gruppi
+            self._refresh_facebook_link_preview(link_gruppi(articolo), access_token)
+        except Exception as e:
+            logger.warning(f"Facebook: anteprima del link dei gruppi non preparata: {str(e)[:200]}")
+
     def _validate_image_url(self, image_url: str, timeout: int = 10) -> bool:
         """
         Valida che un URL immagine sia accessibile e contenga un'immagine valida
@@ -1123,6 +1131,11 @@ class SocialMediaManager:
             # Aggiorna la cache Open Graph prima di pubblicare.
             # Evita il parametro picture su /feed: non è affidabile per link post moderni.
             self._refresh_facebook_link_preview(article_url, page_token)
+
+            # Anche il link breve dei gruppi: chi lo incolla in un gruppo subito dopo
+            # l'approvazione deve trovare l'anteprima gia' pronta (26/11/2026: post senza
+            # foto e titolo perche' Facebook non aveva ancora letto il link).
+            self._prepara_anteprima_gruppi(articolo, page_token)
 
             # Usa sempre l'endpoint /feed con il link
             # Facebook genererà automaticamente l'anteprima con immagine dal sito
