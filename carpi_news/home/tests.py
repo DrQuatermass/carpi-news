@@ -3185,3 +3185,80 @@ class TestoAlternativoInstagramTests(SimpleTestCase):
         testo = SocialMediaManager._testo_alternativo(a)
         self.assertTrue(testo.startswith("Foto dell'articolo con il titolo: Titolo. Parola"))
         self.assertLessEqual(len(testo), 1000)
+
+
+class CaroselloInstagramTests(SimpleTestCase):
+    """Su Instagram, al posto della foto singola, un carosello: foto, punti chiave, invito."""
+
+    PUNTI = ['Tre tirocini partono a gennaio', 'Domande entro il 31 dicembre', 'Moduli sul sito del Comune']
+
+    def _articolo(self, punti=None):
+        return Articolo(titolo='Il Comune cerca tirocinanti', slug='tirocini', categoria='Attualità',
+                        sommario='Sommario.', reel_punti='\n'.join(self.PUNTI if punti is None else punti))
+
+    def _risposta(self, status=200, ident='1'):
+        r = Mock(status_code=status, text='{}')
+        r.json.return_value = {'id': ident}
+        return r
+
+    def test_schede_copertina_punti_e_invito(self):
+        from home.instagram_templates import render_instagram_carousel
+        with tempfile.TemporaryDirectory() as cartella:
+            foto = Path(cartella) / 'foto.jpg'
+            Image.new('RGB', (600, 900), (120, 80, 40)).save(foto)
+            schede = render_instagram_carousel(foto, 'tirocini', 'Titolo', 'Attualità', self.PUNTI,
+                                               output_dir=Path(cartella))
+            self.assertEqual([p.name for p in schede],
+                             [f'tirocini_ig_c{i}.jpg' for i in range(1, 6)])
+            for p in schede:
+                with Image.open(p) as img:
+                    self.assertEqual(img.size, (1080, 1350))
+            # con un solo punto niente carosello
+            self.assertEqual(render_instagram_carousel(foto, 'x', 'Titolo', 'Attualità', ['Uno'],
+                                                       output_dir=Path(cartella)), [])
+
+    def _pubblica(self, risposte, punti=None):
+        manager = SocialMediaManager()
+        schede = [f'https://ombradelportico.it/media/images/instagram_temp/tirocini_ig_c{i}.jpg'
+                  for i in range(1, 6)]
+        with patch.object(manager, '_prepare_instagram_carousel', return_value=schede), \
+                patch('home.social_sharing.requests.post', side_effect=risposte) as post, \
+                patch('home.social_sharing.time.sleep'), \
+                patch('home.luoghi_meta.place_id_per', return_value=''):
+            esito = manager._pubblica_carosello_instagram(
+                self._articolo(punti), '123', 'token', 'Didascalia', 'https://ombradelportico.it/foto.jpg')
+        return esito, post
+
+    def test_cinque_schede_un_contenitore_e_la_pubblicazione(self):
+        risposte = [self._risposta(ident=f'f{i}') for i in range(5)]
+        risposte += [self._risposta(ident='contenitore'), self._risposta(ident='post99')]
+        esito, post = self._pubblica(risposte)
+        self.assertEqual(esito, 'post99')
+        chiamate = [c.kwargs['data'] for c in post.call_args_list]
+        self.assertTrue(all(d['is_carousel_item'] == 'true' for d in chiamate[:5]))
+        self.assertEqual(chiamate[1]['alt_text'], self.PUNTI[0])
+        self.assertEqual(chiamate[5]['media_type'], 'CAROUSEL')
+        self.assertEqual(chiamate[5]['children'], 'f0,f1,f2,f3,f4')
+        self.assertEqual(chiamate[5]['caption'], 'Didascalia')
+        self.assertEqual(chiamate[6]['creation_id'], 'contenitore')
+
+    def test_testo_alternativo_rifiutato_si_riprova_senza(self):
+        risposte = [self._risposta(status=400), self._risposta(ident='f0')]
+        risposte += [self._risposta(ident=f'f{i}') for i in range(1, 5)]
+        risposte += [self._risposta(ident='contenitore'), self._risposta(ident='post1')]
+        esito, post = self._pubblica(risposte)
+        self.assertEqual(esito, 'post1')
+        self.assertNotIn('alt_text', post.call_args_list[1].kwargs['data'])
+
+    def test_senza_punti_o_con_rifiuto_di_meta_esce_la_foto_singola(self):
+        esito, post = self._pubblica([], punti=['Uno solo'])
+        self.assertEqual(esito, '')
+        post.assert_not_called()
+        esito, _ = self._pubblica([self._risposta(status=400), self._risposta(status=400)])
+        self.assertEqual(esito, '')
+
+    @override_settings(INSTAGRAM_CAROSELLO=False)
+    def test_spento_dal_env(self):
+        esito, post = self._pubblica([])
+        self.assertEqual(esito, '')
+        post.assert_not_called()

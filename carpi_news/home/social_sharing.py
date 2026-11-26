@@ -382,33 +382,18 @@ class SocialMediaManager:
         import os
         from pathlib import Path
         try:
-            local_path = Path(settings.MEDIA_ROOT) / "images" / "instagram_temp" / f"{articolo_slug}_ig.jpg"
-            if local_path.exists():
-                size_kb = local_path.stat().st_size // 1024
-                local_path.unlink()
-                logger.info(f"Instagram: file locale rimosso {local_path.name} ({size_kb} KB liberati)")
+            cartella = Path(settings.MEDIA_ROOT) / "images" / "instagram_temp"
+            # la foto singola e le schede del carosello (<slug>_ig_c1.jpg, ...)
+            for local_path in [cartella / f"{articolo_slug}_ig.jpg", *cartella.glob(f"{articolo_slug}_ig_c[0-9].jpg")]:
+                if local_path.exists():
+                    size_kb = local_path.stat().st_size // 1024
+                    local_path.unlink()
+                    logger.info(f"Instagram: file locale rimosso {local_path.name} ({size_kb} KB liberati)")
         except OSError as e:
             logger.warning(f"Instagram: cleanup file locale fallito per {articolo_slug}: {e}")
 
-    def _prepare_instagram_image(self, image_url: str, articolo_slug: str,
-                                  title: str = "", category: str = "Notizie") -> Optional[str]:
-        """
-        Scarica l'immagine articolo, applica il template Instagram 1080x1080
-        coerente con il Reel (logo + card + badge categoria + titolo Playfair +
-        CTA "Scrivi LINK" con la spiegazione del DM automatico) e ritorna l'URL pubblico dell'immagine
-        salvata in MEDIA_ROOT/images/instagram_temp/<slug>_ig.jpg.
-
-        Args:
-            image_url: URL assoluto dell'immagine originale dell'articolo
-            articolo_slug: slug per il nome file output
-            title: titolo dell'articolo (overlay)
-            category: categoria (badge sopra il titolo)
-
-        Returns:
-            URL pubblico dell'immagine template, oppure None se errore.
-        """
-        from .instagram_templates import render_instagram_post
-
+    def _scarica_foto_instagram(self, image_url: str) -> Optional[bytes]:
+        """Scarica la foto dell'articolo (tre tentativi). None se non si riesce."""
         # 1) Scarica l'immagine sorgente con retry esponenziale
         max_retries = 3
         response = None
@@ -433,13 +418,59 @@ class SocialMediaManager:
         if response is None:
             logger.error(f"Instagram: download immagine fallito dopo {max_retries} tentativi")
             return None
+        return response.content
+
+    def _prepare_instagram_carousel(self, image_url: str, articolo_slug: str, title: str,
+                                    category: str, punti: list) -> list:
+        """Schede del carosello (copertina, punti chiave, invito) come URL pubblici.
+        Lista vuota se non si riesce: chi chiama ripiega sulla foto singola."""
+        from .instagram_templates import render_instagram_carousel
+        import tempfile, os
+
+        contenuto = self._scarica_foto_instagram(image_url)
+        if contenuto is None:
+            return []
+        tmp_fd, tmp_path = tempfile.mkstemp(prefix=f"ig_src_{articolo_slug}_", suffix=".img")
+        try:
+            with os.fdopen(tmp_fd, "wb") as tmp:
+                tmp.write(contenuto)
+            percorsi = render_instagram_carousel(tmp_path, articolo_slug, title, category or "Notizie", punti)
+            return [f"https://ombradelportico.it/media/images/instagram_temp/{p.name}" for p in percorsi]
+        finally:
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+
+    def _prepare_instagram_image(self, image_url: str, articolo_slug: str,
+                                  title: str = "", category: str = "Notizie") -> Optional[str]:
+        """
+        Scarica l'immagine articolo, applica il template Instagram 1080x1080
+        coerente con il Reel (logo + card + badge categoria + titolo Playfair +
+        CTA "Scrivi LINK" con la spiegazione del DM automatico) e ritorna l'URL pubblico dell'immagine
+        salvata in MEDIA_ROOT/images/instagram_temp/<slug>_ig.jpg.
+
+        Args:
+            image_url: URL assoluto dell'immagine originale dell'articolo
+            articolo_slug: slug per il nome file output
+            title: titolo dell'articolo (overlay)
+            category: categoria (badge sopra il titolo)
+
+        Returns:
+            URL pubblico dell'immagine template, oppure None se errore.
+        """
+        from .instagram_templates import render_instagram_post
+
+        contenuto = self._scarica_foto_instagram(image_url)
+        if contenuto is None:
+            return None
 
         # 2) Salva la sorgente in un file temp
         import tempfile, os
         tmp_fd, tmp_path = tempfile.mkstemp(prefix=f"ig_src_{articolo_slug}_", suffix=".img")
         try:
             with os.fdopen(tmp_fd, "wb") as tmp:
-                tmp.write(response.content)
+                tmp.write(contenuto)
 
             # 3) Genera il template via il modulo dedicato
             out_path = render_instagram_post(
@@ -1359,6 +1390,14 @@ class SocialMediaManager:
                 logger.error(error)
                 return False, error
 
+            # Carosello al posto della foto singola quando l'articolo ha i punti chiave del video
+            # (dal 26/11/2026). Se non si riesce a prepararlo o Meta lo rifiuta, esce la foto.
+            post_id = self._pubblica_carosello_instagram(
+                articolo, config['account_id'], page_token, caption, original_image_url)
+            if post_id:
+                self._cleanup_instagram_local_file(articolo.slug)
+                return True, post_id
+
             # Prepara immagine per Instagram (template 1080x1080 con logo, card, badge e CTA)
             image_url = self._prepare_instagram_image(
                 original_image_url,
@@ -1458,6 +1497,80 @@ class SocialMediaManager:
             logger.error(traceback.format_exc())
             return False, error
 
+    def _pubblica_carosello_instagram(self, articolo, account_id: str, page_token: str,
+                                      caption: str, image_url: str) -> str:
+        """Pubblica il carosello (copertina con la foto, una scheda per punto chiave, invito
+        a scrivere LINK) e restituisce l'id del post. Stringa vuota se il carosello non si puo'
+        fare (spento con INSTAGRAM_CAROSELLO=False, meno di due punti chiave, schede non
+        generate, rifiuto di Meta): chi chiama pubblica allora la foto singola. Un errore di
+        rete durante la pubblicazione finale invece si propaga, per non rischiare due post."""
+        if not getattr(settings, 'INSTAGRAM_CAROSELLO', True):
+            return ""
+        try:
+            from .instagram_templates import punti_carosello, IG_CTA_INVITO
+            from home.luoghi_meta import place_id_per
+
+            punti = punti_carosello(self._punti_chiave(articolo))
+            if len(punti) < 2:
+                logger.info("Instagram: articolo senza punti chiave, esce la foto singola")
+                return ""
+            schede = self._prepare_instagram_carousel(
+                image_url, articolo.slug, articolo.titolo, articolo.categoria or "Notizie", punti)
+            if not schede:
+                return ""
+
+            media_url = f"https://graph.facebook.com/v24.0/{account_id}/media"
+            # Testo alternativo di ogni scheda: quello che c'e' scritto sopra
+            testi = [self._testo_alternativo(articolo)] + punti + [IG_CTA_INVITO]
+            figli = []
+            for scheda, testo in zip(schede, testi):
+                dati = {'access_token': page_token, 'image_url': scheda,
+                        'is_carousel_item': 'true', 'alt_text': testo[:1000]}
+                risposta = requests.post(media_url, data=dati, timeout=30)
+                if risposta.status_code != 200:
+                    dati.pop('alt_text')
+                    risposta = requests.post(media_url, data=dati, timeout=30)
+                figlio = risposta.json().get('id') if risposta.status_code == 200 else None
+                if not figlio:
+                    logger.warning(f"Instagram: scheda del carosello rifiutata, esce la foto singola: "
+                                   f"{risposta.text[:300]}")
+                    return ""
+                figli.append(figlio)
+
+            dati = {'access_token': page_token, 'media_type': 'CAROUSEL',
+                    'children': ','.join(figli), 'caption': caption}
+            location_id = place_id_per(articolo)
+            if location_id:
+                dati['location_id'] = location_id
+            risposta = requests.post(media_url, data=dati, timeout=30)
+            if risposta.status_code != 200 and 'location_id' in dati:
+                logger.warning(f"Instagram: carosello con luogo rifiutato, riprovo senza: {risposta.text[:300]}")
+                dati.pop('location_id')
+                risposta = requests.post(media_url, data=dati, timeout=30)
+            contenitore = risposta.json().get('id') if risposta.status_code == 200 else None
+            if not contenitore:
+                logger.warning(f"Instagram: carosello rifiutato, esce la foto singola: {risposta.text[:300]}")
+                return ""
+        except Exception as e:
+            logger.warning(f"Instagram: carosello non preparato, esce la foto singola: {str(e)[:200]}")
+            return ""
+
+        publish_url = f"https://graph.facebook.com/v24.0/{account_id}/media_publish"
+        publish_data = {'access_token': page_token, 'creation_id': contenitore}
+        risposta = None
+        for attesa in (5, 10):      # Instagram deve prima elaborare le immagini
+            time.sleep(attesa)
+            risposta = requests.post(publish_url, data=publish_data, timeout=30)
+            logger.info(f"Instagram carosello publish response: {risposta.status_code} - {risposta.text}")
+            if risposta.status_code == 200:
+                post_id = str(risposta.json().get('id') or "")
+                logger.info(f"Carosello pubblicato su Instagram (Post ID: {post_id}, "
+                            f"{len(figli)} schede): {articolo.titolo}")
+                return post_id
+        logger.warning(f"Instagram: pubblicazione del carosello fallita, esce la foto singola: "
+                       f"{risposta.text[:300]}")
+        return ""
+
     def _share_to_instagram_story(self, articolo) -> tuple[bool, str]:
         """Genera e pubblica una Storia Instagram (video 1080x1920, 15s, con musica)."""
         try:
@@ -1522,15 +1635,21 @@ class SocialMediaManager:
         return f"#{compact[:40]}"
 
     @staticmethod
+    def _punti_chiave(articolo) -> str:
+        """I punti chiave del video (uno per riga), riletti dal database: li salva il primo
+        video, che esce prima del post di Instagram."""
+        punti = ""
+        if getattr(articolo, "pk", None):
+            punti = type(articolo).objects.filter(pk=articolo.pk).values_list("reel_punti", flat=True).first() or ""
+        return punti or getattr(articolo, "reel_punti", "") or ""
+
+    @staticmethod
     def _testo_alternativo(articolo) -> str:
         """Testo alternativo del post con foto di Instagram: il titolo, che e' scritto
         nell'immagine, e i punti chiave del video dello stesso articolo (idea di Sven,
         24/11/2026). I punti si rileggono dal database: li salva il primo video, che esce
         prima del post con foto. Senza punti, l'inizio del sommario. Massimo 1000 caratteri."""
-        punti = ""
-        if getattr(articolo, "pk", None):
-            punti = type(articolo).objects.filter(pk=articolo.pk).values_list("reel_punti", flat=True).first() or ""
-        punti = punti or getattr(articolo, "reel_punti", "") or ""
+        punti = SocialMediaManager._punti_chiave(articolo)
         frasi = [p.strip().rstrip(".") + "." for p in punti.splitlines() if p.strip()]
         if not frasi:
             sommario = re.sub(r"\s+", " ", getattr(articolo, "sommario", "") or "").strip()

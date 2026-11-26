@@ -493,6 +493,8 @@ CARPI_PLACE_ID = os.getenv('CARPI_PLACE_ID', '')
 # Video di Storie e Reel: animato (foto che scorre, titolo e punti chiave). False = reel fermo di prima
 REEL_ANIMATO = os.getenv('REEL_ANIMATO', 'True').lower() in ['true', '1', 'yes']
 INSTAGRAM_REEL_SHARE_TO_FEED = os.getenv('INSTAGRAM_REEL_SHARE_TO_FEED', 'True').lower() in ['true', '1', 'yes']
+# Carosello (foto + punti chiave) al posto della foto singola su Instagram; False = solo foto
+INSTAGRAM_CAROSELLO = os.getenv('INSTAGRAM_CAROSELLO', 'True').lower() in ['true', '1', 'yes']
 # Audio name brandizzato sul Reel IG ('Audio originale di <nome>' visto dagli utenti)
 INSTAGRAM_REEL_AUDIO_NAME = os.getenv('INSTAGRAM_REEL_AUDIO_NAME', 'Ombra del Portico - Notizie di Carpi')
 
