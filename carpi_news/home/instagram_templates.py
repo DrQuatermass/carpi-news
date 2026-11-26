@@ -423,13 +423,14 @@ def render_instagram_post(
 # Una foto sola basta: copertina con foto e titolo, una scheda di testo per punto chiave
 # (gli stessi del video, Articolo.reel_punti) e la scheda finale con l'invito a scrivere LINK.
 # Formato 4:5, il piu' alto ammesso nei caroselli. Niente numeri sulle schede: i punti non
-# sono una classifica (scelta di Sven). Niente puntini: Instagram disegna gia' i suoi.
+# sono una classifica e i puntini in basso dicono gia' a che scheda si e' (scelta di Sven).
 CAROSELLO_W, CAROSELLO_H = 1080, 1350
 CAROSELLO_MARGINE = 90
 CAROSELLO_MAX_PUNTI = 3
 CAROSELLO_SCORRI = "Scorri  →"
 CAROSELLO_FINALE = ("Per l'articolo completo",)
 CAROSELLO_FINALE_DOVE = ("nei commenti", "Te lo mandiamo in privato.", "Lo trovi anche nel link in bio.")
+PUNTINO_SPENTO = (205, 201, 190)
 
 
 def punti_carosello(testo: str) -> list[str]:
@@ -450,6 +451,15 @@ def _testo_centrato(draw, testo: str, font, y: int, fill) -> None:
     draw.text(((CAROSELLO_W - (b[2] - b[0])) // 2, y), testo, font=font, fill=fill + (255,))
 
 
+def _puntini(draw, indice: int, totale: int) -> None:
+    raggio, passo, y = 7, 30, CAROSELLO_H - 70
+    x0 = (CAROSELLO_W - passo * (totale - 1)) // 2
+    for i in range(totale):
+        colore = VINO if i == indice else PUNTINO_SPENTO
+        x = x0 + i * passo
+        draw.ellipse([x - raggio, y - raggio, x + raggio, y + raggio], fill=colore + (255,))
+
+
 def _foto_copertina(image: Image.Image, w: int, h: int) -> Image.Image:
     """Foto ritagliata a w x h con la regola del sito: le verticali si tagliano verso l'alto."""
     from .image_variants import _center_crop_box
@@ -463,7 +473,7 @@ def _foto_copertina(image: Image.Image, w: int, h: int) -> Image.Image:
     return out
 
 
-def _scheda_copertina(source: Image.Image, title: str, category: str) -> Image.Image:
+def _scheda_copertina(source: Image.Image, title: str, category: str, totale: int) -> Image.Image:
     base, draw = _carosello_base(110, 40)
     foto_w, foto_h, foto_y = CAROSELLO_W - 120, 640, 185
     base.alpha_composite(_foto_copertina(source, foto_w, foto_h), (60, foto_y))
@@ -482,11 +492,12 @@ def _scheda_copertina(source: Image.Image, title: str, category: str) -> Image.I
         _testo_centrato(draw, riga, title_font, y, INCHIOSTRO)
         y += 68
 
-    _testo_centrato(draw, CAROSELLO_SCORRI, _load_cta_font(30), CAROSELLO_H - 120, VINO)
+    _testo_centrato(draw, CAROSELLO_SCORRI, _load_cta_font(30), CAROSELLO_H - 150, VINO)
+    _puntini(draw, 0, totale)
     return base.convert("RGB")
 
 
-def _scheda_punto(testo: str, title: str) -> Image.Image:
+def _scheda_punto(testo: str, title: str, indice: int, totale: int) -> Image.Image:
     base, draw = _carosello_base(80, 50)
     larghezza = CAROSELLO_W - 2 * CAROSELLO_MARGINE
     font = _load_font(98)
@@ -508,10 +519,11 @@ def _scheda_punto(testo: str, title: str) -> Image.Image:
     for riga in _wrap_text(title, piede_font, larghezza, max_lines=2):
         draw.text((CAROSELLO_MARGINE, y), riga, font=piede_font, fill=MUTED + (255,))
         y += 34
+    _puntini(draw, indice, totale)
     return base.convert("RGB")
 
 
-def _scheda_finale() -> Image.Image:
+def _scheda_finale(indice: int, totale: int) -> Image.Image:
     base, draw = _carosello_base(150, 230)
     font = _load_font(64)
     y = 520
@@ -532,6 +544,7 @@ def _scheda_finale() -> Image.Image:
     for i, riga in enumerate(CAROSELLO_FINALE_DOVE[1:]):
         _testo_centrato(draw, riga, dove_font, 985 + i * 46, MUTED)
     _testo_centrato(draw, "ombradelportico.it", _load_font(34), CAROSELLO_H - 190, INCHIOSTRO)
+    _puntini(draw, indice, totale)
     return base.convert("RGB")
 
 
@@ -552,9 +565,10 @@ def render_instagram_carousel(
         return []
     try:
         source = Image.open(image_path)
-        schede = [_scheda_copertina(source, title, category)]
-        schede += [_scheda_punto(p, title) for p in punti]
-        schede.append(_scheda_finale())
+        totale = len(punti) + 2
+        schede = [_scheda_copertina(source, title, category, totale)]
+        schede += [_scheda_punto(p, title, i + 1, totale) for i, p in enumerate(punti)]
+        schede.append(_scheda_finale(totale - 1, totale))
 
         cartella = Path(output_dir) if output_dir else _output_dir()
         cartella.mkdir(parents=True, exist_ok=True)
