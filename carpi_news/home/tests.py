@@ -3042,6 +3042,29 @@ class PromemoriaEventiDistribuitoTests(TestCase):
         self.assertEqual(condivisi, ['Evento molto letto', 'Evento poco letto'])
         self.assertEqual(attese, ['07:50', '11:50'])
 
+    def test_il_promemoria_non_ripete_reel_e_post_instagram(self):
+        from home.models import SocialPublicationLog
+        domani = timezone.localdate() + timedelta(days=1)
+        articolo = Articolo.objects.bulk_create([Articolo(
+            titolo='Evento', slug='evento-promemoria', contenuto='x', sommario='x',
+            categoria='Cultura & Eventi', approvato=True, data_evento=domani,
+            data_pubblicazione=timezone.now() - timedelta(days=2))])[0]
+        piattaforme = ('facebook', 'facebook_story', 'facebook_reel', 'instagram',
+                       'instagram_story', 'instagram_reel', 'telegram')
+        for platform in piattaforme:
+            SocialPublicationLog.objects.create(articolo=articolo, platform=platform, success=True)
+        SocialPublicationLog.objects.filter(articolo=articolo).update(
+            published_at=timezone.now() - timedelta(days=2))
+        rimasti = []
+        base = 'home.management.commands.reshare_tomorrow_events'
+        with patch(f'{base}.social_manager.retry_failed_platforms_only',
+                   side_effect=lambda a, only_platforms=None: rimasti.extend(
+                       SocialPublicationLog.objects.filter(articolo=a).values_list('platform', flat=True)
+                   ) or {'facebook': True}):
+            call_command('reshare_tomorrow_events', '--subito', stdout=StringIO())
+        # restano i log di cio' che non si ripete: la condivisione li trova e li salta
+        self.assertEqual(sorted(rimasti), ['facebook_reel', 'instagram', 'instagram_reel'])
+
 
 class PubblicaProgrammatiTests(TestCase):
     """Articoli approvati in anticipo: escono sui social quando arriva la data di pubblicazione."""

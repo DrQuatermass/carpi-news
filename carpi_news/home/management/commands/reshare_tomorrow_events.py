@@ -16,6 +16,14 @@ from django.utils import timezone
 logger = logging.getLogger(__name__)
 
 
+
+# Contenuti che il promemoria non ripete: escono solo per gli eventi che non li hanno mai avuti.
+# Reel Facebook dal 19/11/2026; Reel e post (carosello) Instagram dal 28/11/2026: il 27/11 i
+# sette eventi del promemoria hanno portato 18 lettori dal post con il link e nessuno da
+# Instagram, e ogni contenuto in piu' nello stesso giorno toglie pubblico agli altri.
+NON_RIPETUTI = ('facebook_reel', 'instagram', 'instagram_reel')
+
+
 class Command(BaseCommand):
     help = 'Ricondivide sui social gli articoli approvati con data_evento = domani'
 
@@ -69,7 +77,7 @@ class Command(BaseCommand):
             self.style.NOTICE(
                 "\nPiattaforme ricondivisione eventi: "
                 + ", ".join(reshare_platforms)
-                + " (su Facebook torna il post con il link; il Reel solo se non è mai uscito)"
+                + " (tornano post Facebook, storie e Telegram; Reel e post Instagram solo se mai usciti)"
             )
         )
 
@@ -164,9 +172,9 @@ class Command(BaseCommand):
                 existing_logs = list(SocialPublicationLog.objects.filter(articolo=articolo, success=True))
 
                 # Cancella temporaneamente i log per permettere la ricondivisione
-                # (non quello del Reel Facebook: non si ripubblica, e senza il suo log il recupero
-                # automatico dei fallimenti lo crederebbe mancante e ne farebbe un altro)
-                SocialPublicationLog.objects.filter(articolo=articolo).exclude(platform='facebook_reel').delete()
+                # (non quelli di NON_RIPETUTI: non si ripubblicano, e senza il loro log il recupero
+                # automatico dei fallimenti li crederebbe mancanti e ne farebbe altri)
+                SocialPublicationLog.objects.filter(articolo=articolo).exclude(platform__in=NON_RIPETUTI).delete()
 
                 # Esegui la condivisione (ora non troverà log e condividerà)
                 results = social_manager.retry_failed_platforms_only(
@@ -282,5 +290,6 @@ class Command(BaseCommand):
         anche con FACEBOOK_REEL_ENABLED=False. Ora il Reel esce all'approvazione di ogni
         articolo e il promemoria ricondivide il post. Il Reel resta nell'elenco ma il suo log
         non viene cancellato, quindi parte solo per gli eventi che non l'hanno mai avuto
-        (quelli approvati prima del cambio)."""
+        (quelli approvati prima del cambio). Dal 28/11/2026 vale lo stesso per Reel e post
+        (carosello) di Instagram: vedi NON_RIPETUTI."""
         return [platform for platform, config in social_manager.platforms.items() if config.get('enabled')]
