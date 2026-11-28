@@ -497,6 +497,8 @@ INSTAGRAM_REEL_SHARE_TO_FEED = os.getenv('INSTAGRAM_REEL_SHARE_TO_FEED', 'True')
 INSTAGRAM_CAROSELLO = os.getenv('INSTAGRAM_CAROSELLO', 'True').lower() in ['true', '1', 'yes']
 # Ore tra il post Facebook con il link e Storia + Reel dello stesso articolo (0 = insieme)
 FACEBOOK_REEL_RITARDO_ORE = float(os.getenv('FACEBOOK_REEL_RITARDO_ORE', '3'))
+# Minuti tra i reel rimandati di due articoli (0 = tutti appena arriva l'ora, come il 26/11/2026)
+FACEBOOK_REEL_DISTANZA_MINUTI = float(os.getenv('FACEBOOK_REEL_DISTANZA_MINUTI', '30'))
 # Audio name brandizzato sul Reel IG ('Audio originale di <nome>' visto dagli utenti)
 INSTAGRAM_REEL_AUDIO_NAME = os.getenv('INSTAGRAM_REEL_AUDIO_NAME', 'Ombra del Portico - Notizie di Carpi')
 

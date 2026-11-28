@@ -3309,10 +3309,13 @@ class ReelFacebookRimandatoTests(TestCase):
 
     @override_settings(FACEBOOK_REEL_RITARDO_ORE=3)
     def test_escono_quando_arriva_l_ora(self):
+        from django.core.cache import cache
+        cache.delete('reel_rimandati_ultima_uscita')
         for platform in ('facebook_story', 'facebook_reel'):
             self.manager._rimanda_reel_facebook(self.articolo, platform)
             self.manager.platforms[platform]['enabled'] = True
-        creato = SocialPublicationLog.objects.filter(articolo=self.articolo).first().published_at
+        SocialPublicationLog.objects.update(published_at=self._ora(9))
+        creato =SocialPublicationLog.objects.filter(articolo=self.articolo).first().published_at
         dopo = SocialMediaManager.uscita_reel_rimandato(creato, 3) + timedelta(minutes=1)
         with patch.object(SocialMediaManager, '_share_to_facebook_story', return_value=(True, '')) as storia, \
                 patch.object(SocialMediaManager, '_share_to_facebook_reel', return_value=(True, '')) as reel, \
@@ -3325,6 +3328,40 @@ class ReelFacebookRimandatoTests(TestCase):
         reel.assert_called_once()
         self.assertEqual(
             SocialPublicationLog.objects.filter(articolo=self.articolo, success=True).count(), 2)
+
+    @override_settings(FACEBOOK_REEL_RITARDO_ORE=3, FACEBOOK_REEL_DISTANZA_MINUTI=30)
+    def test_articoli_approvati_insieme_escono_a_distanza(self):
+        from django.core.cache import cache
+        from home.social_sharing import REEL_RIMANDATI_ULTIMA_USCITA
+        cache.delete(REEL_RIMANDATI_ULTIMA_USCITA)
+        secondo = Articolo.objects.create(
+            titolo='Mostra al museo', contenuto='<p>T</p>', sommario='Sommario.',
+            categoria='Attualità', approvato=False, data_pubblicazione=timezone.now())
+        Articolo.objects.filter(pk=secondo.pk).update(approvato=True)
+        self.manager.platforms['facebook_reel']['enabled'] = True
+        for articolo in (self.articolo, secondo):
+            self.manager._rimanda_reel_facebook(articolo, 'facebook_reel')
+        SocialPublicationLog.objects.update(published_at=self._ora(9))
+        with patch.object(SocialMediaManager, '_share_to_facebook_reel', return_value=(True, '')) as reel, \
+                patch.object(Articolo, 'has_shareable_image', True):
+            self.assertEqual(self.manager.pubblica_reel_rimandati(adesso=self._ora(12, 5)), 1)
+            self.assertEqual(self.manager.pubblica_reel_rimandati(adesso=self._ora(12, 20)), 0)
+            self.assertEqual(self.manager.pubblica_reel_rimandati(adesso=self._ora(12, 36)), 1)
+        self.assertEqual(reel.call_count, 2)
+        cache.delete(REEL_RIMANDATI_ULTIMA_USCITA)
+
+    @override_settings(FACEBOOK_REEL_RITARDO_ORE=3, FACEBOOK_REEL_DISTANZA_MINUTI=30)
+    def test_la_coda_non_esce_di_notte(self):
+        from django.core.cache import cache
+        from home.social_sharing import REEL_RIMANDATI_ULTIMA_USCITA
+        cache.delete(REEL_RIMANDATI_ULTIMA_USCITA)
+        self.manager.platforms['facebook_reel']['enabled'] = True
+        self.manager._rimanda_reel_facebook(self.articolo, 'facebook_reel')
+        SocialPublicationLog.objects.update(published_at=self._ora(9))
+        with patch.object(SocialMediaManager, '_share_to_facebook_reel', return_value=(True, '')) as reel, \
+                patch.object(Articolo, 'has_shareable_image', True):
+            self.assertEqual(self.manager.pubblica_reel_rimandati(adesso=self._ora(22, 30)), 0)
+        reel.assert_not_called()
 
 
 class TestoPostFacebookTests(SimpleTestCase):

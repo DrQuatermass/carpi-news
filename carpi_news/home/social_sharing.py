@@ -5,6 +5,7 @@ import time
 import unicodedata
 from typing import Dict, Optional
 from django.conf import settings
+from django.core.cache import cache
 from PIL import Image
 from io import BytesIO
 
@@ -17,6 +18,7 @@ MAX_HASHTAG_INSTAGRAM = 5
 # Stato di attesa (inizio di SocialPublicationLog.error_message) di Storia e Reel Facebook
 # rimandati rispetto al post con il link
 REEL_RIMANDATO = "Rimandato"
+REEL_RIMANDATI_ULTIMA_USCITA = "reel_rimandati_ultima_uscita"  # cache: quando e' uscito l'ultimo
 
 
 class SocialMediaManager:
@@ -321,10 +323,27 @@ class SocialMediaManager:
                      .filter(platform__in=('facebook_story', 'facebook_reel'), success=False,
                              error_message__startswith=REEL_RIMANDATO, articolo__approvato=True)
                      .select_related('articolo').order_by('published_at', 'id'))
+        # Dal 27/11/2026 un articolo alla volta, a FACEBOOK_REEL_DISTANZA_MINUTI dal precedente:
+        # dieci articoli approvati insieme davano dieci reel in venti minuti, fermi a 6-17
+        # visualizzazioni l'uno (quelli usciti da soli la stessa mattina: 76-177).
+        distanza = float(getattr(settings, 'FACEBOOK_REEL_DISTANZA_MINUTI', 30) or 0)
+        if distanza > 0:
+            ultima = cache.get(REEL_RIMANDATI_ULTIMA_USCITA)
+            if ultima and (adesso - ultima).total_seconds() < distanza * 60:
+                return 0
+            if not 7 <= timezone.localtime(adesso).hour < 22:
+                return 0  # la coda puo' arrivare a sera: il resto esce dalle 7
         pubblicati = 0
+        articolo_del_giro = None
         for log in in_attesa:
             if self.uscita_reel_rimandato(log.published_at, ore) > adesso:
                 continue
+            if distanza > 0:
+                if articolo_del_giro is None:
+                    articolo_del_giro = log.articolo_id
+                    cache.set(REEL_RIMANDATI_ULTIMA_USCITA, adesso, 24 * 3600)
+                elif log.articolo_id != articolo_del_giro:
+                    continue
             # La riga si prende cambiandone lo stato: un secondo cron partito nel frattempo la salta
             presa = SocialPublicationLog.objects.filter(
                 pk=log.pk, error_message__startswith=REEL_RIMANDATO,
